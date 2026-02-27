@@ -1,0 +1,221 @@
+@import "tailwindcss";
+
+/* --------------------------------------------------
+   Tailwind + theme foundation
+-------------------------------------------------- */
+
+@custom-variant dark (&:is(.dark *));
+
+/* --------------------------------------------------
+   Base design tokens (DARK BY DEFAULT)
+-------------------------------------------------- */
+
+:root {
+  --font-size: 14px;
+
+  --background: #0a0b14;
+  --foreground: #e4e4e7;
+
+  --card: #12131c;
+  --card-foreground: #e4e4e7;
+
+  --popover: #12131c;
+  --popover-foreground: #e4e4e7;
+
+  --primary: #14b8a6;
+  --primary-foreground: #ffffff;
+
+  --secondary: #1e1f2e;
+  --secondary-foreground: #e4e4e7;
+
+  --muted: #1e1f2e;
+  --muted-foreground: #a1a1aa;
+
+  --accent: #2d2e42;
+  --accent-foreground: #e4e4e7;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --border: #2d2e42;
+  --input: #2d2e42;
+  --input-background: #1e1f2e;
+  --switch-background: #2d2e42;
+
+  --ring: #14b8a6;
+  --radius: 0.625rem;
+
+  /* Sidebar */
+  --sidebar: #0f1019;
+  --sidebar-foreground: #e4e4e7;
+  --sidebar-primary: #14b8a6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1e1f2e;
+  --sidebar-accent-foreground: #e4e4e7;
+  --sidebar-border: #2d2e42;
+  --sidebar-ring: #14b8a6;
+
+  /* Charts */
+  --chart-1: #14b8a6;
+  --chart-2: #06b6d4;
+  --chart-3: #10b981;
+  --chart-4: #f59e0b;
+  --chart-5: #ef4444;
+
+  /* Severity */
+  --severity-critical: #ff4444;
+  --severity-critical-bg: rgba(255, 68, 68, 0.2);
+  --severity-high: #ff8800;
+  --severity-high-bg: rgba(255, 136, 0, 0.2);
+  --severity-medium: #ffcc00;
+  --severity-medium-bg: rgba(255, 204, 0, 0.2);
+  --severity-low: #00b8d4;
+  --severity-low-bg: rgba(0, 184, 212, 0.2);
+  --severity-info: #9e9e9e;
+  --severity-info-bg: rgba(158, 158, 158, 0.2);
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+}
+
+/* --------------------------------------------------
+   Tailwind semantic color mapping
+-------------------------------------------------- */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-severity-critical: var(--severity-critical);
+  --color-severity-critical-bg: var(--severity-critical-bg);
+  --color-severity-high: var(--severity-high);
+  --color-severity-high-bg: var(--severity-high-bg);
+  --color-severity-medium: var(--severity-medium);
+  --color-severity-medium-bg: var(--severity-medium-bg);
+  --color-severity-low: var(--severity-low);
+  --color-severity-low-bg: var(--severity-low-bg);
+  --color-severity-info: var(--severity-info);
+  --color-severity-info-bg: var(--severity-info-bg);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* --------------------------------------------------
+   Base element styles
+-------------------------------------------------- */
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    position: relative;
+    min-height: 100vh;
+  }
+
+  h1 {
+    @apply text-xl font-medium;
+  }
+
+  h2 {
+    @apply text-lg font-medium;
+  }
+
+  h3 {
+    @apply text-base font-medium;
+  }
+
+  h4 {
+    @apply text-sm font-medium;
+  }
+
+  label {
+    @apply text-sm font-medium;
+  }
+
+  button {
+    @apply text-sm font-medium;
+  }
+
+  input {
+    @apply text-sm font-normal;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    @apply outline-none ring-2 ring-ring;
+  }
+}
+
+/* --------------------------------------------------
+   Background glow (DARK ONLY)
+-------------------------------------------------- */
+
+.dark body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+
+  background:
+    radial-gradient(900px 500px at 25% 10%, rgba(20, 184, 166, 0.10), transparent 60%),
+    radial-gradient(900px 500px at 75% 15%, rgba(6, 182, 212, 0.07), transparent 65%),
+    radial-gradient(1200px 700px at 50% 85%, rgba(255, 255, 255, 0.04), transparent 60%),
+    radial-gradient(1200px 900px at 50% 50%, rgba(0, 0, 0, 0.65), transparent 70%);
+}

@@ -1,0 +1,1 @@
+# File: app/trending/__init__.py

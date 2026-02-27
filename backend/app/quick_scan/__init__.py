@@ -1,0 +1,1 @@
+from .routes import quick_scan_bp
