@@ -455,7 +455,7 @@ export async function getGroupAssets(groupId: string): Promise<Asset[]> {
 
 export async function addAssetToGroup(
   groupId: string,
-  payload: { type: "domain" | "ip" | "email"; value: string; label?: string }
+  payload: { type: "domain" | "ip" | "email" | "cloud"; value: string; label?: string }
 ): Promise<Asset> {
   const a = await apiFetch<any>(`${API.groups}/${groupId}/assets`, {
     method: "POST",
@@ -550,7 +550,7 @@ export async function createAndRunScanForAssetId(assetId: string, profileId?: st
 
 export async function addAssetToGroupAndScan(params: {
   groupId: string;
-  type: "domain" | "ip" | "email";
+  type: "domain" | "ip" | "email" | "cloud";
   value: string;
   label?: string;
   profileId?: string;
