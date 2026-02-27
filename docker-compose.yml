@@ -1,0 +1,72 @@
+# docker-compose.yml
+# BoltEdge EASM — Production Stack
+# Joins shared boltedge-network for Nginx routing
+
+services:
+  # ── PostgreSQL Database ──────────────────────────────────────
+  easm-db:
+    image: postgres:16-alpine
+    container_name: easm-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-easm}
+      POSTGRES_USER: ${DB_USER:-easm_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - easm_postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-easm_user} -d ${DB_NAME:-easm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Flask Backend (Gunicorn) ─────────────────────────────────
+  easm-backend:
+    build: ./backend
+    container_name: easm-backend
+    restart: unless-stopped
+    depends_on:
+      easm-db:
+        condition: service_healthy
+    environment:
+      SQLALCHEMY_DATABASE_URI: postgresql://${DB_USER:-easm_user}:${DB_PASSWORD}@easm-db:5432/${DB_NAME:-easm}
+      SECRET_KEY: ${SECRET_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      SHODAN_API_KEY: ${SHODAN_API_KEY}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+    expose:
+      - "5000"
+    networks:
+      - internal
+      - boltedge-network
+
+  # ── Next.js Frontend ─────────────────────────────────────────
+  easm-frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+    container_name: easm-frontend
+    restart: unless-stopped
+    depends_on:
+      - easm-backend
+    expose:
+      - "3000"
+    networks:
+      - boltedge-network
+
+# ── Networks ─────────────────────────────────────────────────
+networks:
+  internal:
+    # Private network: backend ↔ database only
+  boltedge-network:
+    external: true
+    # Shared network so Nginx can reach frontend + backend
+
+# ── Volumes ──────────────────────────────────────────────────
+volumes:
+  easm_postgres_data:

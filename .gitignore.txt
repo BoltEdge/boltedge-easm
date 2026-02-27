@@ -1,0 +1,25 @@
+# Environment secrets
+.env
+.env.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+var/
+*.db
+
+# Node
+node_modules/
+.next/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
