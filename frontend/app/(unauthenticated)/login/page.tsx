@@ -2,7 +2,7 @@
 // F4: Redesigned login with split layout, BoltEdge branding
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
@@ -19,7 +19,7 @@ function BoltIcon({ size = 24 }: { size?: number }) {
   );
 }
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -226,5 +226,19 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#060b18] flex items-center justify-center">
+          <div className="text-sm text-white/40">Loading…</div>
+        </div>
+      }
+    >
+      <LoginPageInner />
+    </Suspense>
   );
 }

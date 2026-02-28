@@ -2,7 +2,7 @@
 // F4: Redesigned registration with split layout, BoltEdge branding, and invite support
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, Loader2, Users } from "lucide-react";
@@ -19,7 +19,7 @@ function BoltIcon({ size = 24 }: { size?: number }) {
   );
 }
 
-export default function RegisterPage() {
+function RegisterPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -362,5 +362,19 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#060b18] flex items-center justify-center">
+          <div className="text-sm text-white/40">Loading…</div>
+        </div>
+      }
+    >
+      <RegisterPageInner />
+    </Suspense>
   );
 }
