@@ -47,4 +47,4 @@ EXPOSE 5000
 # --preload: create_app() runs once in master (scheduler guard)
 # --workers 3: matches handover doc recommendation
 # --timeout 120: accommodates long-running scan operations
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "3", "--timeout", "120", "--preload", "run:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--timeout", "120", "run:app"]
