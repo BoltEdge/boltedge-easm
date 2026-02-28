@@ -1,6 +1,5 @@
 // app/lib/useSessionGuard.ts
 "use client";
-
 import { useEffect } from "react";
 import { getAccessToken, isInactive, clearSession } from "./auth";
 
@@ -16,10 +15,13 @@ import { getAccessToken, isInactive, clearSession } from "./auth";
 export function useSessionGuard() {
   useEffect(() => {
     function check() {
+      // Don't run on login/register pages
+      const path = window.location.pathname;
+      if (path.startsWith("/login") || path.startsWith("/register")) return;
+
       const token = getAccessToken();
       if (!token || isInactive()) {
         clearSession();
-        const path = `${window.location.pathname}${window.location.search}`;
         window.location.href = `/login?next=${encodeURIComponent(path)}&expired=true`;
       }
     }
