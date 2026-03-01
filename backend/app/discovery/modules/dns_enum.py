@@ -3,8 +3,9 @@
 DNS Enumeration Module — comprehensive DNS record lookups and IP resolution.
 
 Discovery depths:
-  - standard: ~120 hardcoded high-hit-rate prefixes (seconds)
-  - deep:     ~1400 prefixes from wordlist (thorough, takes longer)
+  - standard: ~5,000 prefixes from wordlist (fast, 30-60s)
+  - deep:     ~20,000 prefixes from wordlist (thorough, 3-5 min)
+  - fallback: ~120 hardcoded high-hit-rate prefixes if wordlists missing
 
 Finds: subdomains (from brute-force), IPs (from resolution), DNS records.
 Rate limit: Self-throttled
@@ -22,8 +23,9 @@ from ..base_module import BaseDiscoveryModule, DiscoveredItem, ModuleType
 
 logger = logging.getLogger(__name__)
 
-# ── Quick scan: hardcoded high-hit-rate prefixes (~120) ──
-STANDARD_PREFIXES = [
+# ── Fallback: hardcoded high-hit-rate prefixes (~120) ──
+# Used only if wordlist files are missing
+FALLBACK_PREFIXES = [
     # ── Core infrastructure (highest hit rate) ──
     "www", "www1", "www2", "www3", "mail", "mail2", "mail3", "email",
     "smtp", "smtp2", "imap", "imap2", "pop", "pop3", "webmail",
@@ -135,8 +137,9 @@ STANDARD_PREFIXES = [
     "services", "platform", "hub",
 ]
 
-# Path to deep wordlist (relative to this file)
+# Path to wordlists (relative to this file)
 WORDLIST_DIR = os.path.join(os.path.dirname(__file__), "..", "wordlists")
+STANDARD_WORDLIST = os.path.join(WORDLIST_DIR, "subdomains-standard.txt")
 DEEP_WORDLIST = os.path.join(WORDLIST_DIR, "subdomains-deep.txt")
 
 SCAN_DEPTHS = ("standard", "deep")
@@ -148,7 +151,7 @@ def _load_wordlist(path: str) -> List[str]:
         with open(path, "r") as f:
             return [line.strip().lower() for line in f if line.strip() and not line.startswith("#")]
     except FileNotFoundError:
-        logger.warning("Wordlist not found: %s — falling back to standard prefixes", path)
+        logger.warning("Wordlist not found: %s", path)
         return []
 
 
@@ -157,11 +160,18 @@ def _get_prefixes_for_depth(depth: str) -> List[str]:
     if depth == "deep":
         wordlist = _load_wordlist(DEEP_WORDLIST)
         if wordlist:
+            logger.info("Loaded deep wordlist: %d prefixes", len(wordlist))
             return wordlist
-        logger.warning("Deep wordlist empty or missing — using standard prefixes")
+        logger.warning("Deep wordlist missing — falling back to standard")
 
-    # standard (default) — hardcoded high-hit-rate prefixes
-    return STANDARD_PREFIXES
+    # Standard: try wordlist first, fall back to hardcoded
+    wordlist = _load_wordlist(STANDARD_WORDLIST)
+    if wordlist:
+        logger.info("Loaded standard wordlist: %d prefixes", len(wordlist))
+        return wordlist
+
+    logger.warning("Standard wordlist missing — using hardcoded fallback (%d prefixes)", len(FALLBACK_PREFIXES))
+    return FALLBACK_PREFIXES
 
 
 def _normalize(d: str) -> str:
@@ -259,8 +269,8 @@ class DNSEnumModule(BaseDiscoveryModule):
             ))
             all_ips.update(ips)
 
-            # Log progress every 100 prefixes on deep discovery
-            if depth == "deep" and (i + 1) % 100 == 0:
+            # Log progress every 500 prefixes
+            if (i + 1) % 500 == 0:
                 logger.info(
                     "DNS Enum: progress %d/%d prefixes checked, %d found so far",
                     i + 1, len(prefixes), found_count,
