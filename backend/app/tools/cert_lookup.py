@@ -94,7 +94,7 @@ def run_cert_hash_lookup(cert_hash: str, full: bool = False) -> Dict[str, Any]:
 
     try:
         url = f"https://crt.sh/?q={clean_hash}&output=json"
-        req = Request(url, headers={"User-Agent": "BoltEdge EASM"})
+        req = Request(url, headers={"User-Agent": "Nano ASM"})
         response = urlopen(req, timeout=15)
         data = json.loads(response.read(524288).decode("utf-8", errors="replace"))
 
@@ -474,7 +474,7 @@ def _query_ct_logs(domain: str) -> List[Dict[str, Any]]:
     """Query crt.sh for Certificate Transparency log entries."""
     try:
         url = f"https://crt.sh/?q=%.{domain}&output=json"
-        req = Request(url, headers={"User-Agent": "BoltEdge EASM"})
+        req = Request(url, headers={"User-Agent": "Nano ASM"})
         response = urlopen(req, timeout=10)
         data = json.loads(response.read(524288).decode("utf-8", errors="replace"))
 

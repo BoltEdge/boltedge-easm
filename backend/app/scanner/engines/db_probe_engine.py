@@ -542,7 +542,7 @@ class DBProbeEngine(BaseEngine):
         """Make an HTTP GET and parse JSON response. Returns None on failure."""
         try:
             req = Request(url, headers={
-                "User-Agent": "Mozilla/5.0 (compatible; BoltEdge EASM Scanner)",
+                "User-Agent": "Mozilla/5.0 (compatible; Nano ASM Scanner)",
                 "Accept": "application/json",
             })
 
@@ -569,7 +569,7 @@ class DBProbeEngine(BaseEngine):
         """Make an HTTP GET and return response body as text. Returns None on failure."""
         try:
             req = Request(url, headers={
-                "User-Agent": "Mozilla/5.0 (compatible; BoltEdge EASM Scanner)",
+                "User-Agent": "Mozilla/5.0 (compatible; Nano ASM Scanner)",
                 "Accept": "text/plain, */*",
             })
 

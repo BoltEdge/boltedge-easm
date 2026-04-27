@@ -9,7 +9,7 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 DEFAULT_MAX_AGE = 60 * 60 * 8  # 8 hours
 
 def _serializer(secret_key: str) -> URLSafeTimedSerializer:
-    return URLSafeTimedSerializer(secret_key, salt="boltedgeeasm-auth")
+    return URLSafeTimedSerializer(secret_key, salt="nanoasm-auth")
 
 
 def create_access_token(*, secret_key: str, user_id: int) -> str:

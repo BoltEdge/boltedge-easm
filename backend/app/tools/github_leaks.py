@@ -182,7 +182,7 @@ def _github_code_search(
 
     headers = {
         "Accept": "application/vnd.github.v3+json",
-        "User-Agent": "BoltEdge-EASM-Scanner",
+        "User-Agent": "NanoASM-Scanner",
     }
     if token:
         headers["Authorization"] = f"token {token}"

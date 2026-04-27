@@ -147,7 +147,7 @@ export default function ApiKeysPage() {
               <div className="p-12 text-center">
                 <Key className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
                 <h3 className="text-foreground font-semibold mb-2">No API keys yet</h3>
-                <p className="text-muted-foreground text-sm mb-4">Generate an API key to access BoltEdge EASM programmatically.</p>
+                <p className="text-muted-foreground text-sm mb-4">Generate an API key to access Nano ASM programmatically.</p>
                 {canManage && (
                   <Button onClick={() => { setCreateOpen(true); setNewKey(null); }} className="bg-primary hover:bg-primary/90">
                     <Plus className="w-4 h-4 mr-2" />Generate Key

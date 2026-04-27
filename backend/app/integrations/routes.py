@@ -280,7 +280,7 @@ def test_integration(integration_id: int):
 
     test_payload = {
         "event": "test",
-        "message": f"Test notification from BoltEdge EASM — integration '{i.name}' is working.",
+        "message": f"Test notification from Nano ASM — integration '{i.name}' is working.",
         "severity": "info",
         "timestamp": _now().isoformat(),
     }
@@ -625,7 +625,7 @@ def _send_slack(config: dict, payload: dict) -> tuple[bool, str | None]:
 
     event = payload.get("event", "notification")
     severity = payload.get("severity", "info")
-    title = payload.get("title") or payload.get("message") or "BoltEdge EASM Notification"
+    title = payload.get("title") or payload.get("message") or "Nano ASM Notification"
 
     # Color based on severity
     color_map = {
@@ -695,14 +695,14 @@ def _send_pagerduty(config: dict, payload: dict) -> tuple[bool, str | None]:
         "low": "info", "info": "info",
     }
 
-    title = payload.get("title") or payload.get("message") or "BoltEdge EASM Alert"
+    title = payload.get("title") or payload.get("message") or "Nano ASM Alert"
 
     pd_payload = {
         "routing_key": routing_key,
         "event_action": "trigger",
         "payload": {
             "summary": title[:1024],
-            "source": "BoltEdge EASM",
+            "source": "Nano ASM",
             "severity": pd_severity_map.get(severity, "info"),
             "component": payload.get("asset"),
             "group": payload.get("group"),
@@ -744,7 +744,7 @@ def _send_webhook(config: dict, payload: dict) -> tuple[bool, str | None]:
     # HMAC signature if secret is set
     if secret:
         sig = hmac.new(secret.encode(), body.encode(), hashlib.sha256).hexdigest()
-        headers["X-BoltEdge-Signature"] = f"sha256={sig}"
+        headers["X-NanoASM-Signature"] = f"sha256={sig}"
 
     try:
         resp = requests.request(method, url, data=body, headers=headers, timeout=15)
@@ -768,19 +768,19 @@ def _send_email(config: dict, payload: dict) -> tuple[bool, str | None]:
     if not to_list:
         return False, "No valid recipients"
 
-    from_email = config.get("from_email") or "noreply@boltedge.co"
+    from_email = config.get("from_email") or "contact@nanoasm.com"
 
     event = payload.get("event", "notification")
     severity = payload.get("severity", "info")
-    title = payload.get("title") or payload.get("message") or "BoltEdge EASM Notification"
+    title = payload.get("title") or payload.get("message") or "Nano ASM Notification"
 
-    subject = f"[BoltEdge EASM] [{severity.upper()}] {title[:100]}"
+    subject = f"[Nano ASM] [{severity.upper()}] {title[:100]}"
 
     # Build HTML body
     html = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #0f1729; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-            <h2 style="margin: 0; font-size: 18px;">BoltEdge EASM Alert</h2>
+            <h2 style="margin: 0; font-size: 18px;">Nano ASM Alert</h2>
             <p style="margin: 5px 0 0; opacity: 0.7; font-size: 13px;">Event: {event}</p>
         </div>
         <div style="background: #1a2332; color: #e2e8f0; padding: 20px; border-radius: 0 0 8px 8px; border: 1px solid #2d3748; border-top: none;">
@@ -808,7 +808,7 @@ def _send_email(config: dict, payload: dict) -> tuple[bool, str | None]:
             </table>
         </div>
         <p style="text-align: center; font-size: 11px; color: #64748b; margin-top: 15px;">
-            Sent by BoltEdge EASM
+            Sent by Nano ASM
         </p>
     </div>
     """
@@ -882,11 +882,11 @@ def _create_jira_ticket(integration: Integration, rule: NotificationRule, payloa
     priority = action_config.get("priority") or priority_map.get(severity, "Medium")
 
     issue_type = action_config.get("issue_type") or "Bug"
-    labels = action_config.get("labels") or ["security", "BoltEdge EASM"]
+    labels = action_config.get("labels") or ["security", "Nano ASM"]
     if isinstance(labels, str):
         labels = [l.strip() for l in labels.split(",") if l.strip()]
 
-    title = payload.get("title") or "BoltEdge EASM Finding"
+    title = payload.get("title") or "Nano ASM Finding"
     description = payload.get("description") or ""
     asset = payload.get("asset") or ""
     group = payload.get("group") or ""
@@ -909,7 +909,7 @@ def _create_jira_ticket(integration: Integration, rule: NotificationRule, payloa
         ("Severity", severity.upper()),
         ("Asset", asset),
         ("Group", group),
-        ("Source", "BoltEdge EASM"),
+        ("Source", "Nano ASM"),
     ]
     for label, value in detail_rows:
         if value:
@@ -928,7 +928,7 @@ def _create_jira_ticket(integration: Integration, rule: NotificationRule, payloa
     issue_data = {
         "fields": {
             "project": {"key": project_key},
-            "summary": f"[BoltEdge EASM] {title[:250]}",
+            "summary": f"[Nano ASM] {title[:250]}",
             "description": {
                 "type": "doc",
                 "version": 1,

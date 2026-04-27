@@ -1,5 +1,5 @@
 // app/(unauthenticated)/login/page.tsx
-// F4: Redesigned login with split layout, BoltEdge branding
+// F4: Redesigned login with split layout, Nano ASM branding
 "use client";
 
 import React, { useMemo, useState, Suspense } from "react";
@@ -118,7 +118,7 @@ function LoginPageInner() {
 
           {/* Footer */}
           <p className="text-xs text-white/20">
-            &copy; {new Date().getFullYear()} BoltEdge
+            &copy; {new Date().getFullYear()} Nano ASM
           </p>
         </div>
       </div>

@@ -113,7 +113,7 @@ export default function UnauthenticatedHomePage() {
                 <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">Try it now</span>
                 <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">See it in action — no signup needed</h2>
                 <p className="mt-4 text-base text-white/40 max-w-xl mx-auto">
-                  Run a quick scan or discovery against any domain to see what BoltEdge EASM can find.
+                  Run a quick scan or discovery against any domain to see what Nano ASM can find.
                   Create a free account to save results and unlock full features.
                 </p>
               </div>
@@ -270,7 +270,7 @@ export default function UnauthenticatedHomePage() {
                   <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
                     Start securing your<span className="bg-gradient-to-r from-teal-400/80 to-cyan-400/70 bg-clip-text text-transparent"> attack surface</span>
                   </h2>
-                  <p className="mt-4 text-base text-white/40 max-w-lg mx-auto">Join security teams using BoltEdge EASM to discover, scan, and continuously monitor their external exposure.</p>
+                  <p className="mt-4 text-base text-white/40 max-w-lg mx-auto">Join security teams using Nano ASM to discover, scan, and continuously monitor their external exposure.</p>
                   <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
                     <Link href="/register" className="group inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/30 hover:bg-teal-500 transition-all">
                       Create free account<ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -301,16 +301,16 @@ export default function UnauthenticatedHomePage() {
               </Link>
               <p className="mt-2 text-sm text-white/30">
                 External Attack Surface Management by{" "}
-                <a href="https://boltedge.co" className="text-teal-400/70 hover:text-teal-400 transition-colors">BoltEdge</a>.
+                <a href="https://nanoasm.com" className="text-teal-400/70 hover:text-teal-400 transition-colors">Nano ASM</a>.
               </p>
             </div>
             <div className="flex items-center gap-8 text-sm text-white/30">
-              <a href="https://boltedge.co" target="_blank" rel="noopener" className="hover:text-white/60 transition-colors">boltedge.co</a>
-              <a href="mailto:support@boltedge.co" className="hover:text-white/60 transition-colors">Support</a>
+              <a href="https://nanoasm.com" target="_blank" rel="noopener" className="hover:text-white/60 transition-colors">nanoasm.com</a>
+              <a href="mailto:contact@nanoasm.com" className="hover:text-white/60 transition-colors">Support</a>
             </div>
           </div>
           <div className="mt-8 pt-6 border-t border-white/[0.04] text-xs text-white/20 text-center">
-            &copy; {new Date().getFullYear()} BoltEdge. All rights reserved.
+            &copy; {new Date().getFullYear()} Nano ASM. All rights reserved.
           </div>
         </div>
       </footer>

@@ -22,7 +22,7 @@ from ..base_module import BaseDiscoveryModule, DiscoveredItem, ModuleType
 logger = logging.getLogger(__name__)
 
 TIMEOUT = 10
-HEADERS = {"User-Agent": "boltedgeeasm-discovery/2.0", "Accept": "application/json"}
+HEADERS = {"User-Agent": "nanoasm-discovery/2.0", "Accept": "application/json"}
 
 
 def _normalize(d: str) -> str:

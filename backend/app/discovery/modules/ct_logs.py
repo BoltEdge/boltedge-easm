@@ -71,7 +71,7 @@ class CTLogModule(BaseDiscoveryModule):
                     "https://crt.sh/",
                     params={"q": f"%.{apex}", "output": "json"},
                     timeout=12,
-                    headers={"User-Agent": "boltedgeeasm-discovery/2.0", "Accept": "application/json"},
+                    headers={"User-Agent": "nanoasm-discovery/2.0", "Accept": "application/json"},
                 )
                 if r.status_code != 200:
                     logger.warning("CT Logs: crt.sh returned %d (attempt %d)", r.status_code, attempt + 1)

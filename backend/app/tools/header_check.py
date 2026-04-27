@@ -182,7 +182,7 @@ def _fetch_headers(url: str, follow_redirects: bool = True) -> Optional[Dict[str
     """Fetch HTTP headers from a URL."""
     try:
         req = Request(url, method="GET", headers={
-            "User-Agent": "Mozilla/5.0 (compatible; BoltEdge EASM Scanner)",
+            "User-Agent": "Mozilla/5.0 (compatible; Nano ASM Scanner)",
             "Accept": "text/html,application/xhtml+xml,*/*",
         })
 

@@ -197,7 +197,7 @@ def _resolve_hostname(name: str) -> List[str]:
 
 
 def _wildcard_check(apex: str) -> bool:
-    test_name = f"boltedgeeasm-wildcard-test-{id(apex) % 99999}.{apex}"
+    test_name = f"nanoasm-wildcard-test-{id(apex) % 99999}.{apex}"
     return len(_resolve_hostname(test_name)) > 0
 
 

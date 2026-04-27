@@ -56,7 +56,7 @@ const CONFIG_FIELDS: Record<string, { key: string; label: string; type: string; 
   ],
   email: [
     { key: "recipients", label: "Recipients", type: "text", placeholder: "a@company.com, b@company.com", required: true },
-    { key: "from_email", label: "From Address (optional)", type: "email", placeholder: "noreply@boltedge.co" },
+    { key: "from_email", label: "From Address (optional)", type: "email", placeholder: "contact@nanoasm.com" },
   ],
 };
 
@@ -839,7 +839,7 @@ function RuleForm({ existing, integrations, onClose, onSaved }: {
                 type="text"
                 value={actionConfig.labels || ""}
                 onChange={(e) => setActionConfig((c) => ({ ...c, labels: e.target.value }))}
-                placeholder="security, BoltEdge EASM"
+                placeholder="security, Nano ASM"
                 className="w-full px-3 py-2 rounded-lg bg-background border border-border/50 text-foreground text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>

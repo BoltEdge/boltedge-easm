@@ -24,7 +24,7 @@ from ..base_module import BaseDiscoveryModule, DiscoveredItem, ModuleType
 logger = logging.getLogger(__name__)
 
 TIMEOUT = 15  # Wayback can be slow
-HEADERS = {"User-Agent": "boltedgeeasm-discovery/2.0"}
+HEADERS = {"User-Agent": "nanoasm-discovery/2.0"}
 
 
 def _normalize(d: str) -> str:

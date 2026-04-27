@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 TIMEOUT = 10
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; boltedgeeasm-discovery/2.0)",
+    "User-Agent": "Mozilla/5.0 (compatible; nanoasm-discovery/2.0)",
     "Accept": "text/html",
 }
 

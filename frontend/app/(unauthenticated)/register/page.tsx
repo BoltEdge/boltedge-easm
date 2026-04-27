@@ -1,5 +1,5 @@
 // app/(unauthenticated)/register/page.tsx
-// F4: Redesigned registration with split layout, BoltEdge branding, and invite support
+// F4: Redesigned registration with split layout, Nano ASM branding, and invite support
 "use client";
 
 import React, { useEffect, useMemo, useState, Suspense } from "react";
@@ -150,7 +150,7 @@ function RegisterPageInner() {
           </div>
 
           <p className="text-xs text-white/20">
-            &copy; {new Date().getFullYear()} BoltEdge
+            &copy; {new Date().getFullYear()} Nano ASM
           </p>
         </div>
       </div>

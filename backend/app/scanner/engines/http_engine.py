@@ -668,7 +668,7 @@ class HTTPEngine(BaseEngine):
         """
         try:
             req = Request(url, headers={
-                "User-Agent": "Mozilla/5.0 (compatible; BoltEdge EASM Scanner)",
+                "User-Agent": "Mozilla/5.0 (compatible; Nano ASM Scanner)",
                 "Accept": "application/json, text/html, */*",
             })
 

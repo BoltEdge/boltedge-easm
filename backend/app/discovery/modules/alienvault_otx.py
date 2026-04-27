@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 TIMEOUT = 10
 BASE_URL = "https://otx.alienvault.com/api/v1"
-HEADERS = {"User-Agent": "boltedgeeasm-discovery/2.0", "Accept": "application/json"}
+HEADERS = {"User-Agent": "nanoasm-discovery/2.0", "Accept": "application/json"}
 
 
 def _normalize(d: str) -> str:

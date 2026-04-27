@@ -25,9 +25,8 @@ export default function LandingNav() {
             <path d="M17.5 4L9.5 17H14.5L13 28L21.5 14.5H16L17.5 4Z" fill="#14b8a6" />
           </svg>
           <span className="text-[15px] font-semibold tracking-tight">
-            Bolt<span className="text-teal-400">Edge</span>
+            Nano<span className="text-teal-400">EASM</span>
             <span className="text-[10px] text-white/40 font-medium ml-1.5 uppercase tracking-wider">
-              EASM
             </span>
           </span>
         </Link>

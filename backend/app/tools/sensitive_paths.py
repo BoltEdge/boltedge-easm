@@ -237,7 +237,7 @@ def _fetch_path(
         url = f"{scheme}://{domain}{path}"
         try:
             req = Request(url, headers={
-                "User-Agent": "Mozilla/5.0 (compatible; BoltEdge EASM Scanner)",
+                "User-Agent": "Mozilla/5.0 (compatible; Nano ASM Scanner)",
                 "Accept": "text/html,*/*",
             })
             ssl_ctx = None

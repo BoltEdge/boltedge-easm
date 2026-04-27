@@ -968,7 +968,7 @@ class DNSEngine(BaseEngine):
             url = f"{scheme}://{domain}"
             try:
                 req = Request(url, headers={
-                    "User-Agent": "Mozilla/5.0 (compatible; BoltEdge EASM Scanner)",
+                    "User-Agent": "Mozilla/5.0 (compatible; Nano ASM Scanner)",
                     "Accept": "text/html,*/*",
                 })
 

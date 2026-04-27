@@ -1,5 +1,5 @@
 // app/(authenticated)/tools/page.tsx
-// BoltEdge Security Tools — SecToolKit-style investigation workspace
+// Nano ASM Security Tools — SecToolKit-style investigation workspace
 // Resizable panels · flex-wrap canvas · maximize/expand · JSON/CSV export
 "use client";
 

@@ -20,9 +20,8 @@ function BrandLogo() {
     <Link href="/dashboard" className="flex items-center gap-2">
       <BoltIcon size={26} />
       <span className="font-semibold text-foreground">
-        Bolt<span className="text-[#14b8a6]">Edge</span>
+        Nano<span className="text-[#14b8a6]">EASM</span>
       </span>
-      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">EASM</span>
     </Link>
   );
 }

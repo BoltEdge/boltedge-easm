@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 TIMEOUT = 10
 BASE_URL = "https://api.hackertarget.com"
-HEADERS = {"User-Agent": "boltedgeeasm-discovery/2.0"}
+HEADERS = {"User-Agent": "nanoasm-discovery/2.0"}
 
 
 def _normalize(d: str) -> str:
