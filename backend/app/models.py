@@ -22,6 +22,8 @@ class User(db.Model):
     company = db.Column(db.String(255), nullable=True)
     country = db.Column(db.String(100), nullable=True)
     
+    is_superadmin = db.Column(db.Boolean, nullable=False, default=False)
+
     created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
     updated_at = db.Column(db.DateTime, nullable=False, default=now_utc, onupdate=now_utc)
 

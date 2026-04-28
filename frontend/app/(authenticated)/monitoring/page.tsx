@@ -20,6 +20,7 @@ import { useOrg } from "../contexts/OrgContext";
 import { usePlanLimit, PlanLimitDialog } from "../../ui/plan-limit-dialog";
 import { isPlanError } from "../../lib/api";
 import { getAllAssets } from "../../lib/api";
+import { BILLING_ENABLED } from "../../lib/billing-config";
 import {
   cn, timeAgo, formatWhen, monitoringFrequencyLabel,
   alertStatusBadge, MONITOR_TYPE_CONFIG, SEVERITY_ORDER,
@@ -94,7 +95,7 @@ function UpgradePrompt() {
         {plans.map((p: any) => (
           <div key={p.key} className="bg-card border rounded-xl p-5 flex flex-col" style={{ borderColor: `${p.color}30` }}>
             <div className="font-bold mb-1" style={{ color: p.color }}>{p.label}</div>
-            <div className="text-xs text-muted-foreground mb-1">{p.price}</div>
+            {BILLING_ENABLED && <div className="text-xs text-muted-foreground mb-1">{p.price}</div>}
             <div className="text-sm text-muted-foreground mb-3">{p.freq}</div>
             <div className="flex flex-wrap gap-1.5 mb-5">
               {p.tags.map((t: string) => (
@@ -104,14 +105,14 @@ function UpgradePrompt() {
             <div className="mt-auto space-y-2">
               {p.needsApproval ? (
                 <>
-                  <Link href="/settings/billing" className="block">
+                  <a href="mailto:contact@nanoasm.com?subject=Enterprise Gold Upgrade Request" className="block">
                     <Button size="sm" className="w-full text-xs" variant="outline" style={{ borderColor: `${p.color}40`, color: p.color }}>
-                      Contact Sales
+                      {BILLING_ENABLED ? "Contact Sales" : "Contact Us"}
                     </Button>
-                  </Link>
-                  <div className="text-[10px] text-muted-foreground text-center">{p.trialDays}-day trial with sales approval</div>
+                  </a>
+                  {BILLING_ENABLED && <div className="text-[10px] text-muted-foreground text-center">{p.trialDays}-day trial with sales approval</div>}
                 </>
-              ) : (
+              ) : BILLING_ENABLED ? (
                 <>
                   <Button
                     size="sm"
@@ -130,6 +131,12 @@ function UpgradePrompt() {
                     </Button>
                   </Link>
                 </>
+              ) : (
+                <Link href="/settings/billing" className="block">
+                  <Button size="sm" className="w-full text-xs" style={{ backgroundColor: `${p.color}20`, color: p.color, borderColor: `${p.color}40` }} variant="outline">
+                    <Zap className="w-3 h-3 mr-1.5" />Switch to {p.label}
+                  </Button>
+                </Link>
               )}
             </div>
           </div>

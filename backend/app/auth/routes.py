@@ -229,6 +229,7 @@ def login():
             "id": str(u.id),
             "email": u.email,
             "name": u.name,
+            "isSuperadmin": bool(u.is_superadmin),
         },
     }
 
@@ -265,7 +266,8 @@ def me():
             "name": u.name,
             "job_title": u.job_title,
             "company": u.company,
-            "country": u.country
+            "country": u.country,
+            "isSuperadmin": bool(u.is_superadmin),
         },
         organization=_build_org_payload(org, include_billing=True),
         role=membership.role,

@@ -7,6 +7,7 @@ export type AuthUser = {
   job_title?: string;
   company?: string;
   country?: string;
+  isSuperadmin?: boolean;
 };
 
 export type PlanLimits = {
@@ -194,6 +195,10 @@ function clearActivity() {
 // ---------- Auth status ----------
 export function isLoggedIn(): boolean {
   return !!getAccessToken();
+}
+
+export function getIsSuperadmin(): boolean {
+  return !!getUser()?.isSuperadmin;
 }
 
 export function hasSession(): boolean {

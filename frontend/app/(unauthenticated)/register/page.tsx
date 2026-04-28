@@ -9,6 +9,7 @@ import { ArrowRight, Eye, EyeOff, Loader2, Users } from "lucide-react";
 
 import { register, apiFetch } from "../../lib/api";
 import { establishSession, type AuthRole } from "../../lib/auth";
+import { BILLING_ENABLED } from "../../lib/billing-config";
 
 function BoltIcon({ size = 24 }: { size?: number }) {
   return (
@@ -207,7 +208,7 @@ function RegisterPageInner() {
           <p className="mt-2 text-sm text-white/40">
             {inviteInfo
               ? `Sign up to join ${inviteInfo.organizationName}`
-              : "No credit card required. Start scanning in minutes."}
+              : BILLING_ENABLED ? "No credit card required. Start scanning in minutes." : "Free to use. Start scanning in minutes."}
           </p>
 
           <form className="mt-8 space-y-4" onSubmit={onSubmit}>

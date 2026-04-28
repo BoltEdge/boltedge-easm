@@ -43,6 +43,7 @@ from app.assets.intelligence import intelligence_bp
 from app.scan_jobs.compare import compare_bp
 from app.audit import audit_bp
 from app.tools import tools_bp
+from app.admin import admin_bp
 import re
 
 error_logger = logging.getLogger("app.errors")
@@ -175,6 +176,7 @@ def create_app() -> Flask:
     app.register_blueprint(compare_bp)
     app.register_blueprint(audit_bp)
     app.register_blueprint(tools_bp)
+    app.register_blueprint(admin_bp)
 
     # ── Global Error Handlers ────────────────────────────────────────
     # Return clean JSON for all errors — never expose tracebacks to users.
@@ -291,6 +293,40 @@ def create_app() -> Flask:
     @app.get("/health")
     def health():
         return jsonify(status="up and running"), 200
+
+    # ── CLI: flask grant-superadmin <email> ──────────────────────────
+    import click
+
+    @app.cli.command("grant-superadmin")
+    @click.argument("email")
+    def grant_superadmin(email: str):
+        """Grant superadmin privileges to a user by email."""
+        with app.app_context():
+            from app.models import User
+            from sqlalchemy import func
+            u = User.query.filter(func.lower(User.email) == email.strip().lower()).first()
+            if not u:
+                click.echo(f"ERROR: No user found with email '{email}'")
+                return
+            u.is_superadmin = True
+            db.session.commit()
+            click.echo(f"OK: {u.email} is now a superadmin.")
+
+    @app.cli.command("revoke-superadmin")
+    @click.argument("email")
+    def revoke_superadmin(email: str):
+        """Revoke superadmin privileges from a user by email."""
+        with app.app_context():
+            from app.models import User
+            from sqlalchemy import func
+            u = User.query.filter(func.lower(User.email) == email.strip().lower()).first()
+            if not u:
+                click.echo(f"ERROR: No user found with email '{email}'")
+                return
+            u.is_superadmin = False
+            db.session.commit()
+            click.echo(f"OK: superadmin revoked from {u.email}.")
+    # ─────────────────────────────────────────────────────────────────
 
     # ── Schema Management ────────────────────────────────────────────
     # Flask-Migrate (Alembic) manages all schema changes in production.

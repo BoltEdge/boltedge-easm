@@ -108,3 +108,34 @@ def require_permission(permission: str):
             return fn(*args, **kwargs)
         return wrapper
     return decorator
+
+
+def require_superadmin(fn: Callable):
+    """
+    Decorator for platform admin routes.
+    Validates JWT, loads user from DB, checks is_superadmin=True.
+    Returns 404 on failure — intentionally does not reveal the route exists.
+    Does NOT require org membership (admin operates at platform level).
+    """
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        token = get_bearer_token()
+        if not token:
+            return jsonify(error="not found"), 404
+
+        uid = verify_access_token(
+            secret_key=current_app.config["SECRET_KEY"], token=token
+        )
+        if not uid:
+            return jsonify(error="not found"), 404
+
+        user = User.query.get(uid)
+        if not user or not user.is_superadmin:
+            return jsonify(error="not found"), 404
+
+        g.current_user = user
+        g.current_user_id = int(user.id)
+
+        return fn(*args, **kwargs)
+
+    return wrapper

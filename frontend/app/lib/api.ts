@@ -1524,3 +1524,62 @@ export async function updateNotificationRule(
 export async function deleteNotificationRule(id: string): Promise<void> {
   await apiFetch(`/integrations/rules/${id}`, { method: "DELETE" });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN (superadmin only — returns 404 for non-superadmins)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function getAdminStats(): Promise<any> {
+  return apiFetch<any>("/admin/stats");
+}
+
+export async function getAdminOrganizations(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  plan?: string;
+  showArchived?: boolean;
+}): Promise<any> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.search) qs.set("search", params.search);
+  if (params?.plan) qs.set("plan", params.plan);
+  if (params?.showArchived) qs.set("showArchived", "true");
+  return apiFetch<any>(`/admin/organizations?${qs.toString()}`);
+}
+
+export async function getAdminOrganization(id: number): Promise<any> {
+  return apiFetch<any>(`/admin/organizations/${id}`);
+}
+
+export async function setAdminOrgPlan(orgId: number, plan: string): Promise<any> {
+  return apiFetch<any>(`/admin/organizations/${orgId}/plan`, {
+    method: "POST",
+    body: JSON.stringify({ plan }),
+  });
+}
+
+export async function getAdminUsers(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<any> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.search) qs.set("search", params.search);
+  return apiFetch<any>(`/admin/users?${qs.toString()}`);
+}
+
+export async function archiveAdminOrg(orgId: number): Promise<any> {
+  return apiFetch<any>(`/admin/organizations/${orgId}/archive`, { method: "POST" });
+}
+
+export async function deleteAdminOrg(orgId: number): Promise<any> {
+  return apiFetch<any>(`/admin/organizations/${orgId}`, { method: "DELETE" });
+}
+
+export async function deleteAdminUser(userId: number): Promise<any> {
+  return apiFetch<any>(`/admin/users/${userId}`, { method: "DELETE" });
+}
