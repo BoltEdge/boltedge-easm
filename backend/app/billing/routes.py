@@ -18,8 +18,13 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify, g
+
+# When False: upgrades are free (no expiry set), trial logic skipped in UI.
+# Set ENABLE_BILLING=true in environment to restore full billing behaviour.
+ENABLE_BILLING = os.environ.get("ENABLE_BILLING", "false").lower() == "true"
 from app.extensions import db
 from app.auth.decorators import require_auth, current_user_id, current_organization_id
 from app.models import Organization, TrialHistory, OrganizationMember
@@ -390,13 +395,16 @@ def upgrade():
     org.plan_status = "active"
     org.plan_started_at = now
     org.trial_ends_at = None
-    org.billing_cycle = billing_cycle
+    org.billing_cycle = billing_cycle if ENABLE_BILLING else None
     org.asset_limit = config["limits"]["assets"]
 
-    if billing_cycle == "annual":
-        org.plan_expires_at = now + timedelta(days=365)
+    if ENABLE_BILLING:
+        if billing_cycle == "annual":
+            org.plan_expires_at = now + timedelta(days=365)
+        else:
+            org.plan_expires_at = now + timedelta(days=30)
     else:
-        org.plan_expires_at = now + timedelta(days=30)
+        org.plan_expires_at = None  # no expiry when billing is disabled
 
     log_audit(
         organization_id=org.id,

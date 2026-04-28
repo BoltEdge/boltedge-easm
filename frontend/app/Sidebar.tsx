@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useOrg } from "./(authenticated)/contexts/OrgContext";
 import { logout } from "./lib/auth";
+import { BILLING_ENABLED } from "./lib/billing-config";
 
 const SIDEBAR_WIDTH_KEY = "asm_sidebar_width";
 const MIN_WIDTH = 220;
@@ -111,7 +112,7 @@ export default function Sidebar() {
     { href: "/settings/account", label: "Account & Team", icon: UserCircle },
     { href: "/settings/integrations", label: "Integrations", icon: Plug },
     { href: "/settings/api-keys", label: "API Keys", icon: Key },
-    { href: "/settings/billing", label: "Payment & Plans", icon: CreditCard },
+    { href: "/settings/billing", label: BILLING_ENABLED ? "Payment & Plans" : "Plans", icon: CreditCard },
     { href: "/settings/audit-log", label: "Audit Log", icon: FileText },
   ];
 
@@ -335,7 +336,7 @@ export default function Sidebar() {
               </div>
             )}
 
-            {isTrialing && trialDaysRemaining !== null && (
+            {BILLING_ENABLED && isTrialing && trialDaysRemaining !== null && (
               <div className="rounded-md bg-[#ff8800]/10 border border-[#ff8800]/30 px-2 py-1 text-[10px] font-semibold text-[#ff8800]">
                 Trial · {trialDaysRemaining}d remaining
               </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { isLoggedIn } from "./lib/auth";
 import { useOrg } from "./(authenticated)/contexts/OrgContext";
+import { BILLING_ENABLED } from "./lib/billing-config";
 
 function BoltIcon({ size = 24 }: { size?: number }) {
   return (
@@ -42,7 +43,7 @@ function AuthTopBarContent() {
             {planLabel && (
               <span className="text-[10px] text-muted-foreground/50">{planLabel}</span>
             )}
-            {isTrialing && trialDaysRemaining !== null && (
+            {BILLING_ENABLED && isTrialing && trialDaysRemaining !== null && (
               <span className="text-[10px] font-semibold text-[#ff8800]">
                 · {trialDaysRemaining}d trial
               </span>

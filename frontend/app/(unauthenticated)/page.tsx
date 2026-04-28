@@ -1,6 +1,7 @@
 // app/(unauthenticated)/page.tsx
 // F4: Landing page — animated, accurate pricing & features
 import Link from "next/link";
+import { BILLING_ENABLED } from "../lib/billing-config";
 import {
   BarChart3, Zap, Globe2, Bell,
   TrendingUp, FileText, ArrowRight,
@@ -72,7 +73,7 @@ export default function UnauthenticatedHomePage() {
               <HeroItem>
                 <div className="mt-10 flex flex-col sm:flex-row items-center gap-4">
                   <Link href="/register" className="group inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/30 hover:bg-teal-500 transition-all">
-                    Start free — no credit card
+                    {BILLING_ENABLED ? "Start free — no credit card" : "Get started free"}
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                   </Link>
                   <a href="#try-it" className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-3 text-sm font-medium text-white/50 hover:text-white hover:bg-white/[0.06] transition-all">
@@ -200,7 +201,8 @@ export default function UnauthenticatedHomePage() {
           </div>
         </section>
 
-        {/* ================= PRICING ================= */}
+        {/* ================= PRICING (billing-gated) ================= */}
+        {BILLING_ENABLED && (
         <section id="pricing" className="py-24 sm:py-32">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <FadeInOnScroll>
@@ -257,6 +259,7 @@ export default function UnauthenticatedHomePage() {
             </FadeInOnScroll>
           </div>
         </section>
+        )}
 
         {/* ================= FINAL CTA ================= */}
         <section className="py-24 sm:py-32">

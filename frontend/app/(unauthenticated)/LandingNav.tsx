@@ -4,13 +4,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
+import { BILLING_ENABLED } from "../lib/billing-config";
 
-const NAV_LINKS = [
+const ALL_NAV_LINKS = [
   { href: "#features", label: "Features" },
   { href: "#how-it-works", label: "How it works" },
   { href: "#try-it", label: "Quick Test" },
-  { href: "#pricing", label: "Pricing" },
+  { href: "#pricing", label: "Pricing", billingOnly: true },
 ];
+
+const NAV_LINKS = ALL_NAV_LINKS.filter((l) => !l.billingOnly || BILLING_ENABLED);
 
 export default function LandingNav() {
   const [mobileOpen, setMobileOpen] = useState(false);

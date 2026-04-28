@@ -1,15 +1,18 @@
 // FILE: app/(authenticated)/settings/billing/page.tsx
-// Payment & Plans — current plan, usage, trials, upgrade/downgrade
+// Plans page — current plan, usage, and tier switching.
+// When BILLING_ENABLED=false: plans are free tiers, no prices or trial wording shown.
+// When BILLING_ENABLED=true: full payment/subscription/trial UI is restored.
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CreditCard, Check, Clock, Zap, Sparkles, Loader2, X, RefreshCcw } from "lucide-react";
+import { Layers, Check, Clock, Zap, Sparkles, Loader2, X, RefreshCcw, Mail } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Button } from "../../../ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../ui/dialog";
 import { apiFetch, isPlanError } from "../../../lib/api";
 import { useOrg } from "../../contexts/OrgContext";
 import { usePlanLimit, PlanLimitDialog } from "../../../ui/plan-limit-dialog";
+import { BILLING_ENABLED } from "../../../lib/billing-config";
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -47,7 +50,7 @@ export default function BillingPage() {
       setPlans(Array.isArray(pl) ? pl : pl?.plans || []);
     } catch (e: any) {
       if (isPlanError(e)) planLimit.handle(e.planError);
-      else setBanner({ kind: "err", text: e?.message || "Failed to load billing" });
+      else setBanner({ kind: "err", text: e?.message || "Failed to load plans" });
     } finally { setLoading(false); setRefreshing(false); }
   }
 
@@ -134,15 +137,20 @@ export default function BillingPage() {
   const trialedTiers = planData.trialedTiers || [];
   const currentIdx = PLAN_ORDER.indexOf(currentPlan);
 
+  const pageTitle = BILLING_ENABLED ? "Payment & Plans" : "Plans";
+  const pageSubtitle = BILLING_ENABLED
+    ? "Manage your subscription, trial, and usage."
+    : "Manage your plan tier and usage limits.";
+
   return (
     <main className="flex-1 overflow-y-auto bg-background">
       <div className="p-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-foreground flex items-center gap-3">
-              <CreditCard className="w-7 h-7 text-primary" />Payment & Plans
+              <Layers className="w-7 h-7 text-primary" />{pageTitle}
             </h1>
-            <p className="text-muted-foreground mt-1">Manage your subscription, trial, and usage.</p>
+            <p className="text-muted-foreground mt-1">{pageSubtitle}</p>
           </div>
           <Button variant="outline" onClick={() => loadBilling(true)} disabled={refreshing} className="border-border text-foreground hover:bg-accent">
             <RefreshCcw className={cn("w-4 h-4 mr-2", refreshing && "animate-spin")} />
@@ -158,8 +166,8 @@ export default function BillingPage() {
           </div>
         )}
 
-        {/* Trial Banner */}
-        {isTrial && trialDaysLeft !== null && (
+        {/* Trial Banner — only shown when billing is enabled */}
+        {BILLING_ENABLED && isTrial && trialDaysLeft !== null && (
           <div className="rounded-xl border border-[#ff8800]/30 bg-[#ff8800]/10 px-5 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-[#ff8800]/20 flex items-center justify-center">
@@ -193,17 +201,21 @@ export default function BillingPage() {
               <div>
                 <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   {planData.planLabel} Plan
-                  {isTrial && <span className="px-2 py-0.5 rounded-md bg-[#ff8800]/15 text-[#ff8800] text-xs font-semibold border border-[#ff8800]/30">Trial</span>}
+                  {BILLING_ENABLED && isTrial && (
+                    <span className="px-2 py-0.5 rounded-md bg-[#ff8800]/15 text-[#ff8800] text-xs font-semibold border border-[#ff8800]/30">Trial</span>
+                  )}
                 </h2>
-                <p className="text-sm text-muted-foreground">Started {formatDate(planData.planStartedAt)}</p>
+                <p className="text-sm text-muted-foreground">Active since {formatDate(planData.planStartedAt)}</p>
               </div>
             </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold text-foreground">
-                {pricing.monthly === 0 ? "Free" : pricing.monthly === -1 ? "Custom" : `$${pricing.monthly}`}
+            {BILLING_ENABLED && (
+              <div className="text-right">
+                <div className="text-3xl font-bold text-foreground">
+                  {pricing.monthly === 0 ? "Free" : pricing.monthly === -1 ? "Custom" : `$${pricing.monthly}`}
+                </div>
+                {pricing.monthly > 0 && <div className="text-xs text-muted-foreground">{isTrial ? "after trial ends" : "per month"}</div>}
               </div>
-              {pricing.monthly > 0 && <div className="text-xs text-muted-foreground">{isTrial ? "after trial ends" : "per month"}</div>}
-            </div>
+            )}
           </div>
           <div className="space-y-4">
             <UsageBar label="Assets" current={usage.assets} limit={limits.assets} />
@@ -216,16 +228,23 @@ export default function BillingPage() {
 
         {/* Available Plans */}
         <div>
-          <h2 className="text-lg font-semibold text-foreground mb-4">Available Plans</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-1">Available Plans</h2>
+          {!BILLING_ENABLED && (
+            <p className="text-sm text-muted-foreground mb-4">
+              All plans are available as free tiers during the community preview. Upgrade to unlock higher limits.
+            </p>
+          )}
+          {BILLING_ENABLED && <div className="mb-4" />}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {plans.map((p) => {
               const planIdx = PLAN_ORDER.indexOf(p.key);
               const isCurrent = p.isCurrent;
               const isUpgrade = planIdx > currentIdx;
               const isDowngrade = planIdx < currentIdx;
+              const isEnterpriseGold = p.key === "enterprise_gold";
               const color = TIER_COLORS[p.key] || "#7c5cfc";
-              const canTrial = p.canTrial && !isTrial && !p.trialRequiresApproval;
-              const needsApproval = p.canTrial && p.trialRequiresApproval;
+              const canTrial = BILLING_ENABLED && p.canTrial && !isTrial && !p.trialRequiresApproval;
+              const needsApproval = BILLING_ENABLED && p.canTrial && p.trialRequiresApproval;
 
               return (
                 <div key={p.key} className={cn("bg-card border rounded-xl p-5 flex flex-col", isCurrent ? "ring-1" : "")}
@@ -235,18 +254,23 @@ export default function BillingPage() {
                     {isCurrent && (
                       <span className="px-2 py-0.5 rounded-md text-xs font-semibold border"
                         style={{ backgroundColor: `${color}15`, color, borderColor: `${color}30` }}>
-                        {isTrial ? "Trial" : "Current"}
+                        {BILLING_ENABLED && isTrial ? "Trial" : "Current"}
                       </span>
                     )}
                   </div>
-                  <div className="mb-4">
-                    {p.priceMonthly === 0 ? <span className="text-2xl font-bold text-foreground">Free</span>
-                      : p.priceMonthly === -1 ? <span className="text-2xl font-bold text-foreground">Custom</span>
-                      : <><span className="text-2xl font-bold text-foreground">${p.priceMonthly}</span><span className="text-sm text-muted-foreground">/mo</span></>}
-                    {p.priceAnnualMonthly > 0 && p.priceAnnualMonthly < p.priceMonthly && (
-                      <div className="text-xs text-muted-foreground mt-0.5">${p.priceAnnualMonthly}/mo billed annually</div>
-                    )}
-                  </div>
+
+                  {/* Price — only shown when billing is enabled */}
+                  {BILLING_ENABLED && (
+                    <div className="mb-4">
+                      {p.priceMonthly === 0 ? <span className="text-2xl font-bold text-foreground">Free</span>
+                        : p.priceMonthly === -1 ? <span className="text-2xl font-bold text-foreground">Custom</span>
+                        : <><span className="text-2xl font-bold text-foreground">${p.priceMonthly}</span><span className="text-sm text-muted-foreground">/mo</span></>}
+                      {p.priceAnnualMonthly > 0 && p.priceAnnualMonthly < p.priceMonthly && (
+                        <div className="text-xs text-muted-foreground mt-0.5">${p.priceAnnualMonthly}/mo billed annually</div>
+                      )}
+                    </div>
+                  )}
+
                   <ul className="space-y-2 mb-6 flex-1">
                     <li className="text-xs text-muted-foreground flex items-center gap-1.5"><Check className="w-3 h-3 text-[#10b981]" />{p.limits.assets === -1 ? "Unlimited" : p.limits.assets} assets</li>
                     <li className="text-xs text-muted-foreground flex items-center gap-1.5"><Check className="w-3 h-3 text-[#10b981]" />{p.limits.scansPerMonth === -1 ? "Unlimited" : p.limits.scansPerMonth} scans/month</li>
@@ -256,26 +280,38 @@ export default function BillingPage() {
                     {p.limits.deepDiscovery && <li className="text-xs text-muted-foreground flex items-center gap-1.5"><Check className="w-3 h-3 text-[#10b981]" />Deep Discovery</li>}
                     {p.limits.webhooks && <li className="text-xs text-muted-foreground flex items-center gap-1.5"><Check className="w-3 h-3 text-[#10b981]" />Webhooks</li>}
                   </ul>
+
                   <div className="space-y-2">
                     {isCurrent ? (
                       <Button variant="outline" disabled className="w-full border-border text-muted-foreground">Current Plan</Button>
+                    ) : isEnterpriseGold ? (
+                      /* Enterprise Gold: contact us regardless of billing mode */
+                      <a href="mailto:contact@nanoasm.com?subject=Enterprise Gold Upgrade Request" className="block">
+                        <Button className="w-full bg-primary hover:bg-primary/90">
+                          <Mail className="w-3.5 h-3.5 mr-1.5" />Contact Us
+                        </Button>
+                      </a>
                     ) : canManageBilling && isUpgrade ? (
-                      <Button onClick={() => p.priceMonthly === -1 ? null : setShowUpgrade(p.key)} className="w-full bg-primary hover:bg-primary/90">
-                        {p.priceMonthly === -1 ? "Contact Sales" : "Upgrade"}
+                      <Button onClick={() => setShowUpgrade(p.key)} className="w-full bg-primary hover:bg-primary/90">
+                        {BILLING_ENABLED ? "Upgrade" : "Switch to this plan"}
                       </Button>
                     ) : canManageBilling && isDowngrade ? (
-                      <Button variant="outline" onClick={() => setShowUpgrade(p.key)} className="w-full border-border text-foreground hover:bg-accent">Downgrade</Button>
+                      <Button variant="outline" onClick={() => setShowUpgrade(p.key)} className="w-full border-border text-foreground hover:bg-accent">
+                        {BILLING_ENABLED ? "Downgrade" : "Switch to this plan"}
+                      </Button>
                     ) : !canManageBilling && !isCurrent ? (
-                      <Button variant="outline" disabled className="w-full border-border text-muted-foreground">Ask admin to upgrade</Button>
+                      <Button variant="outline" disabled className="w-full border-border text-muted-foreground">Ask admin to change plan</Button>
                     ) : null}
+
+                    {/* Trial button — billing mode only */}
                     {canManageBilling && canTrial && (
                       <Button variant="outline" size="sm" onClick={() => handleStartTrial(p.key)} disabled={actionPlan !== null}
                         className="w-full text-xs" style={{ borderColor: `${color}40`, color }}>
                         {actionPlan === p.key ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Starting...</> : <><Clock className="w-3 h-3 mr-1.5" />{p.trialDays}-Day Free Trial</>}
                       </Button>
                     )}
-                    {needsApproval && <div className="text-[10px] text-muted-foreground text-center">{p.trialDays}-day trial — contact sales</div>}
-                    {!p.canTrial && !isCurrent && trialedTiers.includes(p.key) && <div className="text-[10px] text-muted-foreground text-center">Trial used</div>}
+                    {BILLING_ENABLED && needsApproval && <div className="text-[10px] text-muted-foreground text-center">{p.trialDays}-day trial — contact sales</div>}
+                    {BILLING_ENABLED && !p.canTrial && !isCurrent && trialedTiers.includes(p.key) && <div className="text-[10px] text-muted-foreground text-center">Trial used</div>}
                   </div>
                 </div>
               );
@@ -283,28 +319,32 @@ export default function BillingPage() {
           </div>
         </div>
 
-        {/* End Trial Dialog */}
-        <Dialog open={showEndTrial} onOpenChange={setShowEndTrial}>
-          <DialogContent className="bg-card border-border text-foreground sm:max-w-[440px]">
-            <DialogHeader><DialogTitle>End Trial?</DialogTitle></DialogHeader>
-            <p className="text-sm text-muted-foreground">
-              Your {planData.planLabel} trial still has <span className="text-foreground font-medium">{trialDaysLeft} day{trialDaysLeft !== 1 ? "s" : ""}</span> remaining.
-              Ending it will move you back to the <span className="text-foreground font-medium">Free plan</span> immediately.
-              You won&apos;t be able to start another {planData.planLabel} trial.
-            </p>
-            <div className="flex gap-3 justify-end pt-4">
-              <Button variant="outline" onClick={() => setShowEndTrial(false)} className="border-border text-foreground hover:bg-accent">Keep Trial</Button>
-              <Button onClick={handleEndTrial} disabled={endingTrial} className="bg-[#ef4444] hover:bg-[#dc2626] text-white">{endingTrial ? "Ending..." : "End Trial"}</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* End Trial Dialog — billing mode only */}
+        {BILLING_ENABLED && (
+          <Dialog open={showEndTrial} onOpenChange={setShowEndTrial}>
+            <DialogContent className="bg-card border-border text-foreground sm:max-w-[440px]">
+              <DialogHeader><DialogTitle>End Trial?</DialogTitle></DialogHeader>
+              <p className="text-sm text-muted-foreground">
+                Your {planData.planLabel} trial still has <span className="text-foreground font-medium">{trialDaysLeft} day{trialDaysLeft !== 1 ? "s" : ""}</span> remaining.
+                Ending it will move you back to the <span className="text-foreground font-medium">Free plan</span> immediately.
+                You won&apos;t be able to start another {planData.planLabel} trial.
+              </p>
+              <div className="flex gap-3 justify-end pt-4">
+                <Button variant="outline" onClick={() => setShowEndTrial(false)} className="border-border text-foreground hover:bg-accent">Keep Trial</Button>
+                <Button onClick={handleEndTrial} disabled={endingTrial} className="bg-[#ef4444] hover:bg-[#dc2626] text-white">{endingTrial ? "Ending..." : "End Trial"}</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
 
-        {/* Upgrade/Downgrade Dialog */}
+        {/* Switch / Upgrade / Downgrade Dialog */}
         <Dialog open={!!showUpgrade} onOpenChange={(o) => { if (!o) setShowUpgrade(null); }}>
           <DialogContent className="bg-card border-border text-foreground sm:max-w-[440px]">
             <DialogHeader>
               <DialogTitle>
-                {showUpgrade && PLAN_ORDER.indexOf(showUpgrade) < currentIdx ? "Downgrade" : "Upgrade"} Plan
+                {BILLING_ENABLED
+                  ? (showUpgrade && PLAN_ORDER.indexOf(showUpgrade) < currentIdx ? "Downgrade" : "Upgrade") + " Plan"
+                  : "Switch Plan"}
               </DialogTitle>
             </DialogHeader>
             {showUpgrade && (() => {
@@ -312,16 +352,23 @@ export default function BillingPage() {
               const isDown = PLAN_ORDER.indexOf(showUpgrade) < currentIdx;
               return (
                 <p className="text-sm text-muted-foreground">
-                  {isDown
-                    ? <>Downgrading to <span className="text-foreground font-medium">{target?.label}</span> will reduce your limits.</>
-                    : <>Upgrade to <span className="text-foreground font-medium">{target?.label}</span>{target?.priceMonthly > 0 ? <> at <span className="text-foreground font-medium">${target.priceMonthly}/mo</span></> : ""}? New limits take effect immediately.</>}
+                  {BILLING_ENABLED
+                    ? isDown
+                      ? <>Downgrading to <span className="text-foreground font-medium">{target?.label}</span> will reduce your limits.</>
+                      : <>Upgrade to <span className="text-foreground font-medium">{target?.label}</span>{target?.priceMonthly > 0 ? <> at <span className="text-foreground font-medium">${target.priceMonthly}/mo</span></> : ""}? New limits take effect immediately.</>
+                    : <>Switch to <span className="text-foreground font-medium">{target?.label}</span>? Your new limits will take effect immediately.</>
+                  }
                 </p>
               );
             })()}
             <div className="flex gap-3 justify-end pt-4">
               <Button variant="outline" onClick={() => setShowUpgrade(null)} className="border-border text-foreground hover:bg-accent">Cancel</Button>
               <Button onClick={() => showUpgrade && handleUpgrade(showUpgrade)} disabled={upgrading} className="bg-primary hover:bg-primary/90">
-                {upgrading ? "Processing..." : showUpgrade && PLAN_ORDER.indexOf(showUpgrade) < currentIdx ? "Confirm Downgrade" : "Confirm Upgrade"}
+                {upgrading
+                  ? "Processing..."
+                  : BILLING_ENABLED
+                    ? (showUpgrade && PLAN_ORDER.indexOf(showUpgrade) < currentIdx ? "Confirm Downgrade" : "Confirm Upgrade")
+                    : "Confirm Switch"}
               </Button>
             </div>
           </DialogContent>
