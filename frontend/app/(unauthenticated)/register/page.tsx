@@ -123,7 +123,7 @@ function RegisterPageInner() {
           <Link href="/" className="flex items-center gap-2.5">
             <BoltIcon size={32} />
             <span className="text-lg font-semibold tracking-tight">
-              Bolt<span className="text-teal-400">Edge</span>
+              Nano<span className="text-teal-400">EASM</span>
               <span className="text-[10px] text-white/40 font-medium ml-1.5 uppercase tracking-wider">EASM</span>
             </span>
           </Link>
@@ -163,7 +163,7 @@ function RegisterPageInner() {
             <Link href="/" className="flex items-center gap-2.5">
               <BoltIcon size={28} />
               <span className="text-base font-semibold">
-                Bolt<span className="text-teal-400">Edge</span>
+                Nano<span className="text-teal-400">EASM</span>
                 <span className="text-[10px] text-white/40 font-medium ml-1.5 uppercase tracking-wider">EASM</span>
               </span>
             </Link>
