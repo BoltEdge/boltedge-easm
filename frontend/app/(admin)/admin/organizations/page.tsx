@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { getAdminOrganizations, setAdminOrgPlan, archiveAdminOrg, deleteAdminOrg } from "../../../lib/api";
-import { Search, ChevronLeft, ChevronRight, Archive, ArchiveRestore, Trash2 } from "lucide-react";
+import { getAdminOrganizations, setAdminOrgPlan, archiveAdminOrg, suspendAdminOrg, deleteAdminOrg } from "../../../lib/api";
+import { Search, ChevronLeft, ChevronRight, Archive, ArchiveRestore, Trash2, ShieldOff, ShieldCheck } from "lucide-react";
 
 const PLANS = ["free", "starter", "professional", "enterprise_silver", "enterprise_gold"];
 const PLAN_LABELS: Record<string, string> = {
@@ -15,6 +15,7 @@ const PLAN_COLORS: Record<string, string> = {
 
 type ConfirmAction =
   | { kind: "archive"; org: any }
+  | { kind: "suspend"; org: any }
   | { kind: "delete"; org: any };
 
 export default function AdminOrganizations() {
@@ -60,6 +61,10 @@ export default function AdminOrganizations() {
       if (confirm.kind === "archive") {
         const res = await archiveAdminOrg(confirm.org.id);
         const label = res.org?.isActive ? "restored" : "archived";
+        setBanner({ kind: "ok", text: `Organization ${label}.` });
+      } else if (confirm.kind === "suspend") {
+        const res = await suspendAdminOrg(confirm.org.id);
+        const label = res.org?.isSuspended ? "suspended" : "unsuspended";
         setBanner({ kind: "ok", text: `Organization ${label}.` });
       } else {
         await deleteAdminOrg(confirm.org.id);
@@ -122,12 +127,14 @@ export default function AdminOrganizations() {
               const color = PLAN_COLORS[org.plan] || "#6b7280";
               const isActing = actionOrgId === org.id;
               const isArchived = !org.isActive;
+              const isSuspended = org.isSuspended;
               return (
                 <tr key={org.id} className={`border-b border-white/[0.04] transition-colors ${isArchived ? "opacity-50" : "hover:bg-white/[0.02]"}`}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-white">{org.name}</span>
                       {isArchived && <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-white/40">archived</span>}
+                      {isSuspended && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">suspended</span>}
                     </div>
                     <div className="text-[11px] text-white/30 font-mono">{org.slug}</div>
                   </td>
@@ -149,6 +156,13 @@ export default function AdminOrganizations() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setConfirm({ kind: "suspend", org })}
+                        title={isSuspended ? "Unsuspend organization" : "Suspend organization"}
+                        className={`p-1.5 rounded transition-colors ${isSuspended ? "text-red-400 hover:bg-red-500/10" : "text-white/30 hover:bg-red-500/10 hover:text-red-400"}`}
+                      >
+                        {isSuspended ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldOff className="w-3.5 h-3.5" />}
+                      </button>
                       <button
                         onClick={() => setConfirm({ kind: "archive", org })}
                         title={isArchived ? "Restore organization" : "Archive organization"}
@@ -185,7 +199,26 @@ export default function AdminOrganizations() {
       {confirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-[#0d1424] border border-white/[0.08] rounded-xl p-6 w-full max-w-sm shadow-2xl">
-            {confirm.kind === "archive" ? (
+            {confirm.kind === "suspend" ? (
+            <>
+              <h2 className="text-base font-semibold text-white mb-2">
+                {confirm.org.isSuspended ? "Unsuspend organization?" : "Suspend organization?"}
+              </h2>
+              <p className="text-sm text-white/50 mb-5">
+                {confirm.org.isSuspended
+                  ? `All users in "${confirm.org.name}" will regain access immediately.`
+                  : `All users in "${confirm.org.name}" will be blocked from logging in and shown a suspension notice. No data will be deleted.`}
+              </p>
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setConfirm(null)} disabled={confirmBusy}
+                  className="px-4 py-2 text-sm text-white/50 hover:text-white transition-colors disabled:opacity-40">Cancel</button>
+                <button onClick={handleConfirm} disabled={confirmBusy}
+                  className="px-4 py-2 text-sm bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-40">
+                  {confirmBusy ? "Working…" : confirm.org.isSuspended ? "Unsuspend" : "Suspend"}
+                </button>
+              </div>
+            </>
+          ) : confirm.kind === "archive" ? (
               <>
                 <h2 className="text-base font-semibold text-white mb-2">
                   {confirm.org.isActive ? "Archive organization?" : "Restore organization?"}

@@ -23,6 +23,7 @@ class User(db.Model):
     country = db.Column(db.String(100), nullable=True)
     
     is_superadmin = db.Column(db.Boolean, nullable=False, default=False)
+    is_suspended = db.Column(db.Boolean, nullable=False, default=False)
 
     created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
     updated_at = db.Column(db.DateTime, nullable=False, default=now_utc, onupdate=now_utc)
@@ -68,8 +69,7 @@ class Organization(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
     updated_at = db.Column(db.DateTime, nullable=False, default=now_utc, onupdate=now_utc)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
-
-
+    is_suspended = db.Column(db.Boolean, nullable=False, default=False)
 
     @property
     def is_trialing(self) -> bool:

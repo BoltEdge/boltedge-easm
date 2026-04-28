@@ -52,6 +52,7 @@ def _org_row(org: Organization) -> dict:
         "scansThisMonth": org.scans_this_month,
         "memberCount": member_count,
         "isActive": org.is_active,
+        "isSuspended": org.is_suspended,
         "createdAt": org.created_at.isoformat() + "Z" if org.created_at else None,
     }
 
@@ -268,6 +269,32 @@ def toggle_org_archive(org_id: int):
     return jsonify(message=f"Organization {action_label}.", org=_org_row(org)), 200
 
 
+@admin_bp.post("/organizations/<int:org_id>/suspend")
+@require_superadmin
+def toggle_org_suspend(org_id: int):
+    org = Organization.query.get(org_id)
+    if not org:
+        return jsonify(error="not found"), 404
+
+    org.is_suspended = not org.is_suspended
+    action_label = "suspended" if org.is_suspended else "unsuspended"
+
+    log_audit(
+        organization_id=org.id,
+        user_id=g.current_user.id,
+        action=f"admin.org_{action_label}",
+        category="admin",
+        target_type="organization",
+        target_id=str(org.id),
+        target_label=org.name,
+        description=f"Admin {action_label} organization",
+        metadata={"changed_by": g.current_user.email},
+    )
+
+    db.session.commit()
+    return jsonify(message=f"Organization {action_label}.", org=_org_row(org)), 200
+
+
 @admin_bp.delete("/organizations/<int:org_id>")
 @require_superadmin
 def delete_organization(org_id: int):
@@ -322,6 +349,7 @@ def list_users():
             "email": u.email,
             "name": u.name,
             "isSuperadmin": bool(u.is_superadmin),
+            "isSuspended": bool(u.is_suspended),
             "createdAt": u.created_at.isoformat() + "Z" if u.created_at else None,
             "organization": {"id": org.id, "name": org.name, "plan": org.effective_plan} if org else None,
             "role": membership.role if membership else None,
@@ -333,6 +361,42 @@ def list_users():
         page=page,
         limit=limit,
         pages=(total + limit - 1) // limit,
+    ), 200
+
+
+@admin_bp.post("/users/<int:user_id>/suspend")
+@require_superadmin
+def toggle_user_suspend(user_id: int):
+    if user_id == g.current_user.id:
+        return jsonify(error="Cannot suspend your own account."), 400
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify(error="not found"), 404
+
+    if user.is_superadmin:
+        return jsonify(error="Cannot suspend another superadmin account."), 400
+
+    user.is_suspended = not user.is_suspended
+    action_label = "suspended" if user.is_suspended else "unsuspended"
+
+    membership = OrganizationMember.query.filter_by(user_id=user.id, is_active=True).first()
+    log_audit(
+        organization_id=membership.organization_id if membership else None,
+        user_id=g.current_user.id,
+        action=f"admin.user_{action_label}",
+        category="admin",
+        target_type="user",
+        target_id=str(user.id),
+        target_label=user.email,
+        description=f"Admin {action_label} user {user.email}",
+        metadata={"changed_by": g.current_user.email},
+    )
+
+    db.session.commit()
+    return jsonify(
+        message=f"User {action_label}.",
+        isSuspended=user.is_suspended,
     ), 200
 
 

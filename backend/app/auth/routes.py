@@ -201,6 +201,12 @@ def login():
     if not u or not check_password_hash(u.password_hash, password):
         return jsonify(error="invalid credentials"), 401
 
+    if u.is_suspended:
+        return jsonify(
+            error="Your account has been suspended. Please contact your admin or reach out to Nano EASM support.",
+            code="ACCOUNT_SUSPENDED",
+        ), 403
+
     from app.models import OrganizationMember
 
     # Load org info for the login response
@@ -208,6 +214,12 @@ def login():
         user_id=u.id,
         is_active=True
     ).first()
+
+    if membership and membership.organization.is_suspended:
+        return jsonify(
+            error="Your organization's access has been suspended. Please contact your admin or reach out to Nano EASM support.",
+            code="ACCOUNT_SUSPENDED",
+        ), 403
 
     token = create_access_token(secret_key=current_app.config["SECRET_KEY"], user_id=u.id)
 
@@ -249,6 +261,12 @@ def me():
 
     u = g.current_user
 
+    if u.is_suspended:
+        return jsonify(
+            error="Your account has been suspended. Please contact your admin or reach out to Nano EASM support.",
+            code="ACCOUNT_SUSPENDED",
+        ), 403
+
     membership = OrganizationMember.query.filter_by(
         user_id=u.id,
         is_active=True
@@ -258,6 +276,12 @@ def me():
         return jsonify(error="User not associated with any organization"), 400
 
     org = membership.organization
+
+    if org.is_suspended:
+        return jsonify(
+            error="Your organization's access has been suspended. Please contact your admin or reach out to Nano EASM support.",
+            code="ACCOUNT_SUSPENDED",
+        ), 403
 
     return jsonify(
         user={

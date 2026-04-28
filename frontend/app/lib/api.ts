@@ -254,6 +254,15 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     payload = rawText || null;
   }
 
+  // ── 403: account/org suspended ──
+  if (res.status === 403 && payload?.code === "ACCOUNT_SUSPENDED") {
+    clearSession();
+    if (isBrowser() && window.location.pathname !== "/login") {
+      window.location.href = `/login?suspended=true&reason=${encodeURIComponent(payload.error || "")}`;
+    }
+    throw makeError(payload.error || "Account suspended", 403, payload);
+  }
+
   // ── 403: plan limit / feature gate / role insufficient ──
   if (res.status === 403 && payload && typeof payload === "object") {
     const isPlanOrPermError =
@@ -1576,8 +1585,16 @@ export async function archiveAdminOrg(orgId: number): Promise<any> {
   return apiFetch<any>(`/admin/organizations/${orgId}/archive`, { method: "POST" });
 }
 
+export async function suspendAdminOrg(orgId: number): Promise<any> {
+  return apiFetch<any>(`/admin/organizations/${orgId}/suspend`, { method: "POST" });
+}
+
 export async function deleteAdminOrg(orgId: number): Promise<any> {
   return apiFetch<any>(`/admin/organizations/${orgId}`, { method: "DELETE" });
+}
+
+export async function suspendAdminUser(userId: number): Promise<any> {
+  return apiFetch<any>(`/admin/users/${userId}/suspend`, { method: "POST" });
 }
 
 export async function deleteAdminUser(userId: number): Promise<any> {

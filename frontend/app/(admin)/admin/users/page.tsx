@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { getAdminUsers, deleteAdminUser } from "../../../lib/api";
-import { Search, ChevronLeft, ChevronRight, ShieldAlert, Trash2 } from "lucide-react";
+import { getAdminUsers, suspendAdminUser, deleteAdminUser } from "../../../lib/api";
+import { Search, ChevronLeft, ChevronRight, ShieldAlert, ShieldOff, ShieldCheck, Trash2 } from "lucide-react";
 
 const PLAN_COLORS: Record<string, string> = {
   free: "#6b7280", starter: "#00b8d4", professional: "#7c5cfc",
@@ -23,6 +23,7 @@ export default function AdminUsers() {
   const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [confirmUser, setConfirmUser] = useState<any | null>(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
+  const [suspendBusy, setSuspendBusy] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -37,6 +38,18 @@ export default function AdminUsers() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [search]);
   useEffect(() => { if (banner) { const t = setTimeout(() => setBanner(null), 4000); return () => clearTimeout(t); } }, [banner]);
+
+  async function handleSuspend(u: any) {
+    setSuspendBusy(u.id);
+    try {
+      const res = await suspendAdminUser(u.id);
+      const label = res.isSuspended ? "suspended" : "unsuspended";
+      setBanner({ kind: "ok", text: `User "${u.email}" ${label}.` });
+      load();
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || "Failed to update user" });
+    } finally { setSuspendBusy(null); }
+  }
 
   async function handleDelete() {
     if (!confirmUser) return;
@@ -107,6 +120,9 @@ export default function AdminUsers() {
                       {u.isSuperadmin && (
                         <span title="Superadmin"><ShieldAlert className="w-3.5 h-3.5 text-teal-400" /></span>
                       )}
+                      {u.isSuspended && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">suspended</span>
+                      )}
                     </div>
                     <div className="text-[11px] text-white/30">{u.email}</div>
                   </td>
@@ -133,14 +149,24 @@ export default function AdminUsers() {
                     {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => setConfirmUser(u)}
-                      disabled={u.isSuperadmin}
-                      title={u.isSuperadmin ? "Cannot delete superadmin accounts" : "Delete user"}
-                      className="p-1.5 rounded hover:bg-red-500/10 text-white/30 hover:text-red-400 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleSuspend(u)}
+                        disabled={u.isSuperadmin || suspendBusy === u.id}
+                        title={u.isSuperadmin ? "Cannot suspend superadmin accounts" : u.isSuspended ? "Unsuspend user" : "Suspend user"}
+                        className={`p-1.5 rounded transition-colors disabled:opacity-20 disabled:cursor-not-allowed ${u.isSuspended ? "text-red-400 hover:bg-red-500/10" : "text-white/30 hover:bg-red-500/10 hover:text-red-400"}`}
+                      >
+                        {u.isSuspended ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldOff className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        onClick={() => setConfirmUser(u)}
+                        disabled={u.isSuperadmin}
+                        title={u.isSuperadmin ? "Cannot delete superadmin accounts" : "Delete user"}
+                        className="p-1.5 rounded hover:bg-red-500/10 text-white/30 hover:text-red-400 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

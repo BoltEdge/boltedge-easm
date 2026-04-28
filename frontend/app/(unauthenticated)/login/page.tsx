@@ -32,6 +32,11 @@ function LoginPageInner() {
     return searchParams?.get("expired") === "true";
   }, [searchParams]);
 
+  const suspendedReason = useMemo(() => {
+    if (searchParams?.get("suspended") !== "true") return null;
+    return searchParams?.get("reason") || "Your access has been suspended. Please contact your admin or reach out to Nano EASM support.";
+  }, [searchParams]);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -149,6 +154,13 @@ function LoginPageInner() {
               <button onClick={() => setShowExpiredBanner(false)} className="text-amber-400/60 hover:text-amber-300 ml-2 shrink-0">
                 &times;
               </button>
+            </div>
+          )}
+
+          {/* Suspended banner */}
+          {suspendedReason && (
+            <div className="mt-4 rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3.5 py-2.5 text-sm text-red-300">
+              {suspendedReason}
             </div>
           )}
 
