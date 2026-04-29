@@ -7,8 +7,33 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 
-import { login } from "../../lib/api";
+import { login, startOAuth } from "../../lib/api";
 import { establishSession } from "../../lib/auth";
+
+const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true";
+const MICROSOFT_ENABLED = process.env.NEXT_PUBLIC_MICROSOFT_OAUTH_ENABLED === "true";
+
+function MicrosoftIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M0 0h8.571v8.571H0z" fill="#F25022"/>
+      <path d="M9.429 0H18v8.571H9.429z" fill="#7FBA00"/>
+      <path d="M0 9.429h8.571V18H0z" fill="#00A4EF"/>
+      <path d="M9.429 9.429H18V18H9.429z" fill="#FFB900"/>
+    </svg>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+      <path d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.347 2.825.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
+    </svg>
+  );
+}
 
 function BoltIcon({ size = 24 }: { size?: number }) {
   return (
@@ -62,7 +87,7 @@ function LoginPageInner() {
         accessToken: res.accessToken,
         user: res.user,
         organization: res.organization,
-        role: "owner",
+        role: res.role ?? "owner",
       });
 
       router.replace(nextPath);
@@ -94,7 +119,6 @@ function LoginPageInner() {
             <BoltIcon size={32} />
             <span className="text-lg font-semibold tracking-tight">
               Nano<span className="text-teal-400">EASM</span>
-              <span className="text-[10px] text-white/40 font-medium ml-1.5 uppercase tracking-wider">EASM</span>
             </span>
           </Link>
 
@@ -123,7 +147,7 @@ function LoginPageInner() {
 
           {/* Footer */}
           <p className="text-xs text-white/20">
-            &copy; {new Date().getFullYear()} Nano ASM
+            &copy; {new Date().getFullYear()} Nano EASM
           </p>
         </div>
       </div>
@@ -137,7 +161,6 @@ function LoginPageInner() {
               <BoltIcon size={28} />
               <span className="text-base font-semibold">
                 Nano<span className="text-teal-400">EASM</span>
-                <span className="text-[10px] text-white/40 font-medium ml-1.5 uppercase tracking-wider">EASM</span>
               </span>
             </Link>
           </div>
@@ -146,6 +169,39 @@ function LoginPageInner() {
           <p className="mt-2 text-sm text-white/40">
             Sign in to your account to continue
           </p>
+
+          {/* OAuth */}
+          {(GOOGLE_ENABLED || MICROSOFT_ENABLED) && (
+            <>
+              <div className="mt-6 space-y-2.5">
+                {GOOGLE_ENABLED && (
+                  <button
+                    type="button"
+                    onClick={() => startOAuth("google", nextPath)}
+                    className="w-full h-11 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-sm font-medium text-white transition-all flex items-center justify-center gap-2.5"
+                  >
+                    <GoogleIcon />
+                    Continue with Google
+                  </button>
+                )}
+                {MICROSOFT_ENABLED && (
+                  <button
+                    type="button"
+                    onClick={() => startOAuth("microsoft", nextPath)}
+                    className="w-full h-11 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-sm font-medium text-white transition-all flex items-center justify-center gap-2.5"
+                  >
+                    <MicrosoftIcon />
+                    Continue with Microsoft
+                  </button>
+                )}
+              </div>
+              <div className="mt-6 flex items-center gap-3">
+                <div className="flex-1 h-px bg-white/[0.06]" />
+                <span className="text-xs text-white/20">or sign in with email</span>
+                <div className="flex-1 h-px bg-white/[0.06]" />
+              </div>
+            </>
+          )}
 
           {/* Session expired banner */}
           {showExpiredBanner && (
@@ -176,12 +232,18 @@ function LoginPageInner() {
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
                 inputMode="email"
+                autoFocus
               />
             </div>
 
             {/* Password */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-white/50 block">Password</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-white/50 block">Password</label>
+                <Link href="/forgot-password" className="text-xs text-teal-400/70 hover:text-teal-300 transition-colors">
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}

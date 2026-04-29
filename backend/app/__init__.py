@@ -70,7 +70,9 @@ def _is_gunicorn_master() -> bool:
 
 
 def create_app() -> Flask:
+    from datetime import datetime, timezone
     app = Flask(__name__)
+    app.config["APP_START_TIME"] = datetime.now(timezone.utc)
 
     is_prod = _is_production()
 

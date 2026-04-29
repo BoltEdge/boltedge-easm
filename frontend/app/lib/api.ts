@@ -201,7 +201,10 @@ function isBrowser() {
 // Core fetch wrapper
 // ────────────────────────────────────────────────────────────
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiFetch<T>(
+  path: string,
+  init?: RequestInit & { skipAuthRedirect?: boolean }
+): Promise<T> {
   // Dynamic import to avoid circular deps and enable inactivity check
   const {
     getAccessToken: getToken,
@@ -211,6 +214,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   } = await import("./auth");
 
   const token = getToken();
+  const skipAuthRedirect = (init as any)?.skipAuthRedirect ?? false;
 
   // ── Inactivity check: 30 min idle → force logout ──
   if (token && isInactive()) {
@@ -222,10 +226,11 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     throw makeError("Session expired due to inactivity", 401);
   }
 
+  const { skipAuthRedirect: _omit, ...fetchInit } = (init ?? {}) as any;
   const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
+    ...fetchInit,
     headers: {
-      ...(init?.headers || {}),
+      ...(fetchInit?.headers || {}),
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
@@ -233,7 +238,8 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   });
 
   // ── 401: token expired on backend → clear & redirect ──
-  if (res.status === 401) {
+  // Skip redirect for auth endpoints (login/register) where 401 means bad credentials.
+  if (res.status === 401 && !skipAuthRedirect) {
     clearSession();
     if (isBrowser()) {
       const next = `${window.location.pathname}${window.location.search}`;
@@ -353,10 +359,12 @@ function parseFinding(f: any): Finding {
 
 export type AuthResponse = {
   accessToken: string;
+  role?: string;
   user: {
     id: string | number;
     email: string;
     name?: string;
+    isSuperadmin?: boolean;
     job_title?: string;
     company?: string;
     country?: string;
@@ -380,7 +388,8 @@ export async function login(payload: {
   return apiFetch<AuthResponse>(API.auth.login, {
     method: "POST",
     body: JSON.stringify(payload),
-  });
+    skipAuthRedirect: true,
+  } as any);
 }
 
 export async function register(payload: {
@@ -395,7 +404,8 @@ export async function register(payload: {
   return apiFetch<AuthResponse>(API.auth.register, {
     method: "POST",
     body: JSON.stringify(payload),
-  });
+    skipAuthRedirect: true,
+  } as any);
 }
 
 export type MeResponse = {
@@ -868,6 +878,18 @@ export async function discoverDomainQuick(payload: {
       resolveMaxNames: payload.resolveMaxNames ?? 300,
     },
   });
+}
+
+export async function publicQuickDiscover(domain: string): Promise<QuickDiscoveryResponse> {
+  const res = await fetch(`${API_BASE_URL}/quick-discovery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ domain }),
+    cache: "no-store",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || `Discovery failed (${res.status})`);
+  return data as QuickDiscoveryResponse;
 }
 
 // ────────────────────────────────────────────────────────────
@@ -1573,12 +1595,115 @@ export async function getAdminUsers(params?: {
   page?: number;
   limit?: number;
   search?: string;
+  role?: string;
+  orgId?: number;
+  suspended?: boolean;
+  superadmin?: boolean;
 }): Promise<any> {
   const qs = new URLSearchParams();
   if (params?.page) qs.set("page", String(params.page));
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.search) qs.set("search", params.search);
+  if (params?.role) qs.set("role", params.role);
+  if (params?.orgId) qs.set("org_id", String(params.orgId));
+  if (params?.suspended !== undefined) qs.set("suspended", String(params.suspended));
+  if (params?.superadmin) qs.set("superadmin", "true");
   return apiFetch<any>(`/admin/users?${qs.toString()}`);
+}
+
+export async function getAdminAuditLog(params?: {
+  page?: number;
+  perPage?: number;
+  q?: string;
+  category?: string;
+  orgId?: number;
+  dateFrom?: string;
+  dateTo?: string;
+}): Promise<any> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.perPage) qs.set("per_page", String(params.perPage));
+  if (params?.q) qs.set("q", params.q);
+  if (params?.category) qs.set("category", params.category);
+  if (params?.orgId) qs.set("org_id", String(params.orgId));
+  if (params?.dateFrom) qs.set("date_from", params.dateFrom);
+  if (params?.dateTo) qs.set("date_to", params.dateTo);
+  return apiFetch<any>(`/admin/audit-log?${qs.toString()}`);
+}
+
+export async function impersonateAdminUser(userId: number): Promise<any> {
+  return apiFetch<any>(`/admin/users/${userId}/impersonate`, { method: "POST" });
+}
+
+export async function getAnnouncements(): Promise<any> {
+  return apiFetch<any>("/auth/announcements");
+}
+
+export async function getAdminAnnouncements(): Promise<any> {
+  return apiFetch<any>("/admin/announcements");
+}
+
+export async function createAdminAnnouncement(data: {
+  title: string;
+  body?: string;
+  kind?: string;
+  targetOrgId?: number | null;
+  expiresAt?: string | null;
+}): Promise<any> {
+  return apiFetch<any>("/admin/announcements", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function deleteAdminAnnouncement(id: number): Promise<any> {
+  return apiFetch<any>(`/admin/announcements/${id}`, { method: "DELETE" });
+}
+
+export async function getAdminHealth(): Promise<any> {
+  return apiFetch<any>("/admin/health");
+}
+
+export async function getAdminQuickScans(params?: {
+  page?: number; ip?: string; target?: string; status?: string; source?: string;
+}): Promise<any> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.ip) qs.set("ip", params.ip);
+  if (params?.target) qs.set("target", params.target);
+  if (params?.status) qs.set("status", params.status);
+  if (params?.source) qs.set("source", params.source);
+  return apiFetch<any>(`/admin/quick-scans?${qs.toString()}`);
+}
+
+export async function getAdminBlockedIPs(): Promise<any> {
+  return apiFetch<any>("/admin/blocked-ips");
+}
+
+export async function blockAdminIP(data: { ip: string; reason?: string; expiresAt?: string | null }): Promise<any> {
+  return apiFetch<any>("/admin/blocked-ips", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function unblockAdminIP(id: number): Promise<any> {
+  return apiFetch<any>(`/admin/blocked-ips/${id}`, { method: "DELETE" });
+}
+
+export async function getAdminScans(params?: {
+  status?: "active" | "recent" | "";
+  type?: "scan" | "discovery" | "";
+  orgId?: number;
+  limit?: number;
+}): Promise<any> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  if (params?.type) qs.set("type", params.type);
+  if (params?.orgId) qs.set("org_id", String(params.orgId));
+  if (params?.limit) qs.set("limit", String(params.limit));
+  return apiFetch<any>(`/admin/scans?${qs.toString()}`);
+}
+
+export async function setAdminOrgLimits(orgId: number, overrides: Record<string, number | boolean | null>): Promise<any> {
+  return apiFetch<any>(`/admin/organizations/${orgId}/limits`, {
+    method: "POST",
+    body: JSON.stringify(overrides),
+  });
 }
 
 export async function archiveAdminOrg(orgId: number): Promise<any> {
@@ -1595,6 +1720,46 @@ export async function deleteAdminOrg(orgId: number): Promise<any> {
 
 export async function suspendAdminUser(userId: number): Promise<any> {
   return apiFetch<any>(`/admin/users/${userId}/suspend`, { method: "POST" });
+}
+
+export async function sendAdminPasswordReset(userId: number): Promise<any> {
+  return apiFetch<any>(`/admin/users/${userId}/reset-password`, { method: "POST" });
+}
+
+export async function updateProfile(fields: {
+  name?: string;
+  jobTitle?: string;
+  company?: string;
+  country?: string;
+}): Promise<any> {
+  return apiFetch<any>("/settings/me", {
+    method: "PATCH",
+    body: JSON.stringify(fields),
+  });
+}
+
+export function startOAuth(provider: "google" | "microsoft", next = "/dashboard") {
+  const base = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/+$/, "");
+  window.location.href = `${base}/auth/oauth/${provider}?next=${encodeURIComponent(next)}`;
+}
+
+export async function forgotPassword(email: string): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+    skipAuthRedirect: true,
+  } as any);
+}
+
+export async function verifyPasswordResetToken(token: string): Promise<any> {
+  return apiFetch<any>(`/auth/reset-password/verify?token=${encodeURIComponent(token)}`);
+}
+
+export async function consumePasswordReset(token: string, password: string): Promise<any> {
+  return apiFetch<any>("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
+  });
 }
 
 export async function deleteAdminUser(userId: number): Promise<any> {

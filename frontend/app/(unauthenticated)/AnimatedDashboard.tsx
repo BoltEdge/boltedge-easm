@@ -53,8 +53,12 @@ export default function AnimatedDashboard() {
           100% { opacity: 1; transform: scale(1); }
         }
         @keyframes crossfadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
+          0%   { opacity: 0; }
+          100% { opacity: 1; }
+        }
+        @keyframes crossfadeOut {
+          0%   { opacity: 1; }
+          100% { opacity: 0; }
         }
         @keyframes progressBar {
           from { width: 0%; }
@@ -119,7 +123,7 @@ export default function AnimatedDashboard() {
       </div>
 
       {/* ── Content ── */}
-      <div className="p-6 grid grid-cols-12 gap-4" style={{ minHeight: 320 }}>
+      <div className="p-6 grid grid-cols-12 gap-4 overflow-hidden" style={{ height: 500 }}>
 
         {/* Sidebar */}
         <div className="col-span-2 hidden lg:block space-y-3">
@@ -235,7 +239,7 @@ function DashboardView() {
    ═══════════════════════════════════════════ */
 function ScanningView() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="anim-stat flex items-center justify-between" style={{ animationDelay: "0s" }}>
         <div>
           <div className="text-sm font-semibold text-white">Scan Jobs</div>
@@ -248,11 +252,11 @@ function ScanningView() {
 
       <div className="space-y-3">
         {[
-          { target: "api.example.com", profile: "Deep", progress: 78, engine: "Nuclei", sev: { c: 2, h: 5, m: 3 } },
-          { target: "mail.example.com", profile: "Standard", progress: 45, engine: "Nmap", sev: { c: 0, h: 1, m: 4 } },
-          { target: "cdn.example.com", profile: "Quick", progress: 92, engine: "Shodan", sev: { c: 0, h: 0, m: 1 } },
+          { target: "api.example.com", profile: "Deep", progress: 78, engine: "Web", sev: { c: 2, h: 5, m: 3 } },
+          { target: "mail.example.com", profile: "Standard", progress: 45, engine: "Network", sev: { c: 0, h: 1, m: 4 } },
+          { target: "cdn.example.com", profile: "Quick", progress: 92, engine: "TLS", sev: { c: 0, h: 0, m: 1 } },
         ].map((scan, i) => (
-          <div key={scan.target} className="anim-slide-r rounded-xl border border-white/[0.06] bg-white/[0.02] p-4" style={{ animationDelay: `${0.1 + i * 0.12}s` }}>
+          <div key={scan.target} className="anim-slide-r rounded-xl border border-white/[0.06] bg-white/[0.02] p-3" style={{ animationDelay: `${0.1 + i * 0.12}s` }}>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
                 <div className="anim-pulse w-2 h-2 rounded-full bg-teal-400" />
@@ -277,8 +281,8 @@ function ScanningView() {
         ))}
       </div>
 
-      <div className="anim-stat rounded-xl border border-white/[0.06] bg-white/[0.02] p-4" style={{ animationDelay: "0.5s" }}>
-        <div className="text-[10px] text-white/30 uppercase tracking-wider mb-3">Recently Completed</div>
+      <div className="anim-stat rounded-xl border border-white/[0.06] bg-white/[0.02] p-3" style={{ animationDelay: "0.5s" }}>
+        <div className="text-[10px] text-white/30 uppercase tracking-wider mb-2">Recently Completed</div>
         <div className="space-y-2">
           {[
             { target: "login.example.com", findings: 8, time: "2m ago" },

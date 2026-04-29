@@ -29,8 +29,6 @@ export default function LandingNav() {
           </svg>
           <span className="text-[15px] font-semibold tracking-tight">
             Nano<span className="text-teal-400">EASM</span>
-            <span className="text-[10px] text-white/40 font-medium ml-1.5 uppercase tracking-wider">
-            </span>
           </span>
         </Link>
 
@@ -59,7 +57,7 @@ export default function LandingNav() {
             href="/register"
             className="inline-flex items-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-teal-900/20 hover:bg-teal-500 transition-all"
           >
-            Register
+            Get started
           </Link>
         </div>
 
@@ -102,7 +100,7 @@ export default function LandingNav() {
                 onClick={() => setMobileOpen(false)}
                 className="block w-full px-3 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-600 hover:bg-teal-500 transition-all text-center"
               >
-                Register
+                Get started
               </Link>
             </div>
           </nav>

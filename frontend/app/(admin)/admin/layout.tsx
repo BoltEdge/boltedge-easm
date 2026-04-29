@@ -4,12 +4,17 @@ import { useRouter } from "next/navigation";
 import { getAccessToken, getIsSuperadmin, logout } from "../../lib/auth";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building2, Users, LogOut, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, Building2, Users, LogOut, ShieldAlert, ScrollText, ScanLine, Megaphone, HeartPulse, ShieldBan } from "lucide-react";
 
 const NAV = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/organizations", label: "Organizations", icon: Building2 },
   { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/audit-log", label: "Audit Log", icon: ScrollText },
+  { href: "/admin/scans", label: "Active Scans", icon: ScanLine },
+  { href: "/admin/broadcast", label: "Broadcast", icon: Megaphone },
+  { href: "/admin/health", label: "Health", icon: HeartPulse },
+  { href: "/admin/quick-scans", label: "Quick Scans", icon: ShieldBan },
 ];
 
 function AdminShell({ children }: { children: React.ReactNode }) {

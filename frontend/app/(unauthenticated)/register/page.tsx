@@ -1,5 +1,4 @@
 // app/(unauthenticated)/register/page.tsx
-// F4: Redesigned registration with split layout, Nano ASM branding, and invite support
 "use client";
 
 import React, { useEffect, useMemo, useState, Suspense } from "react";
@@ -7,9 +6,38 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, Loader2, Users } from "lucide-react";
 
-import { register, apiFetch } from "../../lib/api";
+import { register, apiFetch, startOAuth } from "../../lib/api";
+
+const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true";
+const MICROSOFT_ENABLED = process.env.NEXT_PUBLIC_MICROSOFT_OAUTH_ENABLED === "true";
 import { establishSession, type AuthRole } from "../../lib/auth";
 import { BILLING_ENABLED } from "../../lib/billing-config";
+
+import { getNames } from "country-list";
+
+function MicrosoftIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M0 0h8.571v8.571H0z" fill="#F25022"/>
+      <path d="M9.429 0H18v8.571H9.429z" fill="#7FBA00"/>
+      <path d="M0 9.429h8.571V18H0z" fill="#00A4EF"/>
+      <path d="M9.429 9.429H18V18H9.429z" fill="#FFB900"/>
+    </svg>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+      <path d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.347 2.825.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z" fill="#EA4335"/>
+    </svg>
+  );
+}
+
+const COUNTRIES: string[] = getNames().sort();
 
 function BoltIcon({ size = 24 }: { size?: number }) {
   return (
@@ -91,7 +119,7 @@ function RegisterPageInner() {
         res.accessToken,
         res.user,
         res.organization,
-        ((res as any).role || (inviteToken ? inviteInfo?.role : "owner") || "owner") as AuthRole,
+        (res.role || (inviteToken ? inviteInfo?.role : "owner") || "owner") as AuthRole,
       );
 
       router.replace(nextPath);
@@ -125,33 +153,34 @@ function RegisterPageInner() {
             <BoltIcon size={32} />
             <span className="text-lg font-semibold tracking-tight">
               Nano<span className="text-teal-400">EASM</span>
-              <span className="text-[10px] text-white/40 font-medium ml-1.5 uppercase tracking-wider">EASM</span>
             </span>
           </Link>
 
-          {/* Social proof */}
+          {/* Value prop */}
           <div className="max-w-sm">
             <h2 className="text-2xl font-bold leading-tight tracking-tight">
-              Trusted by security teams
-              <span className="block text-white/40 font-normal text-lg mt-1">to manage their attack surface</span>
+              Start securing your attack surface
+              <span className="block text-white/40 font-normal text-lg mt-1">in minutes, not months</span>
             </h2>
 
-            <div className="mt-8 space-y-5">
+            <div className="mt-8 space-y-4">
               {[
-                { stat: "10K+", label: "Assets monitored" },
-                { stat: "50K+", label: "Findings detected" },
-                { stat: "99.9%", label: "Platform uptime" },
-              ].map(({ stat, label }) => (
-                <div key={label} className="flex items-center gap-4">
-                  <span className="text-2xl font-bold text-teal-400">{stat}</span>
-                  <span className="text-sm text-white/40">{label}</span>
+                "Discover subdomains and exposed assets",
+                "Scan for vulnerabilities continuously",
+                "Track remediation with full audit trail",
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-teal-500/15 flex items-center justify-center shrink-0">
+                    <div className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+                  </div>
+                  <span className="text-sm text-white/50">{item}</span>
                 </div>
               ))}
             </div>
           </div>
 
           <p className="text-xs text-white/20">
-            &copy; {new Date().getFullYear()} Nano ASM
+            &copy; {new Date().getFullYear()} Nano EASM
           </p>
         </div>
       </div>
@@ -165,7 +194,6 @@ function RegisterPageInner() {
               <BoltIcon size={28} />
               <span className="text-base font-semibold">
                 Nano<span className="text-teal-400">EASM</span>
-                <span className="text-[10px] text-white/40 font-medium ml-1.5 uppercase tracking-wider">EASM</span>
               </span>
             </Link>
           </div>
@@ -211,7 +239,40 @@ function RegisterPageInner() {
               : BILLING_ENABLED ? "No credit card required. Start scanning in minutes." : "Free to use. Start scanning in minutes."}
           </p>
 
-          <form className="mt-8 space-y-4" onSubmit={onSubmit}>
+          {/* OAuth — hide for invite flow */}
+          {!inviteToken && (GOOGLE_ENABLED || MICROSOFT_ENABLED) && (
+            <>
+              <div className="mt-6 space-y-2.5">
+                {GOOGLE_ENABLED && (
+                  <button
+                    type="button"
+                    onClick={() => startOAuth("google", nextPath)}
+                    className="w-full h-11 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-sm font-medium text-white transition-all flex items-center justify-center gap-2.5"
+                  >
+                    <GoogleIcon />
+                    Continue with Google
+                  </button>
+                )}
+                {MICROSOFT_ENABLED && (
+                  <button
+                    type="button"
+                    onClick={() => startOAuth("microsoft", nextPath)}
+                    className="w-full h-11 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-sm font-medium text-white transition-all flex items-center justify-center gap-2.5"
+                  >
+                    <MicrosoftIcon />
+                    Continue with Microsoft
+                  </button>
+                )}
+              </div>
+              <div className="mt-6 flex items-center gap-3">
+                <div className="flex-1 h-px bg-white/[0.06]" />
+                <span className="text-xs text-white/20">or sign up with email</span>
+                <div className="flex-1 h-px bg-white/[0.06]" />
+              </div>
+            </>
+          )}
+
+          <form className={inviteToken ? "mt-8 space-y-4" : "mt-6 space-y-4"} onSubmit={onSubmit}>
             {/* Name */}
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-white/50 block">Full name</label>
@@ -221,13 +282,14 @@ function RegisterPageInner() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoComplete="name"
+                autoFocus
                 required
               />
             </div>
 
             {/* Email */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-white/50 block">Work email</label>
+              <label className="text-xs font-medium text-white/50 block">Email</label>
               <input
                 type="email"
                 className={inputClass}
@@ -300,13 +362,18 @@ function RegisterPageInner() {
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-white/50 block">Country</label>
-                  <input
-                    className={inputClass}
-                    placeholder="Australia"
+                  <select
+                    className={`${inputClass} appearance-none`}
+                    style={{ backgroundColor: '#0d1427' }}
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
-                    autoComplete="country-name"
-                  />
+                    autoComplete="country"
+                  >
+                    <option value="">Select your country</option>
+                    {COUNTRIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             )}
@@ -354,12 +421,6 @@ function RegisterPageInner() {
             </Link>
           </p>
 
-          <p className="mt-4 text-[11px] text-white/15 text-center">
-            By creating an account you agree to our{" "}
-            <Link href="/terms" className="underline hover:text-white/30 transition-colors">Terms</Link>
-            {" "}and{" "}
-            <Link href="/privacy" className="underline hover:text-white/30 transition-colors">Privacy Policy</Link>
-          </p>
         </div>
       </div>
     </div>

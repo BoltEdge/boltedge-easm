@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { getAdminOrganizations, setAdminOrgPlan, archiveAdminOrg, suspendAdminOrg, deleteAdminOrg } from "../../../lib/api";
-import { Search, ChevronLeft, ChevronRight, Archive, ArchiveRestore, Trash2, ShieldOff, ShieldCheck } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Archive, ArchiveRestore, Trash2, ShieldOff, ShieldCheck, ExternalLink } from "lucide-react";
+import Link from "next/link";
 
 const PLANS = ["free", "starter", "professional", "enterprise_silver", "enterprise_gold"];
 const PLAN_LABELS: Record<string, string> = {
@@ -132,11 +133,16 @@ export default function AdminOrganizations() {
                 <tr key={org.id} className={`border-b border-white/[0.04] transition-colors ${isArchived ? "opacity-50" : "hover:bg-white/[0.02]"}`}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-white">{org.name}</span>
+                      <Link
+                        href={`/admin/organizations/${org.id}`}
+                        className="font-medium text-white hover:text-teal-400 transition-colors"
+                      >
+                        {org.name}
+                      </Link>
                       {isArchived && <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.06] text-white/40">archived</span>}
                       {isSuspended && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">suspended</span>}
                     </div>
-                    <div className="text-[11px] text-white/30 font-mono">{org.slug}</div>
+                    <div className="text-[11px] text-white/25 font-mono">{org.slug} · #{org.id}</div>
                   </td>
                   <td className="px-4 py-3">
                     <span className="px-2 py-0.5 rounded text-[11px] font-semibold" style={{ backgroundColor: `${color}15`, color }}>

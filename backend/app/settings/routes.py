@@ -897,6 +897,10 @@ def update_current_user_settings():
         user.job_title = str(body["jobTitle"]).strip() or None
         updated_fields.append("jobTitle")
 
+    if "company" in body:
+        user.company = str(body["company"]).strip() or None
+        updated_fields.append("company")
+
     if "country" in body:
         user.country = str(body["country"]).strip() or None
         updated_fields.append("country")

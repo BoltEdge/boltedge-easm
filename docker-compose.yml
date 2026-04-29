@@ -34,10 +34,16 @@ services:
       SQLALCHEMY_DATABASE_URI: postgresql://${DB_USER:-easm_user}:${DB_PASSWORD}@easm-db:5432/${DB_NAME:-easm}
       SECRET_KEY: ${SECRET_KEY}
       CORS_ORIGINS: ${CORS_ORIGINS}
+      FRONTEND_URL: ${FRONTEND_URL:-https://nanoasm.com}
       SHODAN_API_KEY: ${SHODAN_API_KEY}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ENABLE_BILLING: ${ENABLE_BILLING:-false}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
     expose:
       - "5000"
     networks:
@@ -50,6 +56,8 @@ services:
       context: ./frontend
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+        NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED: ${NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED:-false}
+        NEXT_PUBLIC_MICROSOFT_OAUTH_ENABLED: ${NEXT_PUBLIC_MICROSOFT_OAUTH_ENABLED:-false}
     container_name: easm-frontend
     restart: unless-stopped
     depends_on:

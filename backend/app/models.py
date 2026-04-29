@@ -15,13 +15,18 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), nullable=False, unique=True, index=True)
     name = db.Column(db.String(120), nullable=True)
-    password_hash = db.Column(db.String(255), nullable=False)
-    
+    password_hash = db.Column(db.String(255), nullable=True)
+
+    # OAuth / SSO
+    oauth_provider = db.Column(db.String(50), nullable=True)   # "google", "microsoft"
+    oauth_provider_id = db.Column(db.String(255), nullable=True)
+    avatar_url = db.Column(db.String(500), nullable=True)
+
     # Optional profile fields
     job_title = db.Column(db.String(120), nullable=True)
     company = db.Column(db.String(255), nullable=True)
     country = db.Column(db.String(100), nullable=True)
-    
+
     is_superadmin = db.Column(db.Boolean, nullable=False, default=False)
     is_suspended = db.Column(db.Boolean, nullable=False, default=False)
 
@@ -70,6 +75,9 @@ class Organization(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, default=now_utc, onupdate=now_utc)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     is_suspended = db.Column(db.Boolean, nullable=False, default=False)
+    # Per-org limit overrides set by superadmin. Keys match PLAN_CONFIG limits keys.
+    # e.g. {"assets": 500, "scans_per_month": 10000}. NULL means use plan defaults.
+    limit_overrides = db.Column(db.JSON, nullable=True)
 
     @property
     def is_trialing(self) -> bool:
@@ -913,6 +921,75 @@ class DiscoveredAsset(db.Model):
     )
 
 
+class PlatformAnnouncement(db.Model):
+    """
+    Admin-created announcements shown as banners in the app.
+    target_org_id = None  →  broadcast to all orgs.
+    Dismissed state is stored client-side in localStorage.
+    """
+    __tablename__ = "platform_announcement"
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    body = db.Column(db.Text, nullable=True)
+    kind = db.Column(db.String(20), nullable=False, default="info")  # info | warning | critical
+    target_org_id = db.Column(
+        db.Integer,
+        db.ForeignKey("organization.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    created_by = db.Column(
+        db.Integer,
+        db.ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    expires_at = db.Column(db.DateTime, nullable=True)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+
+    target_org = db.relationship("Organization")
+    author = db.relationship("User")
+
+
+class QuickScanLog(db.Model):
+    """
+    Audit record for every unauthenticated quick-scan request.
+    Used for abuse detection, rate limiting, and the admin quick-scans view.
+    """
+    __tablename__ = "quick_scan_log"
+
+    id = db.Column(db.Integer, primary_key=True)
+    ip_address = db.Column(db.String(45), nullable=False, index=True)   # IPv4 or IPv6
+    user_agent = db.Column(db.String(500), nullable=True)
+    target = db.Column(db.String(255), nullable=False, index=True)
+    asset_type = db.Column(db.String(10), nullable=False)               # domain | ip
+    source = db.Column(db.String(20), nullable=False, default="scan")   # scan | discovery
+    status = db.Column(db.String(20), nullable=False, default="pending") # completed | failed | blocked | rate_limited
+    duration_ms = db.Column(db.Integer, nullable=True)
+    risk_score = db.Column(db.Float, nullable=True)
+    finding_counts = db.Column(db.JSON, nullable=True)  # {critical, high, medium, low, info} for scans; {subdomains, ct, brute} for discovery
+    error_message = db.Column(db.String(500), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+
+
+class BlockedIP(db.Model):
+    """
+    IP addresses blocked from using the unauthenticated quick scan.
+    expires_at = None means permanent block.
+    """
+    __tablename__ = "blocked_ip"
+
+    id = db.Column(db.Integer, primary_key=True)
+    ip_address = db.Column(db.String(45), nullable=False, unique=True, index=True)
+    reason = db.Column(db.String(500), nullable=True)
+    blocked_by = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    expires_at = db.Column(db.DateTime, nullable=True)
+
+    admin = db.relationship("User")
+
+
 class DiscoveryModuleResult(db.Model):
     """
     Tracks the execution status of each module within a discovery job.
@@ -1308,7 +1385,7 @@ class AuditLog(db.Model):
     __tablename__ = "audit_log"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    organization_id = db.Column(db.Integer, nullable=False, index=True)
+    organization_id = db.Column(db.Integer, nullable=True, index=True)
     user_id = db.Column(db.Integer, nullable=True)
     user_email = db.Column(db.String(255), nullable=True)
 

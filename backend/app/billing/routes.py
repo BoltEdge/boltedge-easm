@@ -152,9 +152,20 @@ def get_plan_limits(plan_key: str) -> dict:
 
 
 def get_effective_limits(org: Organization) -> dict:
-    """Get the limits that should actually be enforced for an org."""
+    """Get the limits that should actually be enforced for an org.
+    Plan defaults are merged with any per-org overrides set by a superadmin.
+    Overrides take precedence for numeric limits; plan still controls feature flags.
+    """
     effective = org.effective_plan
-    return get_plan_limits(effective)
+    limits = dict(get_plan_limits(effective))  # copy so we don't mutate the config
+
+    overrides = org.limit_overrides or {}
+    for key in ("assets", "scans_per_month", "team_members", "scheduled_scans", "api_keys",
+                "monitoring", "deep_discovery", "webhooks"):
+        if key in overrides:
+            limits[key] = overrides[key]
+
+    return limits
 
 
 # ════════════════════════════════════════════════════════════════

@@ -109,37 +109,95 @@ docker compose exec easm-backend flask grant-superadmin your@email.com
 ```
 
 ### Admin capabilities
-| Page | URL | What it shows |
+| Page | URL | What it does |
 |---|---|---|
-| Dashboard | `/admin/dashboard` | Total orgs, users, new orgs (30d), total assets, scans this month, plan distribution bar chart |
-| Organizations | `/admin/organizations` | All orgs — searchable, filterable by plan, paginated. Inline plan change dropdown per org |
-| Users | `/admin/users` | All users — searchable, paginated. Shows org, role, superadmin badge |
+| Dashboard | `/admin/dashboard` | Platform-wide stats: orgs, users, assets, scans, plan distribution |
+| Organizations | `/admin/organizations` | All orgs — search, filter by plan, suspend/archive/delete. Links to org detail |
+| Org Detail | `/admin/organizations/<id>` | Usage, members, plan, custom limits editor, suspend/archive/delete |
+| Users | `/admin/users` | All users — search, filter by role/org/suspension. Impersonate, reset password, suspend, delete |
+| Audit Log | `/admin/audit-log` | Platform-wide audit log — filter by org, category, date range, search |
+| Active Scans | `/admin/scans` | Live view of scan + discovery jobs across all orgs. Auto-refreshes every 15s |
+| Broadcast | `/admin/broadcast` | Send info/warning/critical announcements to all orgs or a specific org |
+| Health | `/admin/health` | DB ping + pool stats, job queue depths, error rates, uptime, platform totals |
+| Quick Scans | `/admin/quick-scans` | Unauthenticated quick-scan log, top IPs, rate-limit tracking, IP block list |
 
 ### Admin backend endpoints (`/admin/*`)
 All return **404** for non-superadmins (do not reveal existence).
 ```
-GET  /admin/stats                    — platform-wide stats
-GET  /admin/organizations            — all orgs (paginated, searchable)
-GET  /admin/organizations/<id>       — single org detail + members
-POST /admin/organizations/<id>/plan  — change any org's plan (no expiry set)
-GET  /admin/users                    — all users (paginated, searchable)
+GET    /admin/stats                          — platform-wide counts + plan breakdown
+GET    /admin/organizations                  — all orgs (paginated, searchable, filterable)
+GET    /admin/organizations/<id>             — single org detail + usage + members + limits
+POST   /admin/organizations/<id>/plan        — change any org's plan
+POST   /admin/organizations/<id>/limits      — set per-org limit overrides (JSON column)
+POST   /admin/organizations/<id>/archive     — toggle org archived/active
+POST   /admin/organizations/<id>/suspend     — toggle org suspended (blocks all logins)
+DELETE /admin/organizations/<id>             — hard-delete org + all data (DB cascade)
+GET    /admin/users                          — all users (paginated, filterable by role/org/suspended)
+POST   /admin/users/<id>/impersonate         — issue session token for user (admin acts as them)
+POST   /admin/users/<id>/reset-password      — generate password reset link, optional Resend email
+POST   /admin/users/<id>/suspend             — toggle user suspended
+DELETE /admin/users/<id>                     — hard-delete user (DB cascade)
+GET    /admin/audit-log                      — platform-wide audit log (all orgs)
+GET    /admin/scans                          — active + recent scan/discovery jobs (all orgs)
+GET    /admin/announcements                  — list all platform announcements
+POST   /admin/announcements                  — create announcement
+DELETE /admin/announcements/<id>             — delete announcement
+GET    /admin/health                         — platform health stats
+GET    /admin/quick-scans                    — unauthenticated quick-scan log
+GET    /admin/blocked-ips                    — IP block list
+POST   /admin/blocked-ips                    — block an IP (with optional reason + expiry)
+DELETE /admin/blocked-ips/<id>               — unblock an IP
+```
+
+### User-facing admin endpoints (authenticated users)
+```
+GET  /auth/announcements   — active announcements for this user's org (shown as dismissible banners)
 ```
 
 ### Security model
 - `require_superadmin` decorator re-fetches user from DB on every request (no JWT-only trust)
 - Returns 404 (not 401/403) on failure — route appears to not exist
-- All plan changes via admin are audit-logged with `action: "admin.plan_changed"`
+- All admin actions are audit-logged
 - Admin grants never set `plan_expires_at` — plans don't expire
+- Impersonation is audit-logged; frontend stores return session in `asm_impersonate_return` localStorage key
 
-### DB migration needed
-After deploying, run once:
+### Key models added for admin features
+- `User.is_superadmin` — boolean, default False, grant via CLI only
+- `User.is_suspended` — boolean, blocks login with `ACCOUNT_SUSPENDED` 403
+- `Organization.is_suspended` — boolean, blocks login for all org members
+- `Organization.limit_overrides` — JSON column, merged with plan defaults in `get_effective_limits()`
+- `AuditLog.organization_id` — nullable (admin actions have no org context)
+- `PlatformAnnouncement` — title, body, kind (info/warning/critical), target_org_id (null=all), expires_at
+- `QuickScanLog` — IP, user agent, target, status, duration, risk score, finding counts per severity
+- `BlockedIP` — IP, reason, blocked_by, expires_at (null=permanent)
+
+### Impersonation flow
+1. Admin clicks impersonate on any non-superadmin user
+2. Backend issues a normal session token for that user, audit-logs the action
+3. Frontend saves admin session to `asm_impersonate_return`, sets `asm_impersonating` flag
+4. Amber banner appears on every page: "Impersonating [name] — Exit impersonation"
+5. Exit restores the admin session from localStorage and redirects to `/admin/users`
+
+### Quick scan abuse protection
+- Every unauthenticated `/quick-scan` request is logged to `quick_scan_log`
+- Rate limit: 5 scans/hour per IP (checked against the log table — no Redis needed)
+- Block list checked on entry; blocked IPs get 403, rate-limited get 429
+- Both are logged with status `blocked` / `rate_limited`
+- Admin view at `/admin/quick-scans` shows log, top IPs (24h), and block list management
+
+### Announcement banners
+- Admin creates via `/admin/broadcast` — kind, optional body, optional target org, optional expiry
+- Users see dismissible banners in the authenticated layout (above page content)
+- Dismissed IDs stored in `asm_dismissed_announcements` localStorage — survives page reload
+
+### DB migrations (apply in order)
 ```bash
-flask db migrate -m "add is_superadmin to user"
 flask db upgrade
-# or in Docker:
-docker compose exec easm-backend flask db migrate -m "add is_superadmin to user"
-docker compose exec easm-backend flask db upgrade
 ```
+Pending migrations (chain from `e4f9a2b3c1d6`):
+- `f5a1b2c3d4e6` — add `platform_announcement` table
+- `a1b2c3d4e5f6` — make `audit_log.organization_id` nullable
+- `b1c2d3e4f5a6` — add `quick_scan_log` and `blocked_ip` tables
 
 ## Billing Feature Flag
 

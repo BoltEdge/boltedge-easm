@@ -78,6 +78,10 @@ const USER_KEY = "asm_user";
 const ORG_KEY = "asm_organization";
 const ROLE_KEY = "asm_role";
 const LAST_ACTIVITY_KEY = "asm_last_activity";
+const IMPERSONATING_KEY = "asm_impersonating";
+const RETURN_SESSION_KEY = "asm_impersonate_return";
+
+export type ImpersonatingInfo = { email: string; name: string | null };
 
 // 30 minutes of inactivity triggers auto-logout
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
@@ -313,6 +317,53 @@ export function clearSession() {
   clearOrganization();
   clearRole();
   clearActivity();
+}
+
+// ---------- Impersonation ----------
+
+export function getImpersonating(): ImpersonatingInfo | null {
+  if (!isBrowser()) return null;
+  const raw = window.localStorage.getItem(IMPERSONATING_KEY);
+  if (!raw) return null;
+  try { return JSON.parse(raw) as ImpersonatingInfo; } catch { return null; }
+}
+
+export function startImpersonation(
+  targetToken: string,
+  targetUser: AuthUser,
+  targetOrg: AuthOrganization | null,
+  targetRole: AuthRole | null,
+): void {
+  if (!isBrowser()) return;
+  const returnSession = {
+    token: getAccessToken(),
+    user: getUser(),
+    org: getOrganization(),
+    role: getRole(),
+  };
+  window.localStorage.setItem(RETURN_SESSION_KEY, JSON.stringify(returnSession));
+  window.localStorage.setItem(IMPERSONATING_KEY, JSON.stringify({
+    email: targetUser.email,
+    name: targetUser.name || null,
+  } as ImpersonatingInfo));
+  establishSession(targetToken, targetUser, targetOrg, targetRole);
+}
+
+export function stopImpersonation(): void {
+  if (!isBrowser()) return;
+  const raw = window.localStorage.getItem(RETURN_SESSION_KEY);
+  if (raw) {
+    try {
+      const { token, user, org, role } = JSON.parse(raw);
+      if (token) setAccessToken(token);
+      if (user) setUser(user);
+      if (org) setOrganization(org);
+      if (role) setRole(role);
+      touchActivity();
+    } catch { /* fallback: clear everything */ clearSession(); }
+  }
+  window.localStorage.removeItem(IMPERSONATING_KEY);
+  window.localStorage.removeItem(RETURN_SESSION_KEY);
 }
 
 // ---------- Logout ----------

@@ -91,7 +91,7 @@ export default function UnauthenticatedHomePage() {
             <HeroFadeIn delay={0.9} className="mt-16 text-center">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-2xl mx-auto">
                 {[
-                  { value: "5", label: "Scan engines" },
+                  { value: "9", label: "Scan engines" },
                   { value: "3", label: "Scan profiles" },
                   { value: "6+", label: "Integration types" },
                   { value: "100%", label: "API coverage" },
@@ -114,7 +114,7 @@ export default function UnauthenticatedHomePage() {
                 <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">Try it now</span>
                 <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">See it in action — no signup needed</h2>
                 <p className="mt-4 text-base text-white/40 max-w-xl mx-auto">
-                  Run a quick scan or discovery against any domain to see what Nano ASM can find.
+                  Run a quick scan or discovery against any domain to see what Nano EASM can find.
                   Create a free account to save results and unlock full features.
                 </p>
               </div>
@@ -144,8 +144,8 @@ export default function UnauthenticatedHomePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {[
-                { icon: Radar, title: "Asset Discovery", desc: "Enumerate subdomains, IPs, and services from a root domain. CT logs, DNS brute-forcing, and passive intelligence — all automated.", color: "from-cyan-500/20 to-cyan-500/5", iconColor: "text-cyan-400" },
-                { icon: Search, title: "Multi-Engine Scanning", desc: "Scan with Shodan, Nmap, Nuclei, and SSLyze. Choose Quick, Standard, or Deep profiles — or schedule recurring scans daily, weekly, or monthly.", color: "from-purple-500/20 to-purple-500/5", iconColor: "text-purple-400" },
+                { icon: Radar, title: "Asset Discovery", desc: "Enumerate subdomains, IPs, and services from a root domain using multiple passive and active intelligence sources — all automated.", color: "from-cyan-500/20 to-cyan-500/5", iconColor: "text-cyan-400" },
+                { icon: Search, title: "Multi-Engine Scanning", desc: "Scan with 9 purpose-built engines across network, web, and certificate attack surfaces. Choose Quick, Standard, or Deep profiles — or schedule recurring scans.", color: "from-purple-500/20 to-purple-500/5", iconColor: "text-purple-400" },
                 { icon: BarChart3, title: "Exposure Scoring", desc: "Quantified risk scores per asset and group with logarithmic severity weighting. Track score changes over time with trend analysis.", color: "from-amber-500/20 to-amber-500/5", iconColor: "text-amber-400" },
                 { icon: Bell, title: "Continuous Monitoring", desc: "Monitor assets and groups for changes. Configurable check intervals from every 12 hours to every 5 days. Fine-tune alerts with custom rules.", color: "from-rose-500/20 to-rose-500/5", iconColor: "text-rose-400" },
                 { icon: ClipboardCheck, title: "Remediation Workflow", desc: "Track findings through open → in progress → resolved. Accept risk with justification, suppress false positives, and measure time-to-remediate.", color: "from-emerald-500/20 to-emerald-500/5", iconColor: "text-emerald-400" },
@@ -200,6 +200,61 @@ export default function UnauthenticatedHomePage() {
             </div>
           </div>
         </section>
+
+        {/* ================= COMMUNITY PREVIEW (shown when billing is off) ================= */}
+        {!BILLING_ENABLED && (
+        <section className="py-24 sm:py-32">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <FadeInOnScroll>
+              <div className="relative overflow-hidden rounded-3xl border border-teal-500/20 bg-gradient-to-br from-teal-500/[0.06] via-[#060b18] to-[#060b18] px-8 py-14 sm:px-16">
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute top-0 right-0 w-[400px] h-[300px] bg-teal-500/[0.05] rounded-full blur-3xl" />
+                </div>
+                <div className="relative flex flex-col lg:flex-row items-center lg:items-start gap-10">
+                  {/* Left: badge + text */}
+                  <div className="flex-1 text-center lg:text-left">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-teal-500/30 bg-teal-500/[0.08] px-3 py-1 mb-5">
+                      <span className="relative flex h-2 w-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal-400 opacity-75" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-teal-400" />
+                      </span>
+                      <span className="text-xs font-semibold text-teal-400 tracking-wide">Community Preview — Free</span>
+                    </div>
+                    <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                      Free to use,<br /><span className="text-white/50">no credit card ever</span>
+                    </h2>
+                    <p className="mt-4 text-base text-white/40 max-w-lg">
+                      Nano EASM is open source and completely free during community preview.
+                      All plans are available at no cost — upgrade to unlock higher limits as your needs grow.
+                    </p>
+                    <div className="mt-8 flex flex-col sm:flex-row items-center lg:items-start gap-3">
+                      <Link href="/register" className="group inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/30 hover:bg-teal-500 transition-all">
+                        Create free account <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                      </Link>
+                    </div>
+                  </div>
+                  {/* Right: plan limit cards */}
+                  <div className="w-full lg:w-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3 lg:min-w-[440px]">
+                    {[
+                      { plan: "Free", detail: "2 assets · 4 scans/mo", color: "border-white/[0.06]" },
+                      { plan: "Starter", detail: "15 assets · 500 scans/mo", color: "border-white/[0.06]" },
+                      { plan: "Professional", detail: "100 assets · 5k scans/mo", color: "border-teal-500/20 bg-teal-500/[0.04]" },
+                      { plan: "Ent. Silver", detail: "15k assets · unlimited scans", color: "border-white/[0.06]" },
+                      { plan: "Ent. Gold", detail: "50k assets · unlimited scans", color: "border-white/[0.06]" },
+                    ].map(({ plan, detail, color }) => (
+                      <div key={plan} className={`rounded-xl border ${color} bg-white/[0.02] px-4 py-3`}>
+                        <div className="text-xs font-semibold text-white/70">{plan}</div>
+                        <div className="text-[11px] text-white/30 mt-0.5">{detail}</div>
+                        <div className="mt-1.5 text-[10px] font-semibold text-teal-400">Free ↗</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </FadeInOnScroll>
+          </div>
+        </section>
+        )}
 
         {/* ================= PRICING (billing-gated) ================= */}
         {BILLING_ENABLED && (
@@ -273,7 +328,7 @@ export default function UnauthenticatedHomePage() {
                   <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
                     Start securing your<span className="bg-gradient-to-r from-teal-400/80 to-cyan-400/70 bg-clip-text text-transparent"> attack surface</span>
                   </h2>
-                  <p className="mt-4 text-base text-white/40 max-w-lg mx-auto">Join security teams using Nano ASM to discover, scan, and continuously monitor their external exposure.</p>
+                  <p className="mt-4 text-base text-white/40 max-w-lg mx-auto">Join security teams using Nano EASM to discover, scan, and continuously monitor their external exposure.</p>
                   <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
                     <Link href="/register" className="group inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/30 hover:bg-teal-500 transition-all">
                       Create free account<ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -299,12 +354,11 @@ export default function UnauthenticatedHomePage() {
                 </svg>
                 <span className="text-sm font-semibold">
                   Nano<span className="text-teal-400">EASM</span>
-                  <span className="text-[10px] text-white/40 font-medium ml-1 uppercase tracking-wider">EASM</span>
                 </span>
               </Link>
               <p className="mt-2 text-sm text-white/30">
                 External Attack Surface Management by{" "}
-                <a href="https://nanoasm.com" className="text-teal-400/70 hover:text-teal-400 transition-colors">Nano ASM</a>.
+                <a href="https://nanoasm.com" className="text-teal-400/70 hover:text-teal-400 transition-colors">Nano EASM</a>.
               </p>
             </div>
             <div className="flex items-center gap-8 text-sm text-white/30">

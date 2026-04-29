@@ -3,13 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-  "dev": "next dev --hostname 0.0.0.0 --webpack",
-  "build": "next build",
-  "start": "next start"
- },
+    "dev": "next dev --hostname 0.0.0.0 --webpack",
+    "build": "next build",
+    "start": "next start"
+  },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
     "clsx": "^2.1.1",
+    "country-list": "^2.4.1",
     "framer-motion": "^12.34.2",
     "lucide-react": "^0.563.0",
     "next": "^16.1.6",

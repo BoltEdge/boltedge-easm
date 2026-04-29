@@ -46,7 +46,7 @@ audit_bp = Blueprint("audit", __name__, url_prefix="/audit-log")
 
 def log_audit(
     *,
-    organization_id: int,
+    organization_id: int | None,
     user_id: int | None = None,
     user_email: str | None = None,
     action: str,
@@ -105,10 +105,11 @@ def log_audit(
             metadata_json=metadata,
             ip_address=ip_address,
         )
+        # Use a savepoint so a flush failure only rolls back this nested
+        # transaction, leaving the caller's outer transaction intact.
+        sp = db.session.begin_nested()
         db.session.add(entry)
-        # Don't commit here — let the caller's commit handle it.
-        # If the caller doesn't commit, flush to ensure it's in the transaction.
-        db.session.flush()
+        sp.commit()
 
     except Exception as e:
         logger.warning(f"Failed to write audit log: {e}")
