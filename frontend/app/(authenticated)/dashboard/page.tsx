@@ -1,5 +1,3 @@
-// app/(authenticated)/dashboard/page.tsx
-// CLOUD: Added Cloud Assets summary card showing cloud finding counts by sub-type
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -7,8 +5,8 @@ import Link from "next/link";
 import {
   LayoutDashboard, Globe, AlertTriangle, Shield, ShieldAlert,
   ArrowUpRight, ArrowDown, ArrowUp, BellRing, Eye, CheckCircle2,
-  Clock, RefreshCcw, Activity, TrendingUp, TrendingDown,
-  Minus, Play, Zap, Search, Loader2, Target, Layers,
+  RefreshCcw, Activity, TrendingUp, TrendingDown,
+  Minus, Play, Zap, Search, Target, Layers,
   Cloud, Database, Box, Cpu,
 } from "lucide-react";
 
@@ -244,7 +242,6 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recentAlerts, setRecentAlerts] = useState<any[]>([]);
-  const [discoveryStats, setDiscoveryStats] = useState<any>(null);
   const planLimit = usePlanLimit();
 
   const loadDashboard = useCallback(async (isRefresh = false) => {
@@ -260,12 +257,6 @@ export default function DashboardPage() {
             setRecentAlerts(res?.alerts || (Array.isArray(res) ? res : []));
           } catch {}
         })(),
-        (async () => {
-          try {
-            const res: any = await apiFetch("/discovery/jobs?limit=3");
-            setDiscoveryStats(res);
-          } catch {}
-        })(),
       ]);
 
       if (summary.status === "fulfilled") setData(summary.value);
@@ -277,6 +268,7 @@ export default function DashboardPage() {
     } finally { setLoading(false); setRefreshing(false); }
   }, [planLimit]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadDashboard(); }, []);
 
   // ── Derived data ──
@@ -351,6 +343,88 @@ export default function DashboardPage() {
   }
 
   const assets = data.assets || { total: 0, groups: 0, distribution: {} };
+
+  // ── Getting started (no assets yet) ──
+  if (assets.total === 0) {
+    return (
+      <div className="flex-1 overflow-y-auto bg-background">
+        <div className="p-6 lg:p-8 max-w-[860px] mx-auto">
+          <div className="mb-8">
+            <div className="flex items-center gap-3">
+              <LayoutDashboard className="h-6 w-6 text-primary" />
+              <h1 className="text-2xl font-semibold text-foreground">Security Dashboard</h1>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">Real-time overview of your attack surface and security posture</p>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card/40 overflow-hidden">
+            <div className="px-8 pt-10 pb-6 text-center border-b border-border">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-7 h-7 text-primary" />
+              </div>
+              <h2 className="text-xl font-semibold text-foreground">Welcome to Nano EASM</h2>
+              <p className="mt-2 text-sm text-muted-foreground max-w-sm mx-auto">
+                You're all set. Follow these three steps to start monitoring your attack surface.
+              </p>
+            </div>
+
+            <div className="divide-y divide-border">
+              {[
+                {
+                  step: 1,
+                  icon: <Globe className="w-5 h-5 text-cyan-400" />,
+                  bg: "bg-cyan-500/10",
+                  title: "Add your first asset",
+                  description: "Add a root domain (e.g. example.com) to start tracking your attack surface.",
+                  href: "/assets",
+                  cta: "Add asset",
+                },
+                {
+                  step: 2,
+                  icon: <Search className="w-5 h-5 text-violet-400" />,
+                  bg: "bg-violet-500/10",
+                  title: "Run discovery",
+                  description: "Discover subdomains, IPs, and exposed services automatically.",
+                  href: "/discovery",
+                  cta: "Run discovery",
+                },
+                {
+                  step: 3,
+                  icon: <Zap className="w-5 h-5 text-primary" />,
+                  bg: "bg-primary/10",
+                  title: "Scan for vulnerabilities",
+                  description: "Run a vulnerability scan to find misconfigurations and security issues.",
+                  href: "/scan/initiate",
+                  cta: "Start scan",
+                },
+              ].map(({ step, icon, bg, title, description, href, cta }) => (
+                <div key={step} className="flex items-center gap-5 px-8 py-5">
+                  <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
+                    {icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Step {step}</span>
+                    </div>
+                    <p className="text-sm font-medium text-foreground">{title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+                  </div>
+                  <Link
+                    href={href}
+                    className="shrink-0 h-9 px-4 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-sm font-medium transition-colors flex items-center gap-1.5"
+                  >
+                    {cta}
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <PlanLimitDialog {...planLimit} />
+      </div>
+    );
+  }
   const scans = data.scans || { active: 0, coverage: 0 };
   const findings = data.findings || { total: 0, open: 0, bySeverity: {}, remediationRate: 0, trend7d: [] };
   const monitoring = data.monitoring || { openAlerts: 0, monitored: 0 };
@@ -407,7 +481,7 @@ export default function DashboardPage() {
               icon={<AlertTriangle className="h-5 w-5 text-red-400" />}
               label="Open Findings"
               value={findings.open ?? 0}
-              sub={critHigh > 0 ? `${findings.bySeverity?.critical || 0} critical · ${findings.bySeverity?.high || 0} high` : "No critical issues"}
+              sub={critHigh > 0 ? `${findings.bySeverity?.critical || 0} critical · ${findings.bySeverity?.high || 0} high` : findings.remediationRate > 0 ? `${Math.round(findings.remediationRate * 100)}% remediated` : "No critical issues"}
               subColor={critHigh > 0 ? "text-red-400" : "text-emerald-400"}
               href="/findings"
               trend={trendDirection.dir}
