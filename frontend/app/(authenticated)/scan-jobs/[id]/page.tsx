@@ -1,7 +1,3 @@
-// FILE: app/(authenticated)/scan/[id]/page.tsx
-// Scan Job Detail — results, findings, exposure score, Cloud Assets section
-// CLOUD: Added cloud category, cloud sub-icons, and Cloud Assets results panel
-// Phase 1 fix: Injects job asset context into findings for the detail dialog
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -12,7 +8,7 @@ import {
   ChevronDown, ChevronRight,
 } from "lucide-react";
 
-import { apiFetch } from "../../../lib/api";
+import { apiFetch, bulkIgnoreFindings } from "../../../lib/api";
 import { Button } from "../../../ui/button";
 import { Input } from "../../../ui/input";
 import { SeverityBadge } from "../../../SeverityBadge";
@@ -181,6 +177,13 @@ export default function ScanJobDetailPage() {
       _jobGroupName: job?.groupName || job?.group_name || null,
     });
     setDetailsOpen(true);
+  }
+
+  async function handleToggleIgnore(id: string, ignored: boolean) {
+    try {
+      await bulkIgnoreFindings({ ids: [id], ignored });
+      setFindings((prev) => prev.map((f) => String(f.id) === id ? { ...f, status: ignored ? "suppressed" : "open" } : f));
+    } catch {}
   }
 
   const loadJob = useCallback(async () => {
@@ -711,7 +714,7 @@ export default function ScanJobDetailPage() {
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
         finding={selected}
-        onToggleIgnore={() => {}}
+        onToggleIgnore={handleToggleIgnore}
       />
     </div>
   );

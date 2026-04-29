@@ -1,12 +1,9 @@
-// FILE: app/(authenticated)/scan/schedules/page.tsx
-// Scan Schedules — create, toggle, delete, run-now scheduled scans
-// ✅ M9 RBAC: permission-gated actions via useOrg().canDo()
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Calendar, Play, Clock, Search, RefreshCcw, Trash2, Plus, Info,
-  Shield, ShieldCheck, ShieldAlert, Target, Zap, Timer, Check,
+  Shield, ShieldCheck, ShieldAlert, Target, Zap,
   ToggleLeft, ToggleRight, Pause, CheckCircle2,
 } from "lucide-react";
 import { Button } from "../../../ui/button";

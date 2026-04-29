@@ -1,6 +1,3 @@
-// FILE: app/(authenticated)/monitoring/settings/page.tsx
-// Notification Settings — email, in-app, webhook, severity filter, timing
-// ✅ M9 RBAC: save gated by edit_monitors permission
 "use client";
 
 import React, { useEffect, useState } from "react";

@@ -1,6 +1,3 @@
-// FILE: app/(authenticated)/monitoring/page.tsx
-// Monitoring page — Overview tab, Alerts tab, trial banner, upgrade prompt
-// ✅ M9 RBAC: permission-gated actions via useOrg().canDo()
 "use client";
 
 import React, { useEffect, useMemo, useState, useCallback } from "react";

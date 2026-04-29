@@ -1,9 +1,3 @@
-// FILE: app/(authenticated)/findings/page.tsx
-// Exposure Findings — list, filter, status workflow, bulk actions, export
-// F2: Full status workflow (open, in_progress, accepted_risk, suppressed, resolved)
-// M9 RBAC: edit_findings gates status/bulk actions, export_scan_results gates export
-// CLOUD: Added cloud category + sub-type icons for cloud asset findings
-// Phase 1: Skeleton loading state on initial page load
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
@@ -86,10 +80,6 @@ function getCategory(f: any): string {
   return "other";
 }
 
-/**
- * Determine cloud sub-type from template_id for icon display.
- * Returns: "storage" | "registry" | "serverless" | "cdn" | null
- */
 function getCloudSubType(f: any): string | null {
   const templateId = String(f.templateId ?? f.template_id ?? "").toLowerCase();
   if (templateId.includes("storage")) return "storage";
@@ -106,7 +96,6 @@ function getCloudSubType(f: any): string | null {
   return null;
 }
 
-/** Returns the appropriate icon component for a cloud sub-type */
 function CloudSubIcon({ subType, className }: { subType: string | null; className?: string }) {
   switch (subType) {
     case "storage":    return <Database className={cn("w-3.5 h-3.5 text-sky-400 shrink-0", className)} />;
@@ -221,10 +210,6 @@ export default function FindingsPage() {
     if (banner) { const t = setTimeout(() => setBanner(null), 4000); return () => clearTimeout(t); }
   }, [banner]);
 
-  // ────────────────────────────────────────────
-  // Data Loading
-  // ────────────────────────────────────────────
-
   const loadFindings = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -259,14 +244,9 @@ export default function FindingsPage() {
 
   useEffect(() => { loadFindings(); }, [loadFindings]);
 
-  // Total category count for the "All" button
   const totalCategoryCount = useMemo(() => {
     return Object.values(categoryCounts).reduce((a, b) => a + b, 0);
   }, [categoryCounts]);
-
-  // ────────────────────────────────────────────
-  // Selection
-  // ────────────────────────────────────────────
 
   const allSelected = findings.length > 0 && findings.every((f: any) => selectedIds.has(String(f.id)));
   const someSelected = selectedIds.size > 0;
@@ -284,10 +264,6 @@ export default function FindingsPage() {
     else setSelectedIds(new Set(findings.map((f: any) => String(f.id))));
   }
 
-  // ────────────────────────────────────────────
-  // Status Change (single finding via dialog)
-  // ────────────────────────────────────────────
-
   async function handleStatusChange(id: string, newStatus: string, notes?: string) {
     try {
       const updated = await apiFetch<any>(`/findings/${id}`, {
@@ -302,10 +278,6 @@ export default function FindingsPage() {
       setBanner({ kind: "err", text: e?.message || "Failed to update status" });
     }
   }
-
-  // ────────────────────────────────────────────
-  // Bulk Status Change
-  // ────────────────────────────────────────────
 
   function openBulkAction(status: string) {
     setBulkActionStatus(status);
@@ -345,10 +317,6 @@ export default function FindingsPage() {
     }
   }
 
-  // ────────────────────────────────────────────
-  // Export
-  // ────────────────────────────────────────────
-
   async function handleExport() {
     const params = new URLSearchParams();
     if (severityFilter !== "all") params.set("severity", severityFilter);
@@ -359,7 +327,7 @@ export default function FindingsPage() {
 
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("asm_access_token") : null;
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
       const resp = await fetch(`${baseUrl}/findings/export?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -379,11 +347,6 @@ export default function FindingsPage() {
 
   const totalPages = Math.ceil(total / perPage);
 
-  // ────────────────────────────────────────────
-  // Render
-  // ────────────────────────────────────────────
-
-  // Full-page skeleton on initial load (no data yet)
   if (loading && findings.length === 0) return <FindingsPageSkeleton />;
 
   return (
@@ -601,7 +564,6 @@ export default function FindingsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {/* Inline loading indicator for filter/page changes (data already loaded once) */}
               {loading && findings.length > 0 && (
                 <tr>
                   <td colSpan={canEdit ? 7 : 6} className="px-4 py-2 text-center">
@@ -651,7 +613,6 @@ export default function FindingsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        {/* Cloud sub-type icon */}
                         {isCloud && <CloudSubIcon subType={cloudSub} />}
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">

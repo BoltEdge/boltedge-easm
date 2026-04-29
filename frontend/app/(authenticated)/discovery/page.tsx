@@ -1,11 +1,9 @@
-// FILE: app/(authenticated)/discovery/page.tsx
-// Discovery Engine v2 — async job-based discovery with multi-job tracking
 "use client";
 
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
   Radar, Search, FolderPlus, Check, Clock, RefreshCcw, Trash2,
-  Info, Loader2, ArrowLeft, ChevronRight, Eye, Play,
+  Info, Loader2, ArrowLeft, EyeOff, Eye, Play,
 } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
@@ -93,6 +91,7 @@ export default function DiscoveryPage() {
     } catch {}
   }, [selectedGroupId]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refreshJobs(); refreshGroups(); loadProfiles(); }, []);
 
   async function loadProfiles() {
@@ -494,6 +493,7 @@ export default function DiscoveryPage() {
             onToggleTag={handleToggleTag}
             onBulkTag={handleBulkTag}
             onIgnoreSelected={handleIgnoreSelected}
+            onIgnoreSingle={handleIgnoreSingle}
           />}
 
           {/* ── Jobs History (always visible) ── */}
@@ -593,7 +593,7 @@ function JobDetailView({ job, filteredAssets, typeCounts, allTags, tagFilter, se
   showInScopeOnly, setShowInScopeOnly, hideSeen, setHideSeen,
   selectedIds, toggleSelect, selectAll, canCreate, isActive,
   onBack, onDelete, onCancel, onOpenAddDialog,
-  onToggleTag, onBulkTag, onIgnoreSelected,
+  onToggleTag, onBulkTag, onIgnoreSelected, onIgnoreSingle,
 }: any) {
 
   const TAG_COLORS: Record<string, string> = {
@@ -748,6 +748,7 @@ function JobDetailView({ job, filteredAssets, typeCounts, allTags, tagFilter, se
                 <th className="text-left p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tags</th>
                 <th className="text-left p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
                 <th className="text-left p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">IPs</th>
+                <th className="p-4 w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -785,10 +786,20 @@ function JobDetailView({ job, filteredAssets, typeCounts, allTags, tagFilter, se
                           : <span className="text-xs text-muted-foreground">Known</span>}
                   </td>
                   <td className="p-4 text-xs text-muted-foreground font-mono">{(asset.resolvedIps || []).join(", ") || "—"}</td>
+                  <td className="p-4">
+                    {!asset.addedToInventory && !asset.isIgnored && !(asset.tags || []).includes("ignored") && (
+                      <button
+                        onClick={() => onIgnoreSingle(asset.id)}
+                        title="Mark as seen"
+                        className="p-1.5 rounded text-muted-foreground/40 hover:text-zinc-400 hover:bg-zinc-500/10 transition-colors">
+                        <EyeOff className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
               {filteredAssets.length === 0 && (
-                <tr><td colSpan={canCreate ? 6 : 5} className="p-8 text-center text-sm text-muted-foreground">
+                <tr><td colSpan={canCreate ? 7 : 6} className="p-8 text-center text-sm text-muted-foreground">
                   {job.totalFound === 0 ? (isActive ? "Discovery in progress..." : "No assets discovered.") : "No assets match your filters."}
                 </td></tr>
               )}

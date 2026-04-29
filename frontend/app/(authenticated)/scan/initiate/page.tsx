@@ -1,6 +1,3 @@
-// FILE: app/(authenticated)/scan/initiate/page.tsx
-// Initiate Scan — profile selector, asset search, group browse, start scan
-// ✅ M9 RBAC: start_scans + bulk_scan permissions, isPlanError handling
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";

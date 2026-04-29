@@ -1,5 +1,5 @@
 # docker-compose.yml
-# BoltEdge EASM — Production Stack
+# Nano EASM — Production Stack
 # Joins shared boltedge-network for Nginx routing
 
 services:

@@ -1,6 +1,3 @@
-// FILE: app/(authenticated)/monitoring/tuning/page.tsx
-// Tuning Rules — create, toggle, delete tuning rules
-// ✅ M9 RBAC: permission-gated actions via useOrg().canDo()
 "use client";
 
 import React, { useEffect, useMemo, useState, useCallback } from "react";

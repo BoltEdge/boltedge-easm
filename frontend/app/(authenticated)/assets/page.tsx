@@ -124,6 +124,7 @@ export default function Page() {
     } finally { setLoading(false); setRefreshing(false); }
   }, [planLimit]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadData(); }, []);
 
   const assetsByGroupId = useMemo(() => {
@@ -394,7 +395,8 @@ export default function Page() {
         <DialogContent className="bg-card border-border">
           <DialogHeader><DialogTitle className="text-foreground">Delete Asset Group</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
-            <p className="text-muted-foreground">Are you sure you want to delete <span className="text-foreground font-semibold">{deletingGroup?.name}</span>? This action cannot be undone.</p>
+            <p className="text-muted-foreground">Are you sure you want to delete <span className="text-foreground font-semibold">{deletingGroup?.name}</span>?</p>
+            <p className="text-sm text-red-400 mt-1">All assets inside this group will also be permanently deleted. This cannot be undone.</p>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => { setDeletingGroup(null); setIsDeleteOpen(false); }} className="flex-1 border-border text-foreground hover:bg-accent">Cancel</Button>
               <Button onClick={confirmDelete} className="flex-1 bg-[#ef4444] hover:bg-[#dc2626] text-white">Delete Group</Button>

@@ -493,6 +493,8 @@ class Monitor(db.Model):
     last_scan_job_id = db.Column(db.Integer, db.ForeignKey("scan_job.id", ondelete="SET NULL"), nullable=True)
     last_checked_at = db.Column(db.DateTime, nullable=True)
     next_check_at = db.Column(db.DateTime, nullable=True)
+    # Per-asset scan tracking for group monitors: {str(asset_id): last_compared_scan_job_id}
+    last_scan_job_ids = db.Column(db.JSON, nullable=True, default=dict)
 
     created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
     updated_at = db.Column(db.DateTime, nullable=False, default=now_utc, onupdate=now_utc)

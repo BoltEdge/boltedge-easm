@@ -1,15 +1,13 @@
-// FILE: app/(authenticated)/scan/page.tsx
-// Scan Jobs — list all scan jobs with status, search, auto-refresh
-// ✅ M9 RBAC: permission-gated actions via useOrg().canDo()
 "use client";
 
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
-  Activity, Clock, RefreshCcw, Trash2, Search, ExternalLink,
+  Activity, Clock, RefreshCcw, Trash2, Search, Eye,
   CheckCircle2, XCircle, Loader2, AlertCircle, Shield,
 } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../ui/dialog";
 import { useOrg } from "../contexts/OrgContext";
 import { usePlanLimit, PlanLimitDialog } from "../../ui/plan-limit-dialog";
 import { getScanJobs, deleteScanJob, isPlanError } from "../../lib/api";
@@ -57,6 +55,8 @@ export default function ScanJobsPage() {
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchFilter, setSearchFilter] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -69,16 +69,18 @@ export default function ScanJobsPage() {
   useEffect(() => { if (!jobs.some((j) => j.status === "running" || j.status === "queued")) return; const iv = setInterval(load, 5000); return () => clearInterval(iv); }, [jobs, load]);
   useEffect(() => { if (banner) { const t = setTimeout(() => setBanner(null), 5000); return () => clearTimeout(t); } }, [banner]);
 
-  async function handleDelete(jobId: string) {
-    if (!confirm("Delete this scan job?")) return;
+  async function confirmDelete() {
+    if (!deleteTarget) return;
     try {
-      await deleteScanJob(jobId);
-      setJobs((p) => p.filter((j) => String(j.id) !== jobId));
+      setDeleting(true);
+      await deleteScanJob(deleteTarget.id);
+      setJobs((p) => p.filter((j) => String(j.id) !== deleteTarget.id));
       setBanner({ kind: "ok", text: "Deleted." });
+      setDeleteTarget(null);
     } catch (e: any) {
-      if (isPlanError(e)) planLimit.handle(e.planError);
+      if (isPlanError(e)) { setDeleteTarget(null); planLimit.handle(e.planError); }
       else setBanner({ kind: "err", text: e?.message || "Failed." });
-    }
+    } finally { setDeleting(false); }
   }
 
   const filtered = useMemo(() => {
@@ -152,8 +154,8 @@ export default function ScanJobsPage() {
                       <td className="p-4"><span className="text-sm text-muted-foreground">{formatWhen(job.startedAt || job.createdAt)}</span></td>
                       <td className="p-4"><span className="text-sm text-muted-foreground">{job.finishedAt ? formatWhen(job.finishedAt) : job.status === "running" ? "In progress..." : "-"}</span></td>
                       <td className="p-4"><div className="flex items-center justify-end gap-2">
-                        {job.status === "completed" && <a href={`/scan-jobs/${job.id}`}><Button size="sm" variant="outline" className="border-primary/50 text-primary hover:bg-primary/10"><ExternalLink className="w-3 h-3 mr-1" />Details</Button></a>}
-                        {canDelete && (job.status === "completed" || job.status === "failed") && <Button size="sm" variant="outline" onClick={() => handleDelete(String(job.id))} className="border-red-500/50 text-red-500 hover:bg-red-500/10"><Trash2 className="w-3 h-3" /></Button>}
+                        {job.status === "completed" && <a href={`/scan-jobs/${job.id}`}><Button size="sm" variant="outline" className="border-primary/50 text-primary hover:bg-primary/10"><Eye className="w-3 h-3 mr-1" />Details</Button></a>}
+                        {canDelete && (job.status === "completed" || job.status === "failed") && <Button size="sm" variant="outline" onClick={() => setDeleteTarget({ id: String(job.id), label: job.assetValue || `Asset #${job.assetId}` })} className="border-red-500/50 text-red-500 hover:bg-red-500/10"><Trash2 className="w-3 h-3" /></Button>}
                       </div></td>
                     </tr>
                   );
@@ -163,6 +165,17 @@ export default function ScanJobsPage() {
           )}
         </div>
       </div>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
+        <DialogContent className="bg-card border-border text-foreground sm:max-w-[440px]">
+          <DialogHeader><DialogTitle>Delete Scan Job</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Delete the scan job for <span className="font-mono text-foreground">{deleteTarget?.label}</span>? This will remove all results.</p>
+          <div className="flex gap-3 justify-end pt-4">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} className="border-border text-foreground hover:bg-accent">Cancel</Button>
+            <Button onClick={confirmDelete} disabled={deleting} className="bg-[#ef4444] hover:bg-[#dc2626] text-white">{deleting ? "Deleting..." : "Delete"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <PlanLimitDialog {...planLimit} />
     </main>

@@ -67,21 +67,30 @@ def _now() -> datetime:
 def _compute_next_check(frequency: str, from_dt: datetime | None = None) -> datetime:
     """Compute the next check time based on frequency."""
     base = from_dt or _now()
-    if frequency == "daily":
+    if frequency == "every_12_hours":
+        return base + timedelta(hours=12)
+    elif frequency == "daily":
         return base + timedelta(days=1)
     elif frequency == "every_2_days":
         return base + timedelta(days=2)
+    elif frequency == "every_5_days":
+        return base + timedelta(days=5)
     elif frequency == "weekly":
         return base + timedelta(weeks=1)
-    return base + timedelta(days=2)  # default
+    return base + timedelta(days=2)
 
 
 def _allowed_frequency(org: Organization) -> str:
-    """Return the monitoring frequency allowed by the org's plan."""
+    """Return the highest monitoring frequency the org's plan allows."""
     plan = (org.plan or "free").lower()
-    if plan == "enterprise":
+    if plan in ("enterprise_gold", "enterprise gold"):
+        return "every_12_hours"
+    if plan in ("enterprise_silver", "enterprise silver"):
         return "daily"
-    # Pro and free-trial both get every_2_days
+    if plan == "professional":
+        return "every_2_days"
+    if plan == "starter":
+        return "every_5_days"
     return "every_2_days"
 
 
@@ -121,7 +130,7 @@ def _monitor_to_ui(m: Monitor) -> dict:
         "enabled": m.enabled,
         "lastCheckedAt": m.last_checked_at.isoformat() if m.last_checked_at else None,
         "nextCheckAt": m.next_check_at.isoformat() if m.next_check_at else None,
-        "openAlerts": open_alerts,
+        "openAlertCount": open_alerts,
         "createdAt": m.created_at.isoformat() if m.created_at else None,
     }
 

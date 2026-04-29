@@ -156,12 +156,21 @@ def _create_in_app_notification(alert, org_id: int) -> None:
 
 def _send_webhook_notification(alert, webhook_url: str) -> None:
     """
-    POST alert data to a webhook URL (Slack, Discord, PagerDuty, etc.).
-
-    TODO: Make actual HTTP request with retries.
-    For now, logs the notification.
+    POST alert data to webhook_url with up to 3 attempts on transient failures.
+    Slack incoming-webhook URLs are detected by hostname and get a `text` field
+    alongside the standard payload so the message renders without extra config.
     """
     import json
+    import requests
+    from urllib.parse import urlparse
+
+    severity_emoji = {
+        "critical": "🔴",
+        "high": "🟠",
+        "medium": "🟡",
+        "low": "🔵",
+        "info": "⚪",
+    }.get(alert.severity, "⚪")
 
     payload = {
         "event": "monitor_alert",
@@ -179,20 +188,38 @@ def _send_webhook_notification(alert, webhook_url: str) -> None:
         },
     }
 
-    logger.info(
-        "WEBHOOK → %s | %s",
-        webhook_url,
-        json.dumps(payload, indent=None),
-    )
-    # IMPLEMENTATION:
-    # import requests
-    # resp = requests.post(
-    #     webhook_url,
-    #     json=payload,
-    #     headers={"Content-Type": "application/json"},
-    #     timeout=10,
-    # )
-    # resp.raise_for_status()
+    # Slack incoming webhooks need a top-level `text` field to render anything
+    host = urlparse(webhook_url).hostname or ""
+    if "slack.com" in host:
+        payload["text"] = (
+            f"{severity_emoji} *{alert.title}*\n"
+            f"Asset: `{alert.asset_value}`  |  Severity: `{alert.severity}`\n"
+            + (f"{alert.summary}" if alert.summary else "")
+        )
+
+    last_exc: Exception | None = None
+    for attempt in range(1, 4):
+        try:
+            resp = requests.post(
+                webhook_url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            logger.info(
+                "Webhook delivered (attempt %d) → %s [%s]",
+                attempt, webhook_url, resp.status_code,
+            )
+            return
+        except requests.exceptions.RequestException as exc:
+            last_exc = exc
+            logger.warning(
+                "Webhook attempt %d/%d failed for alert %s: %s",
+                attempt, 3, alert.id, exc,
+            )
+
+    raise RuntimeError(f"Webhook delivery failed after 3 attempts: {last_exc}")
 
 
 # ---------------------------------------------------------------------------

@@ -1,15 +1,12 @@
-// app/(authenticated)/tools/page.tsx
-// Nano ASM Security Tools — SecToolKit-style investigation workspace
-// Resizable panels · flex-wrap canvas · maximize/expand · JSON/CSV export
 "use client";
 
 import React, { useState, useCallback, useRef } from "react";
 import {
   Lock, Globe, Shield, FileText, Search, RefreshCcw,
   Loader2, AlertTriangle, CheckCircle2,
-  Info, ChevronDown, ChevronUp, Zap, Plug, Mail,
+  Info, ChevronDown, ChevronUp, Plug, Mail,
   FolderSearch, GitBranch, ExternalLink, X, Plus,
-  Play, Target, RotateCcw, Copy, Download,
+  Play, Target, Trash2, Copy, Download,
   Maximize2, Minimize2, AlertCircle, LayoutGrid, Server, GripVertical,
 } from "lucide-react";
 
@@ -295,10 +292,11 @@ const DEFAULT_TOOLS: ToolId[] = [];
    ═══════════════════════════════════════════════════════════════ */
 
 function ToolPanel({
-  panel, tool, globalTarget, canvasWidth,
+  panel, tool, globalTarget, canvasWidth, canvasRef,
   onRemove, onRun, onToggleExpand, onSetLocalTarget, onResize,
 }: {
   panel: PanelState; tool: ToolDef; globalTarget: string; canvasWidth: number;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
   onRemove: () => void; onRun: () => void;
   onToggleExpand: () => void; onSetLocalTarget: (v: string) => void;
   onResize: (w: number, h: number) => void;
@@ -314,7 +312,8 @@ function ToolPanel({
     resizeRef.current = { sx: e.clientX, sy: e.clientY, ow: panel.widthPct, oh: panel.heightPx };
     const onMove = (ev: MouseEvent) => {
       if (!resizeRef.current) return;
-      const dxPct = ((ev.clientX - resizeRef.current.sx) / (canvasWidth || 800)) * 100;
+      const currentWidth = canvasRef.current?.clientWidth || canvasWidth || 800;
+      const dxPct = ((ev.clientX - resizeRef.current.sx) / currentWidth) * 100;
       const dy = ev.clientY - resizeRef.current.sy;
       onResize(Math.min(MAX_W, Math.max(MIN_W, resizeRef.current.ow + dxPct)), Math.max(MIN_H, resizeRef.current.oh + dy));
     };
@@ -326,7 +325,10 @@ function ToolPanel({
   const handleCopyJson = () => { if (panel.result) navigator.clipboard.writeText(JSON.stringify(panel.result, null, 2)); };
   const handleExportCsv = () => {
     if (!panel.result) return;
-    const rows = Object.entries(panel.result).map(([k, v]) => `"${k}","${String(v ?? "").replace(/"/g, '""')}"`);
+    const rows = Object.entries(panel.result).map(([k, v]) => {
+      const cell = v === null || v === undefined ? "" : typeof v === "object" ? JSON.stringify(v) : String(v);
+      return `"${k}","${cell.replace(/"/g, '""')}"`;
+    });
     const blob = new Blob(["key,value\n" + rows.join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${tool.id}-results.csv`; a.click(); URL.revokeObjectURL(url);
   };
@@ -701,8 +703,8 @@ export default function ToolsPage() {
             {panels.length}/{MAX_PANELS}
             {runningCount > 0 && <span className="text-amber-400 ml-1">· {runningCount} running</span>}
           </span>
-          <button onClick={resetToDefaults} className="p-2 rounded-lg border border-white/[0.06] hover:bg-white/[0.04] text-muted-foreground hover:text-foreground transition-colors" title="Reset to defaults">
-            <RotateCcw size={13} />
+          <button onClick={resetToDefaults} className="p-2 rounded-lg border border-white/[0.06] hover:bg-red-500/10 hover:border-red-500/20 text-muted-foreground hover:text-red-400 transition-colors" title="Clear all panels">
+            <Trash2 size={13} />
           </button>
         </div>
 
@@ -730,7 +732,7 @@ export default function ToolsPage() {
                 const tool = TOOL_MAP[panel.toolId];
                 if (!tool) return null;
                 return (
-                  <ToolPanel key={panel.uid} panel={panel} tool={tool} globalTarget={globalTarget} canvasWidth={canvasWidth}
+                  <ToolPanel key={panel.uid} panel={panel} tool={tool} globalTarget={globalTarget} canvasWidth={canvasWidth} canvasRef={canvasRef}
                     onRemove={() => removePanel(panel.uid)} onRun={() => runTool(panel.uid)}
                     onToggleExpand={() => toggleExpand(panel.uid)} onSetLocalTarget={(v) => setLocalTarget(panel.uid, v)}
                     onResize={(w, h) => resizePanel(panel.uid, w, h)} />
