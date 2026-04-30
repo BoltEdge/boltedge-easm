@@ -33,7 +33,7 @@ from flask import Blueprint, request, jsonify, Response
 from sqlalchemy import or_, and_, func, case
 from app.extensions import db
 from app.models import Finding, Asset, AssetGroup
-from app.auth.decorators import require_auth, current_user_id, current_organization_id
+from app.auth.decorators import require_auth, allow_api_key, current_user_id, current_organization_id
 from app.auth.permissions import require_role, require_permission
 from app.audit.routes import log_audit
 
@@ -325,6 +325,7 @@ def _apply_status_filter(query, status: str | None):
 # GET /findings — all roles can view
 @findings_bp.get("")
 @require_auth
+@allow_api_key
 def list_findings():
     org_id = current_organization_id()
 
@@ -468,6 +469,7 @@ def list_findings():
 # GET /findings/<id> — all roles can view
 @findings_bp.get("/<int:finding_id>")
 @require_auth
+@allow_api_key
 def get_finding(finding_id: int):
     org_id = current_organization_id()
     f = _base_query(org_id).filter(Finding.id == finding_id).first()
@@ -479,6 +481,7 @@ def get_finding(finding_id: int):
 # PATCH /findings/<id> — analyst+ (status transitions)
 @findings_bp.patch("/<int:finding_id>")
 @require_auth
+@allow_api_key
 @require_role("analyst")
 def update_finding(finding_id: int):
     org_id = current_organization_id()
@@ -554,6 +557,84 @@ def update_finding(finding_id: int):
 
     db.session.commit()
     return jsonify(finding_to_ui(f)), 200
+
+
+# POST /findings/<id>/escalate — analyst+ (create a manual alert from a finding)
+@findings_bp.post("/<int:finding_id>/escalate")
+@require_auth
+@require_role("analyst")
+def escalate_finding(finding_id: int):
+    """Escalate a finding into a MonitorAlert. Routes through monitor.alert
+    notification rules so users get the alert in Slack/Jira/etc. The finding
+    itself stays untouched unless the caller passes acknowledge=true, in which
+    case it is moved to in_progress."""
+    org_id = current_organization_id()
+    uid = current_user_id()
+
+    f = (
+        db.session.query(Finding)
+        .join(Asset, Finding.asset_id == Asset.id)
+        .filter(Finding.id == finding_id, Asset.organization_id == org_id)
+        .options(db.joinedload(Finding.asset).joinedload(Asset.group))
+        .first()
+    )
+    if not f:
+        return jsonify(error="finding not found"), 404
+
+    body = request.get_json(silent=True) or {}
+    note = (body.get("note") or "").strip()[:500] or None
+    acknowledge = bool(body.get("acknowledge"))
+
+    # Build summary from finding + optional note
+    asset_value = f.asset.value if f.asset else None
+    group_name = f.asset.group.name if f.asset and f.asset.group else None
+    summary = f.description or ""
+    if note:
+        summary = (summary + f"\n\nEscalation note: {note}").strip()
+    summary = summary[:1000] or None
+
+    # Late import to avoid circular dep
+    from app.models import MonitorAlert
+    from app.monitoring.routes import dispatch_monitor_alert
+
+    alert = MonitorAlert(
+        organization_id=org_id,
+        monitor_id=None,
+        finding_id=f.id,
+        source="finding",
+        alert_type="manual",
+        template_id=f.finding_type,
+        title=f.title,
+        summary=summary,
+        severity=f.severity or "info",
+        asset_value=asset_value,
+        group_name=group_name,
+        status="open",
+    )
+    db.session.add(alert)
+    db.session.flush()
+
+    # Optionally move finding to in_progress so it's visibly being worked
+    if acknowledge and _derive_status(f) == "open":
+        _set_status(f, "in_progress", uid, notes="Escalated to alert", org_id=org_id)
+
+    log_audit(
+        organization_id=org_id,
+        user_id=uid,
+        action="finding.escalated",
+        category="finding",
+        target_type="finding",
+        target_id=str(f.id),
+        target_label=f.title,
+        description=f"Escalated finding '{f.title}' to alert #{alert.id}",
+        metadata={"alert_id": str(alert.id), "severity": alert.severity, "acknowledge": acknowledge},
+    )
+
+    db.session.commit()
+
+    dispatch_monitor_alert(alert, org_id)
+
+    return jsonify({"alertId": str(alert.id), "findingId": str(f.id), "severity": alert.severity}), 201
 
 
 # POST /findings/bulk-ignore — analyst+ (bulk suppress/unsuppress)
@@ -653,6 +734,7 @@ def bulk_resolve():
 # POST /findings/bulk-status — analyst+ (bulk set any status)
 @findings_bp.post("/bulk-status")
 @require_auth
+@allow_api_key
 @require_role("analyst")
 def bulk_status():
     """Set status on multiple findings at once. Supports all F2 statuses."""
@@ -703,6 +785,7 @@ def bulk_status():
 # GET /findings/export — admin+ (export_scan_results permission)
 @findings_bp.get("/export")
 @require_auth
+@allow_api_key
 @require_permission("export_scan_results")
 def export_findings():
     """Export findings as CSV with M7 enrichment fields and F2 status fields."""

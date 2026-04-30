@@ -31,7 +31,7 @@ try:
 except ImportError:
     _get_template = None
 from app.models import ScanJob, Asset, Finding, AssetGroup, ScanProfile
-from app.auth.decorators import require_auth, current_user_id, current_organization_id
+from app.auth.decorators import require_auth, allow_api_key, current_user_id, current_organization_id
 from app.auth.permissions import require_role, check_limit, check_scan_profile
 from app.audit.routes import log_audit
 
@@ -213,6 +213,7 @@ def extract_shodan_findings(shodan_results: dict) -> list:
 # POST /scan-jobs — analyst+ with scans_per_month limit + scan profile check
 @scan_jobs_bp.post("")
 @require_auth
+@allow_api_key
 @require_role("analyst")
 @check_limit("scans_per_month")
 @check_scan_profile()
@@ -280,6 +281,7 @@ def create_scan_job():
 # GET /scan-jobs — all roles can view
 @scan_jobs_bp.get("")
 @require_auth
+@allow_api_key
 def list_scan_jobs():
     org_id = current_organization_id()
 
@@ -299,6 +301,7 @@ def list_scan_jobs():
 # POST /scan-jobs/<id>/run — analyst+
 @scan_jobs_bp.post("/<job_id>/run")
 @require_auth
+@allow_api_key
 @require_role("analyst")
 def run_scan_job(job_id: str):
     """
@@ -509,6 +512,7 @@ def _run_legacy(
 # DELETE /scan-jobs/<id> — analyst+
 @scan_jobs_bp.delete("/<job_id>")
 @require_auth
+@allow_api_key
 @require_role("analyst")
 def delete_scan_job(job_id: str):
     org_id = current_organization_id()
@@ -542,6 +546,7 @@ def delete_scan_job(job_id: str):
 # GET /scan-jobs/<id>/findings — all roles can view
 @scan_jobs_bp.get("/<job_id>/findings")
 @require_auth
+@allow_api_key
 def list_job_findings(job_id: str):
     org_id = current_organization_id()
 

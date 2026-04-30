@@ -292,6 +292,8 @@ def me():
             "company": u.company,
             "country": u.country,
             "isSuperadmin": bool(u.is_superadmin),
+            "oauthProvider": u.oauth_provider,
+            "hasPassword": bool(u.password_hash),
         },
         organization=_build_org_payload(org, include_billing=True),
         role=membership.role,
@@ -346,6 +348,50 @@ def forgot_password():
             pass
 
     return generic
+
+
+@auth_bp.post("/change-password")
+@require_auth
+def change_password():
+    """Change the current user's password. Requires the existing password."""
+    user = g.current_user
+    body = request.get_json(silent=True) or {}
+    current_password = (body.get("currentPassword") or "").strip()
+    new_password = (body.get("newPassword") or "").strip()
+
+    if not user.password_hash:
+        return jsonify(
+            error="This account signs in with " + (user.oauth_provider or "an external provider")
+                  + ". Set a password via the password reset flow first.",
+            code="OAUTH_ACCOUNT",
+        ), 400
+
+    if not current_password or not new_password:
+        return jsonify(error="Current and new passwords are required"), 400
+    if len(new_password) < 8:
+        return jsonify(error="New password must be at least 8 characters"), 400
+    if new_password == current_password:
+        return jsonify(error="New password must be different from current password"), 400
+
+    if not check_password_hash(user.password_hash, current_password):
+        return jsonify(error="Current password is incorrect"), 401
+
+    user.password_hash = generate_password_hash(new_password)
+
+    membership = OrganizationMember.query.filter_by(user_id=user.id, is_active=True).first()
+    log_audit(
+        organization_id=membership.organization_id if membership else None,
+        user_id=user.id,
+        action="auth.password_changed",
+        category="auth",
+        target_type="user",
+        target_id=str(user.id),
+        target_label=user.email,
+        description="User changed their password",
+    )
+
+    db.session.commit()
+    return jsonify(message="Password changed successfully"), 200
 
 
 @auth_bp.post("/reset-password")

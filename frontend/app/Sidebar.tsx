@@ -9,7 +9,7 @@ import {
   Bell, Settings, SlidersHorizontal,
   ChevronLeft, ChevronRight, ChevronDown,
   UserCircle, Key, CreditCard, Zap, Calendar,
-  FileText, TrendingUp, Plug, LogOut,
+  FileText, TrendingUp, Plug, LogOut, BookOpen,
 } from "lucide-react";
 import { useOrg } from "./(authenticated)/contexts/OrgContext";
 import { logout } from "./lib/auth";
@@ -282,6 +282,14 @@ export default function Sidebar() {
             <Link href="/tools" className={navCls(isActive("/tools"))} title={isCollapsed ? "LookUp Tools" : undefined}>
               <Server className="w-5 h-5 shrink-0" />
               {!isCollapsed && <span className="truncate">LookUp Tools</span>}
+            </Link>
+          </li>
+
+          {/* API Docs (public reference, opens in same tab) */}
+          <li className="mb-1">
+            <Link href="/api-docs" className={navCls(isActive("/api-docs"))} title={isCollapsed ? "API Docs" : undefined}>
+              <BookOpen className="w-5 h-5 shrink-0" />
+              {!isCollapsed && <span className="truncate">API Docs</span>}
             </Link>
           </li>
         </ul>

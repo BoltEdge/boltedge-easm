@@ -43,7 +43,7 @@ from app.models import (
     ScanJob,
     Organization,
 )
-from app.auth.decorators import require_auth, current_user_id, current_organization_id
+from app.auth.decorators import require_auth, allow_api_key, current_user_id, current_organization_id
 from app.auth.permissions import require_role, require_feature, require_permission
 from app.audit.routes import log_audit
 
@@ -151,6 +151,9 @@ def _alert_to_ui(a: MonitorAlert) -> dict:
         "groupName": a.group_name,
         "status": a.status,
         "notifiedVia": a.notified_via or [],
+        "source": a.source,
+        "sourceTool": a.source_tool,
+        "sourceTarget": a.source_target,
         "createdAt": a.created_at.isoformat() if a.created_at else None,
         "acknowledgedAt": a.acknowledged_at.isoformat() if a.acknowledged_at else None,
         "resolvedAt": a.resolved_at.isoformat() if a.resolved_at else None,
@@ -250,6 +253,7 @@ def dispatch_monitor_alert(alert: MonitorAlert, org_id: int):
 # GET /monitors — all roles can view (plan-gated)
 @monitoring_bp.get("")
 @require_auth
+@allow_api_key
 @require_feature("monitoring")
 def list_monitors():
     org_id = current_organization_id()
@@ -260,6 +264,7 @@ def list_monitors():
 # POST /monitors — analyst+ (plan-gated)
 @monitoring_bp.post("")
 @require_auth
+@allow_api_key
 @require_feature("monitoring")
 @require_role("analyst")
 def create_monitor():
@@ -376,6 +381,7 @@ def create_monitor():
 # PATCH /monitors/<id> — analyst+ (plan-gated)
 @monitoring_bp.patch("/<int:monitor_id>")
 @require_auth
+@allow_api_key
 @require_feature("monitoring")
 @require_role("analyst")
 def update_monitor(monitor_id: int):
@@ -433,6 +439,7 @@ def update_monitor(monitor_id: int):
 # DELETE /monitors/<id> — analyst+ (plan-gated)
 @monitoring_bp.delete("/<int:monitor_id>")
 @require_auth
+@allow_api_key
 @require_feature("monitoring")
 @require_role("analyst")
 def delete_monitor(monitor_id: int):
@@ -471,6 +478,7 @@ def delete_monitor(monitor_id: int):
 # GET /monitors/alerts — all roles can view (plan-gated)
 @monitoring_bp.get("/alerts")
 @require_auth
+@allow_api_key
 @require_feature("monitoring")
 def list_alerts():
     org_id = current_organization_id()
@@ -523,6 +531,7 @@ def list_alerts():
 # POST /monitors/alerts/<id>/acknowledge — analyst+ (plan-gated)
 @monitoring_bp.post("/alerts/<int:alert_id>/acknowledge")
 @require_auth
+@allow_api_key
 @require_feature("monitoring")
 @require_role("analyst")
 def acknowledge_alert(alert_id: int):
@@ -559,6 +568,7 @@ def acknowledge_alert(alert_id: int):
 # POST /monitors/alerts/<id>/resolve — analyst+ (plan-gated)
 @monitoring_bp.post("/alerts/<int:alert_id>/resolve")
 @require_auth
+@allow_api_key
 @require_feature("monitoring")
 @require_role("analyst")
 def resolve_alert(alert_id: int):
@@ -592,6 +602,65 @@ def resolve_alert(alert_id: int):
     )
 
     return jsonify(_alert_to_ui(alert))
+
+
+# POST /monitors/alerts/manual — create an alert manually from a LookUp Tool result
+@monitoring_bp.post("/alerts/manual")
+@require_auth
+@require_feature("monitoring")
+@require_role("analyst")
+def create_manual_alert():
+    org_id = current_organization_id()
+    user_id = current_user_id()
+    body = request.get_json(silent=True) or {}
+
+    title = (body.get("title") or "").strip()
+    if not title:
+        return jsonify({"error": "title is required"}), 400
+    if len(title) > 255:
+        title = title[:255]
+
+    severity = (body.get("severity") or "info").strip().lower()
+    if severity not in ("info", "low", "medium", "high", "critical"):
+        return jsonify({"error": "severity must be one of: info, low, medium, high, critical"}), 400
+
+    summary = (body.get("summary") or "").strip()[:1000] or None
+    source_tool = (body.get("sourceTool") or "").strip()[:50] or None
+    source_target = (body.get("sourceTarget") or "").strip()[:500] or None
+    asset_value = (body.get("assetValue") or source_target or "").strip()[:255] or None
+
+    alert = MonitorAlert(
+        organization_id=org_id,
+        monitor_id=None,
+        finding_id=None,
+        source="lookup_tool" if source_tool else "manual",
+        source_tool=source_tool,
+        source_target=source_target,
+        alert_type="manual",
+        title=title,
+        summary=summary,
+        severity=severity,
+        asset_value=asset_value,
+        status="open",
+    )
+    db.session.add(alert)
+    db.session.flush()
+
+    log_audit(
+        organization_id=org_id,
+        user_id=user_id,
+        action="monitor.alert_created_manual",
+        category="monitor",
+        target_type="monitor_alert",
+        target_id=str(alert.id),
+        target_label=title,
+        description=f"Created manual alert from {source_tool or 'manual entry'}: {title}",
+        metadata={"severity": severity, "source_tool": source_tool, "source_target": source_target},
+    )
+    db.session.commit()
+
+    dispatch_monitor_alert(alert, org_id)
+    return jsonify(_alert_to_ui(alert)), 201
 
 
 # ===========================================================================

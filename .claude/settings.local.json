@@ -5,7 +5,8 @@
       "Bash(grep -v \"^$\")",
       "Bash(curl *)",
       "Bash(xargs grep *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(grep -n \"from \\\\\"\\\\\\\\.\\\\\\\\./\\\\\\\\.\\\\\\\\./lib/api\\\\\"\\\\|escalateFinding\\\\|^import\" \"frontend/app/\\(authenticated\\)/findings/page.tsx\")"
     ]
   }
 }

@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
+import hashlib
+from datetime import datetime, timezone
 from functools import wraps
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 
 from flask import request, jsonify, g, current_app
 
-from app.models import User, OrganizationMember, Organization
+from app.models import User, OrganizationMember, Organization, ApiKey
+from app.extensions import db
 from .tokens import verify_access_token
+
+
+API_KEY_PREFIX = "ag_sk_"
 
 
 def get_bearer_token() -> Optional[str]:
@@ -18,12 +24,101 @@ def get_bearer_token() -> Optional[str]:
     return None
 
 
+def _get_api_key_from_request() -> Optional[str]:
+    """Read an API key from X-API-Key header or Bearer token (if it has the API-key prefix)."""
+    header_key = request.headers.get("X-API-Key")
+    if header_key:
+        return header_key.strip()
+    bearer = get_bearer_token()
+    if bearer and bearer.startswith(API_KEY_PREFIX):
+        return bearer
+    return None
+
+
+def _authenticate_api_key(raw_key: str) -> Optional[Tuple[User, Organization, OrganizationMember, ApiKey]]:
+    """Validate an API key and return (user, org, membership, key) or None."""
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    key = ApiKey.query.filter_by(key_hash=key_hash).first()
+    if not key or not key.is_active:
+        return None
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    if key.expires_at and key.expires_at < now:
+        return None
+
+    user = key.user
+    org = key.organization
+    if not user or not org:
+        return None
+    if user.is_suspended or org.is_suspended:
+        return None
+
+    membership = OrganizationMember.query.filter_by(
+        user_id=user.id, organization_id=org.id, is_active=True
+    ).first()
+    if not membership:
+        return None
+
+    # Update last_used_at at most once per minute to avoid a write on every request
+    if not key.last_used_at or (now - key.last_used_at).total_seconds() > 60:
+        try:
+            key.last_used_at = now
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+    return user, org, membership, key
+
+
+def allow_api_key(fn: Callable):
+    """Opt this endpoint into API key authentication.
+
+    By default, @require_auth rejects API keys — only endpoints explicitly
+    marked with this decorator accept the X-API-Key header. Apply it BELOW
+    @require_auth (closer to the view function) so the marker is set on the
+    function before require_auth wraps it.
+
+    Example:
+        @bp.get("/assets")
+        @require_auth
+        @allow_api_key
+        def list_assets(): ...
+    """
+    fn._allow_api_key = True
+    return fn
+
+
 def require_auth(fn: Callable):
+    api_key_allowed = getattr(fn, "_allow_api_key", False)
+
     @wraps(fn)
     def wrapper(*args, **kwargs):
+        # Try API key first
+        raw_api_key = _get_api_key_from_request()
+        if raw_api_key:
+            if not api_key_allowed:
+                return jsonify(
+                    error="This endpoint cannot be accessed with an API key. Sign in with your account.",
+                    code="API_KEY_NOT_ALLOWED",
+                ), 403
+            result = _authenticate_api_key(raw_api_key)
+            if not result:
+                return jsonify(error="invalid or expired API key"), 401
+            user, org, membership, key = result
+            g.current_user = user
+            g.current_user_id = int(user.id)
+            g.current_organization = org
+            g.current_organization_id = int(org.id)
+            g.current_member = membership
+            g.current_role = membership.role
+            g.auth_method = "api_key"
+            g.current_api_key = key
+            return fn(*args, **kwargs)
+
+        # Fall back to JWT bearer token
         token = get_bearer_token()
         if not token:
-            return jsonify(error="missing Authorization: Bearer <token>"), 401
+            return jsonify(error="missing Authorization: Bearer <token> or X-API-Key"), 401
 
         uid = verify_access_token(
             secret_key=current_app.config["SECRET_KEY"], token=token
@@ -53,6 +148,7 @@ def require_auth(fn: Callable):
         g.current_organization_id = int(org.id)
         g.current_member = membership
         g.current_role = membership.role
+        g.auth_method = "jwt"
 
         return fn(*args, **kwargs)
 

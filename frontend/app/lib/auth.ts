@@ -8,6 +8,8 @@ export type AuthUser = {
   company?: string;
   country?: string;
   isSuperadmin?: boolean;
+  oauthProvider?: string | null;
+  hasPassword?: boolean;
 };
 
 export type PlanLimits = {

@@ -33,7 +33,7 @@ from app.models import (
     OrganizationMember, User,
 )
 from app.auth.decorators import (
-    require_auth, current_user_id, current_organization_id, current_role,
+    require_auth, allow_api_key, current_user_id, current_organization_id, current_role,
 )
 from app.auth.permissions import require_role, require_permission
 from app.audit.routes import log_audit
@@ -1025,6 +1025,7 @@ def _render_technical_html(report: Report, data: dict) -> str:
 # GET /reports — viewer+ (list reports)
 @reports_bp.get("")
 @require_auth
+@allow_api_key
 def list_reports():
     org_id = current_organization_id()
 
@@ -1062,6 +1063,7 @@ def list_reports():
 # GET /reports/<id> — viewer+ (view report details)
 @reports_bp.get("/<int:report_id>")
 @require_auth
+@allow_api_key
 def get_report(report_id: int):
     org_id = current_organization_id()
     r = Report.query.filter_by(id=report_id, organization_id=org_id).first()
@@ -1073,6 +1075,7 @@ def get_report(report_id: int):
 # GET /reports/<id>/download — viewer+ (download PDF)
 @reports_bp.get("/<int:report_id>/download")
 @require_auth
+@allow_api_key
 def download_report(report_id: int):
     org_id = current_organization_id()
     r = Report.query.filter_by(id=report_id, organization_id=org_id).first()
@@ -1098,6 +1101,7 @@ def download_report(report_id: int):
 # POST /reports/generate — analyst+ (generate new report)
 @reports_bp.post("/generate")
 @require_auth
+@allow_api_key
 @require_role("analyst")
 def generate_report():
     org_id = current_organization_id()

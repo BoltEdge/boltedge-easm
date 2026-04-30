@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 import type { AssetGroup, Finding } from "../../types";
-import { getGroups, apiFetch } from "../../lib/api";
+import { getGroups, apiFetch, escalateFinding } from "../../lib/api";
 import { useOrg } from "../contexts/OrgContext";
 
 import { Button } from "../../ui/button";
@@ -714,6 +714,23 @@ export default function FindingsPage() {
         onOpenChange={setDetailsOpen}
         finding={selected as any}
         onStatusChange={canEdit ? handleStatusChange : undefined}
+        onEscalate={
+          canEdit
+            ? async (id, payload) => {
+                try {
+                  const res = await escalateFinding(id, payload);
+                  setBanner({ kind: "ok", text: `Escalated — alert #${res.alertId} created.` });
+                  if (payload.acknowledge) {
+                    // Refresh so the in_progress status shows up
+                    loadFindings();
+                  }
+                } catch (e: any) {
+                  setBanner({ kind: "err", text: e?.message || "Failed to escalate" });
+                  throw e;
+                }
+              }
+            : undefined
+        }
       />
 
       {/* ── Bulk Status Action Dialog ── */}

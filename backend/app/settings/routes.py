@@ -505,6 +505,43 @@ def create_api_key():
     ), 201
 
 
+# PATCH /settings/api-keys/<id> — admin+ (manage_api_keys permission)
+@settings_bp.patch("/api-keys/<int:key_id>")
+@require_auth
+@require_permission("manage_api_keys")
+def update_api_key(key_id):
+    org_id = current_organization_id()
+    key = ApiKey.query.filter_by(id=key_id, organization_id=org_id).first()
+    if not key:
+        return jsonify(error="API key not found"), 404
+
+    body = request.get_json(silent=True) or {}
+    if "name" not in body:
+        return jsonify(error="No fields to update"), 400
+
+    name = str(body["name"]).strip()
+    if not name:
+        return jsonify(error="Name cannot be empty"), 400
+
+    old_name = key.name
+    key.name = name
+
+    log_audit(
+        organization_id=org_id,
+        user_id=current_user_id(),
+        action="settings.api_key_renamed",
+        category="settings",
+        target_type="api_key",
+        target_id=str(key.id),
+        target_label=name,
+        description=f"Renamed API key from '{old_name}' to '{name}'",
+        metadata={"old_name": old_name, "new_name": name},
+    )
+
+    db.session.commit()
+    return jsonify(message="API key updated", id=str(key.id), name=key.name), 200
+
+
 # DELETE /settings/api-keys/<id> — admin+ (manage_api_keys permission)
 @settings_bp.delete("/api-keys/<int:key_id>")
 @require_auth
@@ -861,6 +898,8 @@ def get_current_user_settings():
         email=user.email if user else None,
         name=user.name if user else None,
         jobTitle=user.job_title if user else None,
+        oauthProvider=user.oauth_provider if user else None,
+        hasPassword=bool(user.password_hash) if user else False,
         role=role,
         permissions=get_permissions_for_role(role) if role else {},
         plan=plan,

@@ -136,6 +136,8 @@ def list_audit_log():
     target_type = request.args.get("target_type")
     target_id = request.args.get("target_id")
     search = request.args.get("q", "").strip()
+    date_from = request.args.get("from")             # ISO date/datetime
+    date_to = request.args.get("to")                 # ISO date/datetime
     page = request.args.get("page", 1, type=int)
     per_page = min(request.args.get("per_page", 50, type=int), 200)
 
@@ -160,6 +162,23 @@ def list_audit_log():
                 AuditLog.action.ilike(pattern),
             )
         )
+
+    if date_from:
+        try:
+            dt = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+            if dt.tzinfo is not None:
+                dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+            query = query.filter(AuditLog.created_at >= dt)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            dt = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+            if dt.tzinfo is not None:
+                dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+            query = query.filter(AuditLog.created_at <= dt)
+        except ValueError:
+            pass
 
     total = query.count()
     rows = query.order_by(AuditLog.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
@@ -193,6 +212,8 @@ def export_audit_log():
 
     category = request.args.get("category")
     search = request.args.get("q", "").strip()
+    date_from = request.args.get("from")
+    date_to = request.args.get("to")
 
     query = AuditLog.query.filter_by(organization_id=org_id)
 
@@ -206,6 +227,22 @@ def export_audit_log():
                 AuditLog.target_label.ilike(pattern),
             )
         )
+    if date_from:
+        try:
+            dt = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+            if dt.tzinfo is not None:
+                dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+            query = query.filter(AuditLog.created_at >= dt)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            dt = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+            if dt.tzinfo is not None:
+                dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+            query = query.filter(AuditLog.created_at <= dt)
+        except ValueError:
+            pass
 
     rows = query.order_by(AuditLog.created_at.desc()).limit(5000).all()
 

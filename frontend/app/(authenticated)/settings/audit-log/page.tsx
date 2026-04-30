@@ -7,10 +7,12 @@ import {
   Shield, Search, Download, Loader2, ChevronLeft, ChevronRight,
   AlertTriangle, Play, Trash2, Edit, UserPlus, Key, Settings,
   Globe, Server, FileText, LogIn, ArrowLeftRight, RefreshCcw,
+  Calendar, X,
 } from "lucide-react";
 import { Button } from "../../../ui/button";
 import { Input } from "../../../ui/input";
-import { apiFetch } from "../../../lib/api";
+import { apiFetch, API_BASE_URL } from "../../../lib/api";
+import { getAccessToken } from "../../../lib/auth";
 
 function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
@@ -62,6 +64,36 @@ type AuditEntry = {
 };
 
 type CategoryKey = "all" | "finding" | "asset" | "scan" | "group" | "user" | "settings" | "auth" | "export";
+
+type DateRangeKey = "all" | "24h" | "7d" | "30d" | "month" | "custom";
+
+const DATE_RANGE_PRESETS: { key: DateRangeKey; label: string }[] = [
+  { key: "all", label: "All time" },
+  { key: "24h", label: "Last 24 hours" },
+  { key: "7d", label: "Last 7 days" },
+  { key: "30d", label: "Last 30 days" },
+  { key: "month", label: "This month" },
+  { key: "custom", label: "Custom" },
+];
+
+// Returns ISO datetime strings (UTC) for a preset, or null if no bound applies.
+function presetToRange(key: DateRangeKey): { from: string | null; to: string | null } {
+  const now = new Date();
+  switch (key) {
+    case "24h":
+      return { from: new Date(now.getTime() - 24 * 3600_000).toISOString(), to: null };
+    case "7d":
+      return { from: new Date(now.getTime() - 7 * 86400_000).toISOString(), to: null };
+    case "30d":
+      return { from: new Date(now.getTime() - 30 * 86400_000).toISOString(), to: null };
+    case "month": {
+      const first = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { from: first.toISOString(), to: null };
+    }
+    default:
+      return { from: null, to: null };
+  }
+}
 
 // ─── Category config ──────────────────────────
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -202,6 +234,21 @@ export default function AuditLogPage() {
   const [category, setCategory] = useState<CategoryKey>("all");
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
+  const [dateRange, setDateRange] = useState<DateRangeKey>("all");
+  const [customFrom, setCustomFrom] = useState<string>(""); // YYYY-MM-DD
+  const [customTo, setCustomTo] = useState<string>("");
+
+  // Effective ISO range derived from preset or custom inputs
+  const { fromIso, toIso } = useMemo(() => {
+    if (dateRange === "custom") {
+      return {
+        fromIso: customFrom ? new Date(customFrom + "T00:00:00").toISOString() : null,
+        toIso: customTo ? new Date(customTo + "T23:59:59").toISOString() : null,
+      };
+    }
+    const r = presetToRange(dateRange);
+    return { fromIso: r.from, toIso: r.to };
+  }, [dateRange, customFrom, customTo]);
 
   // Debounce search
   useEffect(() => {
@@ -210,7 +257,7 @@ export default function AuditLogPage() {
   }, [search]);
 
   // Reset page on filter change
-  useEffect(() => { setPage(1); }, [category, searchDebounced]);
+  useEffect(() => { setPage(1); }, [category, searchDebounced, fromIso, toIso]);
 
   const loadEntries = useCallback(async () => {
     setLoading(true);
@@ -221,6 +268,8 @@ export default function AuditLogPage() {
       params.set("per_page", String(perPage));
       if (category !== "all") params.set("category", category);
       if (searchDebounced) params.set("q", searchDebounced);
+      if (fromIso) params.set("from", fromIso);
+      if (toIso) params.set("to", toIso);
 
       const data = await apiFetch<any>(`/audit-log?${params.toString()}`);
       setEntries(data.entries || []);
@@ -231,7 +280,7 @@ export default function AuditLogPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, perPage, category, searchDebounced]);
+  }, [page, perPage, category, searchDebounced, fromIso, toIso]);
 
   useEffect(() => { loadEntries(); }, [loadEntries]);
 
@@ -243,9 +292,12 @@ export default function AuditLogPage() {
       const params = new URLSearchParams();
       if (category !== "all") params.set("category", category);
       if (searchDebounced) params.set("q", searchDebounced);
+      if (fromIso) params.set("from", fromIso);
+      if (toIso) params.set("to", toIso);
 
-      const response = await fetch(`/api/audit-log/export?${params.toString()}`, {
-        credentials: "include",
+      const token = getAccessToken();
+      const response = await fetch(`${API_BASE_URL}/audit-log/export?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!response.ok) throw new Error("Export failed");
 
@@ -257,7 +309,7 @@ export default function AuditLogPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e: any) {
-      console.error("Export failed:", e);
+      setError(e?.message || "Export failed");
     }
   }
 
@@ -315,16 +367,88 @@ export default function AuditLogPage() {
           })}
         </div>
 
-        {/* Search */}
-        <div className="relative w-full max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search actions, targets, descriptions…"
-            className="pl-9"
-          />
+        {/* Date range + Search */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Date range presets */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            {DATE_RANGE_PRESETS.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => setDateRange(p.key)}
+                className={cn(
+                  "px-2.5 py-1 rounded-md border text-xs font-medium transition-colors",
+                  dateRange === p.key
+                    ? "bg-primary/15 text-primary border-primary/30"
+                    : "bg-card text-muted-foreground border-border hover:border-primary/30"
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+            {(fromIso || toIso) && dateRange !== "custom" && (
+              <button
+                onClick={() => setDateRange("all")}
+                className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                title="Clear date range"
+              >
+                <X className="w-3 h-3" />Clear
+              </button>
+            )}
+          </div>
+
+          {/* Search */}
+          <div className="relative flex-1 min-w-[240px] max-w-md ml-auto">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search actions, targets, descriptions…"
+              className="pl-9"
+            />
+          </div>
         </div>
+
+        {/* Custom date inputs */}
+        {dateRange === "custom" && (
+          <div className="flex flex-wrap items-end gap-3 p-3 rounded-xl border border-border bg-card/50">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground block">From</label>
+              <Input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                max={customTo || undefined}
+                className="h-9 w-[170px]"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground block">To</label>
+              <Input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                min={customFrom || undefined}
+                className="h-9 w-[170px]"
+              />
+            </div>
+            {(customFrom || customTo) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setCustomFrom(""); setCustomTo(""); }}
+                className="h-9 gap-1.5"
+              >
+                <X className="w-3.5 h-3.5" />Reset
+              </Button>
+            )}
+            <p className="text-xs text-muted-foreground ml-auto">
+              {customFrom && !customTo && "Showing entries since the From date."}
+              {!customFrom && customTo && "Showing entries up to the To date."}
+              {!customFrom && !customTo && "Pick at least one date to filter."}
+            </p>
+          </div>
+        )}
 
         {/* Error */}
         {error && (

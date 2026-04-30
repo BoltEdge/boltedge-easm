@@ -28,7 +28,7 @@ from typing import Any, Dict, Set
 from flask import Blueprint, request, jsonify, g, current_app
 
 from app.extensions import db
-from app.auth.decorators import require_auth, current_organization_id
+from app.auth.decorators import require_auth, allow_api_key, current_organization_id
 from app.auth.permissions import require_role
 
 logger = logging.getLogger(__name__)
@@ -159,6 +159,7 @@ def _sanitize_cloud_config(body: dict) -> dict:
 
 @discovery_bp.post("/run")
 @require_auth
+@allow_api_key
 @require_role("analyst")
 def launch_discovery():
     from app.models import DiscoveryJob
@@ -303,6 +304,7 @@ def launch_discovery():
 
 @discovery_bp.get("/jobs")
 @require_auth
+@allow_api_key
 def list_jobs():
     from app.models import DiscoveryJob
     org_id = int(current_organization_id())
@@ -326,6 +328,7 @@ def list_jobs():
 
 @discovery_bp.get("/jobs/<int:job_id>")
 @require_auth
+@allow_api_key
 def get_job(job_id: int):
     from app.models import DiscoveryJob
     org_id = int(current_organization_id())
@@ -341,6 +344,7 @@ def get_job(job_id: int):
 
 @discovery_bp.post("/jobs/<int:job_id>/cancel")
 @require_auth
+@allow_api_key
 @require_role("analyst")
 def cancel_job(job_id: int):
     from app.models import DiscoveryJob
@@ -362,6 +366,7 @@ def cancel_job(job_id: int):
 
 @discovery_bp.post("/jobs/<int:job_id>/add-assets")
 @require_auth
+@allow_api_key
 @require_role("analyst")
 def add_assets_to_inventory(job_id: int):
     from app.models import DiscoveryJob, DiscoveredAsset, Asset, AssetGroup

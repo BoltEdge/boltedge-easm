@@ -8,9 +8,12 @@ import {
   FolderSearch, GitBranch, ExternalLink, X, Plus,
   Play, Target, Trash2, Copy, Download,
   Maximize2, Minimize2, AlertCircle, LayoutGrid, Server, GripVertical,
+  Siren,
 } from "lucide-react";
 
-import { apiFetch } from "../../lib/api";
+import { apiFetch, createManualAlert, type Severity } from "../../lib/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../ui/dialog";
+import { useOrg } from "../contexts/OrgContext";
 
 function cn(...c: Array<string | false | null | undefined>) { return c.filter(Boolean).join(" "); }
 
@@ -294,13 +297,21 @@ const DEFAULT_TOOLS: ToolId[] = [];
 function ToolPanel({
   panel, tool, globalTarget, canvasWidth, canvasRef,
   onRemove, onRun, onToggleExpand, onSetLocalTarget, onResize,
+  hasMonitoring, onSavedAsAlert,
 }: {
   panel: PanelState; tool: ToolDef; globalTarget: string; canvasWidth: number;
   canvasRef: React.RefObject<HTMLDivElement | null>;
   onRemove: () => void; onRun: () => void;
   onToggleExpand: () => void; onSetLocalTarget: (v: string) => void;
   onResize: (w: number, h: number) => void;
+  hasMonitoring: boolean;
+  onSavedAsAlert: (kind: "ok" | "err", text: string) => void;
 }) {
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertSeverity, setAlertSeverity] = useState<Severity>("medium");
+  const [alertTitle, setAlertTitle] = useState("");
+  const [alertNote, setAlertNote] = useState("");
+  const [savingAlert, setSavingAlert] = useState(false);
   const resizeRef = useRef<{ sx: number; sy: number; ow: number; oh: number } | null>(null);
   const effectiveTarget = panel.localTarget.trim() || globalTarget.trim();
   const isLocal = panel.localTarget.trim().length > 0;
@@ -394,6 +405,20 @@ function ToolPanel({
         {panel.status === "done" && panel.result && (
           <div>
             <div className="flex items-center justify-end gap-2 mb-3">
+              {hasMonitoring && !panel.result?.error && (
+                <button
+                  onClick={() => {
+                    setAlertTitle(`${tool.name}: ${effectiveTarget}`);
+                    setAlertNote("");
+                    setAlertSeverity("medium");
+                    setAlertOpen(true);
+                  }}
+                  className="flex items-center gap-1 text-[10px] text-amber-400 hover:text-amber-300 transition-colors"
+                  title="Create an alert from this result and route it through your notification rules"
+                >
+                  <Siren size={10} /> Save as Alert
+                </button>
+              )}
               <button onClick={handleCopyJson} className="flex items-center gap-1 text-[10px] text-[#64748b] hover:text-white transition-colors"><Copy size={10} /> JSON</button>
               <button onClick={handleExportCsv} className="flex items-center gap-1 text-[10px] text-[#64748b] hover:text-white transition-colors"><Download size={10} /> CSV</button>
             </div>
@@ -416,12 +441,108 @@ function ToolPanel({
     );
   }
 
+  async function handleSaveAlert() {
+    setSavingAlert(true);
+    try {
+      const summary = (alertNote.trim() ? alertNote.trim() + "\n\n" : "")
+        + `Result from ${tool.name}:\n`
+        + JSON.stringify(panel.result, null, 2).slice(0, 800);
+      await createManualAlert({
+        title: alertTitle.trim() || `${tool.name}: ${effectiveTarget}`,
+        severity: alertSeverity,
+        summary,
+        sourceTool: tool.id,
+        sourceTarget: effectiveTarget,
+      });
+      onSavedAsAlert("ok", `Saved as alert (${alertSeverity}).`);
+      setAlertOpen(false);
+    } catch (e: any) {
+      onSavedAsAlert("err", e?.message || "Failed to save alert");
+    } finally {
+      setSavingAlert(false);
+    }
+  }
+
+  function renderAlertDialog() {
+    return (
+      <Dialog open={alertOpen} onOpenChange={(o) => { if (!o && !savingAlert) setAlertOpen(false); }}>
+        <DialogContent className="bg-card border-border text-foreground sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Siren className="w-5 h-5 text-amber-400" />
+              Save as Alert
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-sm text-muted-foreground">
+              Creates an alert from this {tool.name} result and routes it through your
+              notification rules.
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground block">Title</label>
+              <input
+                type="text"
+                value={alertTitle}
+                onChange={(e) => setAlertTitle(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-background border border-border/50 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground block">Severity</label>
+              <select
+                value={alertSeverity}
+                onChange={(e) => setAlertSeverity(e.target.value as Severity)}
+                className="w-full px-3 py-2 rounded-lg bg-background border border-border/50 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >
+                <option value="info">Info</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground block">Note (optional)</label>
+              <textarea
+                value={alertNote}
+                onChange={(e) => setAlertNote(e.target.value)}
+                placeholder="Additional context for the alert"
+                rows={3}
+                className="w-full px-3 py-2 rounded-lg bg-background border border-border/50 text-foreground text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+              />
+            </div>
+            <div className="flex gap-3 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setAlertOpen(false)}
+                disabled={savingAlert}
+                className="px-4 py-2 rounded-lg border border-border/50 text-sm text-foreground hover:bg-accent transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAlert}
+                disabled={savingAlert}
+                className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium disabled:opacity-50 transition-colors flex items-center gap-2"
+              >
+                <Siren className="w-4 h-4" />
+                {savingAlert ? "Saving..." : "Save as Alert"}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   if (panel.expanded) {
     return (<>
       <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onToggleExpand} />
       <div className="fixed inset-4 z-50 rounded-xl border border-white/[0.08] bg-[#0c1222]/98 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden">
         {renderTitleBar()}{renderInputBar()}{renderBody()}
       </div>
+      {renderAlertDialog()}
     </>);
   }
 
@@ -432,6 +553,7 @@ function ToolPanel({
       <div onMouseDown={handleResizeDown} className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize z-10 opacity-0 group-hover/panel:opacity-100 transition-opacity" title="Drag to resize">
         <svg viewBox="0 0 20 20" className="w-full h-full"><path d="M18 18L10 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.3" className="text-primary" /><path d="M18 18L18 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.3" className="text-primary" /><path d="M18 18L14 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.7" className="text-primary" /><path d="M18 18L18 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.7" className="text-primary" /></svg>
       </div>
+      {renderAlertDialog()}
     </div>
   );
 }

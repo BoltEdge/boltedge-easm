@@ -9,7 +9,7 @@ import Link from "next/link";
 import {
   EyeOff, Eye, Info, ShieldAlert, Wrench, ExternalLink,
   Tag, BookOpen, CheckCircle2, AlertCircle, RotateCcw,
-  Clock, ShieldCheck, ChevronDown, Loader2,
+  Clock, ShieldCheck, ChevronDown, Loader2, Siren,
 } from "lucide-react";
 
 import { Button } from "./ui/button";
@@ -324,6 +324,7 @@ export function FindingDetailsDialog({
   onOpenChange,
   finding,
   onStatusChange,
+  onEscalate,
   // Legacy callbacks — still supported for backward compat
   onToggleIgnore,
   onToggleResolve,
@@ -332,10 +333,15 @@ export function FindingDetailsDialog({
   onOpenChange: (open: boolean) => void;
   finding: any | null;
   onStatusChange?: (id: string, status: FindingStatus, notes?: string) => Promise<void> | void;
+  onEscalate?: (id: string, payload: { note?: string; acknowledge?: boolean }) => Promise<void> | void;
   onToggleIgnore?: (id: string, next: boolean) => void;
   onToggleResolve?: (id: string, next: boolean) => void;
 }) {
   const [actionLoading, setActionLoading] = useState(false);
+  const [escalateOpen, setEscalateOpen] = useState(false);
+  const [escalateNote, setEscalateNote] = useState("");
+  const [escalateAck, setEscalateAck] = useState(true);
+  const [escalating, setEscalating] = useState(false);
 
   if (!finding) return null;
 
@@ -492,16 +498,28 @@ export function FindingDetailsDialog({
             </div>
           </div>
 
-          {/* Status action menu */}
-          {canEdit && (
-            <div className="shrink-0">
+          {/* Action toolbar: Escalate + Status */}
+          <div className="shrink-0 flex items-center gap-2">
+            {onEscalate && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setEscalateNote(""); setEscalateAck(true); setEscalateOpen(true); }}
+                className="gap-1.5 border-amber-500/30 text-amber-300 hover:bg-amber-500/10"
+                title="Send to alerts inbox via your notification rules"
+              >
+                <Siren className="w-3.5 h-3.5" />
+                Escalate to Alert
+              </Button>
+            )}
+            {canEdit && (
               <StatusActions
                 currentStatus={status}
                 onStatusChange={handleStatusChange}
                 loading={actionLoading}
               />
-            </div>
-          )}
+            )}
+          </div>
         </DialogHeader>
 
         <div className="mt-5 space-y-4">
@@ -666,6 +684,72 @@ export function FindingDetailsDialog({
           )}
         </div>
       </DialogContent>
+
+      {/* Escalate to Alert dialog */}
+      <Dialog open={escalateOpen} onOpenChange={(o) => { if (!o && !escalating) setEscalateOpen(false); }}>
+        <DialogContent className="bg-card border-border text-foreground sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Siren className="w-5 h-5 text-amber-400" />
+              Escalate to Alert
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-sm text-muted-foreground">
+              Creates an alert from this finding and routes it through your notification
+              rules (Slack, Jira, etc.). The finding itself is preserved.
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground block">Note (optional)</label>
+              <textarea
+                value={escalateNote}
+                onChange={(e) => setEscalateNote(e.target.value)}
+                placeholder="Why is this being escalated?"
+                rows={3}
+                className="w-full px-3 py-2 rounded-lg bg-background border border-border/50 text-foreground text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={escalateAck}
+                onChange={(e) => setEscalateAck(e.target.checked)}
+                className="accent-primary"
+              />
+              Mark this finding as &quot;In Progress&quot;
+            </label>
+            <div className="flex gap-3 justify-end pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setEscalateOpen(false)}
+                disabled={escalating}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!onEscalate) return;
+                  setEscalating(true);
+                  try {
+                    await onEscalate(id, {
+                      note: escalateNote.trim() || undefined,
+                      acknowledge: escalateAck,
+                    });
+                    setEscalateOpen(false);
+                  } finally {
+                    setEscalating(false);
+                  }
+                }}
+                disabled={escalating}
+                className="bg-amber-500 hover:bg-amber-600 text-white"
+              >
+                <Siren className="w-4 h-4 mr-2" />
+                {escalating ? "Escalating..." : "Escalate"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

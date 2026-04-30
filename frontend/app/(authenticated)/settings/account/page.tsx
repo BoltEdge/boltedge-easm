@@ -128,6 +128,10 @@ export default function AccountPage() {
   const canManageRoles = canDo("manage_roles");
   const canRemove = canDo("remove_users");
   const canEditOrg = role === "owner" || role === "admin";
+  const canChangePassword = user?.hasPassword !== false && !user?.oauthProvider;
+  const oauthProviderLabel = user?.oauthProvider
+    ? user.oauthProvider.charAt(0).toUpperCase() + user.oauthProvider.slice(1)
+    : null;
 
   // Auto-clear banner
   useEffect(() => { if (banner) { const t = setTimeout(() => setBanner(null), 5000); return () => clearTimeout(t); } }, [banner]);
@@ -361,15 +365,22 @@ export default function AccountPage() {
               </div>
 
               <div className="flex items-center justify-between">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowPasswordSection(!showPasswordSection)}
-                  className="gap-1.5 text-xs"
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                  {showPasswordSection ? "Cancel" : "Change Password"}
-                </Button>
+                {canChangePassword ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPasswordSection(!showPasswordSection)}
+                    className="gap-1.5 text-xs"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    {showPasswordSection ? "Cancel" : "Change Password"}
+                  </Button>
+                ) : (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <Lock className="w-3 h-3" />
+                    Signed in with {oauthProviderLabel} — manage password in your {oauthProviderLabel} account
+                  </span>
+                )}
                 <Button
                   onClick={handleSaveProfile}
                   disabled={savingProfile || !name.trim() || !profileDirty}
@@ -380,7 +391,7 @@ export default function AccountPage() {
               </div>
 
               {/* Change Password (collapsible) */}
-              {showPasswordSection && (
+              {canChangePassword && showPasswordSection && (
                 <div className="border-t border-border pt-4 space-y-4">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <Lock className="w-4 h-4 text-primary" />Change Password
@@ -598,11 +609,11 @@ export default function AccountPage() {
                             <select
                               value={m.role}
                               onChange={(e) => handleRoleChange(m.id, e.target.value)}
-                              onBlur={() => setRoleEditId(null)}
+                              onBlur={() => setTimeout(() => setRoleEditId(null), 150)}
                               autoFocus
                               className="h-7 rounded-md border border-border bg-background px-1.5 text-xs text-foreground"
                             >
-                              <option value="owner">Owner</option>
+                              {role === "owner" && <option value="owner">Owner</option>}
                               <option value="admin">Admin</option>
                               <option value="analyst">Analyst</option>
                               <option value="viewer">Viewer</option>

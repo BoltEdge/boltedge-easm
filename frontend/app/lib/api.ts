@@ -6,7 +6,7 @@ import type { AssetGroup, Asset, ScanJob, Finding, ScanProfile, ScanSchedule } f
 import { getAccessToken } from "./auth";
 
 // Current (localhost fallback)
-const API_BASE_URL =
+export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ||
   (typeof window !== "undefined" && window.location.hostname !== "localhost"
     ? `http://${window.location.hostname}:5000`
@@ -1203,9 +1203,43 @@ export async function createApiKey(payload: {
   });
 }
 
+export async function updateApiKey(keyId: string, payload: { name: string }): Promise<any> {
+  return apiFetch<any>(`/settings/api-keys/${keyId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function revokeApiKey(keyId: string): Promise<any> {
   return apiFetch<any>(`/settings/api-keys/${keyId}`, {
     method: "DELETE",
+  });
+}
+
+// Alerts (manual escalation flows)
+export type Severity = "info" | "low" | "medium" | "high" | "critical";
+
+export async function escalateFinding(
+  findingId: string | number,
+  payload?: { note?: string; acknowledge?: boolean }
+): Promise<{ alertId: string; findingId: string; severity: string }> {
+  return apiFetch(`/findings/${findingId}/escalate`, {
+    method: "POST",
+    body: JSON.stringify(payload || {}),
+  });
+}
+
+export async function createManualAlert(payload: {
+  title: string;
+  severity: Severity;
+  summary?: string;
+  sourceTool?: string;
+  sourceTarget?: string;
+  assetValue?: string;
+}): Promise<any> {
+  return apiFetch(`/monitors/alerts/manual`, {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 

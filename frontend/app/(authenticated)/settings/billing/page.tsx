@@ -5,14 +5,16 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Layers, Check, Clock, Zap, Sparkles, Loader2, X, RefreshCcw, Mail } from "lucide-react";
+import { Layers, Check, Clock, Zap, Sparkles, Loader2, X, RefreshCcw, Mail, AlertTriangle, Trash2 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Button } from "../../../ui/button";
+import { Input } from "../../../ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../ui/dialog";
 import { apiFetch, isPlanError } from "../../../lib/api";
 import { useOrg } from "../../contexts/OrgContext";
 import { usePlanLimit, PlanLimitDialog } from "../../../ui/plan-limit-dialog";
 import { BILLING_ENABLED } from "../../../lib/billing-config";
+import { logout } from "../../../lib/auth";
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -24,9 +26,11 @@ function formatDate(iso: string | null | undefined): string {
 }
 
 export default function BillingPage() {
-  const { canDo, refresh: refreshOrg } = useOrg();
+  const { canDo, role, organization, refresh: refreshOrg } = useOrg();
   const planLimit = usePlanLimit();
   const canManageBilling = canDo("manage_billing");
+  const canDeleteOrg = role === "owner";
+  const orgName = (organization as any)?.name || "";
 
   const [planData, setPlanData] = useState<any>(null);
   const [plans, setPlans] = useState<any[]>([]);
@@ -38,6 +42,9 @@ export default function BillingPage() {
   const [showUpgrade, setShowUpgrade] = useState<string | null>(null);
   const [upgrading, setUpgrading] = useState(false);
   const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [showDeleteOrg, setShowDeleteOrg] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deletingOrg, setDeletingOrg] = useState(false);
 
   async function loadBilling(isRefresh = false) {
     if (isRefresh) setRefreshing(true); else setLoading(true);
@@ -82,6 +89,18 @@ export default function BillingPage() {
       if (isPlanError(e)) { setShowEndTrial(false); planLimit.handle(e.planError); }
       else setBanner({ kind: "err", text: e?.message || "Failed." });
     } finally { setEndingTrial(false); }
+  }
+
+  async function handleDeleteOrg() {
+    try {
+      setDeletingOrg(true);
+      await apiFetch<any>("/billing/organization", { method: "DELETE" });
+      logout("/login");
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || "Failed to delete organization." });
+      setShowDeleteOrg(false);
+      setDeletingOrg(false);
+    }
   }
 
   async function handleUpgrade(planKey: string) {
@@ -318,6 +337,76 @@ export default function BillingPage() {
             })}
           </div>
         </div>
+
+        {/* Danger Zone — owners only */}
+        {canDeleteOrg && (
+          <div className="bg-card border border-red-500/30 rounded-xl p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+              <h2 className="text-lg font-semibold text-red-300">Danger Zone</h2>
+            </div>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-foreground">Delete Organization</h3>
+                <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+                  Permanently delete <span className="text-foreground font-medium">{orgName}</span> and all its data —
+                  assets, scans, findings, members, API keys, and audit history. This cannot be undone.
+                </p>
+              </div>
+              <Button
+                onClick={() => { setShowDeleteOrg(true); setDeleteConfirmText(""); }}
+                className="bg-red-500 hover:bg-red-600 text-white shrink-0"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />Delete Organization
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Organization Dialog */}
+        <Dialog open={showDeleteOrg} onOpenChange={(o) => { if (!o && !deletingOrg) { setShowDeleteOrg(false); setDeleteConfirmText(""); } }}>
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-300">
+                <AlertTriangle className="w-5 h-5" />Delete Organization
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                This will permanently delete <span className="text-foreground font-semibold">{orgName}</span> and
+                all associated data. Members will lose access immediately. This action cannot be undone.
+              </p>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground block">
+                  Type <span className="font-mono text-red-300">{orgName}</span> to confirm
+                </label>
+                <Input
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder={orgName}
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-3 justify-end pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => { setShowDeleteOrg(false); setDeleteConfirmText(""); }}
+                  disabled={deletingOrg}
+                  className="border-border text-foreground hover:bg-accent"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleDeleteOrg}
+                  disabled={deletingOrg || deleteConfirmText !== orgName}
+                  className="bg-red-500 hover:bg-red-600 text-white disabled:opacity-50"
+                >
+                  {deletingOrg ? "Deleting..." : "Delete Forever"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* End Trial Dialog — billing mode only */}
         {BILLING_ENABLED && (

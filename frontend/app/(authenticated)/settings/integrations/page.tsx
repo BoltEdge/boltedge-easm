@@ -5,13 +5,15 @@ import React, { useEffect, useState, useCallback } from "react";
 import {
   Plus, Trash2, TestTube, Plug, Bell, ToggleLeft, ToggleRight,
   Pencil, X, Check, AlertCircle, Loader2, ExternalLink,
-  MessageSquare, Ticket, Webhook, Mail, Siren, ChevronDown,
+  MessageSquare, Ticket, Webhook, Mail, Siren, ChevronDown, Lock,
 } from "lucide-react";
 import {
   listIntegrations, createIntegration, updateIntegration, deleteIntegration, testIntegration,
   listNotificationRules, createNotificationRule, updateNotificationRule, deleteNotificationRule,
   type Integration, type NotificationRule,
 } from "../../../lib/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../ui/dialog";
+import { useOrg } from "../../contexts/OrgContext";
 
 // ═══════════════════════════════════════════════════════════════
 // Constants
@@ -82,26 +84,38 @@ function timeAgo(iso: string | null): string {
 // Main Page
 // ═══════════════════════════════════════════════════════════════
 
+type Banner = { kind: "ok" | "err"; text: string } | null;
+
 export default function IntegrationsPage() {
   const [tab, setTab] = useState<"connections" | "rules">("connections");
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [rules, setRules] = useState<NotificationRule[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [banner, setBanner] = useState<Banner>(null);
+
+  const notify = useCallback((kind: "ok" | "err", text: string) => {
+    setBanner({ kind, text });
+  }, []);
+
+  // auto-clear banner
+  useEffect(() => {
+    if (!banner) return;
+    const t = setTimeout(() => setBanner(null), 5000);
+    return () => clearTimeout(t);
+  }, [banner]);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
       const [ints, rls] = await Promise.all([listIntegrations(), listNotificationRules()]);
       setIntegrations(ints);
       setRules(rls);
     } catch (e: any) {
-      setError(e?.response?.data?.error || e?.message || "Failed to load integrations");
+      notify("err", e?.message || "Failed to load integrations");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [notify]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -150,11 +164,20 @@ export default function IntegrationsPage() {
         </button>
       </div>
 
-      {/* Error */}
-      {error && (
-        <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          {error}
+      {/* Banner */}
+      {banner && (
+        <div className={`mb-4 p-3 rounded-lg border text-sm flex items-center justify-between gap-2 ${
+          banner.kind === "ok"
+            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+            : "bg-red-500/10 border-red-500/20 text-red-400"
+        }`}>
+          <span className="flex items-center gap-2">
+            {banner.kind === "ok" ? <Check className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+            {banner.text}
+          </span>
+          <button onClick={() => setBanner(null)} className="hover:opacity-70 shrink-0">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
@@ -165,9 +188,9 @@ export default function IntegrationsPage() {
           Loading integrations...
         </div>
       ) : tab === "connections" ? (
-        <ConnectionsTab integrations={integrations} onRefresh={load} />
+        <ConnectionsTab integrations={integrations} onRefresh={load} notify={notify} />
       ) : (
-        <RulesTab rules={rules} integrations={integrations} onRefresh={load} />
+        <RulesTab rules={rules} integrations={integrations} onRefresh={load} notify={notify} />
       )}
     </main>
   );
@@ -177,7 +200,7 @@ export default function IntegrationsPage() {
 // Connections Tab
 // ═══════════════════════════════════════════════════════════════
 
-function ConnectionsTab({ integrations, onRefresh }: { integrations: Integration[]; onRefresh: () => void }) {
+function ConnectionsTab({ integrations, onRefresh, notify }: { integrations: Integration[]; onRefresh: () => void; notify: (kind: "ok" | "err", text: string) => void }) {
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
@@ -202,6 +225,7 @@ function ConnectionsTab({ integrations, onRefresh }: { integrations: Integration
           existing={editId ? integrations.find((i) => i.id === editId) : undefined}
           onClose={() => { setShowAdd(false); setEditId(null); }}
           onSaved={() => { setShowAdd(false); setEditId(null); onRefresh(); }}
+          notify={notify}
         />
       )}
 
@@ -213,6 +237,7 @@ function ConnectionsTab({ integrations, onRefresh }: { integrations: Integration
             integration={integ}
             onEdit={() => { setEditId(integ.id); setShowAdd(true); }}
             onRefresh={onRefresh}
+            notify={notify}
           />
         ))}
       </div>
@@ -238,11 +263,19 @@ function ConnectionsTab({ integrations, onRefresh }: { integrations: Integration
 // Integration Card
 // ═══════════════════════════════════════════════════════════════
 
-function IntegrationCard({ integration, onEdit, onRefresh }: { integration: Integration; onEdit: () => void; onRefresh: () => void }) {
+function IntegrationCard({ integration, onEdit, onRefresh, notify }: { integration: Integration; onEdit: () => void; onRefresh: () => void; notify: (kind: "ok" | "err", text: string) => void }) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // auto-clear test result
+  useEffect(() => {
+    if (!testResult) return;
+    const t = setTimeout(() => setTestResult(null), 5000);
+    return () => clearTimeout(t);
+  }, [testResult]);
 
   const info = getTypeInfo(integration.type);
   const Icon = info.icon;
@@ -255,7 +288,7 @@ function IntegrationCard({ integration, onEdit, onRefresh }: { integration: Inte
       setTestResult({ ok: res.success, msg: res.success ? "Test passed!" : res.error || "Test failed" });
       onRefresh();
     } catch (e: any) {
-      setTestResult({ ok: false, msg: e?.response?.data?.error || "Test failed" });
+      setTestResult({ ok: false, msg: e?.message || "Test failed" });
     } finally {
       setTesting(false);
     }
@@ -266,16 +299,21 @@ function IntegrationCard({ integration, onEdit, onRefresh }: { integration: Inte
     try {
       await updateIntegration(integration.id, { enabled: !integration.enabled });
       onRefresh();
-    } catch { } finally { setToggling(false); }
+    } catch (e: any) {
+      notify("err", e?.message || "Failed to update integration");
+    } finally { setToggling(false); }
   }
 
   async function handleDelete() {
-    if (!confirm(`Delete integration "${integration.name}"? This will also delete all associated notification rules.`)) return;
     setDeleting(true);
     try {
       await deleteIntegration(integration.id);
+      notify("ok", `Deleted integration "${integration.name}".`);
+      setConfirmDelete(false);
       onRefresh();
-    } catch { } finally { setDeleting(false); }
+    } catch (e: any) {
+      notify("err", e?.message || "Failed to delete integration");
+    } finally { setDeleting(false); }
   }
 
   return (
@@ -352,7 +390,7 @@ function IntegrationCard({ integration, onEdit, onRefresh }: { integration: Inte
           Edit
         </button>
         <button
-          onClick={handleDelete}
+          onClick={() => setConfirmDelete(true)}
           disabled={deleting}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-colors ml-auto disabled:opacity-40"
         >
@@ -360,6 +398,35 @@ function IntegrationCard({ integration, onEdit, onRefresh }: { integration: Inte
           Delete
         </button>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={confirmDelete} onOpenChange={(o) => { if (!o && !deleting) setConfirmDelete(false); }}>
+        <DialogContent className="bg-card border-border text-foreground sm:max-w-[440px]">
+          <DialogHeader><DialogTitle>Delete Integration</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Delete <span className="text-foreground font-semibold">{integration.name}</span>?
+            All associated notification rules will be removed too. This cannot be undone.
+          </p>
+          <div className="flex gap-3 justify-end pt-4">
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(false)}
+              disabled={deleting}
+              className="px-4 py-2 rounded-lg border border-border/50 text-sm text-foreground hover:bg-accent transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium disabled:opacity-50 transition-colors"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -368,8 +435,10 @@ function IntegrationCard({ integration, onEdit, onRefresh }: { integration: Inte
 // Integration Form (Add / Edit)
 // ═══════════════════════════════════════════════════════════════
 
-function IntegrationForm({ existing, onClose, onSaved }: { existing?: Integration; onClose: () => void; onSaved: () => void }) {
+function IntegrationForm({ existing, onClose, onSaved, notify }: { existing?: Integration; onClose: () => void; onSaved: () => void; notify: (kind: "ok" | "err", text: string) => void }) {
   const isEdit = !!existing;
+  const { hasFeature } = useOrg();
+  const webhooksAllowed = hasFeature("webhooks");
   const [type, setType] = useState(existing?.type || "");
   const [name, setName] = useState(existing?.name || "");
   const [config, setConfig] = useState<Record<string, any>>(existing?.config || {});
@@ -387,14 +456,27 @@ function IntegrationForm({ existing, onClose, onSaved }: { existing?: Integratio
     setSaving(true);
     setError(null);
     try {
+      // On edit, omit empty password-typed fields so we don't overwrite saved secrets
+      const payloadConfig = isEdit
+        ? Object.fromEntries(
+            Object.entries(config).filter(([key, value]) => {
+              const f = (CONFIG_FIELDS[type] || []).find((x) => x.key === key);
+              if (f?.type === "password" && (value === "" || value == null)) return false;
+              return true;
+            })
+          )
+        : config;
+
       if (isEdit) {
-        await updateIntegration(existing!.id, { name, config });
+        await updateIntegration(existing!.id, { name, config: payloadConfig });
+        notify("ok", `Updated integration "${name}".`);
       } else {
-        await createIntegration({ type, name, config });
+        await createIntegration({ type, name, config: payloadConfig });
+        notify("ok", `Created integration "${name}".`);
       }
       onSaved();
     } catch (e: any) {
-      setError(e?.response?.data?.error || "Failed to save");
+      setError(e?.message || "Failed to save");
     } finally {
       setSaving(false);
     }
@@ -419,17 +501,25 @@ function IntegrationForm({ existing, onClose, onSaved }: { existing?: Integratio
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
               {INTEGRATION_TYPES.map((t) => {
                 const TIcon = t.icon;
+                const locked = t.value === "webhook" && !webhooksAllowed;
                 return (
                   <button
                     key={t.value}
                     type="button"
-                    onClick={() => { setType(t.value); setConfig({}); }}
-                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border text-xs font-medium transition-all ${
-                      type === t.value
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border/50 bg-card/50 text-muted-foreground hover:border-border hover:text-foreground"
+                    onClick={() => { if (locked) return; setType(t.value); setConfig({}); }}
+                    disabled={locked}
+                    title={locked ? "Webhooks require the Professional plan or higher" : t.description}
+                    className={`relative flex flex-col items-center gap-2 p-3 rounded-lg border text-xs font-medium transition-all ${
+                      locked
+                        ? "border-border/30 bg-card/30 text-muted-foreground/50 cursor-not-allowed"
+                        : type === t.value
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border/50 bg-card/50 text-muted-foreground hover:border-border hover:text-foreground"
                     }`}
                   >
+                    {locked && (
+                      <Lock className="absolute top-1.5 right-1.5 w-3 h-3 text-amber-400" />
+                    )}
                     <TIcon className="w-5 h-5" />
                     {t.label}
                   </button>
@@ -438,6 +528,12 @@ function IntegrationForm({ existing, onClose, onSaved }: { existing?: Integratio
             </div>
             {type && (
               <p className="text-xs text-muted-foreground mt-2">{getTypeInfo(type).description}</p>
+            )}
+            {!webhooksAllowed && (
+              <p className="text-xs text-amber-400/80 mt-2 flex items-center gap-1.5">
+                <Lock className="w-3 h-3" />
+                Webhooks require the Professional plan or higher.
+              </p>
             )}
           </div>
         )}
@@ -457,21 +553,27 @@ function IntegrationForm({ existing, onClose, onSaved }: { existing?: Integratio
         )}
 
         {/* Config fields */}
-        {fields.map((f) => (
-          <div key={f.key}>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              {f.label}
-              {f.required && <span className="text-red-400 ml-1">*</span>}
-            </label>
-            <input
-              type={f.type}
-              value={config[f.key] || ""}
-              onChange={(e) => updateConfig(f.key, e.target.value)}
-              placeholder={f.placeholder}
-              className="w-full px-3 py-2 rounded-lg bg-background border border-border/50 text-foreground text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
-          </div>
-        ))}
+        {fields.map((f) => {
+          const isPassword = f.type === "password";
+          const placeholder = isEdit && isPassword
+            ? "Leave blank to keep current value"
+            : f.placeholder;
+          return (
+            <div key={f.key}>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                {f.label}
+                {f.required && !(isEdit && isPassword) && <span className="text-red-400 ml-1">*</span>}
+              </label>
+              <input
+                type={f.type}
+                value={config[f.key] || ""}
+                onChange={(e) => updateConfig(f.key, e.target.value)}
+                placeholder={placeholder}
+                className="w-full px-3 py-2 rounded-lg bg-background border border-border/50 text-foreground text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+            </div>
+          );
+        })}
 
         {/* Error */}
         {error && (
@@ -506,7 +608,7 @@ function IntegrationForm({ existing, onClose, onSaved }: { existing?: Integratio
 // Rules Tab
 // ═══════════════════════════════════════════════════════════════
 
-function RulesTab({ rules, integrations, onRefresh }: { rules: NotificationRule[]; integrations: Integration[]; onRefresh: () => void }) {
+function RulesTab({ rules, integrations, onRefresh, notify }: { rules: NotificationRule[]; integrations: Integration[]; onRefresh: () => void; notify: (kind: "ok" | "err", text: string) => void }) {
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
@@ -542,6 +644,7 @@ function RulesTab({ rules, integrations, onRefresh }: { rules: NotificationRule[
           integrations={integrations}
           onClose={() => { setShowAdd(false); setEditId(null); }}
           onSaved={() => { setShowAdd(false); setEditId(null); onRefresh(); }}
+          notify={notify}
         />
       )}
 
@@ -566,6 +669,7 @@ function RulesTab({ rules, integrations, onRefresh }: { rules: NotificationRule[
                   rule={rule}
                   onEdit={() => { setEditId(rule.id); setShowAdd(true); }}
                   onRefresh={onRefresh}
+                  notify={notify}
                 />
               ))}
             </tbody>
@@ -594,29 +698,35 @@ function RulesTab({ rules, integrations, onRefresh }: { rules: NotificationRule[
 // Rule Row
 // ═══════════════════════════════════════════════════════════════
 
-function RuleRow({ rule, onEdit, onRefresh }: { rule: NotificationRule; onEdit: () => void; onRefresh: () => void }) {
+function RuleRow({ rule, onEdit, onRefresh, notify }: { rule: NotificationRule; onEdit: () => void; onRefresh: () => void; notify: (kind: "ok" | "err", text: string) => void }) {
   const [deleting, setDeleting] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const eventInfo = EVENT_TYPES.find((e) => e.value === rule.eventType);
-  const integInfo = getTypeInfo(rule.integrationType || "webhook");
-  const IntegIcon = integInfo.icon;
+  const integrationDeleted = !rule.integrationType;
+  const integInfo = integrationDeleted ? null : getTypeInfo(rule.integrationType!);
+  const IntegIcon = integInfo?.icon;
 
   async function handleToggle() {
     setToggling(true);
     try {
       await updateNotificationRule(rule.id, { enabled: !rule.enabled });
       onRefresh();
-    } catch { } finally { setToggling(false); }
+    } catch (e: any) {
+      notify("err", e?.message || "Failed to update rule");
+    } finally { setToggling(false); }
   }
 
   async function handleDelete() {
-    if (!confirm(`Delete rule "${rule.name}"?`)) return;
     setDeleting(true);
     try {
       await deleteNotificationRule(rule.id);
+      notify("ok", `Deleted rule "${rule.name}".`);
+      setConfirmDelete(false);
       onRefresh();
-    } catch { } finally { setDeleting(false); }
+    } catch (e: any) {
+      notify("err", e?.message || "Failed to delete rule");
+    } finally { setDeleting(false); }
   }
 
   return (
@@ -630,10 +740,17 @@ function RuleRow({ rule, onEdit, onRefresh }: { rule: NotificationRule; onEdit: 
         </span>
       </td>
       <td className="px-4 py-3">
-        <span className="inline-flex items-center gap-1.5 text-xs">
-          <IntegIcon className="w-3.5 h-3.5" style={{ color: integInfo.color }} />
-          {rule.integrationName || "Unknown"}
-        </span>
+        {integrationDeleted ? (
+          <span className="inline-flex items-center gap-1.5 text-xs text-red-400">
+            <AlertCircle className="w-3.5 h-3.5" />
+            Integration deleted
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 text-xs">
+            {IntegIcon && <IntegIcon className="w-3.5 h-3.5" style={{ color: integInfo!.color }} />}
+            {rule.integrationName || "Unknown"}
+          </span>
+        )}
       </td>
       <td className="px-4 py-3">
         <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${
@@ -659,10 +776,39 @@ function RuleRow({ rule, onEdit, onRefresh }: { rule: NotificationRule; onEdit: 
           <button onClick={onEdit} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
             <Pencil className="w-4 h-4" />
           </button>
-          <button onClick={handleDelete} disabled={deleting} className="p-1.5 rounded-lg text-red-400/60 hover:text-red-400 transition-colors">
+          <button onClick={() => setConfirmDelete(true)} disabled={deleting} className="p-1.5 rounded-lg text-red-400/60 hover:text-red-400 transition-colors">
             {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
           </button>
         </div>
+
+        {/* Delete confirmation dialog */}
+        <Dialog open={confirmDelete} onOpenChange={(o) => { if (!o && !deleting) setConfirmDelete(false); }}>
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[440px]">
+            <DialogHeader><DialogTitle>Delete Rule</DialogTitle></DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              Delete rule <span className="text-foreground font-semibold">{rule.name}</span>?
+              No more notifications will be sent for this event/integration combination.
+            </p>
+            <div className="flex gap-3 justify-end pt-4">
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-lg border border-border/50 text-sm text-foreground hover:bg-accent transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium disabled:opacity-50 transition-colors"
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </td>
     </tr>
   );
@@ -672,11 +818,12 @@ function RuleRow({ rule, onEdit, onRefresh }: { rule: NotificationRule; onEdit: 
 // Rule Form
 // ═══════════════════════════════════════════════════════════════
 
-function RuleForm({ existing, integrations, onClose, onSaved }: {
+function RuleForm({ existing, integrations, onClose, onSaved, notify }: {
   existing?: NotificationRule;
   integrations: Integration[];
   onClose: () => void;
   onSaved: () => void;
+  notify: (kind: "ok" | "err", text: string) => void;
 }) {
   const isEdit = !!existing;
   const [name, setName] = useState(existing?.name || "");
@@ -705,14 +852,16 @@ function RuleForm({ existing, integrations, onClose, onSaved }: {
         await updateNotificationRule(existing!.id, {
           name, integrationId, eventType, actionMode, filters, actionConfig,
         });
+        notify("ok", `Updated rule "${name}".`);
       } else {
         await createNotificationRule({
           name, integrationId, eventType, actionMode, filters, actionConfig,
         });
+        notify("ok", `Created rule "${name}".`);
       }
       onSaved();
     } catch (e: any) {
-      setError(e?.response?.data?.error || "Failed to save rule");
+      setError(e?.message || "Failed to save rule");
     } finally {
       setSaving(false);
     }
@@ -839,7 +988,7 @@ function RuleForm({ existing, integrations, onClose, onSaved }: {
                 type="text"
                 value={actionConfig.labels || ""}
                 onChange={(e) => setActionConfig((c) => ({ ...c, labels: e.target.value }))}
-                placeholder="security, Nano ASM"
+                placeholder="security, Nano EASM"
                 className="w-full px-3 py-2 rounded-lg bg-background border border-border/50 text-foreground text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>

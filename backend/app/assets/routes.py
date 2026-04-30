@@ -25,7 +25,7 @@ from sqlalchemy import func, case, desc
 from app.extensions import db
 from app.models import Asset, AssetGroup, Finding, ScanJob
 from app.audit.routes import log_audit
-from app.auth.decorators import require_auth, current_user_id, current_organization_id
+from app.auth.decorators import require_auth, allow_api_key, current_user_id, current_organization_id
 from app.auth.permissions import (
     require_role,
     require_permission,
@@ -228,6 +228,7 @@ def asset_to_ui(a: Asset) -> Dict[str, Any]:
 # GET /groups/<id>/assets — all roles can view
 @assets_bp.get("/groups/<group_id>/assets")
 @require_auth
+@allow_api_key
 def list_group_assets(group_id: str):
     uid = current_user_id()
     org_id = current_organization_id()
@@ -270,6 +271,7 @@ def list_group_assets(group_id: str):
 # POST /groups/<id>/assets — analyst+ (single add) with asset limit check
 @assets_bp.post("/groups/<group_id>/assets")
 @require_auth
+@allow_api_key
 @require_role("analyst")
 @check_limit("assets")
 def add_asset_to_group(group_id: str):
@@ -371,6 +373,7 @@ def add_asset_to_group(group_id: str):
 # POST /groups/<id>/assets/bulk — admin+ only (bulk_add_assets permission) with asset limit check
 @assets_bp.post("/groups/<group_id>/assets/bulk")
 @require_auth
+@allow_api_key
 @require_permission("bulk_add_assets")
 @check_limit("assets")
 def bulk_add_assets(group_id: str):
@@ -499,6 +502,7 @@ def bulk_add_assets(group_id: str):
 # GET /assets — all roles can view
 @assets_bp.get("/assets")
 @require_auth
+@allow_api_key
 def list_assets():
     org_id = current_organization_id()
 
@@ -552,6 +556,7 @@ def list_assets():
 # GET /assets/<id> — all roles can view
 @assets_bp.get("/assets/<asset_id>")
 @require_auth
+@allow_api_key
 def get_asset(asset_id: str):
     org_id = current_organization_id()
 
@@ -571,6 +576,7 @@ def get_asset(asset_id: str):
 # PATCH /assets/<id> — analyst+
 @assets_bp.patch("/assets/<asset_id>")
 @require_auth
+@allow_api_key
 @require_role("analyst")
 def update_asset(asset_id: str):
     uid = current_user_id()
@@ -642,6 +648,7 @@ def update_asset(asset_id: str):
 # DELETE /assets/<id> — analyst+
 @assets_bp.delete("/assets/<asset_id>")
 @require_auth
+@allow_api_key
 @require_role("analyst")
 def delete_asset(asset_id: str):
     org_id = current_organization_id()
@@ -677,6 +684,7 @@ def delete_asset(asset_id: str):
 # GET /assets/<id>/risk — all roles can view
 @assets_bp.get("/assets/<asset_id>/risk")
 @require_auth
+@allow_api_key
 def asset_risk(asset_id: str):
     org_id = current_organization_id()
 
@@ -728,6 +736,7 @@ def asset_risk(asset_id: str):
 # GET /assets/<id>/coverage — all roles can view
 @assets_bp.get("/assets/<asset_id>/coverage")
 @require_auth
+@allow_api_key
 def asset_coverage(asset_id: str):
     org_id = current_organization_id()
 
@@ -786,6 +795,7 @@ def asset_coverage(asset_id: str):
 # GET /assets/<id>/health — all roles can view
 @assets_bp.get("/assets/<asset_id>/health")
 @require_auth
+@allow_api_key
 def asset_health(asset_id: str):
     from datetime import datetime
 
@@ -893,6 +903,7 @@ def asset_health(asset_id: str):
 # GET /assets/<id>/timeline — all roles can view
 @assets_bp.get("/assets/<asset_id>/timeline")
 @require_auth
+@allow_api_key
 def asset_timeline(asset_id: str):
     org_id = current_organization_id()
 
