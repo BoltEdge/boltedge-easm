@@ -612,6 +612,8 @@ function AddToolDropdown({ onAdd, disabled }: { onAdd: (toolId: ToolId) => void;
 export default function ToolsPage() {
   const nextUid = useRef(DEFAULT_TOOLS.length + 1);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const { hasFeature } = useOrg();
+  const hasMonitoring = hasFeature("monitoring");
 
   const [panels, setPanels] = useState<PanelState[]>(() => {
     const cols = Math.min(DEFAULT_TOOLS.length, 3);
@@ -625,7 +627,14 @@ export default function ToolsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({});
+  const [alertBanner, setAlertBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const sidebarResizeRef = useRef<{ startX: number; startW: number } | null>(null);
+
+  React.useEffect(() => {
+    if (!alertBanner) return;
+    const t = setTimeout(() => setAlertBanner(null), 4000);
+    return () => clearTimeout(t);
+  }, [alertBanner]);
 
   const handleSidebarResizeDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -830,6 +839,20 @@ export default function ToolsPage() {
           </button>
         </div>
 
+        {alertBanner && (
+          <div className={cn(
+            "mx-3 mt-3 rounded-lg border px-3 py-2 text-xs flex items-center justify-between gap-2",
+            alertBanner.kind === "ok"
+              ? "border-[#10b981]/30 bg-[#10b981]/10 text-[#b7f7d9]"
+              : "border-red-500/30 bg-red-500/10 text-red-200"
+          )}>
+            <span>{alertBanner.text}</span>
+            <button type="button" onClick={() => setAlertBanner(null)} className="opacity-60 hover:opacity-100">
+              <X size={12} />
+            </button>
+          </div>
+        )}
+
         {/* Canvas */}
         <div ref={canvasRef}
           onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
@@ -857,7 +880,9 @@ export default function ToolsPage() {
                   <ToolPanel key={panel.uid} panel={panel} tool={tool} globalTarget={globalTarget} canvasWidth={canvasWidth} canvasRef={canvasRef}
                     onRemove={() => removePanel(panel.uid)} onRun={() => runTool(panel.uid)}
                     onToggleExpand={() => toggleExpand(panel.uid)} onSetLocalTarget={(v) => setLocalTarget(panel.uid, v)}
-                    onResize={(w, h) => resizePanel(panel.uid, w, h)} />
+                    onResize={(w, h) => resizePanel(panel.uid, w, h)}
+                    hasMonitoring={hasMonitoring}
+                    onSavedAsAlert={(kind, text) => setAlertBanner({ kind, text })} />
                 );
               })}
             </div>

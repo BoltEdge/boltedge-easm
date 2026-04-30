@@ -10,7 +10,8 @@ import {
 } from "lucide-react";
 
 import type { AssetGroup, Finding } from "../../types";
-import { getGroups, apiFetch, escalateFinding } from "../../lib/api";
+import { getGroups, apiFetch, escalateFinding, API_BASE_URL } from "../../lib/api";
+import { getAccessToken } from "../../lib/auth";
 import { useOrg } from "../contexts/OrgContext";
 
 import { Button } from "../../ui/button";
@@ -326,12 +327,14 @@ export default function FindingsPage() {
     params.set("status", statusFilter);
 
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("asm_access_token") : null;
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
-      const resp = await fetch(`${baseUrl}/findings/export?${params.toString()}`, {
+      const token = getAccessToken();
+      const resp = await fetch(`${API_BASE_URL}/findings/export?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (!resp.ok) throw new Error("Export failed");
+      if (!resp.ok) {
+        const txt = await resp.text().catch(() => "");
+        throw new Error(txt || `Export failed (${resp.status})`);
+      }
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

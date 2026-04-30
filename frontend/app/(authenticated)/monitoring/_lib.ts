@@ -33,7 +33,7 @@ export interface Monitor {
 
 export interface MonitorAlert {
   id: string;
-  monitorId: string;
+  monitorId?: string;
   findingId?: string;
   alertType: string;
   templateId?: string;
@@ -44,9 +44,13 @@ export interface MonitorAlert {
   summary?: string;
   assetValue?: string;
   groupName?: string;
+  source?: string;
+  sourceTool?: string;
+  sourceTarget?: string;
   notifiedVia?: string[];
   createdAt?: string;
   acknowledgedAt?: string;
+  resolvedAt?: string;
 }
 
 export interface MonitorSettings {

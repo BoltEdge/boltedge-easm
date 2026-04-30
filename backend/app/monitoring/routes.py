@@ -230,8 +230,63 @@ def _compute_dedupe_key(data: dict) -> str:
 from app.integrations.routes import dispatch_event as _dispatch_event
 
 
-def dispatch_monitor_alert(alert: MonitorAlert, org_id: int):
-    """Dispatch a notification when a new monitor alert is created."""
+def dispatch_monitor_alert(alert: MonitorAlert, org_id: int) -> None:
+    """Deliver a monitor alert through every configured channel: email,
+    in-app, the settings-level webhook, and integration notification rules.
+
+    Records the channels actually used in alert.notified_via and commits.
+    Used by the periodic scheduler (one alert at a time), the manual alert
+    route, and the finding-escalation route — so all alert origins reach the
+    same set of subscribers.
+
+    Email/in-app/settings-webhook are gated on MonitorSettings (must exist,
+    severity must match the user's filter). The integrations channel is
+    likewise gated so that org-wide notification preferences govern delivery.
+    """
+    settings = MonitorSettings.query.filter_by(organization_id=org_id).first()
+    if not settings:
+        return
+
+    severity_filter = set(
+        settings.notify_on_severity or ["critical", "high", "medium", "low", "info"]
+    )
+    if alert.severity not in severity_filter:
+        return
+
+    # Lazy import so we don't form a module-load cycle with the scheduler
+    from app.monitoring.scheduler import (
+        _send_email_notification,
+        _create_in_app_notification,
+        _send_webhook_notification,
+    )
+
+    channels_used: list[str] = list(alert.notified_via or [])
+
+    def mark(channel: str) -> None:
+        if channel not in channels_used:
+            channels_used.append(channel)
+
+    if settings.email_enabled and settings.email_recipients:
+        try:
+            _send_email_notification(alert, settings.email_recipients)
+            mark("email")
+        except Exception:
+            logger.exception("Email notification failed for alert %s", alert.id)
+
+    if settings.in_app_enabled:
+        try:
+            _create_in_app_notification(alert, org_id)
+            mark("in_app")
+        except Exception:
+            logger.exception("In-app notification failed for alert %s", alert.id)
+
+    if settings.webhook_enabled and settings.webhook_url:
+        try:
+            _send_webhook_notification(alert, settings.webhook_url)
+            mark("webhook")
+        except Exception:
+            logger.exception("Webhook notification failed for alert %s", alert.id)
+
     try:
         _dispatch_event(org_id, "monitor.alert", {
             "alert_id": str(alert.id),
@@ -242,8 +297,16 @@ def dispatch_monitor_alert(alert: MonitorAlert, org_id: int):
             "description": (alert.summary or "")[:500],
             "alert_type": alert.alert_type or "",
         })
-    except Exception as e:
-        logger.warning(f"Failed to dispatch monitor alert notification: {e}")
+        mark("integrations")
+    except Exception:
+        logger.exception("Integration dispatch failed for alert %s", alert.id)
+
+    alert.notified_via = channels_used
+    try:
+        db.session.commit()
+    except Exception:
+        logger.exception("Failed to persist notified_via for alert %s", alert.id)
+        db.session.rollback()
 
 
 # ===========================================================================

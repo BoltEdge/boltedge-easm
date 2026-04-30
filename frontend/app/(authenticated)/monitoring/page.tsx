@@ -27,6 +27,26 @@ import {
 } from "./_lib";
 import type { Monitor, MonitorAlert } from "./_lib";
 
+// Source-specific label/style for non-monitor alerts (lookup_tool, finding, manual).
+// Returns null for the default "monitor" source — badge is suppressed.
+function sourceBadge(source?: string): { label: string; className: string } | null {
+  switch (source) {
+    case "lookup_tool":
+      return { label: "Lookup Tool", className: "bg-[#00b8d4]/10 text-[#00b8d4] border-[#00b8d4]/30" };
+    case "finding":
+      return { label: "Escalated", className: "bg-amber-500/10 text-amber-400 border-amber-500/30" };
+    case "manual":
+      return { label: "Manual", className: "bg-muted/30 text-muted-foreground border-border" };
+    default:
+      return null;
+  }
+}
+
+function prettySourceTool(toolId?: string): string {
+  if (!toolId) return "";
+  return toolId.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 // Icon lookup for monitor type badges
 const ICON_MAP: Record<string, any> = {
   Shield, Globe, Lock, Server, FileCode, Cpu, ShieldAlert,
@@ -667,18 +687,32 @@ function AlertsTab({ setBanner, planLimit }: {
               <div key={alert.id} className="p-4 hover:bg-accent/20 transition-colors">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <SeverityBadge severity={alert.severity} />
                       <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold border", alertStatusBadge(alert.status))}>
                         {alert.status}
                       </span>
+                      {(() => {
+                        const sb = sourceBadge(alert.source);
+                        return sb && (
+                          <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold border", sb.className)}>
+                            {sb.label}
+                          </span>
+                        );
+                      })()}
                       <span className="text-xs text-muted-foreground">{timeAgo(alert.createdAt)}</span>
                     </div>
                     <h4 className="text-sm font-medium text-foreground mb-0.5">{alert.title}</h4>
                     {alert.summary && <p className="text-xs text-muted-foreground mb-1">{alert.summary}</p>}
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                       {alert.assetValue && <span className="font-mono">{alert.assetValue}</span>}
                       {alert.alertName && <span>· {alert.alertName}</span>}
+                      {alert.source === "lookup_tool" && alert.sourceTool && (
+                        <span>· from {prettySourceTool(alert.sourceTool)}{alert.sourceTarget ? ` on ${alert.sourceTarget}` : ""}</span>
+                      )}
+                      {alert.source === "finding" && alert.findingId && (
+                        <span>· Finding #{alert.findingId}</span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

@@ -40,67 +40,21 @@ _scheduler_thread: threading.Thread | None = None
 # ---------------------------------------------------------------------------
 
 def _dispatch_notifications(alerts: list, org_id: int) -> None:
-    """
-    Send notifications for generated alerts based on org settings.
-
-    Handles: email, in-app, webhook.
-    Each alert is tagged with notified_via after dispatch.
+    """Dispatch a batch of alerts. Per-alert delivery (severity gating,
+    channel selection, notified_via tracking, and commit) lives in
+    dispatch_monitor_alert so it is shared with the manual alert and
+    finding-escalation routes.
     """
     if not alerts:
         return
 
-    from app.models import MonitorSettings
-    from app.extensions import db
-
-    settings = MonitorSettings.query.filter_by(organization_id=org_id).first()
-    if not settings:
-        return  # No settings → no notifications
-
-    # Filter by severity preference
-    severity_filter = set(settings.notify_on_severity or [])
+    from app.monitoring.routes import dispatch_monitor_alert
 
     for alert in alerts:
-        if alert.severity not in severity_filter:
-            continue
-
-        channels_used = []
-
-        # --- Email ---
-        if settings.email_enabled and settings.email_recipients:
-            try:
-                _send_email_notification(alert, settings.email_recipients)
-                channels_used.append("email")
-            except Exception:
-                logger.exception("Email notification failed for alert %s", alert.id)
-
-        # --- In-app ---
-        if settings.in_app_enabled:
-            try:
-                _create_in_app_notification(alert, org_id)
-                channels_used.append("in_app")
-            except Exception:
-                logger.exception("In-app notification failed for alert %s", alert.id)
-
-        # --- Webhook ---
-        if settings.webhook_enabled and settings.webhook_url:
-            try:
-                _send_webhook_notification(alert, settings.webhook_url)
-                channels_used.append("webhook")
-            except Exception:
-                logger.exception("Webhook notification failed for alert %s", alert.id)
-
-        # --- Integration dispatch (Slack, Jira, PagerDuty, Webhook, Email) ---
         try:
-            from app.monitoring.routes import dispatch_monitor_alert
             dispatch_monitor_alert(alert, org_id)
-            channels_used.append("integrations")
         except Exception:
-            logger.exception("Integration dispatch failed for alert %s", alert.id)
-
-        # Track which channels were used
-        alert.notified_via = channels_used
-
-    db.session.commit()
+            logger.exception("Dispatch failed for alert %s", alert.id)
 
 
 def _send_email_notification(alert, recipients: list[str]) -> None:

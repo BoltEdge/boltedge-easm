@@ -222,11 +222,11 @@ export default function Page() {
               <DialogTrigger asChild><Button className="bg-primary hover:bg-primary/90"><Plus className="w-4 h-4 mr-2" />Create your first group</Button></DialogTrigger>
               <DialogContent className="bg-card border-border">
                 <DialogHeader><DialogTitle className="text-foreground">Create Asset Group</DialogTitle></DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2"><Label htmlFor="group-name" className="text-foreground">Group Name</Label><Input id="group-name" placeholder="e.g., Production Infrastructure" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} className="bg-input-background border-border text-foreground" /></div>
-                  <Button onClick={handleCreateGroup} className="w-full bg-primary hover:bg-primary/90" disabled={!newGroupName.trim()}>Create Group</Button>
+                <form onSubmit={(e) => { e.preventDefault(); handleCreateGroup(); }} className="space-y-4 py-4">
+                  <div className="space-y-2"><Label htmlFor="group-name" className="text-foreground">Group Name</Label><Input id="group-name" placeholder="e.g., Production Infrastructure" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} className="bg-input-background border-border text-foreground" autoFocus /></div>
+                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={!newGroupName.trim()}>Create Group</Button>
                   {error && <p className="text-sm text-red-300">{error}</p>}
-                </div>
+                </form>
               </DialogContent>
             </Dialog>
           ) : (<p className="text-sm text-muted-foreground">Ask an admin or owner to create asset groups.</p>)}
@@ -257,11 +257,11 @@ export default function Page() {
                 <DialogTrigger asChild><Button className="bg-primary hover:bg-primary/90"><Plus className="w-4 h-4 mr-2" />New Group</Button></DialogTrigger>
                 <DialogContent className="bg-card border-border">
                   <DialogHeader><DialogTitle className="text-foreground">Create Asset Group</DialogTitle></DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2"><Label htmlFor="group-name-2" className="text-foreground">Group Name</Label><Input id="group-name-2" placeholder="e.g., Production Infrastructure" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} className="bg-input-background border-border text-foreground" /></div>
-                    <Button onClick={handleCreateGroup} className="w-full bg-primary hover:bg-primary/90" disabled={!newGroupName.trim()}>Create Group</Button>
+                  <form onSubmit={(e) => { e.preventDefault(); handleCreateGroup(); }} className="space-y-4 py-4">
+                    <div className="space-y-2"><Label htmlFor="group-name-2" className="text-foreground">Group Name</Label><Input id="group-name-2" placeholder="e.g., Production Infrastructure" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} className="bg-input-background border-border text-foreground" autoFocus /></div>
+                    <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={!newGroupName.trim()}>Create Group</Button>
                     {error && <p className="text-sm text-red-300">{error}</p>}
-                  </div>
+                  </form>
                 </DialogContent>
               </Dialog>
             )}
@@ -379,14 +379,14 @@ export default function Page() {
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="bg-card border-border">
           <DialogHeader><DialogTitle className="text-foreground">Edit Asset Group</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2"><Label htmlFor="edit-group-name" className="text-foreground">Group Name</Label><Input id="edit-group-name" placeholder="e.g., Production Infrastructure" value={editingGroup?.name || ""} onChange={(e) => setEditingGroup(editingGroup ? { ...editingGroup, name: e.target.value } : null)} className="bg-input-background border-border text-foreground" /></div>
+          <form onSubmit={(e) => { e.preventDefault(); confirmEdit(); }} className="space-y-4 py-4">
+            <div className="space-y-2"><Label htmlFor="edit-group-name" className="text-foreground">Group Name</Label><Input id="edit-group-name" placeholder="e.g., Production Infrastructure" value={editingGroup?.name || ""} onChange={(e) => setEditingGroup(editingGroup ? { ...editingGroup, name: e.target.value } : null)} className="bg-input-background border-border text-foreground" autoFocus /></div>
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => { setEditingGroup(null); setIsEditOpen(false); }} className="flex-1 border-border text-foreground hover:bg-accent">Cancel</Button>
-              <Button onClick={confirmEdit} className="flex-1 bg-primary hover:bg-primary/90" disabled={!editingGroup?.name?.trim()}>Save Changes</Button>
+              <Button type="button" variant="outline" onClick={() => { setEditingGroup(null); setIsEditOpen(false); }} className="flex-1 border-border text-foreground hover:bg-accent">Cancel</Button>
+              <Button type="submit" className="flex-1 bg-primary hover:bg-primary/90" disabled={!editingGroup?.name?.trim()}>Save Changes</Button>
             </div>
             {error && <p className="text-sm text-red-300">{error}</p>}
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
 

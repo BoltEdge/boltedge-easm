@@ -687,7 +687,7 @@ export default function AssetGroupDetailsPage() {
       <Dialog open={addOpen} onOpenChange={(o) => { if (!o) closeAddModal(); else setAddOpen(true); }}>
         <DialogContent className="sm:max-w-[560px]">
           <DialogHeader><DialogTitle>Add Asset to {group?.name}</DialogTitle></DialogHeader>
-          <div className="space-y-4 pt-2">
+          <form onSubmit={(e) => { e.preventDefault(); onAddAsset(); }} className="space-y-4 pt-2">
             {/* Asset Type Selector — visual buttons */}
             <div className="space-y-2">
               <Label>Asset Type</Label>
@@ -767,10 +767,10 @@ export default function AssetGroupDetailsPage() {
             </div>
 
             {addError && <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{addError}</div>}
-            <Button className="w-full bg-primary hover:bg-primary/90" disabled={!canSubmit} onClick={onAddAsset}>
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={!canSubmit}>
               {adding ? "Adding..." : assetType === "cloud" ? "Add Cloud Asset" : "Add Asset"}
             </Button>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -778,13 +778,13 @@ export default function AssetGroupDetailsPage() {
       <Dialog open={editOpen} onOpenChange={(o) => { if (!o) closeEditModal(); }}>
         <DialogContent className="sm:max-w-[560px]">
           <DialogHeader><DialogTitle>Edit Asset</DialogTitle></DialogHeader>
-          <div className="space-y-4 pt-2">
+          <form onSubmit={(e) => { e.preventDefault(); onSaveEdit(); }} className="space-y-4 pt-2">
             <div className="space-y-2"><Label>Asset Type</Label><Input value={String(editingAsset?.type || "").toUpperCase()} disabled /></div>
             <div className="space-y-2"><Label>Asset Value</Label><Input value={editValue} onChange={(e) => setEditValue(e.target.value)} /></div>
             <div className="space-y-2"><Label>Label</Label><Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} /></div>
             {editError && <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{editError}</div>}
-            <div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={closeEditModal}>Cancel</Button><Button className="flex-1 bg-primary hover:bg-primary/90" onClick={onSaveEdit} disabled={savingEdit}>{savingEdit ? "Saving..." : "Save"}</Button></div>
-          </div>
+            <div className="flex gap-3"><Button type="button" variant="outline" className="flex-1" onClick={closeEditModal}>Cancel</Button><Button type="submit" className="flex-1 bg-primary hover:bg-primary/90" disabled={savingEdit}>{savingEdit ? "Saving..." : "Save"}</Button></div>
+          </form>
         </DialogContent>
       </Dialog>
 
