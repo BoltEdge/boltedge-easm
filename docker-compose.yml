@@ -37,6 +37,8 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-https://nanoasm.com}
       SHODAN_API_KEY: ${SHODAN_API_KEY}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-Nano EASM <no-reply@nanoasm.com>}
+      MONITOR_EMAIL_FROM: ${MONITOR_EMAIL_FROM:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ENABLE_BILLING: ${ENABLE_BILLING:-false}
@@ -58,6 +60,7 @@ services:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
         NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED: ${NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED:-false}
         NEXT_PUBLIC_MICROSOFT_OAUTH_ENABLED: ${NEXT_PUBLIC_MICROSOFT_OAUTH_ENABLED:-false}
+        NEXT_PUBLIC_ENABLE_BILLING: ${NEXT_PUBLIC_ENABLE_BILLING:-false}
     container_name: easm-frontend
     restart: unless-stopped
     depends_on:
