@@ -1359,7 +1359,7 @@ export async function deleteReport(reportId: string): Promise<void> {
   await apiFetch(API.reports.byId(reportId), { method: "DELETE" });
 }
 
-export async function downloadReport(reportId: string): Promise<Blob> {
+export async function downloadReport(reportId: string, opts?: { inline?: boolean }): Promise<Blob> {
   const token = (await import("./auth")).getAccessToken();
   const dlBase =
     process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ||
@@ -1367,7 +1367,8 @@ export async function downloadReport(reportId: string): Promise<Blob> {
       ? `http://${window.location.hostname}:5000`
       : "http://127.0.0.1:5000");
 
-  const res = await fetch(`${dlBase}${API.reports.download(reportId)}`, {
+  const url = `${dlBase}${API.reports.download(reportId)}${opts?.inline ? "?inline=1" : ""}`;
+  const res = await fetch(url, {
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },

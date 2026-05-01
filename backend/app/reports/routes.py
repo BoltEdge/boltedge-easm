@@ -1072,7 +1072,7 @@ def get_report(report_id: int):
     return jsonify(_report_to_dict(r)), 200
 
 
-# GET /reports/<id>/download — viewer+ (download PDF)
+# GET /reports/<id>/download — viewer+ (download PDF, or view inline with ?inline=1)
 @reports_bp.get("/<int:report_id>/download")
 @require_auth
 @allow_api_key
@@ -1089,11 +1089,12 @@ def download_report(report_id: int):
     mimetype = "application/pdf" if r.file_path.endswith(".pdf") else "text/html"
     ext = "pdf" if mimetype == "application/pdf" else "html"
     download_name = f"{r.title.replace(' ', '_')}_{r.id}.{ext}"
+    inline = request.args.get("inline") == "1"
 
     return send_file(
         r.file_path,
         mimetype=mimetype,
-        as_attachment=True,
+        as_attachment=not inline,
         download_name=download_name,
     )
 

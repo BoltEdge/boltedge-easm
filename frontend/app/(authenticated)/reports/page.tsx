@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   FileText, Download, Trash2, Plus, Loader2, AlertCircle,
-  Building2, FolderOpen, ChevronDown, X, RefreshCw,
+  Building2, FolderOpen, ChevronDown, X, RefreshCw, Eye,
 } from "lucide-react";
 import { useOrg } from "../contexts/OrgContext";
 import {
@@ -430,6 +430,29 @@ export default function ReportsPage() {
     }
   };
 
+  // Open the report inline in a new tab via a blob URL — keeps JWT auth
+  // working (we couldn't use a plain <a target="_blank"> because we'd lose
+  // the Authorization header). The blob URL stays alive until the user
+  // closes the tab; we revoke after a delay as a safety net.
+  const handleView = async (r: ReportItem) => {
+    try {
+      const blob = await downloadReport(r.id, { inline: true });
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, "_blank", "noopener,noreferrer");
+      if (!win) {
+        setBanner({ type: "error", message: "Popup blocked — allow popups for this site to view reports inline." });
+        setTimeout(() => setBanner(null), 5000);
+        URL.revokeObjectURL(url);
+        return;
+      }
+      // Tabs that loaded the blob still need it alive; revoke after a generous delay.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e: any) {
+      setBanner({ type: "error", message: e?.message || "Failed to open report" });
+      setTimeout(() => setBanner(null), 5000);
+    }
+  };
+
   const handleDelete = async (r: ReportItem) => {
     if (!confirm(`Delete report "${r.title}"? This cannot be undone.`)) return;
     try {
@@ -642,13 +665,22 @@ export default function ReportsPage() {
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-1">
                         {r.status === "ready" && (
-                          <button
-                            onClick={() => handleDownload(r)}
-                            className="p-2 rounded-lg text-teal-400 hover:bg-teal-500/10 transition-colors"
-                            title="Download PDF"
-                          >
-                            <Download className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleView(r)}
+                              className="p-2 rounded-lg text-teal-400 hover:bg-teal-500/10 transition-colors"
+                              title="View report in new tab"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDownload(r)}
+                              className="p-2 rounded-lg text-teal-400 hover:bg-teal-500/10 transition-colors"
+                              title="Download PDF"
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                         {canDelete && (
                           <button

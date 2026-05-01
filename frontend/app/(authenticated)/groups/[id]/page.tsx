@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   ChevronLeft, MoreVertical, Plus, Play, FileText, X, Search,
   Eye, Shield, Zap, ShieldCheck, ShieldAlert, AlertTriangle,
   Layers, Clock, Target, TrendingUp, CheckSquare, Square,
   Trash2, ArrowRightLeft, Cloud, Database, Box, Cpu, Radio,
+  Loader2,
 } from "lucide-react";
 
 import type { Asset, AssetGroup, AssetType, ScanProfile } from "../../../types";
@@ -295,6 +296,7 @@ function StatCard({ icon, label, value, sub, subColor, isText }: { icon: React.R
 export default function AssetGroupDetailsPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const groupId = params.id;
 
   const [groups, setGroups] = useState<AssetGroup[]>([]);
@@ -336,6 +338,9 @@ export default function AssetGroupDetailsPage() {
   // Bulk delete
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  // Bulk scan
+  const [bulkScanning, setBulkScanning] = useState(false);
 
   // Bulk add
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
@@ -404,6 +409,15 @@ export default function AssetGroupDetailsPage() {
   };
 
   useEffect(() => { loadPage(); }, [groupId]);
+
+  // If we arrived here via "create group" with ?addAsset=1, auto-open the
+  // add-asset dialog and strip the query param so a refresh doesn't reopen it.
+  useEffect(() => {
+    if (searchParams.get("addAsset") === "1") {
+      setAddOpen(true);
+      router.replace(`/groups/${groupId}`);
+    }
+  }, [searchParams, groupId, router]);
 
   // Fetch risks
   useEffect(() => {
@@ -481,6 +495,50 @@ export default function AssetGroupDetailsPage() {
       setSelectedIds(new Set());
       setBulkDeleteOpen(false);
     } catch {} finally { setBulkDeleting(false); }
+  };
+
+  // Bulk Scan — fan out createScanJob + runScanJob for each selected asset
+  // using the currently-chosen profile. Plan-limit hits and other failures
+  // are tallied and surfaced in the banner.
+  const onBulkScan = async () => {
+    if (selectedIds.size === 0 || bulkScanning) return;
+    const ids = Array.from(selectedIds);
+    setBulkScanning(true);
+    setScanningIds((prev) => {
+      const next = { ...prev };
+      for (const id of ids) next[id] = true;
+      return next;
+    });
+
+    let succeeded = 0;
+    let failed = 0;
+    await Promise.all(ids.map(async (id) => {
+      try {
+        const job = await createScanJob(id, selectedProfileId || undefined);
+        await runScanJob(String(job.id));
+        succeeded++;
+      } catch (e) {
+        console.error(`Bulk scan failed for asset ${id}:`, e);
+        failed++;
+      } finally {
+        setScanningIds((prev) => { const next = { ...prev }; delete next[id]; return next; });
+      }
+    }));
+
+    try {
+      const refreshed = await getGroupAssets(groupId);
+      setAssets(refreshed);
+    } catch {}
+
+    setSelectedIds(new Set());
+    setBulkScanning(false);
+    if (failed === 0) {
+      setBanner({ kind: "ok", text: `Started ${succeeded} scan${succeeded !== 1 ? "s" : ""}.` });
+    } else if (succeeded === 0) {
+      setBanner({ kind: "err", text: `All ${failed} scan${failed !== 1 ? "s" : ""} failed to start.` });
+    } else {
+      setBanner({ kind: "err", text: `Started ${succeeded} scan${succeeded !== 1 ? "s" : ""}, ${failed} failed.` });
+    }
   };
 
   // Paging
@@ -561,13 +619,20 @@ export default function AssetGroupDetailsPage() {
           </div>
           <div className="flex items-center gap-3">
             <Label className="text-muted-foreground">Risk</Label>
-            <select value={riskFilter} onChange={(e) => setRiskFilter(e.target.value as RiskFilter)} className="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground">
-              <option value="all">All</option><option value="no_issues">Clean</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option><option value="not_scanned">Not scanned</option>
+            <select value={riskFilter} onChange={(e) => setRiskFilter(e.target.value as RiskFilter)} className="h-10 min-w-[140px] rounded-md border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+              <option className="bg-card text-foreground" value="all">All</option>
+              <option className="bg-card text-foreground" value="no_issues">Clean</option>
+              <option className="bg-card text-foreground" value="critical">Critical</option>
+              <option className="bg-card text-foreground" value="high">High</option>
+              <option className="bg-card text-foreground" value="medium">Medium</option>
+              <option className="bg-card text-foreground" value="low">Low</option>
+              <option className="bg-card text-foreground" value="info">Info</option>
+              <option className="bg-card text-foreground" value="not_scanned">Not scanned</option>
             </select>
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-muted-foreground" />
-              <select value={selectedProfileId} onChange={(e) => setSelectedProfileId(e.target.value)} className="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground">
-                {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              <select value={selectedProfileId} onChange={(e) => setSelectedProfileId(e.target.value)} className="h-10 min-w-[180px] rounded-md border border-border bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                {profiles.map((p) => <option key={p.id} value={p.id} className="bg-card text-foreground">{p.name}</option>)}
               </select>
             </div>
           </div>
@@ -578,7 +643,11 @@ export default function AssetGroupDetailsPage() {
           <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-2.5">
             <span className="text-sm font-medium text-foreground">{selectedIds.size} selected</span>
             <div className="flex-1" />
-            <Button size="sm" variant="outline" onClick={() => setBulkDeleteOpen(true)} className="gap-1.5 border-red-500/50 text-red-400 hover:bg-red-500/10">
+            <Button size="sm" variant="outline" onClick={onBulkScan} disabled={bulkScanning} className="gap-1.5 border-primary/50 text-primary hover:bg-primary/10">
+              {bulkScanning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+              {bulkScanning ? "Starting…" : "Scan Selected"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setBulkDeleteOpen(true)} disabled={bulkScanning} className="gap-1.5 border-red-500/50 text-red-400 hover:bg-red-500/10">
               <Trash2 className="w-3.5 h-3.5" />Delete Selected
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())} className="text-muted-foreground"><X className="w-4 h-4" /></Button>
@@ -723,6 +792,7 @@ export default function AssetGroupDetailsPage() {
                 placeholder={getAssetPlaceholder(assetType)}
                 value={assetValue}
                 onChange={(e) => setAssetValue(e.target.value)}
+                maxLength={255}
               />
               {assetType === "cloud" && (
                 <p className="text-xs text-muted-foreground">
@@ -763,7 +833,7 @@ export default function AssetGroupDetailsPage() {
             {/* Label */}
             <div className="space-y-2">
               <Label>Label (Optional)</Label>
-              <Input placeholder="e.g., Main Website" value={assetLabel} onChange={(e) => setAssetLabel(e.target.value)} />
+              <Input placeholder="e.g., Main Website" value={assetLabel} onChange={(e) => setAssetLabel(e.target.value)} maxLength={100} />
             </div>
 
             {addError && <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{addError}</div>}
@@ -780,8 +850,8 @@ export default function AssetGroupDetailsPage() {
           <DialogHeader><DialogTitle>Edit Asset</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); onSaveEdit(); }} className="space-y-4 pt-2">
             <div className="space-y-2"><Label>Asset Type</Label><Input value={String(editingAsset?.type || "").toUpperCase()} disabled /></div>
-            <div className="space-y-2"><Label>Asset Value</Label><Input value={editValue} onChange={(e) => setEditValue(e.target.value)} /></div>
-            <div className="space-y-2"><Label>Label</Label><Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Asset Value</Label><Input value={editValue} onChange={(e) => setEditValue(e.target.value)} maxLength={255} /></div>
+            <div className="space-y-2"><Label>Label</Label><Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} maxLength={100} /></div>
             {editError && <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{editError}</div>}
             <div className="flex gap-3"><Button type="button" variant="outline" className="flex-1" onClick={closeEditModal}>Cancel</Button><Button type="submit" className="flex-1 bg-primary hover:bg-primary/90" disabled={savingEdit}>{savingEdit ? "Saving..." : "Save"}</Button></div>
           </form>

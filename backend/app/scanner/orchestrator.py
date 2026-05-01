@@ -371,7 +371,7 @@ def _get_engine_config(
     if engine_name == "dns":
         if not profile:
             return {}
-        is_deep = "deep" in (profile.name or "").lower()
+        is_deep = any(k in (profile.name or "").lower() for k in ("deep", "full"))
         return {
             "attempt_zone_transfer": is_deep,
             "timeout": 5,
@@ -380,7 +380,7 @@ def _get_engine_config(
     if engine_name == "nmap":
         if not profile:
             return {}
-        is_deep = "deep" in (profile.name or "").lower()
+        is_deep = any(k in (profile.name or "").lower() for k in ("deep", "full"))
         return {
             "port_range": profile.nmap_port_range or ("top5000" if is_deep else "top1000"),
             "scan_type": profile.nmap_scan_type or ("deep" if is_deep else "standard"),
@@ -393,7 +393,7 @@ def _get_engine_config(
     if engine_name == "nuclei":
         if not profile:
             return {}
-        is_deep = "deep" in (profile.name or "").lower()
+        is_deep = any(k in (profile.name or "").lower() for k in ("deep", "full"))
         return {
             "severity_filter": ["critical", "high", "medium"] if not is_deep else
                                ["critical", "high", "medium", "low", "info"],

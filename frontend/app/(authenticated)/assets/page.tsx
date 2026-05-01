@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Plus, ChevronRight, Layers, MoreVertical, Pencil, Trash2,
   Search, X, List, AlertTriangle, Shield, Clock, RefreshCcw, Download,
@@ -92,6 +93,7 @@ function exportGroupsCsv(groups: any[], assetsByGroupId: Map<string, Asset[]>) {
 }
 
 export default function Page() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [groups, setGroups] = useState<any[]>([]);
@@ -175,8 +177,13 @@ export default function Page() {
     const name = newGroupName.trim();
     if (!name) return;
     try {
-      setError(null); await createGroup(name);
-      setNewGroupName(""); setIsCreateOpen(false); await loadData();
+      setError(null);
+      const created = await createGroup(name);
+      setNewGroupName("");
+      setIsCreateOpen(false);
+      // Send the user straight into the new group with the add-asset
+      // dialog open, so the obvious next step is one click away.
+      router.push(`/groups/${created.id}?addAsset=1`);
     } catch (e: any) {
       if (isPlanError(e)) { setIsCreateOpen(false); planLimit.handle(e.planError); }
       else setError(e?.message || "Failed to create group");
@@ -223,7 +230,7 @@ export default function Page() {
               <DialogContent className="bg-card border-border">
                 <DialogHeader><DialogTitle className="text-foreground">Create Asset Group</DialogTitle></DialogHeader>
                 <form onSubmit={(e) => { e.preventDefault(); handleCreateGroup(); }} className="space-y-4 py-4">
-                  <div className="space-y-2"><Label htmlFor="group-name" className="text-foreground">Group Name</Label><Input id="group-name" placeholder="e.g., Production Infrastructure" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} className="bg-input-background border-border text-foreground" autoFocus /></div>
+                  <div className="space-y-2"><Label htmlFor="group-name" className="text-foreground">Group Name</Label><Input id="group-name" placeholder="e.g., Production Infrastructure" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} maxLength={120} className="bg-input-background border-border text-foreground" autoFocus /></div>
                   <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={!newGroupName.trim()}>Create Group</Button>
                   {error && <p className="text-sm text-red-300">{error}</p>}
                 </form>
@@ -258,7 +265,7 @@ export default function Page() {
                 <DialogContent className="bg-card border-border">
                   <DialogHeader><DialogTitle className="text-foreground">Create Asset Group</DialogTitle></DialogHeader>
                   <form onSubmit={(e) => { e.preventDefault(); handleCreateGroup(); }} className="space-y-4 py-4">
-                    <div className="space-y-2"><Label htmlFor="group-name-2" className="text-foreground">Group Name</Label><Input id="group-name-2" placeholder="e.g., Production Infrastructure" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} className="bg-input-background border-border text-foreground" autoFocus /></div>
+                    <div className="space-y-2"><Label htmlFor="group-name-2" className="text-foreground">Group Name</Label><Input id="group-name-2" placeholder="e.g., Production Infrastructure" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} maxLength={120} className="bg-input-background border-border text-foreground" autoFocus /></div>
                     <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={!newGroupName.trim()}>Create Group</Button>
                     {error && <p className="text-sm text-red-300">{error}</p>}
                   </form>
@@ -380,7 +387,7 @@ export default function Page() {
         <DialogContent className="bg-card border-border">
           <DialogHeader><DialogTitle className="text-foreground">Edit Asset Group</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); confirmEdit(); }} className="space-y-4 py-4">
-            <div className="space-y-2"><Label htmlFor="edit-group-name" className="text-foreground">Group Name</Label><Input id="edit-group-name" placeholder="e.g., Production Infrastructure" value={editingGroup?.name || ""} onChange={(e) => setEditingGroup(editingGroup ? { ...editingGroup, name: e.target.value } : null)} className="bg-input-background border-border text-foreground" autoFocus /></div>
+            <div className="space-y-2"><Label htmlFor="edit-group-name" className="text-foreground">Group Name</Label><Input id="edit-group-name" placeholder="e.g., Production Infrastructure" value={editingGroup?.name || ""} onChange={(e) => setEditingGroup(editingGroup ? { ...editingGroup, name: e.target.value } : null)} maxLength={120} className="bg-input-background border-border text-foreground" autoFocus /></div>
             <div className="flex gap-3">
               <Button type="button" variant="outline" onClick={() => { setEditingGroup(null); setIsEditOpen(false); }} className="flex-1 border-border text-foreground hover:bg-accent">Cancel</Button>
               <Button type="submit" className="flex-1 bg-primary hover:bg-primary/90" disabled={!editingGroup?.name?.trim()}>Save Changes</Button>

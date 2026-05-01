@@ -285,9 +285,9 @@ export default function Sidebar() {
             </Link>
           </li>
 
-          {/* API Docs (public reference, opens in same tab) */}
+          {/* API Docs — opens in a new tab so the user keeps their place in the app */}
           <li className="mb-1">
-            <Link href="/api-docs" className={navCls(isActive("/api-docs"))} title={isCollapsed ? "API Docs" : undefined}>
+            <Link href="/api-docs" target="_blank" rel="noopener noreferrer" className={navCls(false)} title={isCollapsed ? "API Docs" : undefined}>
               <BookOpen className="w-5 h-5 shrink-0" />
               {!isCollapsed && <span className="truncate">API Docs</span>}
             </Link>
