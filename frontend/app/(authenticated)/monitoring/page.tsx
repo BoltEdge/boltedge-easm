@@ -6,7 +6,7 @@ import {
   Eye, Plus, Search, RefreshCcw, Trash2, Shield, ShieldAlert,
   BellRing, Settings, SlidersHorizontal, Clock, CheckCircle2,
   Globe, Lock, Server, FileCode, Zap, ToggleLeft, ToggleRight, Pause,
-  X, Loader2, Target, Cpu,
+  X, Loader2, Target, Cpu, Calendar, ArrowUpDown,
 } from "lucide-react";
 
 import { Button } from "../../ui/button";
@@ -581,6 +581,9 @@ function AlertsTab({ setBanner, planLimit }: {
   const [searchFilter, setSearchFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "acknowledged" | "resolved">("all");
   const [sevFilter, setSevFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
 
   const load = useCallback(async () => {
     try { setLoading(true); setAlerts(await getMonitorAlerts()); } catch {} finally { setLoading(false); }
@@ -613,6 +616,15 @@ function AlertsTab({ setBanner, planLimit }: {
     let result = alerts;
     if (statusFilter !== "all") result = result.filter((a) => a.status === statusFilter);
     if (sevFilter !== "all") result = result.filter((a) => a.severity === sevFilter);
+    if (dateFrom) {
+      const fromTs = new Date(dateFrom).getTime();
+      if (!Number.isNaN(fromTs)) result = result.filter((a) => new Date(a.createdAt as any).getTime() >= fromTs);
+    }
+    if (dateTo) {
+      // include the entire "to" day (add 24h)
+      const toTs = new Date(dateTo).getTime() + 86_400_000;
+      if (!Number.isNaN(toTs)) result = result.filter((a) => new Date(a.createdAt as any).getTime() < toTs);
+    }
     if (searchFilter.trim()) {
       const q = searchFilter.toLowerCase();
       result = result.filter((a) =>
@@ -621,8 +633,12 @@ function AlertsTab({ setBanner, planLimit }: {
         (a.alertName || "").toLowerCase().includes(q)
       );
     }
-    return result;
-  }, [alerts, statusFilter, sevFilter, searchFilter]);
+    return [...result].sort((a, b) => {
+      const ta = new Date(a.createdAt as any).getTime() || 0;
+      const tb = new Date(b.createdAt as any).getTime() || 0;
+      return sortOrder === "desc" ? tb - ta : ta - tb;
+    });
+  }, [alerts, statusFilter, sevFilter, searchFilter, dateFrom, dateTo, sortOrder]);
 
   const statusCounts = useMemo(() => ({
     open: alerts.filter((a) => a.status === "open").length,
@@ -659,6 +675,30 @@ function AlertsTab({ setBanner, planLimit }: {
           <option value="all">All Severities</option>
           {SEVERITY_ORDER.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
         </select>
+      </div>
+
+      {/* Date range + sort */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Calendar className="w-3.5 h-3.5" />
+          <span>From</span>
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+            className="h-8 rounded-md px-2 bg-input-background border border-border text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-ring" />
+          <span>To</span>
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+            className="h-8 rounded-md px-2 bg-input-background border border-border text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-ring" />
+          {(dateFrom || dateTo) && (
+            <button type="button" onClick={() => { setDateFrom(""); setDateTo(""); }}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2">
+              Clear
+            </button>
+          )}
+        </div>
+        <button type="button" onClick={() => setSortOrder(sortOrder === "desc" ? "asc" : "desc")}
+          className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-border bg-muted/20 text-muted-foreground hover:border-primary/30 hover:text-foreground transition-all">
+          <ArrowUpDown className="w-3 h-3" />
+          {sortOrder === "desc" ? "Newest first" : "Oldest first"}
+        </button>
       </div>
 
       {/* Alerts list */}
@@ -700,7 +740,9 @@ function AlertsTab({ setBanner, planLimit }: {
                           </span>
                         );
                       })()}
-                      <span className="text-xs text-muted-foreground">{timeAgo(alert.createdAt)}</span>
+                      <span className="text-xs text-muted-foreground" title={formatWhen(alert.createdAt)}>
+                        {timeAgo(alert.createdAt)} · {formatWhen(alert.createdAt)}
+                      </span>
                     </div>
                     <h4 className="text-sm font-medium text-foreground mb-0.5">{alert.title}</h4>
                     {alert.summary && <p className="text-xs text-muted-foreground mb-1">{alert.summary}</p>}

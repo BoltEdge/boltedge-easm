@@ -117,6 +117,10 @@ export default function UnauthenticatedHomePage() {
                   Run a quick scan or discovery against any domain to see what Nano EASM can find.
                   Create a free account to save results and unlock full features.
                 </p>
+                <p className="mt-3 text-xs text-amber-400/80 max-w-xl mx-auto">
+                  Only scan domains and IPs you own or are authorised to test. By using this tool you agree to our{" "}
+                  <Link href="/terms" className="underline hover:text-amber-300">Terms of Use</Link>.
+                </p>
               </div>
             </FadeInOnScroll>
 
@@ -357,17 +361,17 @@ export default function UnauthenticatedHomePage() {
                 </span>
               </Link>
               <p className="mt-2 text-sm text-white/30">
-                External Attack Surface Management by{" "}
-                <a href="https://nanoasm.com" className="text-teal-400/70 hover:text-teal-400 transition-colors">Nano EASM</a>.
+                Nano EASM &mdash; External Attack Surface Management for modern security teams.
               </p>
             </div>
             <div className="flex items-center gap-8 text-sm text-white/30">
+              <Link href="/terms" className="hover:text-white/60 transition-colors">Terms</Link>
               <a href="https://nanoasm.com" target="_blank" rel="noopener" className="hover:text-white/60 transition-colors">nanoasm.com</a>
               <a href="mailto:contact@nanoasm.com" className="hover:text-white/60 transition-colors">Support</a>
             </div>
           </div>
           <div className="mt-8 pt-6 border-t border-white/[0.04] text-xs text-white/20 text-center">
-            &copy; {new Date().getFullYear()} Nano ASM. All rights reserved.
+            &copy; {new Date().getFullYear()} Nano EASM. All rights reserved.
           </div>
         </div>
       </footer>

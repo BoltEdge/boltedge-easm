@@ -14,10 +14,10 @@ type NavLink = {
 };
 
 const ALL_NAV_LINKS: NavLink[] = [
-  { href: "#features", label: "Features" },
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#try-it", label: "Quick Test" },
-  { href: "#pricing", label: "Pricing", billingOnly: true },
+  { href: "/#features", label: "Features" },
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#try-it", label: "Quick Test" },
+  { href: "/#pricing", label: "Pricing", billingOnly: true },
   { href: "/api-docs", label: "API", external: true },
 ];
 
@@ -42,25 +42,15 @@ export default function LandingNav() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-8">
-          {NAV_LINKS.map(({ href, label, external }) =>
-            external ? (
-              <Link
-                key={href}
-                href={href}
-                className="text-sm text-white/50 hover:text-white transition-colors"
-              >
-                {label}
-              </Link>
-            ) : (
-              <a
-                key={href}
-                href={href}
-                className="text-sm text-white/50 hover:text-white transition-colors"
-              >
-                {label}
-              </a>
-            )
-          )}
+          {NAV_LINKS.map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              className="text-sm text-white/50 hover:text-white transition-colors"
+            >
+              {label}
+            </Link>
+          ))}
         </nav>
 
         {/* Desktop auth buttons */}
@@ -94,27 +84,16 @@ export default function LandingNav() {
       {mobileOpen && (
         <div className="md:hidden border-t border-white/[0.06] bg-[#060b18]/95 backdrop-blur-xl">
           <nav className="flex flex-col px-4 py-4 space-y-1">
-            {NAV_LINKS.map(({ href, label, external }) =>
-              external ? (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={() => setMobileOpen(false)}
-                  className="block px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors"
-                >
-                  {label}
-                </Link>
-              ) : (
-                <a
-                  key={href}
-                  href={href}
-                  onClick={() => setMobileOpen(false)}
-                  className="block px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors"
-                >
-                  {label}
-                </a>
-              )
-            )}
+            {NAV_LINKS.map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setMobileOpen(false)}
+                className="block px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors"
+              >
+                {label}
+              </Link>
+            ))}
 
             <div className="pt-3 mt-2 border-t border-white/[0.06] space-y-2">
               <Link

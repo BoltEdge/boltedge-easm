@@ -252,7 +252,11 @@ export default function OrgDetailPage() {
       {/* Usage */}
       <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 space-y-4">
         <h2 className="text-sm font-semibold text-white">Usage</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-white">{(org.usage.assets ?? 0).toLocaleString()}</div>
+            <div className="text-xs text-white/40 mt-0.5">Assets</div>
+          </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-white">{org.usage.members}</div>
             <div className="text-xs text-white/40 mt-0.5">Members</div>
@@ -271,7 +275,7 @@ export default function OrgDetailPage() {
           </div>
         </div>
         <UsageBar
-          label="Assets"
+          label="Assets vs limit"
           used={org.usage.assets}
           limit={org.usage.assetLimit}
           color={planColor}

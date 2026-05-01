@@ -3,9 +3,9 @@ import "./globals.css";
 import type { ReactNode } from "react";
 
 export const metadata = {
-  title: "Nano ASM",
+  title: "Nano EASM",
   description:
-    "External Attack Surface Management by Nano ASM. Discover assets, scan for vulnerabilities, and monitor your exposure.",
+    "External Attack Surface Management by Nano EASM. Discover assets, scan for vulnerabilities, and monitor your exposure.",
   icons: {
     icon: [
       { url: "/favicon.png", sizes: "32x32", type: "image/png" },
@@ -14,10 +14,10 @@ export const metadata = {
     apple: "/favicon-64.png",
   },
   openGraph: {
-    title: "Nano ASM",
+    title: "Nano EASM",
     description:
       "External Attack Surface Management — discover, scan, and continuously monitor your attack surface.",
-    siteName: "Nano ASM",
+    siteName: "Nano EASM",
     type: "website",
   },
 };

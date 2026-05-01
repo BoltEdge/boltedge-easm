@@ -871,6 +871,9 @@ def _ann_row(a: PlatformAnnouncement) -> dict:
         "kind": a.kind,
         "targetOrgId": a.target_org_id,
         "targetOrgName": a.target_org.name if a.target_org else None,
+        "targetUserId": a.target_user_id,
+        "targetUserEmail": a.target_user.email if a.target_user else None,
+        "linkUrl": a.link_url,
         "createdBy": a.author.email if a.author else None,
         "createdAt": a.created_at.isoformat() + "Z" if a.created_at else None,
         "expiresAt": a.expires_at.isoformat() + "Z" if a.expires_at else None,
@@ -909,11 +912,28 @@ def create_announcement():
         except ValueError:
             pass
 
+    target_user_id = body.get("targetUserId") or None
+    target_org_id = body.get("targetOrgId") or None
+
+    # If target user is set, infer their org so org-scoped audit/log keeps working.
+    if target_user_id and not target_org_id:
+        membership = OrganizationMember.query.filter_by(
+            user_id=target_user_id, is_active=True
+        ).first()
+        if membership:
+            target_org_id = membership.organization_id
+
+    link_url = (body.get("linkUrl") or "").strip() or None
+    if link_url and not (link_url.startswith("http://") or link_url.startswith("https://") or link_url.startswith("/")):
+        return jsonify(error="linkUrl must be an absolute URL or start with /"), 400
+
     ann = PlatformAnnouncement(
         title=title,
         body=(body.get("body") or "").strip() or None,
         kind=kind,
-        target_org_id=body.get("targetOrgId") or None,
+        target_org_id=target_org_id,
+        target_user_id=target_user_id,
+        link_url=link_url,
         created_by=g.current_user.id,
         created_at=_now_utc(),
         expires_at=expires_at,
@@ -930,7 +950,12 @@ def create_announcement():
         target_id=None,
         target_label=title,
         description=f"Admin broadcast: {title}",
-        metadata={"kind": kind, "target_org_id": ann.target_org_id},
+        metadata={
+            "kind": kind,
+            "target_org_id": ann.target_org_id,
+            "target_user_id": ann.target_user_id,
+            "link_url": ann.link_url,
+        },
     )
     db.session.commit()
 

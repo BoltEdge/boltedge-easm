@@ -215,7 +215,7 @@ export default function InitiateScanPage() {
                     ) : searchResults.map((a: any) => (
                       <button key={String(a.id)} type="button"
                         className="w-full text-left px-4 py-2.5 hover:bg-accent/30 transition-colors flex items-center justify-between gap-3 border-b border-border/50 last:border-0"
-                        onClick={() => { setSelAssetId(String(a.id)); setSelGroupId(String(a.group_id || a.groupId || "")); setSearchQuery(a.value); setSearchOpen(false); }}>
+                        onClick={() => { setSelAssetId(String(a.id)); setSearchQuery(a.value); setSearchOpen(false); }}>
                         <div className="min-w-0"><div className="text-sm font-mono text-foreground truncate">{a.value}</div><div className="text-xs text-muted-foreground">{a.groupName || a.group_name || "No group"} · {a.type || "domain"}</div></div>
                         <Target className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                       </button>

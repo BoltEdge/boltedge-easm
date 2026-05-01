@@ -137,10 +137,10 @@ export default function InvitePage() {
             </div>
           )}
 
-          {/* Nano ASM branding */}
+          {/* Nano EASM branding */}
           <div className="pt-4 border-t border-border">
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <Shield className="w-3.5 h-3.5" />Nano ASM
+              <Shield className="w-3.5 h-3.5" />Nano EASM
             </div>
           </div>
         </div>

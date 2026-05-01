@@ -69,6 +69,7 @@ function RegisterPageInner() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   // Invite info
   const [inviteInfo, setInviteInfo] = useState<{
@@ -95,6 +96,7 @@ function RegisterPageInner() {
     name.trim().length > 0 &&
     email.trim().length > 0 &&
     password.length >= 8 &&
+    acceptedTerms &&
     !loading;
 
   async function onSubmit(e: React.FormEvent) {
@@ -246,8 +248,12 @@ function RegisterPageInner() {
                 {GOOGLE_ENABLED && (
                   <button
                     type="button"
-                    onClick={() => startOAuth("google", nextPath)}
-                    className="w-full h-11 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-sm font-medium text-white transition-all flex items-center justify-center gap-2.5"
+                    onClick={() => {
+                      if (!acceptedTerms) { setError("Please accept the Terms of Use to continue."); return; }
+                      startOAuth("google", nextPath);
+                    }}
+                    disabled={!acceptedTerms}
+                    className="w-full h-11 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-sm font-medium text-white transition-all flex items-center justify-center gap-2.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white/[0.03]"
                   >
                     <GoogleIcon />
                     Continue with Google
@@ -256,8 +262,12 @@ function RegisterPageInner() {
                 {MICROSOFT_ENABLED && (
                   <button
                     type="button"
-                    onClick={() => startOAuth("microsoft", nextPath)}
-                    className="w-full h-11 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-sm font-medium text-white transition-all flex items-center justify-center gap-2.5"
+                    onClick={() => {
+                      if (!acceptedTerms) { setError("Please accept the Terms of Use to continue."); return; }
+                      startOAuth("microsoft", nextPath);
+                    }}
+                    disabled={!acceptedTerms}
+                    className="w-full h-11 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-sm font-medium text-white transition-all flex items-center justify-center gap-2.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white/[0.03]"
                   >
                     <MicrosoftIcon />
                     Continue with Microsoft
@@ -377,6 +387,28 @@ function RegisterPageInner() {
                 </div>
               </div>
             )}
+
+            {/* Terms acceptance */}
+            <label className={`flex items-start gap-3 rounded-lg border px-3.5 py-3 cursor-pointer transition-all ${
+              acceptedTerms
+                ? "border-teal-500/30 bg-teal-500/[0.05]"
+                : "border-amber-500/30 bg-amber-500/[0.05]"
+            }`}>
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => { setAcceptedTerms(e.target.checked); if (e.target.checked) setError(null); }}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-teal-500 cursor-pointer"
+                required
+              />
+              <span className="text-xs leading-relaxed text-white/70">
+                I agree to the{" "}
+                <Link href="/terms" target="_blank" className="text-teal-400 hover:text-teal-300 underline underline-offset-2">
+                  Terms of Use
+                </Link>
+                .
+              </span>
+            </label>
 
             {/* Error */}
             {error && (

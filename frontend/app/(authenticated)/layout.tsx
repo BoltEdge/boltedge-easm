@@ -9,7 +9,7 @@ import { OrgProvider } from "./contexts/OrgContext";
 import Sidebar from "../Sidebar";
 import TopBar from "../TopBar";
 import { getAnnouncements } from "../lib/api";
-import { Info, AlertTriangle, AlertOctagon, X } from "lucide-react";
+import { Info, AlertTriangle, AlertOctagon, X, ExternalLink } from "lucide-react";
 
 const KIND_ICON = { info: Info, warning: AlertTriangle, critical: AlertOctagon };
 const KIND_STYLE = {
@@ -53,6 +53,16 @@ function AnnouncementBanners() {
             <div className="flex-1 min-w-0">
               <span className="text-sm font-semibold">{a.title}</span>
               {a.body && <span className="ml-2 text-xs opacity-70">{a.body}</span>}
+              {a.linkUrl && (
+                <a
+                  href={a.linkUrl}
+                  target={a.linkUrl.startsWith("/") ? undefined : "_blank"}
+                  rel={a.linkUrl.startsWith("/") ? undefined : "noopener noreferrer"}
+                  className="ml-2 inline-flex items-center gap-1 text-xs underline underline-offset-2 hover:opacity-80"
+                >
+                  View<ExternalLink className="w-3 h-3" />
+                </a>
+              )}
             </div>
             <button onClick={() => dismiss(a.id)} className="shrink-0 opacity-50 hover:opacity-100 transition-opacity">
               <X className="w-3.5 h-3.5" />

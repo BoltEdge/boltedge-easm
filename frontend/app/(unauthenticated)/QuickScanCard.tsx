@@ -87,7 +87,8 @@ export default function QuickScanCard() {
           <input type="text" placeholder={type === "ip" ? "e.g., 8.8.8.8" : "e.g., example.com"} value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") onScan(); }} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
         </div>
         <button onClick={onScan} disabled={!canScan} className={`w-full mt-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${!canScan ? "bg-muted text-muted-foreground cursor-not-allowed" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}>{loading ? "Scanning…" : "Scan now"}</button>
-        <p className="mt-2 text-[11px] text-muted-foreground/60 text-center">Results are not saved unless you sign in</p>
+        <p className="mt-2 text-[11px] text-amber-400/80 text-center">Only scan domains and IPs you own or are authorised to test.</p>
+        <p className="mt-1 text-[11px] text-muted-foreground/60 text-center">Results are not saved unless you sign in</p>
       </div>
       {error && <div className="mx-6 mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</div>}
       <div className="px-6 pb-6 flex-1">

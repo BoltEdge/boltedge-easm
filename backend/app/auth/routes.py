@@ -772,15 +772,25 @@ def get_announcements():
     ).first()
     org_id = membership.organization_id if membership else None
 
+    user_id = g.current_user.id
+
     q = PlatformAnnouncement.query.filter(
         PlatformAnnouncement.is_active == True,
         db.or_(
             PlatformAnnouncement.expires_at == None,
             PlatformAnnouncement.expires_at > now,
         ),
+        # Visibility: user-targeted matches just this user; otherwise fall back
+        # to org-targeted (matching their org) or global broadcasts.
         db.or_(
-            PlatformAnnouncement.target_org_id == None,
-            PlatformAnnouncement.target_org_id == org_id,
+            PlatformAnnouncement.target_user_id == user_id,
+            db.and_(
+                PlatformAnnouncement.target_user_id == None,
+                db.or_(
+                    PlatformAnnouncement.target_org_id == None,
+                    PlatformAnnouncement.target_org_id == org_id,
+                ),
+            ),
         ),
     ).order_by(PlatformAnnouncement.created_at.desc())
 
@@ -790,5 +800,6 @@ def get_announcements():
         "title": a.title,
         "body": a.body,
         "kind": a.kind,
+        "linkUrl": a.link_url,
         "createdAt": a.created_at.isoformat() + "Z" if a.created_at else None,
     } for a in anns]), 200

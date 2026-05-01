@@ -1683,6 +1683,8 @@ export async function createAdminAnnouncement(data: {
   body?: string;
   kind?: string;
   targetOrgId?: number | null;
+  targetUserId?: number | null;
+  linkUrl?: string | null;
   expiresAt?: string | null;
 }): Promise<any> {
   return apiFetch<any>("/admin/announcements", { method: "POST", body: JSON.stringify(data) });

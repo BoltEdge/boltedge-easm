@@ -934,7 +934,11 @@ class DiscoveredAsset(db.Model):
 class PlatformAnnouncement(db.Model):
     """
     Admin-created announcements shown as banners in the app.
-    target_org_id = None  →  broadcast to all orgs.
+    Targeting precedence (most specific wins):
+      target_user_id set → only that user sees it
+      target_org_id set  → all members of that org see it
+      neither set        → broadcast to everyone
+    Optional link_url is rendered as a "View" link inside the banner.
     Dismissed state is stored client-side in localStorage.
     """
     __tablename__ = "platform_announcement"
@@ -949,6 +953,13 @@ class PlatformAnnouncement(db.Model):
         nullable=True,
         index=True,
     )
+    target_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    link_url = db.Column(db.String(500), nullable=True)
     created_by = db.Column(
         db.Integer,
         db.ForeignKey("user.id", ondelete="SET NULL"),
@@ -959,7 +970,8 @@ class PlatformAnnouncement(db.Model):
     is_active = db.Column(db.Boolean, nullable=False, default=True)
 
     target_org = db.relationship("Organization")
-    author = db.relationship("User")
+    target_user = db.relationship("User", foreign_keys=[target_user_id])
+    author = db.relationship("User", foreign_keys=[created_by])
 
 
 class QuickScanLog(db.Model):

@@ -396,6 +396,34 @@ export default function FindingsPage() {
           </div>
         )}
 
+        {/* ── Dashboard Summary ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { key: "total",    label: "Total",       value: total,                          icon: AlertTriangle, color: "text-foreground", bg: "bg-card",            border: "border-border",          onClick: () => { setStatusFilter("all"); setSeverityFilter("all"); } },
+            { key: "open",     label: "Open",        value: statusCounts.open || 0,         icon: AlertCircle,   color: "text-red-300",    bg: "bg-red-500/10",      border: "border-red-500/20",      onClick: () => setStatusFilter("open") },
+            { key: "critical", label: "Critical",    value: severityCounts.critical || 0,   icon: AlertCircle,   color: "text-red-300",    bg: "bg-red-500/10",      border: "border-red-500/20",      onClick: () => { setSeverityFilter("critical"); setStatusFilter("open"); } },
+            { key: "high",     label: "High",        value: severityCounts.high || 0,       icon: AlertTriangle, color: "text-orange-300", bg: "bg-orange-500/10",   border: "border-orange-500/20",   onClick: () => { setSeverityFilter("high"); setStatusFilter("open"); } },
+            { key: "medium",   label: "Medium",      value: severityCounts.medium || 0,     icon: AlertTriangle, color: "text-yellow-300", bg: "bg-yellow-500/10",   border: "border-yellow-500/20",   onClick: () => { setSeverityFilter("medium"); setStatusFilter("open"); } },
+            { key: "resolved", label: "Resolved",    value: statusCounts.resolved || 0,     icon: CheckCircle2,  color: "text-emerald-300",bg: "bg-emerald-500/10",  border: "border-emerald-500/20",  onClick: () => setStatusFilter("resolved") },
+          ].map(({ key, label, value, icon: Icon, color, bg, border, onClick }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={onClick}
+              className={cn(
+                "text-left rounded-xl border p-4 transition-all hover:scale-[1.02] active:scale-[0.98]",
+                bg, border,
+              )}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+                <Icon className={cn("w-4 h-4", color)} />
+              </div>
+              <div className={cn("text-2xl font-bold", color)}>{value}</div>
+            </button>
+          ))}
+        </div>
+
         {/* ── Status Tabs ── */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center bg-card border border-border rounded-lg overflow-hidden">
