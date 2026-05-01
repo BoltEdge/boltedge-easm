@@ -5,9 +5,9 @@
 import React, { useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2, Mail } from "lucide-react";
 
-import { login, startOAuth } from "../../lib/api";
+import { login, startOAuth, resendVerification } from "../../lib/api";
 import { establishSession } from "../../lib/auth";
 
 const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true";
@@ -69,6 +69,10 @@ function LoginPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [showExpiredBanner, setShowExpiredBanner] = useState(isExpired);
 
+  // Email-verification gate — set when login returns 403 EMAIL_NOT_VERIFIED.
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
   const canSubmit = email.trim().length > 0 && password.length > 0 && !loading;
 
   async function onSubmit(e: React.FormEvent) {
@@ -77,6 +81,8 @@ function LoginPageInner() {
     try {
       setLoading(true);
       setError(null);
+      setUnverifiedEmail(null);
+      setResendStatus("idle");
 
       const res = await login({
         email: email.trim().toLowerCase(),
@@ -92,9 +98,25 @@ function LoginPageInner() {
 
       router.replace(nextPath);
     } catch (err: any) {
+      // Email not verified → surface the verification UI instead of a generic error.
+      if (err?.payload?.code === "EMAIL_NOT_VERIFIED") {
+        setUnverifiedEmail(err.payload.email || email.trim().toLowerCase());
+        return;
+      }
       setError(err?.message || "Login failed");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    if (!unverifiedEmail) return;
+    setResendStatus("sending");
+    try {
+      await resendVerification(unverifiedEmail);
+      setResendStatus("sent");
+    } catch {
+      setResendStatus("error");
     }
   }
 
@@ -263,8 +285,36 @@ function LoginPageInner() {
               </div>
             </div>
 
+            {/* Email-verification required */}
+            {unverifiedEmail && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.06] p-3.5 space-y-2.5">
+                <div className="flex items-start gap-2.5">
+                  <Mail className="w-4 h-4 mt-0.5 shrink-0 text-amber-400" />
+                  <div className="text-sm text-amber-100/90">
+                    <div className="font-semibold text-amber-300 mb-0.5">Verify your email to continue</div>
+                    We sent a verification link to <span className="font-medium text-white">{unverifiedEmail}</span>.
+                    Click it before signing in.
+                  </div>
+                </div>
+                {resendStatus === "sent" ? (
+                  <div className="text-xs text-emerald-300 pl-6">Resent. Check your inbox.</div>
+                ) : resendStatus === "error" ? (
+                  <div className="text-xs text-red-300 pl-6">Couldn&apos;t resend. Try again in a moment.</div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={resendStatus === "sending"}
+                    className="ml-6 text-xs text-teal-400 hover:text-teal-300 underline underline-offset-2 disabled:opacity-50"
+                  >
+                    {resendStatus === "sending" ? "Sending…" : "Resend verification email"}
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Error */}
-            {error && (
+            {error && !unverifiedEmail && (
               <div className="rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3.5 py-2.5 text-sm text-red-300">
                 {error}
               </div>

@@ -392,6 +392,10 @@ export async function login(payload: {
   } as any);
 }
 
+export type RegisterResponse =
+  | AuthResponse
+  | { verificationRequired: true; email: string; message?: string };
+
 export async function register(payload: {
   name: string;
   email: string;
@@ -400,8 +404,8 @@ export async function register(payload: {
   company?: string;
   country?: string;
   invite_token?: string;
-}): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>(API.auth.register, {
+}): Promise<RegisterResponse> {
+  return apiFetch<RegisterResponse>(API.auth.register, {
     method: "POST",
     body: JSON.stringify(payload),
     skipAuthRedirect: true,
@@ -1797,6 +1801,22 @@ export async function consumePasswordReset(token: string, password: string): Pro
     method: "POST",
     body: JSON.stringify({ token, password }),
   });
+}
+
+export async function verifyEmail(token: string): Promise<{ message?: string; email?: string; alreadyVerified?: boolean }> {
+  return apiFetch<any>("/auth/verify-email", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+    skipAuthRedirect: true,
+  } as any);
+}
+
+export async function resendVerification(email: string): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>("/auth/resend-verification", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+    skipAuthRedirect: true,
+  } as any);
 }
 
 export async function deleteAdminUser(userId: number): Promise<any> {

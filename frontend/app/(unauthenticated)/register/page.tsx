@@ -4,9 +4,9 @@
 import React, { useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, Eye, EyeOff, Loader2, Users } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2, Users, Mail } from "lucide-react";
 
-import { register, apiFetch, startOAuth } from "../../lib/api";
+import { register, apiFetch, startOAuth, resendVerification } from "../../lib/api";
 
 const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true";
 const MICROSOFT_ENABLED = process.env.NEXT_PUBLIC_MICROSOFT_OAUTH_ENABLED === "true";
@@ -71,6 +71,12 @@ function RegisterPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
+  // Verification-pending state — shown after email/password signup until they
+  // click the link in the email we just sent.
+  const [pendingVerification, setPendingVerification] = useState<string | null>(null);
+  const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [resendCooldownUntil, setResendCooldownUntil] = useState(0);
+
   // Invite info
   const [inviteInfo, setInviteInfo] = useState<{
     email: string;
@@ -117,11 +123,21 @@ function RegisterPageInner() {
         invite_token: inviteToken || undefined,
       });
 
+      // Email-verification-required path (non-invite signups). Server returned
+      // {verificationRequired: true, email}. Show the "check your inbox" panel.
+      if ((res as any)?.verificationRequired) {
+        setPendingVerification((res as any).email || email.trim().toLowerCase());
+        setResendCooldownUntil(Date.now() + 60_000); // server throttle is 60s
+        return;
+      }
+
+      // Invite signup or any other flow that returned a session token.
+      const auth = res as any;
       establishSession(
-        res.accessToken,
-        res.user,
-        res.organization,
-        (res.role || (inviteToken ? inviteInfo?.role : "owner") || "owner") as AuthRole,
+        auth.accessToken,
+        auth.user,
+        auth.organization,
+        (auth.role || (inviteToken ? inviteInfo?.role : "owner") || "owner") as AuthRole,
       );
 
       router.replace(nextPath);
@@ -129,6 +145,19 @@ function RegisterPageInner() {
       setError(err?.message || "Registration failed");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    if (!pendingVerification) return;
+    if (Date.now() < resendCooldownUntil) return;
+    setResendStatus("sending");
+    try {
+      await resendVerification(pendingVerification);
+      setResendStatus("sent");
+      setResendCooldownUntil(Date.now() + 60_000);
+    } catch {
+      setResendStatus("error");
     }
   }
 
@@ -199,6 +228,59 @@ function RegisterPageInner() {
               </span>
             </Link>
           </div>
+
+          {/* Verification-pending panel (replaces form after successful signup) */}
+          {pendingVerification ? (
+            <div className="space-y-6">
+              <div className="w-12 h-12 rounded-xl bg-teal-500/15 flex items-center justify-center">
+                <Mail className="w-6 h-6 text-teal-400" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Check your inbox</h1>
+                <p className="mt-2 text-sm text-white/50 leading-relaxed">
+                  We&apos;ve sent a verification link to{" "}
+                  <span className="text-white font-medium">{pendingVerification}</span>.
+                  Click it to confirm your email and start using Nano EASM.
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 space-y-1.5">
+                <p className="text-xs text-white/40">
+                  Didn&apos;t get it? Check spam, or wait a moment and resend.
+                  Links expire after 48 hours.
+                </p>
+              </div>
+
+              {resendStatus === "sent" && (
+                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3.5 py-2.5 text-sm text-emerald-300">
+                  Sent. Check your inbox again.
+                </div>
+              )}
+              {resendStatus === "error" && (
+                <div className="rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3.5 py-2.5 text-sm text-red-300">
+                  Couldn&apos;t resend right now. Try again in a moment.
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resendStatus === "sending" || Date.now() < resendCooldownUntil}
+                  className="w-full h-11 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-sm font-medium text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white/[0.03]"
+                >
+                  {resendStatus === "sending" ? "Sending…" : "Resend verification email"}
+                </button>
+                <Link
+                  href="/login"
+                  className="block w-full h-11 rounded-lg text-sm font-medium text-white/60 hover:text-white transition-colors text-center leading-[44px]"
+                >
+                  Already verified? Sign in
+                </Link>
+              </div>
+            </div>
+          ) : (
+          <>
 
           {/* Invite Banner */}
           {inviteToken && inviteInfo && (
@@ -453,6 +535,8 @@ function RegisterPageInner() {
             </Link>
           </p>
 
+          </>
+          )}
         </div>
       </div>
     </div>

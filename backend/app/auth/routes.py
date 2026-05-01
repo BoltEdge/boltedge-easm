@@ -18,7 +18,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db
 from app.models import User, PlatformAnnouncement, OrganizationMember
 from app.auth.decorators import require_auth
-from app.auth.tokens import create_access_token, verify_password_reset_token
+from app.auth.tokens import (
+    create_access_token,
+    verify_password_reset_token,
+    create_email_verification_token,
+    verify_email_verification_token,
+)
 from app.audit.routes import log_audit
 
 
@@ -32,6 +37,56 @@ def _is_valid_email(email: str) -> bool:
 def _now_utc():
     from datetime import datetime, timezone
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _send_verification_email(user: User) -> bool:
+    """
+    Send the verification link to user.email via Resend.
+    Returns True on success, False on any failure (including missing API key).
+    Updates email_verification_sent_at on success. Caller must commit.
+    """
+    import os
+
+    token = create_email_verification_token(
+        secret_key=current_app.config["SECRET_KEY"],
+        user_id=user.id,
+        email=user.email,
+    )
+
+    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoasm.com").rstrip("/")
+    verify_link = f"{frontend_url}/verify-email?token={token}"
+
+    resend_key = os.environ.get("RESEND_API_KEY", "")
+    if not resend_key:
+        # Without an API key we can't send. Log it and let the resend endpoint
+        # try again later — or the operator can grab the link from the audit log.
+        current_app.logger.warning(
+            "RESEND_API_KEY not set; verification email not sent for %s. Link: %s",
+            user.email, verify_link,
+        )
+        return False
+
+    try:
+        import resend
+        resend.api_key = resend_key
+        resend.Emails.send({
+            "from": os.environ.get("EMAIL_FROM", "Nano EASM <no-reply@nanoasm.com>"),
+            "to": [user.email],
+            "subject": "Verify your Nano EASM email address",
+            "html": f"""
+            <p>Hi {user.name or user.email},</p>
+            <p>Welcome to Nano EASM! Please confirm this is your email address so you can sign in.</p>
+            <p><a href="{verify_link}" style="display:inline-block;padding:10px 18px;background:#14b8a6;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Verify my email</a></p>
+            <p>Or paste this link into your browser:<br><span style="font-family:monospace;color:#475569;">{verify_link}</span></p>
+            <p style="color:#64748b;font-size:13px;">This link expires in 48 hours. If you didn't create a Nano EASM account, you can safely ignore this email.</p>
+            <p style="color:#64748b;font-size:13px;">— Nano EASM</p>
+            """,
+        })
+        user.email_verification_sent_at = _now_utc()
+        return True
+    except Exception:
+        current_app.logger.exception("Failed to send verification email to %s", user.email)
+        return False
 
 
 def _build_org_payload(org, include_billing: bool = False) -> dict:
@@ -92,14 +147,19 @@ def register():
             db.session.commit()
             return jsonify(error="Invitation has expired"), 400
 
-    # Create user
+    # Invite-flow signups are auto-verified — receiving the invite proves
+    # the email address belongs to the user. Email/password signups must
+    # confirm via the verification link.
+    is_invite_signup = bool(invite)
+
     u = User(
         email=email,
         name=name,
         password_hash=generate_password_hash(password),
         job_title=job_title,
         company=company,
-        country=country
+        country=country,
+        email_verified=is_invite_signup,
     )
     db.session.add(u)
     db.session.flush()  # Get user ID
@@ -156,6 +216,11 @@ def register():
 
         role = "owner"
 
+    # Send verification email for non-invite signups before commit so the
+    # email_verification_sent_at timestamp lands in the same transaction.
+    if not is_invite_signup:
+        _send_verification_email(u)
+
     db.session.commit()
 
     log_audit(
@@ -167,24 +232,36 @@ def register():
         target_id=str(u.id),
         target_label=u.email,
         description=f"User registered: {u.email}" + (" (via invite)" if invite else " (new org)"),
-        metadata={"role": role, "via_invite": bool(invite)},
+        metadata={
+            "role": role,
+            "via_invite": bool(invite),
+            "email_verified": u.email_verified,
+        },
     )
 
-    token = create_access_token(secret_key=current_app.config["SECRET_KEY"], user_id=u.id)
+    # Invite signups skip verification → log them in immediately.
+    if is_invite_signup:
+        token = create_access_token(secret_key=current_app.config["SECRET_KEY"], user_id=u.id)
+        return jsonify(
+            accessToken=token,
+            user={
+                "id": str(u.id),
+                "email": u.email,
+                "name": u.name,
+                "job_title": u.job_title,
+                "company": u.company,
+                "country": u.country,
+            },
+            organization=_build_org_payload(org),
+            role=role,
+            joinedViaInvite=True,
+        ), 201
 
+    # Email/password signups: no session yet — frontend shows "check your inbox".
     return jsonify(
-        accessToken=token,
-        user={
-            "id": str(u.id),
-            "email": u.email,
-            "name": u.name,
-            "job_title": u.job_title,
-            "company": u.company,
-            "country": u.country
-        },
-        organization=_build_org_payload(org),
-        role=role,
-        joinedViaInvite=bool(invite),
+        verificationRequired=True,
+        email=u.email,
+        message="Account created. Check your inbox to verify your email and finish signing in.",
     ), 201
 
 
@@ -205,6 +282,13 @@ def login():
         return jsonify(
             error="Your account has been suspended. Please contact your admin or reach out to Nano EASM support.",
             code="ACCOUNT_SUSPENDED",
+        ), 403
+
+    if not u.email_verified:
+        return jsonify(
+            error="Please verify your email address before signing in. Check your inbox for the verification link.",
+            code="EMAIL_NOT_VERIFIED",
+            email=u.email,
         ), 403
 
     from app.models import OrganizationMember
@@ -333,7 +417,7 @@ def forgot_password():
             import resend
             resend.api_key = resend_key
             resend.Emails.send({
-                "from": "Nano EASM <no-reply@nanoasm.com>",
+                "from": os.environ.get("EMAIL_FROM", "Nano EASM <no-reply@nanoasm.com>"),
                 "to": [user.email],
                 "subject": "Reset your Nano EASM password",
                 "html": f"""
@@ -442,6 +526,96 @@ def verify_reset_token():
         return jsonify(valid=False, error="This reset link is invalid or has expired."), 200
 
     return jsonify(valid=True, email=user.email), 200
+
+
+# ════════════════════════════════════════════════════════════════
+# EMAIL VERIFICATION
+# ════════════════════════════════════════════════════════════════
+
+@auth_bp.post("/verify-email")
+def verify_email():
+    """Consume an email verification token. Public endpoint."""
+    body = request.get_json(silent=True) or {}
+    token = (body.get("token") or "").strip()
+    if not token:
+        return jsonify(error="token is required"), 400
+
+    data = verify_email_verification_token(
+        secret_key=current_app.config["SECRET_KEY"],
+        token=token,
+    )
+    if not data:
+        return jsonify(
+            error="This verification link is invalid or has expired. Request a new one from the sign-in page.",
+            code="VERIFICATION_INVALID",
+        ), 400
+
+    user = User.query.get(data["user_id"])
+    if not user or user.email != data["email"]:
+        return jsonify(
+            error="This verification link is invalid or has expired. Request a new one from the sign-in page.",
+            code="VERIFICATION_INVALID",
+        ), 400
+
+    if user.email_verified:
+        return jsonify(
+            message="Your email is already verified. You can sign in.",
+            email=user.email,
+            alreadyVerified=True,
+        ), 200
+
+    user.email_verified = True
+    db.session.commit()
+
+    membership = OrganizationMember.query.filter_by(user_id=user.id, is_active=True).first()
+    log_audit(
+        organization_id=membership.organization_id if membership else None,
+        user_id=user.id,
+        action="auth.email_verified",
+        category="auth",
+        target_type="user",
+        target_id=str(user.id),
+        target_label=user.email,
+        description=f"Email verified: {user.email}",
+    )
+
+    return jsonify(
+        message="Email verified. You can now sign in.",
+        email=user.email,
+    ), 200
+
+
+@auth_bp.post("/resend-verification")
+def resend_verification():
+    """
+    Resend the verification email. Always returns 200 to prevent email
+    enumeration. Throttled to one send per 60 seconds per user.
+    """
+    from datetime import timedelta
+    body = request.get_json(silent=True) or {}
+    email = (body.get("email") or "").strip().lower()
+
+    generic = jsonify(
+        message="If an account with that email exists and isn't yet verified, "
+                "we've sent a fresh verification link."
+    ), 200
+
+    if not email or not _is_valid_email(email):
+        return generic
+
+    user = User.query.filter(func.lower(User.email) == email.lower()).first()
+    if not user or user.email_verified or user.is_suspended:
+        return generic
+
+    # Throttle: don't resend within 60 seconds of the last send.
+    if user.email_verification_sent_at:
+        if _now_utc() - user.email_verification_sent_at < timedelta(seconds=60):
+            return generic
+
+    if _send_verification_email(user):
+        db.session.commit()
+
+    return generic
 
 
 def _oauth_state_serializer(secret_key: str):
@@ -553,6 +727,9 @@ def oauth_google_callback():
             user.oauth_provider_id = google_id
         if avatar_url:
             user.avatar_url = avatar_url
+        # Google has already verified the email address.
+        if not user.email_verified:
+            user.email_verified = True
         db.session.commit()
     else:
         # Create new user + org
@@ -563,6 +740,7 @@ def oauth_google_callback():
             oauth_provider="google",
             oauth_provider_id=google_id,
             avatar_url=avatar_url,
+            email_verified=True,
         )
         db.session.add(user)
         db.session.flush()
@@ -709,6 +887,9 @@ def oauth_microsoft_callback():
         if not user.oauth_provider:
             user.oauth_provider = "microsoft"
             user.oauth_provider_id = ms_id
+        # Microsoft has already verified the email address.
+        if not user.email_verified:
+            user.email_verified = True
         db.session.commit()
     else:
         user = User(
@@ -717,6 +898,7 @@ def oauth_microsoft_callback():
             password_hash=None,
             oauth_provider="microsoft",
             oauth_provider_id=ms_id,
+            email_verified=True,
         )
         db.session.add(user)
         db.session.flush()

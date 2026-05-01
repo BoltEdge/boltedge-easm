@@ -10,11 +10,16 @@ DEFAULT_MAX_AGE = 60 * 60 * 8  # 8 hours
 
 RESET_TOKEN_MAX_AGE = 60 * 60 * 24  # 24 hours
 
+VERIFY_TOKEN_MAX_AGE = 60 * 60 * 48  # 48 hours
+
 def _serializer(secret_key: str) -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(secret_key, salt="nanoasm-auth")
 
 def _reset_serializer(secret_key: str) -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(secret_key, salt="nanoasm-password-reset")
+
+def _verify_serializer(secret_key: str) -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(secret_key, salt="nanoasm-email-verify")
 
 
 def create_access_token(*, secret_key: str, user_id: int) -> str:
@@ -50,6 +55,26 @@ def verify_password_reset_token(
     """
     try:
         data = _reset_serializer(secret_key).loads(token, max_age=RESET_TOKEN_MAX_AGE)
+        if "user_id" not in data or "email" not in data:
+            return None
+        return {"user_id": int(data["user_id"]), "email": data["email"]}
+    except (SignatureExpired, BadSignature):
+        return None
+
+
+def create_email_verification_token(*, secret_key: str, user_id: int, email: str) -> str:
+    """Create a 48-hour signed email-verification token."""
+    return _verify_serializer(secret_key).dumps({"user_id": int(user_id), "email": email})
+
+
+def verify_email_verification_token(
+    *, secret_key: str, token: str
+) -> Optional[dict]:
+    """
+    Verify an email-verification token. Returns {"user_id": int, "email": str} or None.
+    """
+    try:
+        data = _verify_serializer(secret_key).loads(token, max_age=VERIFY_TOKEN_MAX_AGE)
         if "user_id" not in data or "email" not in data:
             return None
         return {"user_id": int(data["user_id"]), "email": data["email"]}

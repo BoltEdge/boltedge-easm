@@ -30,6 +30,12 @@ class User(db.Model):
     is_superadmin = db.Column(db.Boolean, nullable=False, default=False)
     is_suspended = db.Column(db.Boolean, nullable=False, default=False)
 
+    # Email verification gate. New users registered via email/password start
+    # at False and must click the link sent to their inbox. OAuth + invite
+    # flows trust the IdP/inviter, so they're auto-set to True.
+    email_verified = db.Column(db.Boolean, nullable=False, default=False)
+    email_verification_sent_at = db.Column(db.DateTime, nullable=True)
+
     created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
     updated_at = db.Column(db.DateTime, nullable=False, default=now_utc, onupdate=now_utc)
 

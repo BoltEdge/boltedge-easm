@@ -485,7 +485,7 @@ def send_password_reset(user_id: int):
             import resend
             resend.api_key = resend_key
             resend.Emails.send({
-                "from": "Nano EASM <no-reply@nanoasm.com>",
+                "from": os.environ.get("EMAIL_FROM", "Nano EASM <no-reply@nanoasm.com>"),
                 "to": [user.email],
                 "subject": "Reset your Nano EASM password",
                 "html": f"""
