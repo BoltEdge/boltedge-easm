@@ -607,9 +607,9 @@ def resend_verification():
     if not user or user.email_verified or user.is_suspended:
         return generic
 
-    # Throttle: don't resend within 60 seconds of the last send.
+    # Throttle: don't resend within 5 minutes of the last send.
     if user.email_verification_sent_at:
-        if _now_utc() - user.email_verification_sent_at < timedelta(seconds=60):
+        if _now_utc() - user.email_verification_sent_at < timedelta(minutes=5):
             return generic
 
     if _send_verification_email(user):

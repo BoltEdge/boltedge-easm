@@ -187,7 +187,7 @@ export default function AdminAuditLog() {
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
 
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams?.get("q") || "");
   const [category, setCategory] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");

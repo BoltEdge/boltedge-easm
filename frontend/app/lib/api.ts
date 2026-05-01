@@ -1638,6 +1638,7 @@ export async function getAdminUsers(params?: {
   orgId?: number;
   suspended?: boolean;
   superadmin?: boolean;
+  verified?: boolean;
 }): Promise<any> {
   const qs = new URLSearchParams();
   if (params?.page) qs.set("page", String(params.page));
@@ -1647,7 +1648,16 @@ export async function getAdminUsers(params?: {
   if (params?.orgId) qs.set("org_id", String(params.orgId));
   if (params?.suspended !== undefined) qs.set("suspended", String(params.suspended));
   if (params?.superadmin) qs.set("superadmin", "true");
+  if (params?.verified !== undefined) qs.set("verified", String(params.verified));
   return apiFetch<any>(`/admin/users?${qs.toString()}`);
+}
+
+export async function adminForceVerifyEmail(userId: number): Promise<any> {
+  return apiFetch<any>(`/admin/users/${userId}/verify-email`, { method: "POST" });
+}
+
+export async function adminResendVerification(userId: number): Promise<any> {
+  return apiFetch<any>(`/admin/users/${userId}/resend-verification`, { method: "POST" });
 }
 
 export async function getAdminAuditLog(params?: {

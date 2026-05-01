@@ -39,6 +39,16 @@ function GoogleIcon() {
 
 const COUNTRIES: string[] = getNames().sort();
 
+// Backend throttles resend to once per 5 minutes — keep the client number aligned.
+const RESEND_COOLDOWN_MS = 5 * 60 * 1000;
+
+function formatCooldown(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return m > 0 ? `${m}m ${String(s).padStart(2, "0")}s` : `${s}s`;
+}
+
 function BoltIcon({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" className="shrink-0">
@@ -76,6 +86,18 @@ function RegisterPageInner() {
   const [pendingVerification, setPendingVerification] = useState<string | null>(null);
   const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [resendCooldownUntil, setResendCooldownUntil] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+
+  // Tick once per second while in the cooldown window so the countdown updates.
+  useEffect(() => {
+    if (!pendingVerification) return;
+    if (resendCooldownUntil <= Date.now()) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [pendingVerification, resendCooldownUntil]);
+
+  const cooldownRemainingMs = Math.max(0, resendCooldownUntil - now);
+  const cooldownActive = cooldownRemainingMs > 0;
 
   // Invite info
   const [inviteInfo, setInviteInfo] = useState<{
@@ -127,7 +149,7 @@ function RegisterPageInner() {
       // {verificationRequired: true, email}. Show the "check your inbox" panel.
       if ((res as any)?.verificationRequired) {
         setPendingVerification((res as any).email || email.trim().toLowerCase());
-        setResendCooldownUntil(Date.now() + 60_000); // server throttle is 60s
+        setResendCooldownUntil(Date.now() + RESEND_COOLDOWN_MS);
         return;
       }
 
@@ -155,7 +177,7 @@ function RegisterPageInner() {
     try {
       await resendVerification(pendingVerification);
       setResendStatus("sent");
-      setResendCooldownUntil(Date.now() + 60_000);
+      setResendCooldownUntil(Date.now() + RESEND_COOLDOWN_MS);
     } catch {
       setResendStatus("error");
     }
@@ -266,10 +288,14 @@ function RegisterPageInner() {
                 <button
                   type="button"
                   onClick={handleResend}
-                  disabled={resendStatus === "sending" || Date.now() < resendCooldownUntil}
+                  disabled={resendStatus === "sending" || cooldownActive}
                   className="w-full h-11 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-sm font-medium text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white/[0.03]"
                 >
-                  {resendStatus === "sending" ? "Sending…" : "Resend verification email"}
+                  {resendStatus === "sending"
+                    ? "Sending…"
+                    : cooldownActive
+                      ? `Resend available in ${formatCooldown(cooldownRemainingMs)}`
+                      : "Resend verification email"}
                 </button>
                 <Link
                   href="/login"

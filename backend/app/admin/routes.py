@@ -406,6 +406,7 @@ def list_users():
     org_id_filter = request.args.get("org_id", type=int)
     suspended_filter = request.args.get("suspended")   # "true" | "false" | ""
     superadmin_filter = request.args.get("superadmin") # "true" | ""
+    verified_filter = request.args.get("verified")     # "true" | "false" | ""
 
     # Outer-join membership so users without an org are still included
     q = (
@@ -430,6 +431,10 @@ def list_users():
         q = q.filter(User.is_suspended == False)
     if superadmin_filter == "true":
         q = q.filter(User.is_superadmin == True)
+    if verified_filter == "true":
+        q = q.filter(User.email_verified == True)
+    elif verified_filter == "false":
+        q = q.filter(User.email_verified == False)
 
     q = q.order_by(User.created_at.desc())
 
@@ -444,6 +449,12 @@ def list_users():
             "name": u.name,
             "isSuperadmin": bool(u.is_superadmin),
             "isSuspended": bool(u.is_suspended),
+            "emailVerified": bool(u.email_verified),
+            "emailVerificationSentAt": (
+                u.email_verification_sent_at.isoformat() + "Z"
+                if u.email_verification_sent_at else None
+            ),
+            "oauthProvider": u.oauth_provider,
             "createdAt": u.created_at.isoformat() + "Z" if u.created_at else None,
             "organization": {"id": org.id, "name": org.name, "plan": org.effective_plan} if org else None,
             "role": membership.role if membership else None,
@@ -518,6 +529,86 @@ def send_password_reset(user_id: int):
         link=reset_link,
         emailSent=email_sent,
         message=f"Reset link generated{'and emailed' if email_sent else ''}.",
+    ), 200
+
+
+@admin_bp.post("/users/<int:user_id>/verify-email")
+@require_superadmin
+def admin_verify_email(user_id: int):
+    """Force-mark a user as email-verified. Use when an email truly bounces
+    and the user can't receive the link."""
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify(error="not found"), 404
+
+    if user.email_verified:
+        return jsonify(
+            message="Already verified.",
+            user={
+                "id": user.id,
+                "email": user.email,
+                "emailVerified": True,
+            },
+        ), 200
+
+    user.email_verified = True
+
+    log_audit(
+        organization_id=None,
+        user_id=g.current_user.id,
+        action="admin.email_force_verified",
+        category="admin",
+        target_type="user",
+        target_id=str(user.id),
+        target_label=user.email,
+        description=f"Admin manually verified email for {user.email}",
+        metadata={"changed_by": g.current_user.email},
+    )
+    db.session.commit()
+
+    return jsonify(
+        message="User email manually verified.",
+        user={"id": user.id, "email": user.email, "emailVerified": True},
+    ), 200
+
+
+@admin_bp.post("/users/<int:user_id>/resend-verification")
+@require_superadmin
+def admin_resend_verification(user_id: int):
+    """Send (or re-send) the email verification link to a user. Bypasses the
+    user-facing 5-minute throttle since this is an admin action."""
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify(error="not found"), 404
+
+    if user.email_verified:
+        return jsonify(error="User is already verified.", code="ALREADY_VERIFIED"), 400
+
+    from app.auth.routes import _send_verification_email
+    sent = _send_verification_email(user)
+
+    log_audit(
+        organization_id=None,
+        user_id=g.current_user.id,
+        action="admin.verification_resent",
+        category="admin",
+        target_type="user",
+        target_id=str(user.id),
+        target_label=user.email,
+        description=f"Admin resent verification email to {user.email}",
+        metadata={"changed_by": g.current_user.email, "email_sent": sent},
+    )
+    db.session.commit()
+
+    if not sent:
+        return jsonify(
+            emailSent=False,
+            message="Couldn't send via Resend. Check RESEND_API_KEY and the backend logs.",
+        ), 200
+
+    return jsonify(
+        emailSent=True,
+        message=f"Verification email sent to {user.email}.",
     ), 200
 
 

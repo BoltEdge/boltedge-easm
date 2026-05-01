@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { getAdminUsers, suspendAdminUser, deleteAdminUser, sendAdminPasswordReset, impersonateAdminUser } from "../../../lib/api";
+import { getAdminUsers, suspendAdminUser, deleteAdminUser, sendAdminPasswordReset, impersonateAdminUser, adminForceVerifyEmail, adminResendVerification } from "../../../lib/api";
 import { startImpersonation } from "../../../lib/auth";
-import { Search, ChevronLeft, ChevronRight, ShieldAlert, ShieldOff, ShieldCheck, Trash2, KeyRound, Copy, Check, X, UserCog } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ShieldAlert, ShieldOff, ShieldCheck, Trash2, KeyRound, Copy, Check, X, UserCog, Mail, MailCheck, MailWarning, ExternalLink } from "lucide-react";
+import Link from "next/link";
 
 const PLAN_COLORS: Record<string, string> = {
   free: "#6b7280", starter: "#00b8d4", professional: "#7c5cfc",
@@ -26,6 +27,7 @@ export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState("");
   const [suspendedFilter, setSuspendedFilter] = useState<"" | "true" | "false">("");
   const [superadminFilter, setSuperadminFilter] = useState(false);
+  const [verifiedFilter, setVerifiedFilter] = useState<"" | "true" | "false">("");
   // org filter can be seeded from ?org_id= query param (e.g. coming from org detail page)
   const [orgFilter, setOrgFilter] = useState<number | undefined>(
     searchParams?.get("org_id") ? Number(searchParams.get("org_id")) : undefined
@@ -42,8 +44,10 @@ export default function AdminUsers() {
   const [resetModal, setResetModal] = useState<{ user: any; link?: string; emailSent?: boolean; busy: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
   const [impersonateBusy, setImpersonateBusy] = useState<number | null>(null);
+  const [verifyBusy, setVerifyBusy] = useState<number | null>(null);
+  const [resendBusy, setResendBusy] = useState<number | null>(null);
 
-  const activeFilters = [roleFilter, suspendedFilter, superadminFilter, orgFilter].filter(Boolean).length;
+  const activeFilters = [roleFilter, suspendedFilter, superadminFilter, orgFilter, verifiedFilter].filter(Boolean).length;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -56,14 +60,15 @@ export default function AdminUsers() {
         orgId: orgFilter,
         suspended: suspendedFilter === "" ? undefined : suspendedFilter === "true",
         superadmin: superadminFilter || undefined,
+        verified: verifiedFilter === "" ? undefined : verifiedFilter === "true",
       }));
     } catch (e: any) {
       setError(e?.message || "Failed to load");
     } finally { setLoading(false); }
-  }, [page, search, roleFilter, suspendedFilter, superadminFilter, orgFilter]);
+  }, [page, search, roleFilter, suspendedFilter, superadminFilter, orgFilter, verifiedFilter]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { setPage(1); }, [search, roleFilter, suspendedFilter, superadminFilter, orgFilter]);
+  useEffect(() => { setPage(1); }, [search, roleFilter, suspendedFilter, superadminFilter, orgFilter, verifiedFilter]);
   useEffect(() => { if (banner) { const t = setTimeout(() => setBanner(null), 4000); return () => clearTimeout(t); } }, [banner]);
 
   function clearFilters() {
@@ -72,6 +77,45 @@ export default function AdminUsers() {
     setSuperadminFilter(false);
     setOrgFilter(undefined);
     setOrgFilterName("");
+    setVerifiedFilter("");
+  }
+
+  async function handleForceVerify(u: any) {
+    setVerifyBusy(u.id);
+    try {
+      await adminForceVerifyEmail(u.id);
+      setBanner({ kind: "ok", text: `${u.email} marked as verified.` });
+      load();
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || "Failed to verify user" });
+    } finally { setVerifyBusy(null); }
+  }
+
+  async function handleResendVerification(u: any) {
+    setResendBusy(u.id);
+    try {
+      const res = await adminResendVerification(u.id);
+      setBanner({
+        kind: res.emailSent ? "ok" : "err",
+        text: res.message || (res.emailSent ? "Verification email sent." : "Send failed."),
+      });
+      load();
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || "Failed to send verification email" });
+    } finally { setResendBusy(null); }
+  }
+
+  function relativeTime(iso?: string | null): string {
+    if (!iso) return "never";
+    const ms = Date.now() - new Date(iso).getTime();
+    if (Number.isNaN(ms)) return "—";
+    const min = Math.floor(ms / 60_000);
+    if (min < 1) return "just now";
+    if (min < 60) return `${min}m ago`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr}h ago`;
+    const d = Math.floor(hr / 24);
+    return `${d}d ago`;
   }
 
   async function handleImpersonate(u: any) {
@@ -178,6 +222,16 @@ export default function AdminUsers() {
           <option value="false">Active only</option>
         </select>
 
+        <select
+          value={verifiedFilter}
+          onChange={(e) => setVerifiedFilter(e.target.value as "" | "true" | "false")}
+          className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500/40"
+        >
+          <option value="">Any email status</option>
+          <option value="false">Pending verification</option>
+          <option value="true">Verified only</option>
+        </select>
+
         <label className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white/60 cursor-pointer select-none hover:border-white/[0.14] transition-colors">
           <input
             type="checkbox"
@@ -219,15 +273,16 @@ export default function AdminUsers() {
               <th className="text-left px-4 py-3 text-xs font-medium text-white/40">User</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Organization</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Role</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Email status</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Joined</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-white/30 text-xs">Loading…</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-white/30 text-xs">Loading…</td></tr>
             ) : !data?.users?.length ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-white/30 text-xs">No users found.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-white/30 text-xs">No users found.</td></tr>
             ) : data.users.map((u: any) => {
               const planColor = PLAN_COLORS[u.organization?.plan] || "#6b7280";
               return (
@@ -263,6 +318,29 @@ export default function AdminUsers() {
                       </span>
                     ) : "—"}
                   </td>
+                  <td className="px-4 py-3">
+                    {u.emailVerified ? (
+                      <div className="flex items-center gap-1.5">
+                        <MailCheck className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-[11px] text-emerald-300">Verified</span>
+                        {u.oauthProvider && (
+                          <span className="text-[10px] text-white/30">via {u.oauthProvider}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <MailWarning className="w-3.5 h-3.5 text-amber-400" />
+                          <span className="text-[11px] text-amber-300">Pending</span>
+                        </div>
+                        <span className="text-[10px] text-white/30">
+                          {u.emailVerificationSentAt
+                            ? `Last sent ${relativeTime(u.emailVerificationSentAt)}`
+                            : "Never sent"}
+                        </span>
+                      </div>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-white/40 text-xs">
                     {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
                   </td>
@@ -283,6 +361,33 @@ export default function AdminUsers() {
                       >
                         <KeyRound className="w-3.5 h-3.5" />
                       </button>
+                      {!u.emailVerified && (
+                        <>
+                          <button
+                            onClick={() => handleResendVerification(u)}
+                            disabled={resendBusy === u.id}
+                            title="Resend verification email"
+                            className="p-1.5 rounded hover:bg-amber-500/10 text-white/30 hover:text-amber-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            <Mail className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleForceVerify(u)}
+                            disabled={verifyBusy === u.id}
+                            title="Manually mark email as verified"
+                            className="p-1.5 rounded hover:bg-emerald-500/10 text-white/30 hover:text-emerald-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            <MailCheck className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
+                      <Link
+                        href={`/admin/audit-log?q=${encodeURIComponent(u.email)}`}
+                        title="View activity in audit log"
+                        className="p-1.5 rounded hover:bg-white/[0.06] text-white/30 hover:text-white/70 transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </Link>
                       <button
                         onClick={() => handleSuspend(u)}
                         disabled={u.isSuperadmin || suspendBusy === u.id}

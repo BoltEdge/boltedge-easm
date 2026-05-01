@@ -57,28 +57,105 @@ def _dispatch_notifications(alerts: list, org_id: int) -> None:
             logger.exception("Dispatch failed for alert %s", alert.id)
 
 
+_SEVERITY_COLOR = {
+    "critical": "#dc2626",
+    "high":     "#ea580c",
+    "medium":   "#ca8a04",
+    "low":      "#0891b2",
+    "info":     "#475569",
+}
+
+
 def _send_email_notification(alert, recipients: list[str]) -> None:
     """
-    Send an email notification for an alert.
+    Send an alert email through Resend to every configured recipient.
 
-    TODO: Integrate with actual email provider (SendGrid, SES, SMTP).
-    For now, logs the notification.
+    Silent no-op (with a logged warning) if RESEND_API_KEY isn't set, so
+    misconfigured environments don't crash the scheduler — they just stop
+    delivering email until the key is in place.
     """
-    logger.info(
-        "EMAIL → %s | [%s] %s — %s on %s",
-        ", ".join(recipients),
-        alert.severity.upper(),
-        alert.alert_type,
-        alert.title,
-        alert.asset_value,
+    import os
+    from flask import current_app
+
+    if not recipients:
+        return
+
+    severity = (alert.severity or "info").lower()
+    severity_color = _SEVERITY_COLOR.get(severity, "#475569")
+    title = alert.title or alert.alert_name or "Monitor Alert"
+    subject = f"[{severity.upper()}] {title}"
+
+    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoasm.com").rstrip("/")
+    alerts_link = f"{frontend_url}/monitoring?tab=alerts"
+
+    asset_line = alert.asset_value or alert.group_name or "—"
+    summary = (alert.summary or "").strip()
+    detected_at = alert.created_at.strftime("%Y-%m-%d %H:%M UTC") if getattr(alert, "created_at", None) else ""
+
+    html = f"""
+    <div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#0f172a;">
+      <div style="border-left:4px solid {severity_color};padding:14px 18px;background:#f8fafc;border-radius:6px;">
+        <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:{severity_color};">
+          {severity.upper()} alert
+        </div>
+        <div style="font-size:18px;font-weight:600;margin-top:4px;color:#0f172a;">
+          {title}
+        </div>
+      </div>
+      <table style="width:100%;margin-top:18px;border-collapse:collapse;font-size:14px;">
+        <tr><td style="color:#64748b;padding:4px 0;width:120px;">Asset</td><td style="font-family:ui-monospace,Menlo,monospace;color:#0f172a;">{asset_line}</td></tr>
+        <tr><td style="color:#64748b;padding:4px 0;">Type</td><td style="color:#0f172a;">{alert.alert_type or "—"}</td></tr>
+        <tr><td style="color:#64748b;padding:4px 0;">Detected</td><td style="color:#0f172a;">{detected_at or "—"}</td></tr>
+      </table>
+      {f'<div style="margin-top:18px;padding:14px 16px;background:#f1f5f9;border-radius:6px;font-size:14px;line-height:1.5;color:#334155;">{summary}</div>' if summary else ""}
+      <div style="margin-top:24px;">
+        <a href="{alerts_link}" style="display:inline-block;padding:10px 18px;background:#14b8a6;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:14px;">
+          View in Nano EASM
+        </a>
+      </div>
+      <p style="margin-top:28px;color:#94a3b8;font-size:12px;">
+        You're receiving this because email notifications are enabled for your organisation in Nano EASM monitoring settings.
+      </p>
+    </div>
+    """
+
+    resend_key = os.environ.get("RESEND_API_KEY", "")
+    if not resend_key:
+        logger.warning(
+            "RESEND_API_KEY not set; skipping email for alert %s (would have gone to %s)",
+            alert.id, ", ".join(recipients),
+        )
+        return
+
+    # Monitor alerts can use a dedicated sender (so users can filter on it),
+    # falling back to the platform-wide EMAIL_FROM, then to the default.
+    from_addr = (
+        os.environ.get("MONITOR_EMAIL_FROM")
+        or os.environ.get("EMAIL_FROM")
+        or "Nano EASM Alerts <alerts@nanoasm.com>"
     )
-    # IMPLEMENTATION:
-    # from app.email import send_alert_email
-    # send_alert_email(
-    #     recipients=recipients,
-    #     subject=f"[{alert.severity.upper()}] {alert.title}",
-    #     alert=alert,
-    # )
+
+    try:
+        import resend
+        resend.api_key = resend_key
+        resend.Emails.send({
+            "from": from_addr,
+            "to": recipients,
+            "subject": subject,
+            "html": html,
+        })
+        logger.info(
+            "Sent alert email %s [%s] to %d recipient(s)",
+            alert.id, severity.upper(), len(recipients),
+        )
+    except Exception:
+        # Re-raise so dispatch_monitor_alert can log it under the "email"
+        # channel and skip the notified_via=email mark for this alert.
+        try:
+            current_app.logger.exception("Resend send failed for alert %s", alert.id)
+        except Exception:
+            pass
+        raise
 
 
 def _create_in_app_notification(alert, org_id: int) -> None:
