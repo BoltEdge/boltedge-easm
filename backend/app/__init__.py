@@ -336,6 +336,14 @@ def create_app() -> Flask:
     # db.create_all() is NOT called — it conflicts with Alembic migrations.
     # ─────────────────────────────────────────────────────────────────
 
+    # ── Display IDs ──────────────────────────────────────────────────
+    # Registers an after_insert SQLAlchemy event on every entity model
+    # that auto-populates public_id ("SC0042", "AS0150", ...) from the
+    # newly assigned integer id. Must run after models are imported.
+    from app.utils.display_id import register_public_id_listeners
+    register_public_id_listeners()
+    # ─────────────────────────────────────────────────────────────────
+
     # ── Background Schedulers ────────────────────────────────────────
     # Gunicorn runs multiple workers — schedulers must only start once.
     # In docker-compose, set SCHEDULER_ENABLED=true on exactly one

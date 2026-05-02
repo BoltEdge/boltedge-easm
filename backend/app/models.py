@@ -13,6 +13,7 @@ class User(db.Model):
     __tablename__ = "user"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     email = db.Column(db.String(255), nullable=False, unique=True, index=True)
     name = db.Column(db.String(120), nullable=True)
     password_hash = db.Column(db.String(255), nullable=True)
@@ -43,6 +44,7 @@ class Organization(db.Model):
     __tablename__ = "organization"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     name = db.Column(db.String(255), nullable=False)
     slug = db.Column(db.String(100), unique=True, nullable=False, index=True)
     industry = db.Column(db.String(100), nullable=True)
@@ -176,6 +178,7 @@ class AssetGroup(db.Model):
     __tablename__ = "asset_group"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     user_id = db.Column(db.Integer, nullable=False, index=True)
     organization_id = db.Column(db.Integer, db.ForeignKey("organization.id", ondelete="CASCADE"), nullable=False, index=True)
     
@@ -197,6 +200,7 @@ class Asset(db.Model):
     __tablename__ = "asset"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     user_id = db.Column(db.Integer, nullable=False, index=True)
     organization_id = db.Column(db.Integer, db.ForeignKey("organization.id", ondelete="CASCADE"), nullable=False, index=True)
 
@@ -233,6 +237,7 @@ class ScanJob(db.Model):
     __tablename__ = "scan_job"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     asset_id = db.Column(
         db.Integer,
         db.ForeignKey("asset.id", ondelete="CASCADE"),
@@ -267,6 +272,7 @@ class Finding(db.Model):
     __tablename__ = "finding"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
 
     asset_id = db.Column(
         db.Integer,
@@ -480,6 +486,7 @@ class Monitor(db.Model):
     __tablename__ = "monitor"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     organization_id = db.Column(db.Integer, db.ForeignKey("organization.id", ondelete="CASCADE"), nullable=False, index=True)
     created_by = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), nullable=True)
 
@@ -527,6 +534,7 @@ class MonitorAlert(db.Model):
     __tablename__ = "monitor_alert"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     organization_id = db.Column(db.Integer, db.ForeignKey("organization.id", ondelete="CASCADE"), nullable=False, index=True)
     monitor_id = db.Column(db.Integer, db.ForeignKey("monitor.id", ondelete="CASCADE"), nullable=True, index=True)
     finding_id = db.Column(db.Integer, db.ForeignKey("finding.id", ondelete="SET NULL"), nullable=True, index=True)
@@ -656,6 +664,7 @@ class ScanProfile(db.Model):
     __tablename__ = "scan_profile"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     organization_id = db.Column(db.Integer, db.ForeignKey("organization.id", ondelete="CASCADE"), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), nullable=True)
     
@@ -706,6 +715,7 @@ class ScanSchedule(db.Model):
     __tablename__ = "scan_schedule"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     organization_id = db.Column(db.Integer, db.ForeignKey("organization.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True)
     asset_id = db.Column(db.Integer, db.ForeignKey("asset.id", ondelete="CASCADE"), nullable=True, index=True)
@@ -803,6 +813,7 @@ class ApiKey(db.Model):
     __tablename__ = "api_key"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     organization_id = db.Column(db.Integer, db.ForeignKey("organization.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True)
 
@@ -828,6 +839,7 @@ class PendingInvitation(db.Model):
     __tablename__ = "pending_invitation"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     organization_id = db.Column(db.Integer, db.ForeignKey("organization.id", ondelete="CASCADE"), nullable=False, index=True)
     invited_by_user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
 
@@ -866,6 +878,7 @@ class DiscoveryJob(db.Model):
     __tablename__ = "discovery_job"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     organization_id = db.Column(db.Integer, db.ForeignKey("organization.id", ondelete="CASCADE"), nullable=False, index=True)
     created_by = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), nullable=True)
 
@@ -950,6 +963,7 @@ class PlatformAnnouncement(db.Model):
     __tablename__ = "platform_announcement"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     title = db.Column(db.String(200), nullable=False)
     body = db.Column(db.Text, nullable=True)
     kind = db.Column(db.String(20), nullable=False, default="info")  # info | warning | critical
@@ -988,6 +1002,7 @@ class QuickScanLog(db.Model):
     __tablename__ = "quick_scan_log"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     ip_address = db.Column(db.String(45), nullable=False, index=True)   # IPv4 or IPv6
     user_agent = db.Column(db.String(500), nullable=True)
     target = db.Column(db.String(255), nullable=False, index=True)
@@ -1009,6 +1024,7 @@ class BlockedIP(db.Model):
     __tablename__ = "blocked_ip"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     ip_address = db.Column(db.String(45), nullable=False, unique=True, index=True)
     reason = db.Column(db.String(500), nullable=True)
     blocked_by = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), nullable=True)
@@ -1128,6 +1144,7 @@ class Report(db.Model):
     __tablename__ = "report"
 
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     organization_id = db.Column(db.Integer, db.ForeignKey("organization.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Report metadata
@@ -1413,6 +1430,7 @@ class AuditLog(db.Model):
     __tablename__ = "audit_log"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     organization_id = db.Column(db.Integer, nullable=True, index=True)
     user_id = db.Column(db.Integer, nullable=True)
     user_email = db.Column(db.String(255), nullable=True)

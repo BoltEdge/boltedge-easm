@@ -207,6 +207,7 @@ def normalize_asset_value(asset_type: str, value: Any) -> str:
 def asset_to_ui(a: Asset) -> Dict[str, Any]:
     result = {
         "id": _sid(a.id),
+        "displayId": a.public_id,
         "groupId": _sid(a.group_id),
         "type": a.asset_type,
         "value": a.value,
@@ -249,7 +250,9 @@ def list_group_assets(group_id: str):
     for a in assets:
         item = {
             "id": str(a.id),
+            "displayId": a.public_id,
             "groupId": str(a.group_id),
+            "groupDisplayId": g1.public_id,
             "groupName": g1.name,
             "type": a.asset_type,
             "value": a.value,

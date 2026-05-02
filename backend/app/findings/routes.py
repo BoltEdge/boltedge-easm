@@ -36,6 +36,7 @@ from app.models import Finding, Asset, AssetGroup
 from app.auth.decorators import require_auth, allow_api_key, current_user_id, current_organization_id
 from app.auth.permissions import require_role, require_permission
 from app.audit.routes import log_audit
+from app.utils.display_id import resolve_id
 
 # Finding event logging for historical trending
 try:
@@ -226,10 +227,13 @@ def finding_to_ui(f: Finding) -> dict:
 
     result = {
         "id": _sid(f.id),
+        "displayId": f.public_id,
         "assetId": _sid(f.asset_id),
+        "assetDisplayId": a.public_id if a else None,
         "assetValue": a.value if a else None,
         "assetType": a.asset_type if a else None,
         "groupId": _sid(g.id) if g else None,
+        "groupDisplayId": g.public_id if g else None,
         "groupName": g.name if g else None,
         "severity": f.severity or "info",
         "title": f.title,
@@ -467,30 +471,36 @@ def list_findings():
 
 
 # GET /findings/<id> — all roles can view
-@findings_bp.get("/<int:finding_id>")
+@findings_bp.get("/<finding_id>")
 @require_auth
 @allow_api_key
-def get_finding(finding_id: int):
+def get_finding(finding_id: str):
+    int_id = resolve_id(finding_id, "FN")
+    if int_id is None:
+        return jsonify(error="finding not found"), 404
     org_id = current_organization_id()
-    f = _base_query(org_id).filter(Finding.id == finding_id).first()
+    f = _base_query(org_id).filter(Finding.id == int_id).first()
     if not f:
         return jsonify(error="finding not found"), 404
     return jsonify(finding_to_ui(f)), 200
 
 
 # PATCH /findings/<id> — analyst+ (status transitions)
-@findings_bp.patch("/<int:finding_id>")
+@findings_bp.patch("/<finding_id>")
 @require_auth
 @allow_api_key
 @require_role("analyst")
-def update_finding(finding_id: int):
+def update_finding(finding_id: str):
+    int_id = resolve_id(finding_id, "FN")
+    if int_id is None:
+        return jsonify(error="finding not found"), 404
     org_id = current_organization_id()
     uid = current_user_id()
 
     f = (
         db.session.query(Finding)
         .join(Asset, Finding.asset_id == Asset.id)
-        .filter(Finding.id == finding_id, Asset.organization_id == org_id)
+        .filter(Finding.id == int_id, Asset.organization_id == org_id)
         .options(db.joinedload(Finding.asset).joinedload(Asset.group))
         .first()
     )
@@ -560,21 +570,24 @@ def update_finding(finding_id: int):
 
 
 # POST /findings/<id>/escalate — analyst+ (create a manual alert from a finding)
-@findings_bp.post("/<int:finding_id>/escalate")
+@findings_bp.post("/<finding_id>/escalate")
 @require_auth
 @require_role("analyst")
-def escalate_finding(finding_id: int):
+def escalate_finding(finding_id: str):
     """Escalate a finding into a MonitorAlert. Routes through monitor.alert
     notification rules so users get the alert in Slack/Jira/etc. The finding
     itself stays untouched unless the caller passes acknowledge=true, in which
     case it is moved to in_progress."""
+    int_id = resolve_id(finding_id, "FN")
+    if int_id is None:
+        return jsonify(error="finding not found"), 404
     org_id = current_organization_id()
     uid = current_user_id()
 
     f = (
         db.session.query(Finding)
         .join(Asset, Finding.asset_id == Asset.id)
-        .filter(Finding.id == finding_id, Asset.organization_id == org_id)
+        .filter(Finding.id == int_id, Asset.organization_id == org_id)
         .options(db.joinedload(Finding.asset).joinedload(Asset.group))
         .first()
     )
@@ -659,7 +672,7 @@ def bulk_ignore():
         f = (
             db.session.query(Finding)
             .join(Asset, Finding.asset_id == Asset.id)
-            .filter(Finding.id == int(fid), Asset.organization_id == org_id)
+            .filter(Finding.id == (resolve_id(fid, "FN") or -1), Asset.organization_id == org_id)
             .first()
         )
         if f:
@@ -706,7 +719,7 @@ def bulk_resolve():
         f = (
             db.session.query(Finding)
             .join(Asset, Finding.asset_id == Asset.id)
-            .filter(Finding.id == int(fid), Asset.organization_id == org_id)
+            .filter(Finding.id == (resolve_id(fid, "FN") or -1), Asset.organization_id == org_id)
             .first()
         )
         if f:
@@ -761,7 +774,7 @@ def bulk_status():
         f = (
             db.session.query(Finding)
             .join(Asset, Finding.asset_id == Asset.id)
-            .filter(Finding.id == int(fid), Asset.organization_id == org_id)
+            .filter(Finding.id == (resolve_id(fid, "FN") or -1), Asset.organization_id == org_id)
             .first()
         )
         if f:

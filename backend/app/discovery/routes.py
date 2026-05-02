@@ -30,6 +30,7 @@ from flask import Blueprint, request, jsonify, g, current_app
 from app.extensions import db
 from app.auth.decorators import require_auth, allow_api_key, current_organization_id
 from app.auth.permissions import require_role
+from app.utils.display_id import resolve_id
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,7 @@ def _get_existing_asset_values(org_id: int) -> Set[str]:
 def _serialize_job(job, include_assets=False, include_modules=False) -> dict:
     data = {
         "id": job.id,
+        "displayId": job.public_id,
         "target": job.target,
         "targetType": job.target_type,
         "status": job.status,
@@ -326,13 +328,16 @@ def list_jobs():
 # GET /discovery/jobs/<id> — Job detail
 # ═══════════════════════════════════════════════════════════════
 
-@discovery_bp.get("/jobs/<int:job_id>")
+@discovery_bp.get("/jobs/<job_id>")
 @require_auth
 @allow_api_key
-def get_job(job_id: int):
+def get_job(job_id: str):
     from app.models import DiscoveryJob
+    int_id = resolve_id(job_id, "DC")
+    if int_id is None:
+        return jsonify(error="Discovery job not found."), 404
     org_id = int(current_organization_id())
-    job = DiscoveryJob.query.filter_by(id=job_id, organization_id=org_id).first()
+    job = DiscoveryJob.query.filter_by(id=int_id, organization_id=org_id).first()
     if not job:
         return jsonify(error="Discovery job not found."), 404
     return jsonify(_serialize_job(job, include_assets=True, include_modules=True)), 200
@@ -342,14 +347,17 @@ def get_job(job_id: int):
 # POST /discovery/jobs/<id>/cancel
 # ═══════════════════════════════════════════════════════════════
 
-@discovery_bp.post("/jobs/<int:job_id>/cancel")
+@discovery_bp.post("/jobs/<job_id>/cancel")
 @require_auth
 @allow_api_key
 @require_role("analyst")
-def cancel_job(job_id: int):
+def cancel_job(job_id: str):
     from app.models import DiscoveryJob
+    int_id = resolve_id(job_id, "DC")
+    if int_id is None:
+        return jsonify(error="Discovery job not found."), 404
     org_id = int(current_organization_id())
-    job = DiscoveryJob.query.filter_by(id=job_id, organization_id=org_id).first()
+    job = DiscoveryJob.query.filter_by(id=int_id, organization_id=org_id).first()
     if not job:
         return jsonify(error="Discovery job not found."), 404
     if job.status not in ("pending", "running"):

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { getAdminScans } from "../../../lib/api";
-import { RefreshCw, ScanLine, Globe, CheckCircle2, XCircle, Clock, Loader2, ChevronRight } from "lucide-react";
+import { getAdminScans, adminCancelScan, adminCancelDiscovery } from "../../../lib/api";
+import { RefreshCw, ScanLine, Globe, CheckCircle2, XCircle, Clock, Loader2, ChevronRight, Ban } from "lucide-react";
 import Link from "next/link";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -173,7 +173,7 @@ export default function AdminScans() {
                 <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse inline-block" />
                 Active ({active.length})
               </h2>
-              <JobTable jobs={active} empty="No active jobs right now." />
+              <JobTable jobs={active} empty="No active jobs right now." onRefresh={load} cancellable />
             </section>
           )}
 
@@ -183,7 +183,7 @@ export default function AdminScans() {
               <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">
                 Recent — last 24h ({recent.length})
               </h2>
-              <JobTable jobs={recent} empty="No finished jobs in the last 24 hours." />
+              <JobTable jobs={recent} empty="No finished jobs in the last 24 hours." onRefresh={load} />
             </section>
           )}
         </>
@@ -192,7 +192,7 @@ export default function AdminScans() {
   );
 }
 
-function JobTable({ jobs, empty }: { jobs: any[]; empty: string }) {
+function JobTable({ jobs, empty, onRefresh, cancellable }: { jobs: any[]; empty: string; onRefresh: () => void; cancellable?: boolean }) {
   if (!jobs.length) {
     return (
       <div className="rounded-xl border border-white/[0.06] px-4 py-8 text-center text-white/30 text-xs">
@@ -212,12 +212,12 @@ function JobTable({ jobs, empty }: { jobs: any[]; empty: string }) {
             <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Status</th>
             <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Started</th>
             <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Duration</th>
-            <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Detail</th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Actions</th>
           </tr>
         </thead>
         <tbody>
           {jobs.map((job) => (
-            <JobRow key={`${job.type}-${job.id}`} job={job} />
+            <JobRow key={`${job.type}-${job.id}`} job={job} onRefresh={onRefresh} cancellable={cancellable} />
           ))}
         </tbody>
       </table>
@@ -225,9 +225,26 @@ function JobTable({ jobs, empty }: { jobs: any[]; empty: string }) {
   );
 }
 
-function JobRow({ job }: { job: any }) {
+function JobRow({ job, onRefresh, cancellable }: { job: any; onRefresh: () => void; cancellable?: boolean }) {
   const [expanded, setExpanded] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const isDisc = job.type === "discovery";
+  const isActive = ["queued", "pending", "running"].includes(job.status);
+
+  async function handleCancel(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm(`Cancel ${isDisc ? "discovery" : "scan"} for ${job.target}?`)) return;
+    try {
+      setCancelling(true);
+      if (isDisc) await adminCancelDiscovery(job.id);
+      else await adminCancelScan(job.id);
+      onRefresh();
+    } catch (err: any) {
+      alert(err?.message || "Failed to cancel");
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   return (
     <>
@@ -272,7 +289,19 @@ function JobRow({ job }: { job: any }) {
         <td className="px-4 py-3 text-white/40 text-xs">{fmtTime(job.startedAt || job.createdAt)}</td>
         <td className="px-4 py-3 text-white/40 text-xs">{fmtDuration(job.durationSeconds)}</td>
         <td className="px-4 py-3">
-          <ChevronRight className={`w-3.5 h-3.5 text-white/20 transition-transform ${expanded ? "rotate-90" : ""}`} />
+          <div className="flex items-center gap-1.5">
+            {cancellable && isActive && (
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                title={`Cancel ${isDisc ? "discovery" : "scan"}`}
+                className="p-1.5 rounded text-white/40 hover:text-amber-400 hover:bg-amber-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Ban className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <ChevronRight className={`w-3.5 h-3.5 text-white/20 transition-transform ${expanded ? "rotate-90" : ""}`} />
+          </div>
         </td>
       </tr>
       {expanded && (
@@ -281,7 +310,9 @@ function JobRow({ job }: { job: any }) {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
               <div>
                 <div className="text-white/30 mb-1">Job ID</div>
-                <div className="text-white/70 font-mono">#{job.id}</div>
+                <div className="text-white/70 font-mono">
+                  {job.displayId || (job.type === "discovery" ? `DC${String(job.id).padStart(4, "0")}` : `SC${String(job.id).padStart(4, "0")}`)}
+                </div>
               </div>
               {isDisc ? (
                 <>

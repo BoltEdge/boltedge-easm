@@ -45,18 +45,24 @@ def _now_utc() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def _org_row(org: Organization) -> dict:
-    """Serialise an org to a lightweight row for the list view."""
+def _org_row(org: Organization, asset_count: int | None = None) -> dict:
+    """Serialise an org to a lightweight row for the list view.
+
+    Pass `asset_count` to use a precomputed live count from a GROUP BY query
+    (avoids N+1 in list views). Falls back to the cached column otherwise —
+    which is unreliable since nothing keeps it in sync with Asset table state.
+    """
     member_count = OrganizationMember.query.filter_by(
         organization_id=org.id, is_active=True
     ).count()
     return {
         "id": org.id,
+        "displayId": org.public_id,
         "name": org.name,
         "slug": org.slug,
         "plan": org.effective_plan,
         "planStatus": org.plan_status,
-        "assetsCount": org.assets_count,
+        "assetsCount": asset_count if asset_count is not None else org.assets_count,
         "assetLimit": org.asset_limit,
         "scansThisMonth": org.scans_this_month,
         "memberCount": member_count,
@@ -95,9 +101,11 @@ def get_stats():
         Organization.created_at >= cutoff,
     ).count()
 
-    # Total assets and scans this month across all orgs
+    # Total assets and scans this month across all orgs.
+    # Use a live COUNT on the Asset table — the Organization.assets_count
+    # cache column is never kept in sync with asset inserts/deletes.
     from sqlalchemy import func as sqlfunc
-    asset_total = db.session.query(sqlfunc.sum(Organization.assets_count)).scalar() or 0
+    asset_total = db.session.query(sqlfunc.count(Asset.id)).scalar() or 0
     scans_total = db.session.query(sqlfunc.sum(Organization.scans_this_month)).scalar() or 0
 
     return jsonify(
@@ -143,8 +151,24 @@ def list_organizations():
     total = q.count()
     orgs = q.offset((page - 1) * limit).limit(limit).all()
 
+    # Live asset counts for just the orgs on this page — single GROUP BY query
+    # so the list view doesn't issue N count() queries. The cached
+    # Organization.assets_count column is unreliable (never wired to Asset
+    # inserts/deletes), so we ignore it.
+    from sqlalchemy import func as sqlfunc
+    org_ids = [o.id for o in orgs]
+    asset_counts: dict[int, int] = {}
+    if org_ids:
+        rows = (
+            db.session.query(Asset.organization_id, sqlfunc.count(Asset.id))
+            .filter(Asset.organization_id.in_(org_ids))
+            .group_by(Asset.organization_id)
+            .all()
+        )
+        asset_counts = {row[0]: int(row[1]) for row in rows}
+
     return jsonify(
-        organizations=[_org_row(o) for o in orgs],
+        organizations=[_org_row(o, asset_counts.get(o.id, 0)) for o in orgs],
         total=total,
         page=page,
         limit=limit,
@@ -169,6 +193,7 @@ def get_organization(org_id: int):
         if u:
             member_list.append({
                 "id": u.id,
+                "displayId": u.public_id,
                 "email": u.email,
                 "name": u.name,
                 "role": m.role,
@@ -185,6 +210,7 @@ def get_organization(org_id: int):
 
     return jsonify(
         id=org.id,
+        displayId=org.public_id,
         name=org.name,
         slug=org.slug,
         industry=org.industry,
@@ -202,7 +228,9 @@ def get_organization(org_id: int):
         planDefaults=plan_defaults,
         createdAt=org.created_at.isoformat() + "Z" if org.created_at else None,
         usage={
-            "assets": org.assets_count,
+            # Live count — Organization.assets_count is a stale cache that's
+            # never updated when assets are added or deleted.
+            "assets": Asset.query.filter_by(organization_id=org.id).count(),
             "assetLimit": org.asset_limit,
             "scansThisMonth": org.scans_this_month,
             "scheduledScans": schedule_count,
@@ -445,6 +473,7 @@ def list_users():
     for u, membership, org in results:
         rows.append({
             "id": u.id,
+            "displayId": u.public_id,
             "email": u.email,
             "name": u.name,
             "isSuperadmin": bool(u.is_superadmin),
@@ -456,7 +485,12 @@ def list_users():
             ),
             "oauthProvider": u.oauth_provider,
             "createdAt": u.created_at.isoformat() + "Z" if u.created_at else None,
-            "organization": {"id": org.id, "name": org.name, "plan": org.effective_plan} if org else None,
+            "organization": {
+                "id": org.id,
+                "displayId": org.public_id,
+                "name": org.name,
+                "plan": org.effective_plan,
+            } if org else None,
             "role": membership.role if membership else None,
         })
 
@@ -898,8 +932,9 @@ def list_active_scans():
             dur = int((end - job.started_at).total_seconds())
         return {
             "id": job.id,
+            "displayId": job.public_id,
             "type": "scan",
-            "org": {"id": org.id, "name": org.name},
+            "org": {"id": org.id, "displayId": org.public_id, "name": org.name},
             "target": asset.value,
             "targetType": asset.asset_type,
             "status": job.status,
@@ -918,8 +953,9 @@ def list_active_scans():
             dur = int((end - job.started_at).total_seconds())
         return {
             "id": job.id,
+            "displayId": job.public_id,
             "type": "discovery",
-            "org": {"id": org.id, "name": org.name},
+            "org": {"id": org.id, "displayId": org.public_id, "name": org.name},
             "target": job.target,
             "targetType": job.target_type,
             "status": job.status,
@@ -948,6 +984,70 @@ def list_active_scans():
             "completedToday": completed_today,
         },
     ), 200
+
+
+@admin_bp.post("/scans/<int:job_id>/cancel")
+@require_superadmin
+def admin_cancel_scan(job_id: int):
+    """Force-cancel any org's scan job. Background thread will discard
+    its results when it sees the cancelled status."""
+    job = ScanJob.query.get(job_id)
+    if not job:
+        return jsonify(error="scan job not found"), 404
+    if job.status not in ("queued", "running"):
+        return jsonify(
+            error=f"scan job is {job.status}; only queued or running scans can be cancelled",
+        ), 400
+
+    asset = Asset.query.get(job.asset_id) if job.asset_id else None
+    job.status = "cancelled"
+    job.finished_at = _now_utc()
+    if asset and asset.scan_status in ("scan_pending", "scan_running"):
+        asset.scan_status = "scan_cancelled"
+
+    log_audit(
+        organization_id=asset.organization_id if asset else None,
+        user_id=g.current_user.id,
+        action="admin.scan_cancelled",
+        category="admin",
+        target_type="scan_job",
+        target_id=str(job.id),
+        target_label=asset.value if asset else None,
+        description=f"Admin cancelled scan job {job.id}",
+        metadata={"changed_by": g.current_user.email},
+    )
+    db.session.commit()
+    return jsonify(status="cancelled", jobId=job.id), 200
+
+
+@admin_bp.post("/discovery-jobs/<int:job_id>/cancel")
+@require_superadmin
+def admin_cancel_discovery(job_id: int):
+    """Force-cancel any org's discovery job."""
+    job = DiscoveryJob.query.get(job_id)
+    if not job:
+        return jsonify(error="discovery job not found"), 404
+    if job.status not in ("pending", "running"):
+        return jsonify(
+            error=f"discovery job is {job.status}; only pending or running jobs can be cancelled",
+        ), 400
+
+    job.status = "cancelled"
+    job.completed_at = _now_utc()
+
+    log_audit(
+        organization_id=job.organization_id,
+        user_id=g.current_user.id,
+        action="admin.discovery_cancelled",
+        category="admin",
+        target_type="discovery_job",
+        target_id=str(job.id),
+        target_label=job.target,
+        description=f"Admin cancelled discovery job {job.id} ({job.target})",
+        metadata={"changed_by": g.current_user.email},
+    )
+    db.session.commit()
+    return jsonify(status="cancelled", jobId=job.id), 200
 
 
 # ════════════════════════════════════════════════════════════════
@@ -1131,7 +1231,7 @@ def platform_health():
     from app.models import Finding
     total_orgs     = Organization.query.filter_by(is_active=True).count()
     total_users    = User.query.count()
-    total_assets   = int(db.session.query(sqlfunc.sum(Organization.assets_count)).scalar() or 0)
+    total_assets   = int(db.session.query(sqlfunc.count(Asset.id)).scalar() or 0)
     total_findings = Finding.query.count()
 
     # ── Recent activity ───────────────────────────────────────────

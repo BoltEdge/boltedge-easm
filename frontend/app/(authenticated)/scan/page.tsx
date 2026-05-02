@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
-  Activity, Clock, RefreshCcw, Trash2, Search, Eye,
+  Activity, Clock, RefreshCcw, Trash2, Search, Eye, Ban,
   CheckCircle2, XCircle, Loader2, AlertCircle, Shield,
 } from "lucide-react";
 import { Button } from "../../ui/button";
@@ -10,7 +10,7 @@ import { Input } from "../../ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../ui/dialog";
 import { useOrg } from "../contexts/OrgContext";
 import { usePlanLimit, PlanLimitDialog } from "../../ui/plan-limit-dialog";
-import { getScanJobs, deleteScanJob, isPlanError } from "../../lib/api";
+import { getScanJobs, deleteScanJob, cancelScanJob, isPlanError } from "../../lib/api";
 
 function cn(...parts: Array<string | false | null | undefined>) { return parts.filter(Boolean).join(" "); }
 
@@ -33,6 +33,7 @@ function jobStatusBadge(status: string) {
     case "running": return "bg-[#00b8d4]/10 text-[#00b8d4]";
     case "queued": return "bg-[#ffcc00]/10 text-[#ffcc00]";
     case "failed": return "bg-red-500/10 text-red-400";
+    case "cancelled": return "bg-amber-500/10 text-amber-400";
     default: return "bg-muted/30 text-muted-foreground";
   }
 }
@@ -43,6 +44,7 @@ function jobStatusIcon(status: string) {
     case "running": return Loader2;
     case "queued": return Clock;
     case "failed": return XCircle;
+    case "cancelled": return Ban;
     default: return AlertCircle;
   }
 }
@@ -58,6 +60,7 @@ export default function ScanJobsPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try { setLoading(true); setJobs(await getScanJobs()); }
@@ -68,6 +71,18 @@ export default function ScanJobsPage() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (!jobs.some((j) => j.status === "running" || j.status === "queued")) return; const iv = setInterval(load, 5000); return () => clearInterval(iv); }, [jobs, load]);
   useEffect(() => { if (banner) { const t = setTimeout(() => setBanner(null), 5000); return () => clearTimeout(t); } }, [banner]);
+
+  async function handleCancel(jobId: string, label: string) {
+    if (!confirm(`Cancel the scan for ${label}? The job will be marked cancelled and any in-progress results discarded.`)) return;
+    try {
+      setCancellingId(jobId);
+      await cancelScanJob(jobId);
+      setBanner({ kind: "ok", text: "Scan cancelled." });
+      load();
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || "Failed to cancel scan." });
+    } finally { setCancellingId(null); }
+  }
 
   async function confirmDelete() {
     if (!deleteTarget) return;
@@ -155,7 +170,18 @@ export default function ScanJobsPage() {
                       <td className="p-4"><span className="text-sm text-muted-foreground">{job.finishedAt ? formatWhen(job.finishedAt) : job.status === "running" ? "In progress..." : "-"}</span></td>
                       <td className="p-4"><div className="flex items-center justify-end gap-2">
                         {job.status === "completed" && <a href={`/scan-jobs/${job.id}`}><Button size="sm" variant="outline" className="border-primary/50 text-primary hover:bg-primary/10"><Eye className="w-3 h-3 mr-1" />Details</Button></a>}
-                        {canDelete && (job.status === "completed" || job.status === "failed") && <Button size="sm" variant="outline" onClick={() => setDeleteTarget({ id: String(job.id), label: job.assetValue || `Asset #${job.assetId}` })} className="border-red-500/50 text-red-500 hover:bg-red-500/10"><Trash2 className="w-3 h-3" /></Button>}
+                        {(job.status === "queued" || job.status === "running") && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={cancellingId === String(job.id)}
+                            onClick={() => handleCancel(String(job.id), job.assetValue || `Asset #${job.assetId}`)}
+                            className="border-amber-500/50 text-amber-400 hover:bg-amber-500/10"
+                          >
+                            <Ban className="w-3 h-3 mr-1" />{cancellingId === String(job.id) ? "Cancelling…" : "Cancel"}
+                          </Button>
+                        )}
+                        {canDelete && (job.status === "completed" || job.status === "failed" || job.status === "cancelled") && <Button size="sm" variant="outline" onClick={() => setDeleteTarget({ id: String(job.id), label: job.assetValue || `Asset #${job.assetId}` })} className="border-red-500/50 text-red-500 hover:bg-red-500/10"><Trash2 className="w-3 h-3" /></Button>}
                       </div></td>
                     </tr>
                   );

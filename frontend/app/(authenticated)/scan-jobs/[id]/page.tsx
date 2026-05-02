@@ -301,7 +301,7 @@ export default function ScanJobDetailPage() {
             <ChevronLeft className="w-4 h-4" />Scanning
           </button>
           <span>›</span>
-          <span className="text-foreground/90">Job #{job.id}</span>
+          <span className="text-foreground/90 font-mono">{job.displayId || `Job #${job.id}`}</span>
         </div>
 
         {/* Header */}

@@ -27,7 +27,7 @@ from flask import Blueprint, request, jsonify, g
 ENABLE_BILLING = os.environ.get("ENABLE_BILLING", "false").lower() == "true"
 from app.extensions import db
 from app.auth.decorators import require_auth, current_user_id, current_organization_id
-from app.models import Organization, TrialHistory, OrganizationMember
+from app.models import Organization, TrialHistory, OrganizationMember, Asset
 from app.auth.permissions import require_permission
 from app.audit.routes import log_audit
 
@@ -229,7 +229,8 @@ def _build_plan_response(org: Organization) -> dict:
             "webhooks": limits["webhooks"],
         },
         "usage": {
-            "assets": org.assets_count,
+            # Live count — Organization.assets_count cache is unreliable.
+            "assets": Asset.query.filter_by(organization_id=org.id).count(),
             "scansThisMonth": org.scans_this_month,
             "teamMembers": member_count,
             "scheduledScans": schedule_count,

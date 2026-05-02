@@ -125,6 +125,7 @@ def _status_count_cases():
 def group_to_ui(g1: AssetGroup) -> dict:
     return {
         "id": _sid(g1.id),
+        "displayId": g1.public_id,
         "name": g1.name,
         "createdAt": g1.created_at.isoformat() if g1.created_at else None,
         "assetCount": 0,
@@ -246,6 +247,7 @@ def list_groups():
 
         out.append({
             "id": gid,
+            "displayId": g.public_id,
             "name": g.name,
             "createdAt": g.created_at.isoformat() if g.created_at else None,
             "assetCount": int(asset_c or 0),

@@ -81,7 +81,8 @@ def get_organization():
         planStartedAt=org.plan_started_at.isoformat() if org.plan_started_at else None,
         planExpiresAt=org.plan_expires_at.isoformat() if org.plan_expires_at else None,
         assetLimit=org.asset_limit,
-        assetsCount=org.assets_count,
+        # Live count — Organization.assets_count cache is unreliable.
+        assetsCount=Asset.query.filter_by(organization_id=org.id).count(),
         scansThisMonth=org.scans_this_month,
         isActive=org.is_active,
         createdAt=org.created_at.isoformat() if org.created_at else None,

@@ -46,6 +46,7 @@ from app.models import (
 from app.auth.decorators import require_auth, allow_api_key, current_user_id, current_organization_id
 from app.auth.permissions import require_role, require_feature, require_permission
 from app.audit.routes import log_audit
+from app.utils.display_id import resolve_id
 
 logger = logging.getLogger(__name__)
 
@@ -121,10 +122,13 @@ def _monitor_to_ui(m: Monitor) -> dict:
 
     return {
         "id": _sid(m.id),
+        "displayId": m.public_id,
         "targetType": target_type,
         "targetName": target_name,
         "assetId": _sid(m.asset_id),
+        "assetDisplayId": asset.public_id if asset else None,
         "groupId": _sid(m.group_id),
+        "groupDisplayId": group.public_id if group else None,
         "monitorTypes": m.monitor_types or ["all"],
         "frequency": m.frequency,
         "enabled": m.enabled,
@@ -139,6 +143,7 @@ def _alert_to_ui(a: MonitorAlert) -> dict:
     """Serialize a MonitorAlert for the frontend."""
     return {
         "id": _sid(a.id),
+        "displayId": a.public_id,
         "monitorId": _sid(a.monitor_id),
         "findingId": _sid(a.finding_id),
         "alertType": a.alert_type,
@@ -442,14 +447,17 @@ def create_monitor():
 
 
 # PATCH /monitors/<id> — analyst+ (plan-gated)
-@monitoring_bp.patch("/<int:monitor_id>")
+@monitoring_bp.patch("/<monitor_id>")
 @require_auth
 @allow_api_key
 @require_feature("monitoring")
 @require_role("analyst")
-def update_monitor(monitor_id: int):
+def update_monitor(monitor_id: str):
+    int_id = resolve_id(monitor_id, "MO")
+    if int_id is None:
+        return jsonify({"error": "Monitor not found."}), 404
     org_id = current_organization_id()
-    monitor = Monitor.query.filter_by(id=monitor_id, organization_id=org_id).first()
+    monitor = Monitor.query.filter_by(id=int_id, organization_id=org_id).first()
     if not monitor:
         return jsonify({"error": "Monitor not found."}), 404
 
@@ -500,14 +508,17 @@ def update_monitor(monitor_id: int):
 
 
 # DELETE /monitors/<id> — analyst+ (plan-gated)
-@monitoring_bp.delete("/<int:monitor_id>")
+@monitoring_bp.delete("/<monitor_id>")
 @require_auth
 @allow_api_key
 @require_feature("monitoring")
 @require_role("analyst")
-def delete_monitor(monitor_id: int):
+def delete_monitor(monitor_id: str):
+    int_id = resolve_id(monitor_id, "MO")
+    if int_id is None:
+        return jsonify({"error": "Monitor not found."}), 404
     org_id = current_organization_id()
-    monitor = Monitor.query.filter_by(id=monitor_id, organization_id=org_id).first()
+    monitor = Monitor.query.filter_by(id=int_id, organization_id=org_id).first()
     if not monitor:
         return jsonify({"error": "Monitor not found."}), 404
 
@@ -592,16 +603,19 @@ def list_alerts():
 
 
 # POST /monitors/alerts/<id>/acknowledge — analyst+ (plan-gated)
-@monitoring_bp.post("/alerts/<int:alert_id>/acknowledge")
+@monitoring_bp.post("/alerts/<alert_id>/acknowledge")
 @require_auth
 @allow_api_key
 @require_feature("monitoring")
 @require_role("analyst")
-def acknowledge_alert(alert_id: int):
+def acknowledge_alert(alert_id: str):
+    int_id = resolve_id(alert_id, "AL")
+    if int_id is None:
+        return jsonify({"error": "Alert not found."}), 404
     org_id = current_organization_id()
     user_id = current_user_id()
 
-    alert = MonitorAlert.query.filter_by(id=alert_id, organization_id=org_id).first()
+    alert = MonitorAlert.query.filter_by(id=int_id, organization_id=org_id).first()
     if not alert:
         return jsonify({"error": "Alert not found."}), 404
 
@@ -629,12 +643,15 @@ def acknowledge_alert(alert_id: int):
 
 
 # POST /monitors/alerts/<id>/resolve — analyst+ (plan-gated)
-@monitoring_bp.post("/alerts/<int:alert_id>/resolve")
+@monitoring_bp.post("/alerts/<alert_id>/resolve")
 @require_auth
 @allow_api_key
 @require_feature("monitoring")
 @require_role("analyst")
-def resolve_alert(alert_id: int):
+def resolve_alert(alert_id: str):
+    int_id = resolve_id(alert_id, "AL")
+    if int_id is None:
+        return jsonify({"error": "Alert not found."}), 404
     org_id = current_organization_id()
     user_id = current_user_id()
 

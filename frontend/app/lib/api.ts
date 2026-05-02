@@ -545,6 +545,18 @@ export async function deleteScanJob(jobId: string): Promise<void> {
   await apiFetch(`${API.scanJobs}/${jobId}`, { method: "DELETE" });
 }
 
+export async function cancelScanJob(jobId: string): Promise<void> {
+  await apiFetch(`${API.scanJobs}/${jobId}/cancel`, { method: "POST" });
+}
+
+export async function adminCancelScan(jobId: number): Promise<void> {
+  await apiFetch(`/admin/scans/${jobId}/cancel`, { method: "POST" });
+}
+
+export async function adminCancelDiscovery(jobId: number): Promise<void> {
+  await apiFetch(`/admin/discovery-jobs/${jobId}/cancel`, { method: "POST" });
+}
+
 export async function getScanJobFindings(jobId: string): Promise<Finding[]> {
   const rows = await apiFetch<any[]>(`${API.scanJobs}/${jobId}/findings`);
   return rows.map(parseFinding);

@@ -33,6 +33,7 @@ except ImportError:
 from app.models import ScanJob, Asset, Finding, AssetGroup, ScanProfile
 from app.auth.decorators import require_auth, allow_api_key, current_user_id, current_organization_id
 from app.auth.permissions import require_role, check_limit, check_scan_profile
+from app.utils.display_id import resolve_id
 from app.audit.routes import log_audit
 
 logger = logging.getLogger(__name__)
@@ -61,10 +62,13 @@ def scanjob_to_ui(j: ScanJob) -> dict:
 
     return {
         "id": _sid(j.id),
+        "displayId": j.public_id,
         "assetId": _sid(j.asset_id),
+        "assetDisplayId": asset.public_id if asset else None,
         "assetValue": asset.value if asset else None,
         "assetType": asset.asset_type if asset else None,
         "groupId": _sid(group.id) if group else None,
+        "groupDisplayId": group.public_id if group else None,
         "groupName": group.name if group else None,
         "profileId": _sid(j.profile_id),
         "profileName": profile_name,
@@ -320,7 +324,7 @@ def run_scan_job(job_id: str):
 
     job = (
         ScanJob.query.join(Asset, ScanJob.asset_id == Asset.id)
-        .filter(ScanJob.id == int(job_id), Asset.organization_id == org_id)
+        .filter(ScanJob.id == (resolve_id(job_id, "SC") or -1), Asset.organization_id == org_id)
         .first()
     )
 
@@ -387,6 +391,14 @@ def run_scan_job(job_id: str):
             try:
                 result_summary = _run_with_orchestrator(bg_job, bg_asset, bg_profile)
 
+                # Refresh state — the user/admin may have cancelled while
+                # the orchestrator was running. Don't overwrite "cancelled".
+                db.session.refresh(bg_job)
+                if bg_job.status == "cancelled":
+                    logger.info(f"Background scan job {job_id_int} was cancelled; discarding results")
+                    db.session.commit()
+                    return
+
                 bg_job.result_json = result_summary
                 bg_job.status = "completed"
                 bg_job.finished_at = now_utc()
@@ -405,6 +417,14 @@ def run_scan_job(job_id: str):
 
             except Exception as e:
                 logger.exception(f"Background scan job {bg_job.id} failed for {bg_asset.value}")
+
+                # If it was cancelled, the cancel handler already set the
+                # final status — don't overwrite it with "failed".
+                db.session.refresh(bg_job)
+                if bg_job.status == "cancelled":
+                    db.session.commit()
+                    return
+
                 bg_job.status = "failed"
                 bg_job.error_message = str(e)[:500]
                 bg_job.finished_at = now_utc()
@@ -509,6 +529,57 @@ def _run_legacy(
     }
 
 
+# POST /scan-jobs/<id>/cancel — analyst+
+@scan_jobs_bp.post("/<job_id>/cancel")
+@require_auth
+@allow_api_key
+@require_role("analyst")
+def cancel_scan_job(job_id: str):
+    """
+    Cancel a queued or running scan job.
+
+    For queued jobs: the scan never starts.
+    For running jobs: the background thread keeps executing but its results
+    are discarded — the bg thread checks status before saving.
+    """
+    org_id = current_organization_id()
+    uid = current_user_id()
+
+    job = (
+        ScanJob.query.join(Asset, ScanJob.asset_id == Asset.id)
+        .filter(ScanJob.id == (resolve_id(job_id, "SC") or -1), Asset.organization_id == org_id)
+        .first()
+    )
+
+    if not job:
+        return jsonify(error="scan job not found"), 404
+
+    if job.status not in ("queued", "running"):
+        return jsonify(
+            error=f"scan job is {job.status}; only queued or running scans can be cancelled",
+        ), 400
+
+    asset = job.asset
+    job.status = "cancelled"
+    job.finished_at = now_utc()
+    if asset and asset.scan_status in ("scan_pending", "scan_running"):
+        asset.scan_status = "scan_cancelled"
+
+    log_audit(
+        organization_id=org_id,
+        user_id=uid,
+        action="scan.cancelled",
+        category="scan",
+        target_type="scan_job",
+        target_id=str(job.id),
+        target_label=asset.value if asset else None,
+        description=f"Cancelled scan for {asset.value if asset else 'asset #' + str(job.asset_id)}",
+    )
+
+    db.session.commit()
+    return jsonify(status="cancelled", jobId=str(job.id)), 200
+
+
 # DELETE /scan-jobs/<id> — analyst+
 @scan_jobs_bp.delete("/<job_id>")
 @require_auth
@@ -519,7 +590,7 @@ def delete_scan_job(job_id: str):
 
     job = (
         ScanJob.query.join(Asset, ScanJob.asset_id == Asset.id)
-        .filter(ScanJob.id == int(job_id), Asset.organization_id == org_id)
+        .filter(ScanJob.id == (resolve_id(job_id, "SC") or -1), Asset.organization_id == org_id)
         .first()
     )
 
@@ -552,7 +623,7 @@ def list_job_findings(job_id: str):
 
     job = (
         ScanJob.query.join(Asset, ScanJob.asset_id == Asset.id)
-        .filter(ScanJob.id == int(job_id), Asset.organization_id == org_id)
+        .filter(ScanJob.id == (resolve_id(job_id, "SC") or -1), Asset.organization_id == org_id)
         .first()
     )
 

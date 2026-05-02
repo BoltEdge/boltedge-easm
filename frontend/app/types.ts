@@ -74,7 +74,9 @@ export interface ScanResult {
 // --------------------
 export interface Finding {
   id: string;
+  displayId?: string;
   assetId: string;
+  assetDisplayId?: string;
   assetValue: string;
   assetType: AssetType;
   groupId: string;
@@ -145,7 +147,9 @@ export interface ExposureScore {
 export type JobStatus = "queued" | "running" | "completed" | "failed";
 export interface ScanJob {
   id: string;
+  displayId?: string;
   assetId: string;
+  assetDisplayId?: string;
   assetValue: string;
   assetType: AssetType;
   groupId: string;

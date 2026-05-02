@@ -91,15 +91,20 @@ def _send_verification_email(user: User) -> bool:
 
 def _build_org_payload(org, include_billing: bool = False) -> dict:
     """Build organization payload for auth responses."""
+    # Live asset count — Organization.assets_count is a stale cache.
+    from app.models import Asset as _Asset
+    live_assets = _Asset.query.filter_by(organization_id=org.id).count()
+
     payload = {
         "id": str(org.id),
+        "displayId": org.public_id,
         "name": org.name,
         "slug": org.slug,
         "plan": org.effective_plan,
         "planStatus": org.plan_status,
         "country": org.country,
         "asset_limit": org.asset_limit,
-        "assets_count": org.assets_count,
+        "assets_count": live_assets,
         "scans_this_month": org.scans_this_month,
     }
 
