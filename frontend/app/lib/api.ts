@@ -1905,6 +1905,29 @@ export async function deleteAdminContactRequest(id: number): Promise<any> {
   return apiFetch<any>(`/admin/contact-requests/${id}`, { method: "DELETE" });
 }
 
+// ────────────────────────────────────────────────────────────
+// Nano AI assistant — Phase 1 (template-based, read-only)
+// ────────────────────────────────────────────────────────────
+
+export type FindingExplanation = {
+  summary: string;
+  technicalExplanation: string;
+  evidence: string;
+  remediation: string;
+  clientSummary: string;
+};
+
+export async function explainFinding(findingId: string | number): Promise<{
+  findingId: string;
+  explanation: FindingExplanation;
+  source: string;
+}> {
+  return apiFetch<any>("/assistant/finding-explainer", {
+    method: "POST",
+    body: JSON.stringify({ findingId }),
+  });
+}
+
 export async function deleteAdminUser(userId: number): Promise<any> {
   return apiFetch<any>(`/admin/users/${userId}`, { method: "DELETE" });
 }

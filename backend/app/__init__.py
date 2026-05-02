@@ -30,6 +30,7 @@ from .discovery import discovery_bp
 from .dashboard import dashboard_bp
 from .quick_scan import quick_scan_bp
 from .contact import contact_bp
+from .assistant import assistant_bp
 from .monitoring import monitoring_bp
 from .billing import billing_bp
 from .scan_profiles import scan_profiles_bp
@@ -167,6 +168,7 @@ def create_app() -> Flask:
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(quick_scan_bp)
     app.register_blueprint(contact_bp)
+    app.register_blueprint(assistant_bp)
     app.register_blueprint(monitoring_bp)
     app.register_blueprint(billing_bp)
     app.register_blueprint(scan_profiles_bp)

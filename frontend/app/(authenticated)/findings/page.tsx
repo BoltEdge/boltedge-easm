@@ -572,7 +572,12 @@ export default function FindingsPage() {
           </div>
         )}
 
-        {/* ── Table ── */}
+        {/* ── Table + side panel (split-pane on lg+) ── */}
+        <div className="flex flex-col lg:flex-row gap-5 items-start">
+
+        {/* Left: table column */}
+        <div className="w-full min-w-0 flex-1 space-y-5">
+
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <table className="w-full">
             <thead className="bg-muted/30 border-b border-border">
@@ -737,32 +742,45 @@ export default function FindingsPage() {
             </div>
           </div>
         )}
-      </div>
 
-      {/* ── Finding Details Dialog ── */}
-      <FindingDetailsDialog
-        open={detailsOpen}
-        onOpenChange={setDetailsOpen}
-        finding={selected as any}
-        onStatusChange={canEdit ? handleStatusChange : undefined}
-        onEscalate={
-          canEdit
-            ? async (id, payload) => {
-                try {
-                  const res = await escalateFinding(id, payload);
-                  setBanner({ kind: "ok", text: `Escalated — alert #${res.alertId} created.` });
-                  if (payload.acknowledge) {
-                    // Refresh so the in_progress status shows up
-                    loadFindings();
-                  }
-                } catch (e: any) {
-                  setBanner({ kind: "err", text: e?.message || "Failed to escalate" });
-                  throw e;
+        </div>{/* end left column */}
+
+        {/* Right: details panel (sticky on lg+, stacks below on mobile) */}
+        {selected && (
+          <aside className="w-full lg:w-[45%] shrink-0 lg:sticky lg:top-4 lg:self-start lg:h-[calc(100vh-2rem)] flex">
+            <FindingDetailsDialog
+              open={true}
+              onOpenChange={(o) => {
+                if (!o) {
+                  setSelected(null);
+                  setDetailsOpen(false);
                 }
+              }}
+              finding={selected as any}
+              mode="panel"
+              onStatusChange={canEdit ? handleStatusChange : undefined}
+              onEscalate={
+                canEdit
+                  ? async (id, payload) => {
+                      try {
+                        const res = await escalateFinding(id, payload);
+                        setBanner({ kind: "ok", text: `Escalated — alert #${res.alertId} created.` });
+                        if (payload.acknowledge) {
+                          loadFindings();
+                        }
+                      } catch (e: any) {
+                        setBanner({ kind: "err", text: e?.message || "Failed to escalate" });
+                        throw e;
+                      }
+                    }
+                  : undefined
               }
-            : undefined
-        }
-      />
+            />
+          </aside>
+        )}
+
+        </div>{/* end split-pane container */}
+      </div>
 
       {/* ── Bulk Status Action Dialog ── */}
       <Dialog open={bulkActionOpen} onOpenChange={setBulkActionOpen}>
