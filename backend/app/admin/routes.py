@@ -228,17 +228,35 @@ def get_organization(org_id: int):
         planDefaults=plan_defaults,
         createdAt=org.created_at.isoformat() + "Z" if org.created_at else None,
         usage={
-            # Live count — Organization.assets_count is a stale cache that's
-            # never updated when assets are added or deleted.
+            # Live counts — caches and aggregate columns are unreliable.
             "assets": Asset.query.filter_by(organization_id=org.id).count(),
             "assetLimit": org.asset_limit,
             "scansThisMonth": org.scans_this_month,
+            "discoveriesThisMonth": _discovery_jobs_this_month_for_admin(org.id),
+            "monitoredAssets": _monitored_assets_count_for_admin(org.id),
             "scheduledScans": schedule_count,
             "apiKeys": api_key_count,
             "members": len(member_list),
         },
         members=member_list,
     ), 200
+
+
+def _discovery_jobs_this_month_for_admin(org_id: int) -> int:
+    """Live count of discovery jobs created this calendar month."""
+    from datetime import datetime, timezone, timedelta as _td
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    return DiscoveryJob.query.filter(
+        DiscoveryJob.organization_id == org_id,
+        DiscoveryJob.created_at >= first_of_month,
+    ).count()
+
+
+def _monitored_assets_count_for_admin(org_id: int) -> int:
+    """Live count of enabled monitors."""
+    from app.models import Monitor
+    return Monitor.query.filter_by(organization_id=org_id, enabled=True).count()
 
 
 @admin_bp.post("/organizations/<int:org_id>/plan")
@@ -1453,6 +1471,7 @@ def unblock_ip(block_id: int):
 # ════════════════════════════════════════════════════════════════
 
 _VALID_CONTACT_STATUSES = ("open", "in_progress", "replied", "closed", "spam")
+_VALID_CONTACT_TYPES = ("general", "trial", "demo")
 
 
 def _contact_row(c: ContactRequest, *, include_message: bool = False) -> dict:
@@ -1462,6 +1481,7 @@ def _contact_row(c: ContactRequest, *, include_message: bool = False) -> dict:
         "name": c.name,
         "email": c.email,
         "subject": c.subject,
+        "requestType": c.request_type,
         "status": c.status,
         "ipAddress": c.ip_address,
         "userAgent": c.user_agent,
@@ -1485,11 +1505,14 @@ def list_contact_requests():
     page = max(1, int(request.args.get("page", 1)))
     limit = min(100, max(1, int(request.args.get("limit", 50))))
     status_filter = (request.args.get("status") or "").strip().lower()
+    type_filter = (request.args.get("type") or "").strip().lower()
     search = (request.args.get("search") or "").strip().lower()
 
     q = ContactRequest.query
     if status_filter and status_filter in _VALID_CONTACT_STATUSES:
         q = q.filter(ContactRequest.status == status_filter)
+    if type_filter and type_filter in _VALID_CONTACT_TYPES:
+        q = q.filter(ContactRequest.request_type == type_filter)
     if search:
         pattern = f"%{search}%"
         q = q.filter(
@@ -1505,7 +1528,7 @@ def list_contact_requests():
     total = q.count()
     rows = q.offset((page - 1) * limit).limit(limit).all()
 
-    # Status counts so the UI can render badge totals.
+    # Status + type counts so the UI can render badge totals.
     counts = dict.fromkeys(_VALID_CONTACT_STATUSES, 0)
     for status, n in (
         db.session.query(ContactRequest.status, db.func.count(ContactRequest.id))
@@ -1515,6 +1538,15 @@ def list_contact_requests():
         if status in counts:
             counts[status] = int(n)
 
+    type_counts = dict.fromkeys(_VALID_CONTACT_TYPES, 0)
+    for rtype, n in (
+        db.session.query(ContactRequest.request_type, db.func.count(ContactRequest.id))
+        .group_by(ContactRequest.request_type)
+        .all()
+    ):
+        if rtype in type_counts:
+            type_counts[rtype] = int(n)
+
     return jsonify(
         requests=[_contact_row(r) for r in rows],
         total=total,
@@ -1522,6 +1554,7 @@ def list_contact_requests():
         limit=limit,
         pages=(total + limit - 1) // limit,
         statusCounts=counts,
+        typeCounts=type_counts,
     ), 200
 
 

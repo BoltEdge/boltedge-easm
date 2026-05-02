@@ -1059,6 +1059,15 @@ class ContactRequest(db.Model):
     user_agent = db.Column(db.String(500), nullable=True)
     referer = db.Column(db.String(500), nullable=True)
 
+    # What the requester is asking for. Drives admin triage + whether
+    # the message routes to sales vs general support.
+    #   general  — default for unauthenticated form submissions
+    #   trial    — wants a free trial of a paid plan
+    #   demo     — wants a guided product demo
+    request_type = db.Column(
+        db.String(20), nullable=False, default="general", index=True
+    )
+
     # Workflow status
     status = db.Column(
         db.String(20), nullable=False, default="open", index=True

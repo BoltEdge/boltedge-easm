@@ -346,7 +346,7 @@ function RegisterPageInner() {
           <p className="mt-2 text-sm text-white/40">
             {inviteInfo
               ? `Sign up to join ${inviteInfo.organizationName}`
-              : BILLING_ENABLED ? "No credit card required. Start scanning in minutes." : "Free to use. Start scanning in minutes."}
+              : "Free to use. Start scanning in minutes."}
           </p>
 
           {/* OAuth — hide for invite flow */}

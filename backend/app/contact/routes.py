@@ -38,6 +38,8 @@ MAX_MESSAGE_LEN  = 5000
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
+_VALID_REQUEST_TYPES = ("general", "trial", "demo")
+
 
 def _now_utc() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
@@ -71,6 +73,12 @@ def submit_contact_request():
     email   = (body.get("email") or "").strip().lower()
     subject = (body.get("subject") or "").strip()
     message = (body.get("message") or "").strip()
+
+    # Request type — coerce to allowlist; unknown values silently fall back
+    # to "general" rather than rejecting the message.
+    request_type = (body.get("requestType") or "general").strip().lower()
+    if request_type not in _VALID_REQUEST_TYPES:
+        request_type = "general"
 
     # --- Validation ------------------------------------------------------
     errors: dict[str, str] = {}
@@ -124,6 +132,7 @@ def submit_contact_request():
         ip_address=ip,
         user_agent=user_agent,
         referer=referer,
+        request_type=request_type,
         status="open",
         created_at=_now_utc(),
         updated_at=_now_utc(),

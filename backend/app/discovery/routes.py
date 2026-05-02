@@ -29,7 +29,7 @@ from flask import Blueprint, request, jsonify, g, current_app
 
 from app.extensions import db
 from app.auth.decorators import require_auth, allow_api_key, current_organization_id
-from app.auth.permissions import require_role
+from app.auth.permissions import require_role, check_limit
 from app.utils.display_id import resolve_id
 
 logger = logging.getLogger(__name__)
@@ -163,6 +163,7 @@ def _sanitize_cloud_config(body: dict) -> dict:
 @require_auth
 @allow_api_key
 @require_role("analyst")
+@check_limit("discoveries_per_month")
 def launch_discovery():
     from app.models import DiscoveryJob
 

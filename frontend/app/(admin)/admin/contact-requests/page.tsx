@@ -33,6 +33,21 @@ const STATUS_LABELS: Record<Status, string> = {
   spam: "Spam",
 };
 
+const TYPE_OPTIONS = ["general", "trial", "demo"] as const;
+type RequestType = (typeof TYPE_OPTIONS)[number];
+
+const TYPE_STYLES: Record<RequestType, string> = {
+  general: "bg-white/[0.04] text-white/60 border-white/[0.08]",
+  trial:   "bg-purple-500/10 text-purple-300 border-purple-500/20",
+  demo:    "bg-cyan-500/10 text-cyan-300 border-cyan-500/20",
+};
+
+const TYPE_LABELS: Record<RequestType, string> = {
+  general: "General",
+  trial:   "Trial",
+  demo:    "Demo",
+};
+
 function fmtTime(iso: string | null | undefined): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -58,6 +73,7 @@ export default function AdminContactRequests() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"" | Status>("");
+  const [typeFilter, setTypeFilter] = useState<"" | RequestType>("");
 
   const [selected, setSelected] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
@@ -75,6 +91,7 @@ export default function AdminContactRequests() {
         page,
         search: search || undefined,
         status: statusFilter || undefined,
+        type: typeFilter || undefined,
       });
       setData(res);
     } catch (e: any) {
@@ -82,10 +99,10 @@ export default function AdminContactRequests() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter]);
+  }, [page, search, statusFilter, typeFilter]);
 
   useEffect(() => { setLoading(true); load(); }, [load]);
-  useEffect(() => { setPage(1); }, [search, statusFilter]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, typeFilter]);
   useEffect(() => {
     if (!banner) return;
     const t = setTimeout(() => setBanner(null), 4000);
@@ -215,12 +232,34 @@ export default function AdminContactRequests() {
             className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg pl-8 pr-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-teal-500/40"
           />
         </div>
-        {statusFilter && (
+        {/* Type filter pills */}
+        <div className="flex items-center gap-1.5">
+          {(["", ...TYPE_OPTIONS] as const).map((t) => {
+            const isActive = typeFilter === t;
+            const label = t === "" ? "All types" : TYPE_LABELS[t];
+            const count = t === "" ? undefined : (data?.typeCounts?.[t] ?? 0);
+            return (
+              <button
+                key={t || "all"}
+                onClick={() => setTypeFilter(t as any)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                  isActive
+                    ? "border-teal-500/40 bg-teal-500/[0.08] text-teal-200"
+                    : "border-white/[0.08] bg-white/[0.03] text-white/50 hover:border-white/[0.16] hover:text-white"
+                }`}
+              >
+                {label}
+                {count !== undefined && <span className="ml-1.5 opacity-60">({count})</span>}
+              </button>
+            );
+          })}
+        </div>
+        {(statusFilter || typeFilter) && (
           <button
-            onClick={() => setStatusFilter("")}
+            onClick={() => { setStatusFilter(""); setTypeFilter(""); }}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-white/40 hover:text-white hover:bg-white/[0.04] transition-colors"
           >
-            <X className="w-3.5 h-3.5" />Clear filter
+            <X className="w-3.5 h-3.5" />Clear filters
           </button>
         )}
       </div>
@@ -243,6 +282,7 @@ export default function AdminContactRequests() {
             <thead>
               <tr className="border-b border-white/[0.06] bg-white/[0.02]">
                 <th className="text-left px-4 py-3 text-xs font-medium text-white/40">ID</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Type</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-white/40">From</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Subject</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Status</th>
@@ -258,6 +298,11 @@ export default function AdminContactRequests() {
                 >
                   <td className="px-4 py-3 font-mono text-xs text-white/50">{r.displayId}</td>
                   <td className="px-4 py-3">
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${TYPE_STYLES[r.requestType as RequestType] || TYPE_STYLES.general}`}>
+                      {TYPE_LABELS[r.requestType as RequestType] || r.requestType || "general"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
                     <div className="text-white/80">{r.name}</div>
                     <div className="text-[11px] text-white/40">{r.email}</div>
                   </td>
@@ -272,6 +317,7 @@ export default function AdminContactRequests() {
                   <td className="px-4 py-3 text-xs text-white/40" title={fmtAbsolute(r.createdAt)}>{fmtTime(r.createdAt)}</td>
                 </tr>
               ))}
+              {/* keep colSpan in sync if "no results" row is ever added below */}
             </tbody>
           </table>
         </div>
@@ -300,8 +346,11 @@ export default function AdminContactRequests() {
             {/* Header */}
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="font-mono text-xs text-white/40">{selected.displayId}</span>
+                  <span className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${TYPE_STYLES[selected.requestType as RequestType] || TYPE_STYLES.general}`}>
+                    {TYPE_LABELS[selected.requestType as RequestType] || selected.requestType || "general"}
+                  </span>
                   <span className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${STATUS_STYLES[selected.status as Status] || STATUS_STYLES.open}`}>
                     {STATUS_LABELS[selected.status as Status] || selected.status}
                   </span>

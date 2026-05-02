@@ -14,6 +14,7 @@ import {
 import { apiFetch, createManualAlert, type Severity } from "../../lib/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../ui/dialog";
 import { useOrg } from "../contexts/OrgContext";
+import { formatToolResultSummary, suggestAlertTitle, suggestSeverity } from "./formatToolSummary";
 
 function cn(...c: Array<string | false | null | undefined>) { return c.filter(Boolean).join(" "); }
 
@@ -408,9 +409,12 @@ function ToolPanel({
               {hasMonitoring && !panel.result?.error && (
                 <button
                   onClick={() => {
-                    setAlertTitle(`${tool.name}: ${effectiveTarget}`);
+                    // Seed the dialog with sensible defaults derived from
+                    // the result so the user starts with a descriptive
+                    // title and a severity that matches what the tool found.
+                    setAlertTitle(suggestAlertTitle(tool.id, tool.name, panel.result, effectiveTarget));
                     setAlertNote("");
-                    setAlertSeverity("medium");
+                    setAlertSeverity(suggestSeverity(tool.id, panel.result) || "medium");
                     setAlertOpen(true);
                   }}
                   className="flex items-center gap-1 text-[10px] text-amber-400 hover:text-amber-300 transition-colors"
@@ -444,11 +448,16 @@ function ToolPanel({
   async function handleSaveAlert() {
     setSavingAlert(true);
     try {
-      const summary = (alertNote.trim() ? alertNote.trim() + "\n\n" : "")
-        + `Result from ${tool.name}:\n`
-        + JSON.stringify(panel.result, null, 2).slice(0, 800);
+      // Human-readable per-tool summary instead of a raw JSON dump.
+      // Falls back to a short JSON preview for unknown tools.
+      const formatted = formatToolResultSummary(tool.id, panel.result, effectiveTarget);
+      const note = alertNote.trim();
+      const summary = note ? `${note}\n\n${formatted}` : formatted;
+
+      const fallbackTitle = suggestAlertTitle(tool.id, tool.name, panel.result, effectiveTarget);
+
       await createManualAlert({
-        title: alertTitle.trim() || `${tool.name}: ${effectiveTarget}`,
+        title: alertTitle.trim() || fallbackTitle,
         severity: alertSeverity,
         summary,
         sourceTool: tool.id,

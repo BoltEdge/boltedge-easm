@@ -1,13 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Loader2, Send, CheckCircle2, AlertTriangle } from "lucide-react";
 
 import { submitContactRequest } from "../lib/api";
 
 type Variant = "card" | "inline";
+type RequestType = "general" | "trial" | "demo";
+
+const REQUEST_TYPES: Array<{ value: RequestType; label: string; placeholder: string }> = [
+  {
+    value: "general",
+    label: "General enquiry",
+    placeholder: "How can we help?",
+  },
+  {
+    value: "trial",
+    label: "Free trial request",
+    placeholder:
+      "Tell us about your environment, what you'd like to scan, and roughly when you'd like to start. We'll review and get back to you with trial access.",
+  },
+  {
+    value: "demo",
+    label: "Demo request",
+    placeholder:
+      "What would you like to see in the demo? Any specific features or use cases? We'll suggest a few times.",
+  },
+];
 
 export default function ContactForm({ variant = "card" }: { variant?: Variant }) {
+  const searchParams = useSearchParams();
+  const initialType: RequestType = ((): RequestType => {
+    const t = searchParams?.get("type");
+    return t === "trial" || t === "demo" ? t : "general";
+  })();
+
+  const [requestType, setRequestType] = useState<RequestType>(initialType);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
@@ -15,6 +44,13 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
   // Honeypot — real users never see or fill this. If it has a value on
   // submit, the backend silently drops the request as spam.
   const [website, setWebsite] = useState("");
+
+  // If the URL ?type= changes (back/forward navigation), keep the form in sync.
+  useEffect(() => {
+    const t = searchParams?.get("type");
+    if (t === "trial" || t === "demo") setRequestType(t);
+    else if (t === "general") setRequestType("general");
+  }, [searchParams]);
 
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<
@@ -40,6 +76,7 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
         email: email.trim(),
         subject: subject.trim() || undefined,
         message: message.trim(),
+        requestType,
         website,
       });
       setResult({
@@ -118,6 +155,28 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
         </label>
       </div>
 
+      {/* Request type — pill selector */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-white/50 block">What can we help with?</label>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {REQUEST_TYPES.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setRequestType(opt.value)}
+              disabled={submitting}
+              className={`h-10 rounded-lg border px-3 text-xs font-semibold transition-all ${
+                requestType === opt.value
+                  ? "border-teal-500/40 bg-teal-500/[0.08] text-teal-200"
+                  : "border-white/[0.08] bg-white/[0.03] text-white/50 hover:border-white/[0.16] hover:text-white"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-white/50 block">Your name</label>
@@ -173,7 +232,7 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
         <textarea
           rows={5}
           className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-teal-500/40 focus:ring-2 focus:ring-teal-500/20 transition-all resize-y disabled:opacity-50"
-          placeholder="How can we help?"
+          placeholder={REQUEST_TYPES.find((t) => t.value === requestType)?.placeholder || "How can we help?"}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           disabled={submitting}

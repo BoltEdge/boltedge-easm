@@ -47,6 +47,31 @@ function prettySourceTool(toolId?: string): string {
   return toolId.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Multi-line alert summaries (esp. from Lookup Tools) need newlines preserved
+// and shouldn't dominate the row when long — show first 2 lines collapsed,
+// expand on click.
+function AlertSummary({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const lines = text.split("\n");
+  const isLong = lines.length > 2 || text.length > 180;
+  const visible = expanded || !isLong ? text : lines.slice(0, 2).join("\n");
+
+  return (
+    <div className="text-xs text-muted-foreground mb-1.5">
+      <pre className="whitespace-pre-wrap break-words font-sans leading-relaxed">{visible}</pre>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1 text-[10px] text-primary hover:text-primary/80 transition-colors"
+        >
+          {expanded ? "Show less" : "Show more"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // Icon lookup for monitor type badges
 const ICON_MAP: Record<string, any> = {
   Shield, Globe, Lock, Server, FileCode, Cpu, ShieldAlert,
@@ -61,27 +86,31 @@ function UpgradePrompt() {
   const [starting, setStarting] = useState<string | null>(null);
   const [trialBanner, setTrialBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
+  // Trials are request-based across all paid plans — clicking "Request trial"
+  // creates a typed contact_request the admin reviews from /admin/contact-requests.
   const plans = [
-    { key: "starter", label: "Starter", price: "$19/mo", freq: "Scans every 5 days", trialDays: 14, color: "#00b8d4", tags: ["DNS", "SSL", "Ports", "Headers"] },
-    { key: "professional", label: "Professional", price: "$79/mo", freq: "Scans every 2 days", trialDays: 21, color: "#7c5cfc", tags: ["Everything", "Webhooks", "Deep Discovery"] },
-    { key: "enterprise_silver", label: "Enterprise Silver", price: "$249/mo", freq: "Daily scans", trialDays: 30, color: "#ff8800", tags: ["Everything", "Custom Profiles", "Priority"] },
-    { key: "enterprise_gold", label: "Enterprise Gold", price: "Custom", freq: "Real-time scans", trialDays: 45, color: "#ffd700", tags: ["Unlimited", "SSO", "Dedicated Support"], needsApproval: true },
+    { key: "starter",           label: "Starter",            price: "$19/mo",  freq: "Scans every 5 days", trialDays: 14, color: "#00b8d4", tags: ["DNS", "SSL", "Ports", "Headers"] },
+    { key: "professional",      label: "Professional",       price: "$79/mo",  freq: "Scans every 2 days", trialDays: 21, color: "#7c5cfc", tags: ["Everything", "Webhooks", "Deep Discovery"] },
+    { key: "enterprise_silver", label: "Enterprise Silver",  price: "$249/mo", freq: "Daily scans",        trialDays: 30, color: "#ff8800", tags: ["Everything", "Custom Profiles", "Priority"] },
+    { key: "enterprise_gold",   label: "Enterprise Gold",    price: "Custom",  freq: "Real-time scans",    trialDays: 45, color: "#ffd700", tags: ["Unlimited", "SSO", "Dedicated Support"], needsApproval: true },
   ];
 
   async function handleStartTrial(planKey: string) {
     try {
       setStarting(planKey);
       const { apiFetch } = await import("../../lib/api");
-      await apiFetch<any>("/billing/start-trial", {
+      const res = await apiFetch<any>("/billing/start-trial", {
         method: "POST",
         body: JSON.stringify({ plan: planKey }),
       });
-      await refresh();
-      const p = plans.find((x) => x.key === planKey);
-      setTrialBanner({ kind: "ok", text: `${p?.label || planKey} trial started! Refreshing...` });
-      setTimeout(() => window.location.reload(), 1200);
+      // Trials are request-based now — no plan flip happens, the user just
+      // gets confirmation that their request is queued for review.
+      setTrialBanner({
+        kind: "ok",
+        text: res?.message || "Trial request submitted. We'll email you when it's approved.",
+      });
     } catch (e: any) {
-      setTrialBanner({ kind: "err", text: e?.message || "Failed to start trial." });
+      setTrialBanner({ kind: "err", text: e?.message || "Failed to submit trial request." });
     } finally {
       setStarting(null);
     }
@@ -121,15 +150,17 @@ function UpgradePrompt() {
             </div>
             <div className="mt-auto space-y-2">
               {p.needsApproval ? (
+                // Enterprise Gold — sales approval, route to contact form
                 <>
-                  <a href="mailto:contact@nanoasm.com?subject=Enterprise Gold Upgrade Request" className="block">
+                  <Link href="/?type=trial#contact" className="block">
                     <Button size="sm" className="w-full text-xs" variant="outline" style={{ borderColor: `${p.color}40`, color: p.color }}>
                       {BILLING_ENABLED ? "Contact Sales" : "Contact Us"}
                     </Button>
-                  </a>
-                  {BILLING_ENABLED && <div className="text-[10px] text-muted-foreground text-center">{p.trialDays}-day trial with sales approval</div>}
+                  </Link>
+                  {BILLING_ENABLED && <div className="text-[10px] text-muted-foreground text-center">Free trial with sales approval</div>}
                 </>
               ) : BILLING_ENABLED ? (
+                // All paid plans — request-based trial (creates a contact_request)
                 <>
                   <Button
                     size="sm"
@@ -140,7 +171,7 @@ function UpgradePrompt() {
                     style={{ borderColor: `${p.color}40`, color: p.color }}
                   >
                     {starting === p.key ? <Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> : <Clock className="w-3 h-3 mr-1.5" />}
-                    {starting === p.key ? "Starting..." : `Start ${p.trialDays}-Day Free Trial`}
+                    {starting === p.key ? "Submitting…" : "Request free trial"}
                   </Button>
                   <Link href="/settings/billing" className="block">
                     <Button size="sm" className="w-full text-xs" style={{ backgroundColor: `${p.color}20`, color: p.color, borderColor: `${p.color}40` }} variant="outline">
@@ -745,7 +776,9 @@ function AlertsTab({ setBanner, planLimit }: {
                       </span>
                     </div>
                     <h4 className="text-sm font-medium text-foreground mb-0.5">{alert.title}</h4>
-                    {alert.summary && <p className="text-xs text-muted-foreground mb-1">{alert.summary}</p>}
+                    {alert.summary && (
+                      <AlertSummary text={alert.summary} />
+                    )}
                     <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                       {alert.assetValue && <span className="font-mono">{alert.assetValue}</span>}
                       {alert.alertName && <span>· {alert.alertName}</span>}

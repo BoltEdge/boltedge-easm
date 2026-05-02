@@ -1850,6 +1850,7 @@ export async function submitContactRequest(payload: {
   email: string;
   subject?: string;
   message: string;
+  requestType?: "general" | "trial" | "demo";
   /** Honeypot. Real users leave this empty; bots fill it. */
   website?: string;
 }): Promise<{ message: string; requestId?: string }> {
@@ -1864,12 +1865,14 @@ export async function getAdminContactRequests(params?: {
   page?: number;
   limit?: number;
   status?: string;
+  type?: string;
   search?: string;
 }): Promise<any> {
   const qs = new URLSearchParams();
   if (params?.page) qs.set("page", String(params.page));
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.status) qs.set("status", params.status);
+  if (params?.type) qs.set("type", params.type);
   if (params?.search) qs.set("search", params.search);
   return apiFetch<any>(`/admin/contact-requests?${qs.toString()}`);
 }

@@ -44,7 +44,7 @@ from app.models import (
     Organization,
 )
 from app.auth.decorators import require_auth, allow_api_key, current_user_id, current_organization_id
-from app.auth.permissions import require_role, require_feature, require_permission
+from app.auth.permissions import require_role, require_feature, require_permission, check_limit
 from app.audit.routes import log_audit
 from app.utils.display_id import resolve_id
 
@@ -74,25 +74,31 @@ def _compute_next_check(frequency: str, from_dt: datetime | None = None) -> date
         return base + timedelta(days=1)
     elif frequency == "every_2_days":
         return base + timedelta(days=2)
+    elif frequency == "every_3_days":
+        return base + timedelta(days=3)
     elif frequency == "every_5_days":
         return base + timedelta(days=5)
-    elif frequency == "weekly":
+    elif frequency == "every_7_days" or frequency == "weekly":
         return base + timedelta(weeks=1)
-    return base + timedelta(days=2)
+    return base + timedelta(days=3)
 
 
 def _allowed_frequency(org: Organization) -> str:
-    """Return the highest monitoring frequency the org's plan allows."""
+    """Return the highest monitoring frequency the org's plan allows.
+
+    Aligned with PLAN_CONFIG monitoring_frequency values in
+    app/billing/routes.py — see CLAUDE.md cost rationale.
+    """
     plan = (org.plan or "free").lower()
     if plan in ("enterprise_gold", "enterprise gold"):
         return "every_12_hours"
     if plan in ("enterprise_silver", "enterprise silver"):
         return "daily"
     if plan == "professional":
-        return "every_2_days"
+        return "every_3_days"
     if plan == "starter":
-        return "every_5_days"
-    return "every_2_days"
+        return "every_7_days"
+    return "every_7_days"
 
 
 def _plan_allows_monitoring(org: Organization) -> bool:
@@ -335,6 +341,7 @@ def list_monitors():
 @allow_api_key
 @require_feature("monitoring")
 @require_role("analyst")
+@check_limit("monitored_assets")
 def create_monitor():
     org_id = current_organization_id()
     user_id = current_user_id()

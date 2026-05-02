@@ -61,7 +61,8 @@ export default function QuickDiscoveryCard() {
           <input type="text" placeholder={placeholder} value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") onDiscover(); }} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
         </div>
         <button onClick={onDiscover} disabled={!canRun} className={`w-full mt-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${!canRun ? "bg-muted text-muted-foreground cursor-not-allowed" : "bg-cyan-600 text-white hover:bg-cyan-600/90"}`}>{loading ? "Discovering…" : "Discover assets"}</button>
-        <p className="mt-2 text-[11px] text-muted-foreground/60 text-center"><a href="/register" className="underline hover:text-muted-foreground">Sign in</a> to unlock deeper enumeration</p>
+        <p className="mt-2 text-[11px] text-amber-400/80 text-center">Only run discovery on domains you own or are authorised to test.</p>
+        <p className="mt-1 text-[11px] text-muted-foreground/60 text-center"><a href="/register" className="underline hover:text-muted-foreground">Sign in</a> to unlock deeper enumeration</p>
       </div>
       {mode === "org" && <div className="mx-6 mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">Organization discovery isn&apos;t wired yet. Use Domain for now.</div>}
       {error && <div className="mx-6 mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</div>}

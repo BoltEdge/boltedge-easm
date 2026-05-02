@@ -195,6 +195,7 @@ export default function QuickToolsCard() {
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
             </button>
           </div>
+          <p className="mt-2 text-[11px] text-amber-400/80 text-center">Only query domains and IPs you own or are authorised to test.</p>
         </div>
       )}
 

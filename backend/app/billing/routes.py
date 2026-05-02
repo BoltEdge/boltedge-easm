@@ -42,6 +42,10 @@ def _now_utc() -> datetime:
 # PLAN CONFIGURATION — single source of truth
 # ════════════════════════════════════════════════════════════════
 
+# Plan tiers — see CLAUDE.md "Cost rationale" before adjusting any number.
+# Real cost levers are `scans_per_month` (covers manual + monitoring), the
+# product of `monitored_assets` × `monitoring_frequency`, and
+# `discoveries_per_month`. `assets` is just inventory and cheap.
 PLAN_CONFIG = {
     "free": {
         "label": "Free",
@@ -51,9 +55,11 @@ PLAN_CONFIG = {
         "trial_days": 0,
         "limits": {
             "assets": 2,
-            "scans_per_month": 4,
+            "scans_per_month": 5,
+            "discoveries_per_month": 2,
+            "monitored_assets": 0,
             "team_members": 1,
-            "scheduled_scans": 2,
+            "scheduled_scans": 1,
             "api_keys": 1,
             "scan_profiles": ["quick", "standard"],
             "monitoring": False,
@@ -70,45 +76,51 @@ PLAN_CONFIG = {
         "trial_days": 14,
         "limits": {
             "assets": 15,
-            "scans_per_month": 500,
+            "scans_per_month": 100,
+            "discoveries_per_month": 10,
+            "monitored_assets": 5,
             "team_members": 5,
-            "scheduled_scans": 10,
+            "scheduled_scans": 5,
             "api_keys": 3,
             "scan_profiles": ["quick", "standard", "deep"],
             "monitoring": True,
-            "monitoring_frequency": "every_5_days",
+            "monitoring_frequency": "every_7_days",
             "deep_discovery": False,
             "webhooks": False,
         },
     },
     "professional": {
         "label": "Professional",
-        "price_monthly": 79,
-        "price_annual_monthly": 63,
-        "price_annual_total": 756,
+        "price_monthly": 99,
+        "price_annual_monthly": 79,
+        "price_annual_total": 948,
         "trial_days": 21,
         "limits": {
             "assets": 100,
-            "scans_per_month": 5000,
+            "scans_per_month": 1000,
+            "discoveries_per_month": 50,
+            "monitored_assets": 25,
             "team_members": 20,
-            "scheduled_scans": 50,
+            "scheduled_scans": 25,
             "api_keys": 10,
             "scan_profiles": ["quick", "standard", "deep"],
             "monitoring": True,
-            "monitoring_frequency": "every_2_days",
+            "monitoring_frequency": "every_3_days",
             "deep_discovery": True,
             "webhooks": True,
         },
     },
     "enterprise_silver": {
         "label": "Enterprise Silver",
-        "price_monthly": 249,
-        "price_annual_monthly": 199,
-        "price_annual_total": 2388,
+        "price_monthly": 499,
+        "price_annual_monthly": 399,
+        "price_annual_total": 4788,
         "trial_days": 30,
         "limits": {
-            "assets": 15000,
-            "scans_per_month": -1,  # -1 = unlimited
+            "assets": 1000,
+            "scans_per_month": 6000,
+            "discoveries_per_month": 200,
+            "monitored_assets": 100,
             "team_members": 100,
             "scheduled_scans": 100,
             "api_keys": -1,
@@ -121,14 +133,18 @@ PLAN_CONFIG = {
     },
     "enterprise_gold": {
         "label": "Enterprise Gold",
-        "price_monthly": -1,  # -1 = contact sales
-        "price_annual_monthly": -1,
-        "price_annual_total": -1,
+        # Anchor price; sales can quote higher for true unlimited contracts.
+        "price_monthly": 1999,
+        "price_annual_monthly": 1599,
+        "price_annual_total": 19188,
         "trial_days": 45,  # sales approval required
         "trial_requires_approval": True,
         "limits": {
-            "assets": 50000,
-            "scans_per_month": -1,
+            "assets": 10000,
+            # Soft "fair use" cap — anything beyond is a separate sales contract.
+            "scans_per_month": 50000,
+            "discoveries_per_month": -1,
+            "monitored_assets": 500,
             "team_members": -1,
             "scheduled_scans": -1,
             "api_keys": -1,
@@ -160,7 +176,8 @@ def get_effective_limits(org: Organization) -> dict:
     limits = dict(get_plan_limits(effective))  # copy so we don't mutate the config
 
     overrides = org.limit_overrides or {}
-    for key in ("assets", "scans_per_month", "team_members", "scheduled_scans", "api_keys",
+    for key in ("assets", "scans_per_month", "discoveries_per_month", "monitored_assets",
+                "team_members", "scheduled_scans", "api_keys",
                 "monitoring", "deep_discovery", "webhooks"):
         if key in overrides:
             limits[key] = overrides[key]
@@ -171,6 +188,24 @@ def get_effective_limits(org: Organization) -> dict:
 # ════════════════════════════════════════════════════════════════
 # HELPER: Build plan response payload
 # ════════════════════════════════════════════════════════════════
+
+def _discovery_jobs_this_month(org_id: int) -> int:
+    """Live count of discovery jobs created in the current calendar month."""
+    from app.models import DiscoveryJob
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    return DiscoveryJob.query.filter(
+        DiscoveryJob.organization_id == org_id,
+        DiscoveryJob.created_at >= first_of_month,
+    ).count()
+
+
+def _monitored_assets_count(org_id: int) -> int:
+    """Live count of enabled monitors (each monitor = one monitored asset/group)."""
+    from app.models import Monitor
+    return Monitor.query.filter_by(organization_id=org_id, enabled=True).count()
+
 
 def _build_plan_response(org: Organization) -> dict:
     """Build comprehensive plan info for the frontend."""
@@ -219,6 +254,8 @@ def _build_plan_response(org: Organization) -> dict:
         "limits": {
             "assets": limits["assets"],
             "scansPerMonth": limits["scans_per_month"],
+            "discoveriesPerMonth": limits.get("discoveries_per_month", -1),
+            "monitoredAssets": limits.get("monitored_assets", 0),
             "teamMembers": limits["team_members"],
             "scheduledScans": limits["scheduled_scans"],
             "apiKeys": limits["api_keys"],
@@ -232,6 +269,8 @@ def _build_plan_response(org: Organization) -> dict:
             # Live count — Organization.assets_count cache is unreliable.
             "assets": Asset.query.filter_by(organization_id=org.id).count(),
             "scansThisMonth": org.scans_this_month,
+            "discoveriesThisMonth": _discovery_jobs_this_month(org.id),
+            "monitoredAssets": _monitored_assets_count(org.id),
             "teamMembers": member_count,
             "scheduledScans": schedule_count,
             "apiKeys": api_key_count,
@@ -297,10 +336,21 @@ def list_plans():
 
 
 # POST /billing/start-trial — admin+ (manage_billing permission)
+#
+# Despite the name, this endpoint NEVER auto-grants a trial. It creates a
+# typed contact_request that admins review and approve manually. The
+# response tells the user their request is queued and that they'll be
+# emailed when the decision is made.
+#
+# Why: self-serve trials were a real abuse vector ("sign up, scan, leave").
+# Going through admin review for every trial — including enterprise — adds
+# a small amount of friction in exchange for much better quality control.
 @billing_bp.post("/start-trial")
 @require_auth
 @require_permission("manage_billing")
 def start_trial():
+    from app.models import ContactRequest
+
     body = request.get_json(silent=True) or {}
     target_plan = (body.get("plan") or "").strip().lower()
 
@@ -308,62 +358,98 @@ def start_trial():
         return jsonify(error="Invalid plan tier."), 400
 
     org = g.current_organization
+    user = g.current_user
     config = PLAN_CONFIG[target_plan]
 
-    if config.get("trial_requires_approval"):
-        return jsonify(
-            error="Enterprise Gold trials require sales approval. Please contact sales.",
-            contactSales=True,
-        ), 403
-
+    # Hard guards — surface specific errors so the UI can explain.
     existing_trial = TrialHistory.query.filter_by(
         organization_id=org.id, plan=target_plan
     ).first()
     if existing_trial:
-        return jsonify(error=f"Your organization has already used the {config['label']} trial."), 409
+        return jsonify(
+            error=f"Your organization has already used the {config['label']} trial.",
+            code="TRIAL_ALREADY_USED",
+        ), 409
 
     if org.plan_status == "active" and org.plan != "free":
-        return jsonify(error="You're already on a paid plan. Downgrade to Free first, or upgrade directly."), 400
+        return jsonify(
+            error="You're already on a paid plan. Downgrade to Free first, or contact us to switch tiers.",
+            code="ALREADY_PAID",
+        ), 400
 
     if org.plan_status == "trialing":
-        return jsonify(error="You're already in a trial. Wait for it to end or cancel it first."), 400
+        return jsonify(
+            error="You're already in a trial. Wait for it to end or cancel it first.",
+            code="ALREADY_TRIALING",
+        ), 400
 
-    trial_days = config["trial_days"]
-    now = _now_utc()
-    old_plan = org.plan
+    # Soft de-dupe — if there's already an open trial request for this plan
+    # from this org, bounce them with a friendly message instead of stacking.
+    existing_request = ContactRequest.query.filter(
+        ContactRequest.email == user.email,
+        ContactRequest.request_type == "trial",
+        ContactRequest.status.in_(("open", "in_progress")),
+        ContactRequest.message.ilike(f"%{target_plan}%"),
+    ).first()
+    if existing_request:
+        return jsonify(
+            message=(
+                f"Your {config['label']} trial request is already under review. "
+                f"We'll email {user.email} once a decision is made."
+            ),
+            requestId=existing_request.public_id,
+            alreadyRequested=True,
+        ), 200
 
-    org.plan = target_plan
-    org.plan_status = "trialing"
-    org.plan_started_at = now
-    org.trial_ends_at = now + timedelta(days=trial_days)
-    org.plan_expires_at = org.trial_ends_at
-    org.asset_limit = config["limits"]["assets"]
-
-    trial_record = TrialHistory(
-        organization_id=org.id,
-        plan=target_plan,
-        started_at=now,
-        trial_days=trial_days,
+    # Submit the request as a contact_request so it shows up alongside other
+    # support traffic in /admin/contact-requests.
+    org_label = f"{org.name} ({org.public_id or '#' + str(org.id)})"
+    cr = ContactRequest(
+        name=user.name or user.email,
+        email=user.email,
+        subject=f"Trial request: {config['label']} — {org.name}",
+        message=(
+            f"{user.name or user.email} has requested a free trial of the "
+            f"{config['label']} plan.\n\n"
+            f"Organisation: {org_label}\n"
+            f"Current plan: {org.plan}\n"
+            f"Requested plan key: {target_plan}\n\n"
+            f"Decide the trial duration when granting. "
+            f"Approve from the admin panel by upgrading their org plan, "
+            f"then reply here so they know it's active."
+        ),
+        request_type="trial",
+        status="open",
+        created_at=_now_utc(),
+        updated_at=_now_utc(),
     )
-    db.session.add(trial_record)
+    db.session.add(cr)
 
     log_audit(
         organization_id=org.id,
         user_id=current_user_id(),
-        action="billing.trial_started",
+        action="billing.trial_requested",
         category="billing",
         target_type="organization",
         target_id=str(org.id),
         target_label=org.name,
-        description=f"Started {config['label']} trial ({trial_days} days)",
-        metadata={"old_plan": old_plan, "new_plan": target_plan, "trial_days": trial_days},
+        description=f"Requested free trial of {config['label']}",
+        metadata={
+            "current_plan": org.plan,
+            "requested_plan": target_plan,
+        },
     )
 
     db.session.commit()
 
     return jsonify(
-        message=f"{config['label']} trial started! You have {trial_days} days.",
-        plan=_build_plan_response(org),
+        message=(
+            f"Your {config['label']} trial request has been submitted. "
+            f"We'll review it and email {user.email} once it's approved — usually "
+            f"within one business day."
+        ),
+        requestId=cr.public_id,
+        requested=True,
     ), 200
 
 

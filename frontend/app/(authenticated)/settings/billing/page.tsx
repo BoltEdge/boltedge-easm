@@ -5,6 +5,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { Layers, Check, Clock, Zap, Sparkles, Loader2, X, RefreshCcw, Mail, AlertTriangle, Trash2 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Button } from "../../../ui/button";
@@ -67,13 +68,19 @@ export default function BillingPage() {
   async function handleStartTrial(planKey: string) {
     try {
       setActionPlan(planKey);
-      await apiFetch<any>("/billing/start-trial", { method: "POST", body: JSON.stringify({ plan: planKey }) });
-      setBanner({ kind: "ok", text: "Trial started! Refreshing..." });
-      refreshOrg();
-      setTimeout(() => window.location.reload(), 1200);
+      const res = await apiFetch<any>("/billing/start-trial", {
+        method: "POST",
+        body: JSON.stringify({ plan: planKey }),
+      });
+      // Trials are request-based — no plan flip happens here. The user gets
+      // a confirmation banner; the admin reviews from /admin/contact-requests.
+      setBanner({
+        kind: "ok",
+        text: res?.message || "Trial request submitted. We'll email you when it's approved.",
+      });
     } catch (e: any) {
       if (isPlanError(e)) planLimit.handle(e.planError);
-      else setBanner({ kind: "err", text: e?.message || "Failed to start trial." });
+      else setBanner({ kind: "err", text: e?.message || "Failed to submit trial request." });
     } finally { setActionPlan(null); }
   }
 
@@ -305,11 +312,11 @@ export default function BillingPage() {
                       <Button variant="outline" disabled className="w-full border-border text-muted-foreground">Current Plan</Button>
                     ) : isEnterpriseGold ? (
                       /* Enterprise Gold: contact us regardless of billing mode */
-                      <a href="mailto:contact@nanoasm.com?subject=Enterprise Gold Upgrade Request" className="block">
+                      <Link href="/?type=trial#contact" className="block">
                         <Button className="w-full bg-primary hover:bg-primary/90">
                           <Mail className="w-3.5 h-3.5 mr-1.5" />Contact Us
                         </Button>
-                      </a>
+                      </Link>
                     ) : canManageBilling && isUpgrade ? (
                       <Button onClick={() => setShowUpgrade(p.key)} className="w-full bg-primary hover:bg-primary/90">
                         {BILLING_ENABLED ? "Upgrade" : "Switch to this plan"}
@@ -322,14 +329,14 @@ export default function BillingPage() {
                       <Button variant="outline" disabled className="w-full border-border text-muted-foreground">Ask admin to change plan</Button>
                     ) : null}
 
-                    {/* Trial button — billing mode only */}
+                    {/* Trial request button — submits a contact_request, no auto-grant */}
                     {canManageBilling && canTrial && (
                       <Button variant="outline" size="sm" onClick={() => handleStartTrial(p.key)} disabled={actionPlan !== null}
                         className="w-full text-xs" style={{ borderColor: `${color}40`, color }}>
-                        {actionPlan === p.key ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Starting...</> : <><Clock className="w-3 h-3 mr-1.5" />{p.trialDays}-Day Free Trial</>}
+                        {actionPlan === p.key ? <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />Submitting…</> : <><Clock className="w-3 h-3 mr-1.5" />Request free trial</>}
                       </Button>
                     )}
-                    {BILLING_ENABLED && needsApproval && <div className="text-[10px] text-muted-foreground text-center">{p.trialDays}-day trial — contact sales</div>}
+                    {BILLING_ENABLED && needsApproval && <div className="text-[10px] text-muted-foreground text-center">Free trial — contact sales</div>}
                     {BILLING_ENABLED && !p.canTrial && !isCurrent && trialedTiers.includes(p.key) && <div className="text-[10px] text-muted-foreground text-center">Trial used</div>}
                   </div>
                 </div>

@@ -103,7 +103,9 @@ export const MONITOR_TYPE_CONFIG: Record<string, { label: string; icon: string; 
 export const FREQUENCY_LABELS: Record<string, string> = {
   daily: "Daily",
   every_2_days: "Every 2 days",
+  every_3_days: "Every 3 days",
   every_5_days: "Every 5 days",
+  every_7_days: "Every 7 days",
   every_12_hours: "Every 12 hours",
   weekly: "Weekly",
 };

@@ -1,5 +1,6 @@
 // app/(unauthenticated)/page.tsx
 // F4: Landing page — animated, accurate pricing & features
+import { Suspense } from "react";
 import Link from "next/link";
 import { BILLING_ENABLED } from "../lib/billing-config";
 import {
@@ -74,7 +75,7 @@ export default function UnauthenticatedHomePage() {
               <HeroItem>
                 <div className="mt-10 flex flex-col sm:flex-row items-center gap-4">
                   <Link href="/register" className="group inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/30 hover:bg-teal-500 transition-all">
-                    {BILLING_ENABLED ? "Start free — no credit card" : "Get started free"}
+                    Get started free
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                   </Link>
                   <a href="#try-it" className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-3 text-sm font-medium text-white/50 hover:text-white hover:bg-white/[0.06] transition-all">
@@ -118,9 +119,9 @@ export default function UnauthenticatedHomePage() {
                   Run a quick scan or discovery against any domain to see what Nano EASM can find.
                   Create a free account to save results and unlock full features.
                 </p>
-                <p className="mt-3 text-xs text-amber-400/80 max-w-xl mx-auto">
-                  Only scan domains and IPs you own or are authorised to test. By using this tool you agree to our{" "}
-                  <Link href="/terms" className="underline hover:text-amber-300">Terms of Use</Link>.
+                <p className="mt-3 text-xs text-white/40 max-w-xl mx-auto">
+                  By using these tools you agree to our{" "}
+                  <Link href="/terms" className="underline hover:text-white/70">Terms of Use</Link>.
                 </p>
               </div>
             </FadeInOnScroll>
@@ -223,14 +224,13 @@ export default function UnauthenticatedHomePage() {
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal-400 opacity-75" />
                         <span className="relative inline-flex h-2 w-2 rounded-full bg-teal-400" />
                       </span>
-                      <span className="text-xs font-semibold text-teal-400 tracking-wide">Community Preview — Free</span>
+                      <span className="text-xs font-semibold text-teal-400 tracking-wide">Free to use</span>
                     </div>
                     <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                      Free to use,<br /><span className="text-white/50">no credit card ever</span>
+                      Start free,<br /><span className="text-white/50">scale when ready</span>
                     </h2>
                     <p className="mt-4 text-base text-white/40 max-w-lg">
-                      Nano EASM is open source and completely free during community preview.
-                      All plans are available at no cost — upgrade to unlock higher limits as your needs grow.
+                      Nano EASM is open source. All plan tiers are available at no cost today — upgrade for higher limits as your environment grows.
                     </p>
                     <div className="mt-8 flex flex-col sm:flex-row items-center lg:items-start gap-3">
                       <Link href="/register" className="group inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/30 hover:bg-teal-500 transition-all">
@@ -269,16 +269,16 @@ export default function UnauthenticatedHomePage() {
               <div className="text-center mb-16">
                 <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">Pricing</span>
                 <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">Start free, scale when ready</h2>
-                <p className="mt-4 text-base text-white/40 max-w-lg mx-auto">Every paid plan includes a free trial. No credit card required to get started.</p>
+                <p className="mt-4 text-base text-white/40 max-w-lg mx-auto">Free trials available on every paid plan — request one and we&apos;ll get back to you within one business day.</p>
               </div>
             </FadeInOnScroll>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 max-w-5xl mx-auto">
               {[
-                { name: "Free", price: "$0", period: "", desc: "Explore the platform", limits: ["2 assets","4 scans / month","Quick & Standard profiles","1 team member","Basic findings view"], excluded: ["Monitoring","Integrations","Scheduled scans"], cta: "Get started", href: "/register", highlight: false, trial: null },
-                { name: "Starter", price: "$19", period: "/mo", desc: "For individuals & small teams", limits: ["15 assets","500 scans / month","All scan profiles","5 team members","10 scheduled scans","Monitoring (every 5 days)","3 API keys"], excluded: ["Webhooks","Deep discovery"], cta: "Start 14-day trial", href: "/register", highlight: false, trial: 14 },
-                { name: "Professional", price: "$79", period: "/mo", desc: "For growing security teams", limits: ["100 assets","5,000 scans / month","All scan profiles","20 team members","50 scheduled scans","Monitoring (every 2 days)","10 API keys","Webhooks & integrations","Deep discovery"], excluded: [], cta: "Start 21-day trial", href: "/register", highlight: true, trial: 21 },
-                { name: "Enterprise", price: "$249", period: "/mo", desc: "For organizations at scale", limits: ["15,000 assets","Unlimited scans","All scan profiles","100 team members","100 scheduled scans","Daily monitoring","Unlimited API keys","All integrations","Audit log","Priority support"], excluded: [], cta: "Start 30-day trial", href: "/register", highlight: false, trial: 30 },
+                { name: "Free", price: "$0", period: "", desc: "Explore the platform", limits: ["2 assets","5 scans / month","2 discoveries / month","Quick & Standard profiles","1 team member","1 scheduled scan"], excluded: ["Monitoring","Webhooks","Deep discovery"], cta: "Get started", href: "/register", highlight: false, trial: false },
+                { name: "Starter", price: "$19", period: "/mo", desc: "For individuals & small teams", limits: ["15 assets","100 scans / month","10 discoveries / month","Monitor up to 5 assets (weekly)","All scan profiles","5 team members","5 scheduled scans","3 API keys"], excluded: ["Webhooks","Deep discovery"], cta: "Request free trial", href: "/?type=trial#contact", highlight: false, trial: true },
+                { name: "Professional", price: "$99", period: "/mo", desc: "For growing security teams", limits: ["100 assets","1,000 scans / month","50 discoveries / month","Monitor up to 25 assets (every 3 days)","20 team members","25 scheduled scans","10 API keys","Webhooks & integrations","Deep discovery"], excluded: [], cta: "Request free trial", href: "/?type=trial#contact", highlight: true, trial: true },
+                { name: "Enterprise Silver", price: "$499", period: "/mo", desc: "For organisations at scale", limits: ["1,000 assets","6,000 scans / month","200 discoveries / month","Monitor up to 100 assets daily","100 team members","100 scheduled scans","Unlimited API keys","Audit log","Priority support"], excluded: [], cta: "Request free trial", href: "/?type=trial#contact", highlight: false, trial: true },
               ].map(({ name, price, period, desc, limits, excluded, cta, href, highlight, trial }, idx) => (
                 <FadeInOnScroll key={name} delay={idx * 100}>
                   <div className={`relative rounded-2xl border p-6 flex flex-col h-full ${highlight ? "border-teal-500/30 bg-gradient-to-b from-teal-500/[0.08] to-transparent" : "border-white/[0.06] bg-white/[0.02]"}`}>
@@ -293,7 +293,7 @@ export default function UnauthenticatedHomePage() {
                       {period && <span className="text-sm text-white/30">{period}</span>}
                     </div>
                     <p className="text-xs text-white/40 mb-5">{desc}</p>
-                    {trial && <div className="text-[10px] text-teal-400/80 font-medium mb-4 uppercase tracking-wide">{trial}-day free trial</div>}
+                    {trial && <div className="text-[10px] text-teal-400/80 font-medium mb-4 uppercase tracking-wide">Free trial available</div>}
                     <ul className="space-y-2 mb-6 flex-1">
                       {limits.map((f) => (<li key={f} className="flex items-start gap-2 text-[13px] text-white/50"><Check className="w-3.5 h-3.5 text-teal-500/70 shrink-0 mt-0.5" />{f}</li>))}
                       {excluded.map((f) => (<li key={f} className="flex items-start gap-2 text-[13px] text-white/20"><X className="w-3.5 h-3.5 text-white/10 shrink-0 mt-0.5" />{f}</li>))}
@@ -308,10 +308,10 @@ export default function UnauthenticatedHomePage() {
               <div className="mt-8 max-w-5xl mx-auto">
                 <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div>
-                    <div className="text-sm font-semibold text-white">Need more? Enterprise Gold</div>
-                    <p className="text-xs text-white/40 mt-1">50,000+ assets, custom scan profiles, SSO, dedicated support, and SLA guarantees.</p>
+                    <div className="text-sm font-semibold text-white">Need more? Enterprise Gold — from $1,999/mo</div>
+                    <p className="text-xs text-white/40 mt-1">10,000+ assets, 500 monitored every 12 hours, custom scan profiles, SSO, SLA, and dedicated support. Sales-priced for larger contracts.</p>
                   </div>
-                  <Link href="/register" className="shrink-0 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-5 py-2.5 text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-all">
+                  <Link href="/?type=trial#contact" className="shrink-0 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-5 py-2.5 text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-all">
                     Contact sales<ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
@@ -359,7 +359,9 @@ export default function UnauthenticatedHomePage() {
               </div>
             </FadeInOnScroll>
             <FadeInOnScroll delay={100}>
-              <ContactForm />
+              <Suspense fallback={<div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 text-sm text-white/40">Loading…</div>}>
+                <ContactForm />
+              </Suspense>
             </FadeInOnScroll>
           </div>
         </section>

@@ -250,14 +250,52 @@ POST /billing/cancel      — cancel trial or subscription
 DELETE /billing/organization — delete org (owner only)
 ```
 
-### Plan tiers and limits
-| Plan | Assets | Scans/mo | Members | Schedules | API Keys | Monitoring | Deep Discovery | Webhooks |
-|------|--------|----------|---------|-----------|----------|------------|----------------|----------|
-| Free | 2 | 4 | 1 | 2 | 1 | ✗ | ✗ | ✗ |
-| Starter | 15 | 500 | 5 | 10 | 3 | Every 5d | ✗ | ✗ |
-| Professional | 100 | 5,000 | 20 | 50 | 10 | Every 2d | ✓ | ✓ |
-| Enterprise Silver | 15,000 | Unlimited | 100 | 100 | Unlimited | Daily | ✓ | ✓ |
-| Enterprise Gold | 50,000 | Unlimited | Unlimited | Unlimited | Unlimited | Every 12h | ✓ | ✓ |
+### Plan tiers and limits *(redesigned May 2026, cost-aware — see "Cost rationale" below before changing)*
+
+| Plan | Price | Assets (inventory) | Monitored assets | Monitor freq | Scans/mo | Discoveries/mo | Members | Schedules | API Keys | Deep Discovery | Webhooks |
+|------|-------|--------------------|------------------|--------------|----------|----------------|---------|-----------|----------|----------------|----------|
+| Free | $0 | 2 | 0 | — | 5 | 2 | 1 | 1 | 1 | ✗ | ✗ |
+| Starter | $19 | 15 | 5 | every 7d | 100 | 10 | 5 | 5 | 3 | ✗ | ✗ |
+| Professional | $99 | 100 | 25 | every 3d | 1,000 | 50 | 20 | 25 | 10 | ✓ | ✓ |
+| Enterprise Silver | $499 | 1,000 | 100 | daily | 6,000 | 200 | 100 | 100 | ∞ | ✓ | ✓ |
+| Enterprise Gold | from $1,999 | 10,000 | 500 | every 12h | 50,000 (fair use) | ∞ | ∞ | ∞ | ∞ | ✓ | ✓ |
+
+**Trials are request-only** for every paid tier — clicking "Request free trial" creates a typed `contact_request` that admins review and approve manually. Admin sets the trial duration when granting (no hard-coded `trialDays`). See `POST /billing/start-trial`.
+
+### Cost rationale (DO NOT remove caps without re-running this math)
+
+The big lever is **monitored-assets × monitoring frequency**. A monitor is a recurring scan job — the cost compounds every cycle, forever, per customer. Earlier plan designs that said "Silver: 15,000 assets, daily monitoring, unlimited scans" would have burned **$3,000+/mo per Silver customer in marginal cost** on a $249 plan. The redesigned plans separate `assets` (cheap inventory) from `monitored_assets` (the expensive recurring dial) and cap `scans_per_month` to cover BOTH manual and monitoring traffic in one budget.
+
+**Per-scan marginal costs** (Shodan Corporate ~$0.001/credit, EC2 t2.medium near full utilisation):
+
+| Operation | Cost |
+|---|---|
+| Quick scan (3–5 Shodan credits + ~5s compute) | ~$0.01 |
+| Standard scan (10–15 credits + ~30s compute) | ~$0.02 |
+| Deep scan (15–25 credits + ~120s compute) | ~$0.04 |
+| Discovery job (CT + brute + ~30s compute) | ~$0.05 |
+
+**Margin check per tier** (Standard-scan averages, full-quota usage):
+
+| Tier | Price | Max scan cost | Disc cost | Hosting/Stripe | Total cost | Margin | Margin % |
+|---|---|---|---|---|---|---|---|
+| Starter | $19 | $2.00 | $0.50 | $0.50 | $3.00 | $16 | 84% |
+| Professional | $99 | $20.00 | $2.50 | $2.00 | $24.50 | $74 | 75% |
+| Enterprise Silver | $499 | $120.00 | $10.00 | $5.00 | $135.00 | $364 | 73% |
+| Enterprise Gold | $1,999 | $1,000 (capped) | — | $20.00 | ~$1,020 | $979 | 49% |
+
+**Hard rules — verify against these before changing any limit:**
+
+1. **Never give a tier `scans_per_month: -1` (unlimited)** — Enterprise Gold has a soft 50,000/mo "fair use" cap; sales prices anything above that as a separate contract. Only Pro+ get explicit unlimited on `api_keys` (cheap to give) and Gold on `members`/`schedules` (also cheap).
+2. **Free tier never gets monitoring** — recurring scans on a $0 plan = unbounded loss.
+3. **Asset count and monitored_assets are independent dials.** Inventory is cheap (DB rows). Monitored is what bleeds.
+4. **scans_per_month must mathematically cover monitoring + manual usage.** Formula: `monitored_assets × scans_per_month_per_monitored_asset_at_freq + manual_headroom`. If a Silver customer monitors 100 assets daily that's 3,000 scans/mo gone — `scans_per_month: 6,000` leaves them 3,000 for manual scans.
+5. **Multi-million-asset prospects are sales-priced contracts**, not auto-provisioned via the website. Per-asset pricing ($1–$10/asset/mo) negotiated annually with usage caps. Don't accept "10M assets monitored hourly" via the contact form without quoting properly.
+6. **API costs scale with Shodan plan tier.** If you downgrade your Shodan subscription, every margin number above shifts.
+
+### Tracking real costs
+
+`scans_per_month` is enforced via `check_limit("scans_per_month")` on the scan-job creation route — both manual and monitoring scans count against this single budget. `monitored_assets` is enforced via `check_limit("monitored_assets")` on the monitor-creation route. `discoveries_per_month` is enforced on `POST /discovery/run`. Live counts come from `_get_current_usage()` in `app/auth/permissions.py`.
 
 ### Stripe status
 Stripe is **not implemented**. The database has `stripe_customer_id` and `stripe_subscription_id` nullable columns on the `Organization` model as stubs for future integration. No Stripe SDK, no API calls, no webhooks.

@@ -238,7 +238,7 @@ def _get_current_usage(org, resource: str) -> int:
     """
     from app.models import (
         Asset, ScanJob, ScanSchedule, ApiKey,
-        OrganizationMember,
+        OrganizationMember, DiscoveryJob, Monitor,
     )
 
     if resource == "assets":
@@ -257,6 +257,22 @@ def _get_current_usage(org, resource: str) -> int:
         ).filter(
             Asset.organization_id == org.id,
             ScanJob.created_at >= first_of_month,
+        ).count()
+
+    elif resource == "discoveries_per_month":
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return DiscoveryJob.query.filter(
+            DiscoveryJob.organization_id == org.id,
+            DiscoveryJob.created_at >= first_of_month,
+        ).count()
+
+    elif resource == "monitored_assets":
+        # Each enabled Monitor row = one monitored target (asset or group).
+        return Monitor.query.filter_by(
+            organization_id=org.id,
+            enabled=True,
         ).count()
 
     elif resource == "scheduled_scans":
@@ -325,6 +341,8 @@ def check_limit(resource: str):
                 resource_labels = {
                     "assets": "assets",
                     "scans_per_month": "scans this month",
+                    "discoveries_per_month": "discoveries this month",
+                    "monitored_assets": "monitored assets",
                     "scheduled_scans": "scheduled scans",
                     "api_keys": "API keys",
                     "team_members": "team members",
