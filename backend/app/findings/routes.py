@@ -29,7 +29,7 @@ from __future__ import annotations
 import csv
 import io
 from datetime import datetime, timezone
-from flask import Blueprint, request, jsonify, Response
+from flask import Blueprint, request, jsonify, Response, current_app
 from sqlalchemy import or_, and_, func, case
 from app.extensions import db
 from app.models import Finding, Asset, AssetGroup
@@ -648,6 +648,126 @@ def escalate_finding(finding_id: str):
     dispatch_monitor_alert(alert, org_id)
 
     return jsonify({"alertId": str(alert.id), "findingId": str(f.id), "severity": alert.severity}), 201
+
+
+# POST /findings/bulk-escalate — analyst+ (bulk escalate findings to alerts)
+@findings_bp.post("/bulk-escalate")
+@require_auth
+@require_role("analyst")
+def bulk_escalate():
+    """Escalate multiple findings into alerts in a single call.
+
+    Behaviour mirrors the single-finding escalate per finding: a MonitorAlert
+    is created, routed through notification rules, and the finding is
+    optionally moved to in_progress. Skips findings that don't belong to the
+    caller's org or that don't exist — those count toward `failed`.
+    """
+    org_id = current_organization_id()
+    uid = current_user_id()
+    body = request.get_json(silent=True) or {}
+
+    ids = body.get("ids", [])
+    if not isinstance(ids, list) or not ids:
+        return jsonify(error="ids array is required"), 400
+
+    note = (body.get("note") or "").strip()[:500] or None
+    acknowledge = bool(body.get("acknowledge"))
+
+    # Late import — same pattern as single escalate to dodge circular deps.
+    from app.models import MonitorAlert
+    from app.monitoring.routes import dispatch_monitor_alert
+
+    created_alerts: list[MonitorAlert] = []
+    failed_ids: list[str] = []
+
+    for fid in ids:
+        int_id = resolve_id(fid, "FN")
+        if int_id is None:
+            failed_ids.append(str(fid))
+            continue
+
+        f = (
+            db.session.query(Finding)
+            .join(Asset, Finding.asset_id == Asset.id)
+            .filter(Finding.id == int_id, Asset.organization_id == org_id)
+            .options(db.joinedload(Finding.asset).joinedload(Asset.group))
+            .first()
+        )
+        if not f:
+            failed_ids.append(str(fid))
+            continue
+
+        asset_value = f.asset.value if f.asset else None
+        group_name = f.asset.group.name if f.asset and f.asset.group else None
+        summary = f.description or ""
+        if note:
+            summary = (summary + f"\n\nEscalation note: {note}").strip()
+        summary = summary[:1000] or None
+
+        alert = MonitorAlert(
+            organization_id=org_id,
+            monitor_id=None,
+            finding_id=f.id,
+            source="finding",
+            alert_type="manual",
+            template_id=f.finding_type,
+            title=f.title,
+            summary=summary,
+            severity=f.severity or "info",
+            asset_value=asset_value,
+            group_name=group_name,
+            status="open",
+        )
+        db.session.add(alert)
+        db.session.flush()
+
+        if acknowledge and _derive_status(f) == "open":
+            _set_status(f, "in_progress", uid, notes="Escalated to alert (bulk)", org_id=org_id)
+
+        created_alerts.append(alert)
+
+        log_audit(
+            organization_id=org_id,
+            user_id=uid,
+            action="finding.escalated",
+            category="finding",
+            target_type="finding",
+            target_id=str(f.id),
+            target_label=f.title,
+            description=f"Escalated finding '{f.title}' to alert #{alert.id} (bulk)",
+            metadata={
+                "alert_id": str(alert.id),
+                "severity": alert.severity,
+                "acknowledge": acknowledge,
+                "bulk": True,
+            },
+        )
+
+    # Commit all DB changes once before dispatching notifications — failed
+    # dispatches shouldn't roll back successfully-created alert rows.
+    db.session.commit()
+
+    # Dispatch through notification rules. Each call may itself commit (it
+    # writes notified_via tracking), so they're done after the main commit.
+    for alert in created_alerts:
+        try:
+            dispatch_monitor_alert(alert, org_id)
+        except Exception:
+            # Log and keep going — one failed dispatch shouldn't kill the rest.
+            current_app.logger.exception("dispatch_monitor_alert failed for alert %s", alert.id)
+
+    return jsonify({
+        "escalated": len(created_alerts),
+        "failed": len(failed_ids),
+        "failedIds": failed_ids,
+        "alertIds": [str(a.id) for a in created_alerts],
+        "message": (
+            f"Escalated {len(created_alerts)} finding"
+            + ("s" if len(created_alerts) != 1 else "")
+            + (f" — {len(failed_ids)} skipped" if failed_ids else "")
+            + "."
+        ),
+    }), 200
 
 
 # POST /findings/bulk-ignore — analyst+ (bulk suppress/unsuppress)

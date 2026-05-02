@@ -1245,6 +1245,23 @@ export async function escalateFinding(
   });
 }
 
+export async function bulkEscalateFindings(payload: {
+  ids: Array<string | number>;
+  note?: string;
+  acknowledge?: boolean;
+}): Promise<{
+  escalated: number;
+  failed: number;
+  failedIds: string[];
+  alertIds: string[];
+  message: string;
+}> {
+  return apiFetch(`/findings/bulk-escalate`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function createManualAlert(payload: {
   title: string;
   severity: Severity;
@@ -1925,6 +1942,18 @@ export async function explainFinding(findingId: string | number): Promise<{
   return apiFetch<any>("/assistant/finding-explainer", {
     method: "POST",
     body: JSON.stringify({ findingId }),
+  });
+}
+
+export async function explainAlert(alertId: string | number): Promise<{
+  alertId: string;
+  explanation: FindingExplanation;
+  linkedFinding: boolean;
+  source: string;
+}> {
+  return apiFetch<any>("/assistant/alert-explainer", {
+    method: "POST",
+    body: JSON.stringify({ alertId }),
   });
 }
 

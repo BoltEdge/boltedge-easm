@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   AlertTriangle, Search, Loader2, Download, EyeOff, Eye,
   CheckSquare, Square, X, ChevronDown, ChevronLeft, ChevronRight,
   Tag, Wrench, CheckCircle2, RotateCcw, Clock, ShieldCheck,
-  AlertCircle, Cloud, Database, Box, Cpu, Shield,
+  AlertCircle, Cloud, Database, Box, Cpu, Shield, Siren,
 } from "lucide-react";
 
 import type { AssetGroup, Finding } from "../../types";
-import { getGroups, apiFetch, escalateFinding, API_BASE_URL } from "../../lib/api";
+import { getGroups, apiFetch, escalateFinding, bulkEscalateFindings, API_BASE_URL } from "../../lib/api";
 import { getAccessToken } from "../../lib/auth";
 import { useOrg } from "../contexts/OrgContext";
 
@@ -167,6 +167,54 @@ export default function FindingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
+  // Resizable details panel — width is a percentage (lg+ only). Bounded to
+  // 30..70 so neither column collapses. Persisted in localStorage.
+  const PANEL_MIN = 30;
+  const PANEL_MAX = 70;
+  const PANEL_DEFAULT = 45;
+  const [panelWidth, setPanelWidth] = useState<number>(() => {
+    if (typeof window === "undefined") return PANEL_DEFAULT;
+    const saved = parseFloat(localStorage.getItem("findings-panel-width") || "");
+    if (Number.isFinite(saved)) {
+      return Math.max(PANEL_MIN, Math.min(PANEL_MAX, saved));
+    }
+    return PANEL_DEFAULT;
+  });
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+
+  function startResize(e: React.MouseEvent) {
+    e.preventDefault();
+    draggingRef.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (!draggingRef.current || !splitContainerRef.current) return;
+      const rect = splitContainerRef.current.getBoundingClientRect();
+      const next = ((rect.right - e.clientX) / rect.width) * 100;
+      const clamped = Math.max(PANEL_MIN, Math.min(PANEL_MAX, next));
+      setPanelWidth(clamped);
+    }
+    function onUp() {
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      try {
+        localStorage.setItem("findings-panel-width", String(panelWidth));
+      } catch {}
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [panelWidth]);
+
   const [groups, setGroups] = useState<AssetGroup[]>([]);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [total, setTotal] = useState(0);
@@ -190,11 +238,17 @@ export default function FindingsPage() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selected, setSelected] = useState<Finding | null>(null);
 
-  // Bulk action dialog
+  // Bulk status-change dialog
   const [bulkActionOpen, setBulkActionOpen] = useState(false);
   const [bulkActionStatus, setBulkActionStatus] = useState<string>("");
   const [bulkActionNotes, setBulkActionNotes] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Bulk escalate-to-alert dialog
+  const [bulkEscalateOpen, setBulkEscalateOpen] = useState(false);
+  const [bulkEscalateNote, setBulkEscalateNote] = useState("");
+  const [bulkEscalateAck, setBulkEscalateAck] = useState(true);
+  const [bulkEscalating, setBulkEscalating] = useState(false);
 
   // Debounced search
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -315,6 +369,27 @@ export default function FindingsPage() {
       setBanner({ kind: "err", text: e?.message || "Bulk action failed" });
     } finally {
       setActionLoading(false);
+    }
+  }
+
+  async function handleBulkEscalate() {
+    if (selectedIds.size === 0) return;
+    setBulkEscalating(true);
+    try {
+      const res = await bulkEscalateFindings({
+        ids: Array.from(selectedIds),
+        note: bulkEscalateNote.trim() || undefined,
+        acknowledge: bulkEscalateAck,
+      });
+      setBanner({ kind: res.escalated > 0 ? "ok" : "err", text: res.message });
+      setBulkEscalateOpen(false);
+      setBulkEscalateNote("");
+      setSelectedIds(new Set());
+      await loadFindings();
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || "Bulk escalate failed" });
+    } finally {
+      setBulkEscalating(false);
     }
   }
 
@@ -563,6 +638,15 @@ export default function FindingsPage() {
             ))}
             <Button
               size="sm"
+              variant="outline"
+              onClick={() => { setBulkEscalateNote(""); setBulkEscalateAck(true); setBulkEscalateOpen(true); }}
+              disabled={actionLoading || bulkEscalating}
+              className="gap-1.5 text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+            >
+              <Siren className="w-3.5 h-3.5" />Escalate to Alerts
+            </Button>
+            <Button
+              size="sm"
               variant="ghost"
               onClick={() => setSelectedIds(new Set())}
               className="text-muted-foreground"
@@ -572,8 +656,8 @@ export default function FindingsPage() {
           </div>
         )}
 
-        {/* ── Table + side panel (split-pane on lg+) ── */}
-        <div className="flex flex-col lg:flex-row gap-5 items-start">
+        {/* ── Table + side panel (resizable split-pane on lg+) ── */}
+        <div ref={splitContainerRef} className="flex flex-col lg:flex-row gap-5 lg:gap-0 items-start">
 
         {/* Left: table column */}
         <div className="w-full min-w-0 flex-1 space-y-5">
@@ -745,9 +829,25 @@ export default function FindingsPage() {
 
         </div>{/* end left column */}
 
+        {/* Drag handle — only when panel is visible, only on lg+ */}
+        {selected && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize details panel"
+            onMouseDown={startResize}
+            className="hidden lg:flex shrink-0 self-stretch w-2 mx-1 cursor-col-resize group sticky top-4 lg:h-[calc(100vh-2rem)] items-center justify-center"
+          >
+            <div className="w-px h-12 bg-border group-hover:bg-primary/60 group-active:bg-primary transition-colors" />
+          </div>
+        )}
+
         {/* Right: details panel (sticky on lg+, stacks below on mobile) */}
         {selected && (
-          <aside className="w-full lg:w-[45%] shrink-0 lg:sticky lg:top-4 lg:self-start lg:h-[calc(100vh-2rem)] flex">
+          <aside
+            className="w-full shrink-0 lg:sticky lg:top-4 lg:self-start lg:h-[calc(100vh-2rem)] flex lg:w-[var(--panel-w)]"
+            style={{ "--panel-w": `${panelWidth}%` } as React.CSSProperties}
+          >
             <FindingDetailsDialog
               open={true}
               onOpenChange={(o) => {
@@ -840,6 +940,63 @@ export default function FindingsPage() {
                 className="bg-primary hover:bg-primary/90"
               >
                 {actionLoading ? "Updating\u2026" : "Confirm"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* \u2500\u2500 Bulk Escalate-to-Alerts Dialog \u2500\u2500 */}
+      <Dialog open={bulkEscalateOpen} onOpenChange={(o) => { if (!o && !bulkEscalating) setBulkEscalateOpen(false); }}>
+        <DialogContent className="bg-card border-border text-foreground sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Siren className="w-5 h-5 text-amber-400" />
+              Escalate {selectedIds.size} finding{selectedIds.size !== 1 ? "s" : ""} to alerts
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-sm text-muted-foreground">
+              Creates one alert per selected finding and routes them through your notification rules
+              (Slack, Jira, email, etc.). The findings themselves stay open unless you tick the option below.
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground block">Shared note (optional)</label>
+              <textarea
+                value={bulkEscalateNote}
+                onChange={(e) => setBulkEscalateNote(e.target.value)}
+                placeholder="Why are these being escalated together?"
+                rows={3}
+                maxLength={500}
+                className="w-full px-3 py-2 rounded-lg bg-background border border-border/50 text-foreground text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+              />
+              <p className="text-[11px] text-muted-foreground">Appended to every alert's summary.</p>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={bulkEscalateAck}
+                onChange={(e) => setBulkEscalateAck(e.target.checked)}
+                className="accent-primary"
+              />
+              Mark these findings as &quot;In Progress&quot;
+            </label>
+            <div className="flex gap-3 justify-end pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setBulkEscalateOpen(false)}
+                disabled={bulkEscalating}
+                className="border-border text-foreground hover:bg-accent"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleBulkEscalate}
+                disabled={bulkEscalating}
+                className="bg-amber-500 hover:bg-amber-600 text-white"
+              >
+                <Siren className="w-4 h-4 mr-2" />
+                {bulkEscalating ? "Escalating\u2026" : `Escalate ${selectedIds.size}`}
               </Button>
             </div>
           </div>

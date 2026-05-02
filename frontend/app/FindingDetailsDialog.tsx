@@ -322,17 +322,19 @@ function StatusActions({
 }
 
 // ── Nano EASM Assistant ──────────────────────────────────────────────────────
-// Backed by the FindingTemplate registry on the server, not an external LLM.
-// State is owned by the dialog so the button (in the toolbar) and the result
-// panel (in the body) can render in separate parts of the layout.
-type AiState = {
+// Backed by the knowledge-base templates on the server (FindingTemplate
+// registry for findings, alert metadata for monitor alerts), not an external
+// LLM. State is owned by the parent so the button can sit in one part of the
+// layout and the result panel in another. Exported because the alerts page
+// also uses these components.
+export type AiState = {
   loading: boolean;
   explanation: FindingExplanation | null;
   error: string | null;
   visible: boolean;  // collapsed/expanded
 };
 
-function NanoAiBar({
+export function NanoAiBar({
   state,
   onLoad,
 }: {
@@ -371,7 +373,7 @@ function NanoAiBar({
   );
 }
 
-function NanoAiPanel({
+export function NanoAiPanel({
   state,
   onRegenerate,
   onHide,
@@ -436,7 +438,7 @@ function NanoAiPanel({
   );
 }
 
-function ExplanationSection({
+export function ExplanationSection({
   label,
   body,
   mono = false,

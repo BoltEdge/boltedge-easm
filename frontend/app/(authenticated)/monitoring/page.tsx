@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   Eye, Plus, Search, RefreshCcw, Trash2, Shield, ShieldAlert,
   BellRing, Settings, SlidersHorizontal, Clock, CheckCircle2,
   Globe, Lock, Server, FileCode, Zap, ToggleLeft, ToggleRight, Pause,
-  X, Loader2, Target, Cpu, Calendar, ArrowUpDown,
+  X, Loader2, Target, Cpu, Calendar, ArrowUpDown, AlertCircle, Sparkles,
+  ExternalLink,
 } from "lucide-react";
 
 import { Button } from "../../ui/button";
@@ -16,8 +17,9 @@ import { SeverityBadge } from "../../SeverityBadge";
 import { useOrg } from "../contexts/OrgContext";
 import { usePlanLimit, PlanLimitDialog } from "../../ui/plan-limit-dialog";
 import { isPlanError } from "../../lib/api";
-import { getAllAssets } from "../../lib/api";
+import { getAllAssets, explainAlert } from "../../lib/api";
 import { BILLING_ENABLED } from "../../lib/billing-config";
+import { NanoAiBar, NanoAiPanel, type AiState } from "../../FindingDetailsDialog";
 import {
   cn, timeAgo, formatWhen, monitoringFrequencyLabel,
   alertStatusBadge, MONITOR_TYPE_CONFIG, SEVERITY_ORDER,
@@ -45,31 +47,6 @@ function sourceBadge(source?: string): { label: string; className: string } | nu
 function prettySourceTool(toolId?: string): string {
   if (!toolId) return "";
   return toolId.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-// Multi-line alert summaries (esp. from Lookup Tools) need newlines preserved
-// and shouldn't dominate the row when long — show first 2 lines collapsed,
-// expand on click.
-function AlertSummary({ text }: { text: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const lines = text.split("\n");
-  const isLong = lines.length > 2 || text.length > 180;
-  const visible = expanded || !isLong ? text : lines.slice(0, 2).join("\n");
-
-  return (
-    <div className="text-xs text-muted-foreground mb-1.5">
-      <pre className="whitespace-pre-wrap break-words font-sans leading-relaxed">{visible}</pre>
-      {isLong && (
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="mt-1 text-[10px] text-primary hover:text-primary/80 transition-colors"
-        >
-          {expanded ? "Show less" : "Show more"}
-        </button>
-      )}
-    </div>
-  );
 }
 
 // Icon lookup for monitor type badges
@@ -616,10 +593,94 @@ function AlertsTab({ setBanner, planLimit }: {
   const [dateTo, setDateTo] = useState("");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
 
+  // ── Selected alert for split-pane detail panel ──
+  const [selected, setSelected] = useState<MonitorAlert | null>(null);
+
+  // ── Resizable detail panel (lg+) — same pattern as findings page ──
+  const PANEL_MIN = 30;
+  const PANEL_MAX = 70;
+  const PANEL_DEFAULT = 45;
+  const [panelWidth, setPanelWidth] = useState<number>(() => {
+    if (typeof window === "undefined") return PANEL_DEFAULT;
+    const saved = parseFloat(localStorage.getItem("alerts-panel-width") || "");
+    if (Number.isFinite(saved)) {
+      return Math.max(PANEL_MIN, Math.min(PANEL_MAX, saved));
+    }
+    return PANEL_DEFAULT;
+  });
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+
+  function startResize(e: React.MouseEvent) {
+    e.preventDefault();
+    draggingRef.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (!draggingRef.current || !splitContainerRef.current) return;
+      const rect = splitContainerRef.current.getBoundingClientRect();
+      const next = ((rect.right - e.clientX) / rect.width) * 100;
+      const clamped = Math.max(PANEL_MIN, Math.min(PANEL_MAX, next));
+      setPanelWidth(clamped);
+    }
+    function onUp() {
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      try { localStorage.setItem("alerts-panel-width", String(panelWidth)); } catch {}
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [panelWidth]);
+
+  // ── Nano EASM Assistant state for the selected alert ──
+  const [aiState, setAiState] = useState<AiState>({
+    loading: false, explanation: null, error: null, visible: false,
+  });
+  const selectedId = selected ? String(selected.id) : null;
+  useEffect(() => {
+    setAiState({ loading: false, explanation: null, error: null, visible: false });
+  }, [selectedId]);
+
+  async function loadAiExplanation(alertId: string) {
+    if (aiState.explanation && !aiState.error) {
+      setAiState((s) => ({ ...s, visible: !s.visible }));
+      return;
+    }
+    setAiState({ loading: true, explanation: null, error: null, visible: true });
+    try {
+      const res = await explainAlert(alertId);
+      setAiState({ loading: false, explanation: res.explanation, error: null, visible: true });
+    } catch (e: any) {
+      setAiState({
+        loading: false,
+        explanation: null,
+        error: e?.message || "Could not generate an explanation right now.",
+        visible: true,
+      });
+    }
+  }
+
   const load = useCallback(async () => {
     try { setLoading(true); setAlerts(await getMonitorAlerts()); } catch {} finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  // Keep the selected alert in sync with the latest alerts list (e.g. after
+  // acknowledge/resolve) so the detail panel updates without losing focus.
+  useEffect(() => {
+    if (!selected) return;
+    const fresh = alerts.find((a) => a.id === selected.id);
+    if (fresh && fresh !== selected) setSelected(fresh);
+  }, [alerts, selected]);
 
   async function handleAcknowledge(alert: MonitorAlert) {
     try {
@@ -732,83 +793,328 @@ function AlertsTab({ setBanner, planLimit }: {
         </button>
       </div>
 
-      {/* Alerts list */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-muted-foreground text-sm flex items-center justify-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin" />Loading alerts...
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="p-12 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-[#10b981]/10 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-8 h-8 text-[#10b981]" />
-            </div>
-            <h3 className="text-foreground font-semibold mb-2">
-              {alerts.length === 0 ? "No alerts yet" : "No matching alerts"}
-            </h3>
-            <p className="text-muted-foreground text-sm max-w-md mx-auto">
-              {alerts.length === 0
-                ? "When monitors detect changes — new findings, resolved issues, or severity shifts — alerts will appear here."
-                : "Try adjusting your filters."}
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {filtered.map((alert) => (
-              <div key={alert.id} className="p-4 hover:bg-accent/20 transition-colors">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <SeverityBadge severity={alert.severity} />
-                      <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold border", alertStatusBadge(alert.status))}>
-                        {alert.status}
-                      </span>
-                      {(() => {
-                        const sb = sourceBadge(alert.source);
-                        return sb && (
-                          <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold border", sb.className)}>
-                            {sb.label}
-                          </span>
-                        );
-                      })()}
-                      <span className="text-xs text-muted-foreground" title={formatWhen(alert.createdAt)}>
-                        {timeAgo(alert.createdAt)} · {formatWhen(alert.createdAt)}
-                      </span>
-                    </div>
-                    <h4 className="text-sm font-medium text-foreground mb-0.5">{alert.title}</h4>
-                    {alert.summary && (
-                      <AlertSummary text={alert.summary} />
-                    )}
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-                      {alert.assetValue && <span className="font-mono">{alert.assetValue}</span>}
-                      {alert.alertName && <span>· {alert.alertName}</span>}
-                      {alert.source === "lookup_tool" && alert.sourceTool && (
-                        <span>· from {prettySourceTool(alert.sourceTool)}{alert.sourceTarget ? ` on ${alert.sourceTarget}` : ""}</span>
-                      )}
-                      {alert.source === "finding" && alert.findingId && (
-                        <span>· Finding #{alert.findingId}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {canAcknowledge && alert.status === "open" && (
-                      <Button size="sm" variant="outline" onClick={() => handleAcknowledge(alert)}
-                        className="border-[#ffcc00]/50 text-[#ffcc00] hover:bg-[#ffcc00]/10 text-xs">
-                        Acknowledge
-                      </Button>
-                    )}
-                    {canClose && (alert.status === "open" || alert.status === "acknowledged") && (
-                      <Button size="sm" variant="outline" onClick={() => handleResolve(alert)}
-                        className="border-[#10b981]/50 text-[#10b981] hover:bg-[#10b981]/10 text-xs">
-                        Resolve
-                      </Button>
-                    )}
-                  </div>
-                </div>
+      {/* ── Alerts list + detail panel (resizable split-pane on lg+) ── */}
+      <div ref={splitContainerRef} className="flex flex-col lg:flex-row gap-4 lg:gap-0 items-start">
+
+        {/* Left: alerts list */}
+        <div className="w-full min-w-0 flex-1">
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            {loading ? (
+              <div className="p-8 text-center text-muted-foreground text-sm flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />Loading alerts...
               </div>
-            ))}
+            ) : filtered.length === 0 ? (
+              <div className="p-12 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-[#10b981]/10 flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 className="w-8 h-8 text-[#10b981]" />
+                </div>
+                <h3 className="text-foreground font-semibold mb-2">
+                  {alerts.length === 0 ? "No alerts yet" : "No matching alerts"}
+                </h3>
+                <p className="text-muted-foreground text-sm max-w-md mx-auto">
+                  {alerts.length === 0
+                    ? "When monitors detect changes — new findings, resolved issues, or severity shifts — alerts will appear here."
+                    : "Try adjusting your filters."}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/30 border-b border-border">
+                    <tr>
+                      <th className="text-left px-4 py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-[110px]">Time</th>
+                      <th className="text-left px-4 py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-[90px]">Severity</th>
+                      <th className="text-left px-4 py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Alert</th>
+                      <th className="text-left px-4 py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-[180px]">Asset</th>
+                      <th className="text-left px-4 py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-[100px]">Source</th>
+                      <th className="text-left px-4 py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-[100px]">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filtered.map((alert) => {
+                      const isSelected = selected?.id === alert.id;
+                      const sb = sourceBadge(alert.source);
+                      return (
+                        <tr
+                          key={alert.id}
+                          onClick={() => setSelected(alert)}
+                          className={cn(
+                            "cursor-pointer transition-colors",
+                            isSelected ? "bg-primary/5" : "hover:bg-accent/20",
+                          )}
+                        >
+                          {/* Time */}
+                          <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap" title={formatWhen(alert.createdAt)}>
+                            {timeAgo(alert.createdAt)}
+                          </td>
+
+                          {/* Severity */}
+                          <td className="px-4 py-3">
+                            <SeverityBadge severity={alert.severity} />
+                          </td>
+
+                          {/* Alert (title + alert name as subtext) */}
+                          <td className="px-4 py-3 max-w-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {isSelected && <span className="w-1 h-4 bg-primary rounded-full shrink-0" />}
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium text-foreground truncate" title={alert.title}>
+                                  {alert.title}
+                                </div>
+                                {alert.alertName && alert.alertName !== alert.title && (
+                                  <div className="text-[11px] text-muted-foreground truncate" title={alert.alertName}>
+                                    {alert.alertName}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Asset */}
+                          <td className="px-4 py-3">
+                            <div className="min-w-0">
+                              <div className="text-xs font-mono text-foreground/90 truncate" title={alert.assetValue || ""}>
+                                {alert.assetValue || "—"}
+                              </div>
+                              {alert.groupName && (
+                                <div className="text-[11px] text-muted-foreground truncate" title={alert.groupName}>
+                                  {alert.groupName}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Source */}
+                          <td className="px-4 py-3">
+                            {sb ? (
+                              <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold border whitespace-nowrap", sb.className)}>
+                                {sb.label}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">Monitor</span>
+                            )}
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-4 py-3">
+                            <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold border whitespace-nowrap", alertStatusBadge(alert.status))}>
+                              {alert.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Drag handle — only when an alert is selected, only on lg+ */}
+        {selected && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize details panel"
+            onMouseDown={startResize}
+            className="hidden lg:flex shrink-0 self-stretch w-2 mx-1 cursor-col-resize group sticky top-4 lg:h-[calc(100vh-2rem)] items-center justify-center"
+          >
+            <div className="w-px h-12 bg-border group-hover:bg-primary/60 group-active:bg-primary transition-colors" />
           </div>
         )}
+
+        {/* Right: alert details panel */}
+        {selected && (
+          <aside
+            className="w-full shrink-0 lg:sticky lg:top-4 lg:self-start lg:h-[calc(100vh-2rem)] flex lg:w-[var(--panel-w)]"
+            style={{ "--panel-w": `${panelWidth}%` } as React.CSSProperties}
+          >
+            <AlertDetailsPanel
+              alert={selected}
+              onClose={() => setSelected(null)}
+              canAcknowledge={canAcknowledge}
+              canClose={canClose}
+              onAcknowledge={() => handleAcknowledge(selected)}
+              onResolve={() => handleResolve(selected)}
+              aiState={aiState}
+              onLoadAi={() => loadAiExplanation(String(selected.id))}
+              onRegenerateAi={() => {
+                setAiState({ loading: false, explanation: null, error: null, visible: true });
+                loadAiExplanation(String(selected.id));
+              }}
+              onHideAi={() => setAiState((s) => ({ ...s, visible: false }))}
+            />
+          </aside>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================
+   ALERT DETAILS PANEL
+   ================================================================ */
+
+function AlertDetailsPanel({
+  alert,
+  onClose,
+  canAcknowledge,
+  canClose,
+  onAcknowledge,
+  onResolve,
+  aiState,
+  onLoadAi,
+  onRegenerateAi,
+  onHideAi,
+}: {
+  alert: MonitorAlert;
+  onClose: () => void;
+  canAcknowledge: boolean;
+  canClose: boolean;
+  onAcknowledge: () => void;
+  onResolve: () => void;
+  aiState: AiState;
+  onLoadAi: () => void;
+  onRegenerateAi: () => void;
+  onHideAi: () => void;
+}) {
+  const sb = sourceBadge(alert.source);
+
+  return (
+    <div className="bg-card border border-border rounded-xl flex flex-col h-full overflow-hidden w-full">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-card border-b border-border pl-6 pr-6 pt-6 pb-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold leading-snug text-foreground">{alert.title}</h2>
+
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              <SeverityBadge severity={alert.severity} />
+              <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold border", alertStatusBadge(alert.status))}>
+                {alert.status}
+              </span>
+              {sb && (
+                <span className={cn("px-2 py-0.5 rounded text-[10px] font-semibold border", sb.className)}>
+                  {sb.label}
+                </span>
+              )}
+              <span className="text-xs text-muted-foreground" title={formatWhen(alert.createdAt)}>
+                {timeAgo(alert.createdAt)} · {formatWhen(alert.createdAt)}
+              </span>
+            </div>
+          </div>
+
+          <div className="shrink-0 flex items-center gap-2 flex-wrap">
+            {canAcknowledge && alert.status === "open" && (
+              <Button size="sm" variant="outline" onClick={onAcknowledge}
+                className="border-[#ffcc00]/50 text-[#ffcc00] hover:bg-[#ffcc00]/10 text-xs">
+                Acknowledge
+              </Button>
+            )}
+            {canClose && (alert.status === "open" || alert.status === "acknowledged") && (
+              <Button size="sm" variant="outline" onClick={onResolve}
+                className="border-[#10b981]/50 text-[#10b981] hover:bg-[#10b981]/10 text-xs">
+                Resolve
+              </Button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close panel"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/30 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+
+        {/* Alert metadata */}
+        <div className="bg-card border border-border rounded-lg p-4">
+          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">Alert details</div>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
+            {alert.assetValue && (
+              <>
+                <dt className="text-xs text-muted-foreground">Asset</dt>
+                <dd className="font-mono text-foreground">{alert.assetValue}</dd>
+              </>
+            )}
+            {alert.groupName && (
+              <>
+                <dt className="text-xs text-muted-foreground">Group</dt>
+                <dd className="text-foreground">{alert.groupName}</dd>
+              </>
+            )}
+            {alert.alertName && (
+              <>
+                <dt className="text-xs text-muted-foreground">Alert</dt>
+                <dd className="text-foreground">{alert.alertName}</dd>
+              </>
+            )}
+            {alert.alertType && (
+              <>
+                <dt className="text-xs text-muted-foreground">Type</dt>
+                <dd className="text-foreground">{alert.alertType.replace(/_/g, " ")}</dd>
+              </>
+            )}
+            {alert.source === "lookup_tool" && alert.sourceTool && (
+              <>
+                <dt className="text-xs text-muted-foreground">From</dt>
+                <dd className="text-foreground">
+                  {prettySourceTool(alert.sourceTool)}
+                  {alert.sourceTarget && <span className="text-muted-foreground"> · {alert.sourceTarget}</span>}
+                </dd>
+              </>
+            )}
+            {alert.source === "finding" && alert.findingId && (
+              <>
+                <dt className="text-xs text-muted-foreground">Finding</dt>
+                <dd className="text-foreground">
+                  <Link href={`/findings?selected=${alert.findingId}`} className="text-primary hover:underline inline-flex items-center gap-1">
+                    Finding #{alert.findingId}
+                    <ExternalLink className="w-3 h-3" />
+                  </Link>
+                </dd>
+              </>
+            )}
+            {alert.acknowledgedAt && (
+              <>
+                <dt className="text-xs text-muted-foreground">Acknowledged</dt>
+                <dd className="text-foreground">{formatWhen(alert.acknowledgedAt)}</dd>
+              </>
+            )}
+            {alert.resolvedAt && (
+              <>
+                <dt className="text-xs text-muted-foreground">Resolved</dt>
+                <dd className="text-foreground">{formatWhen(alert.resolvedAt)}</dd>
+              </>
+            )}
+            {alert.notifiedVia && alert.notifiedVia.length > 0 && (
+              <>
+                <dt className="text-xs text-muted-foreground">Notified via</dt>
+                <dd className="text-foreground">{alert.notifiedVia.join(", ")}</dd>
+              </>
+            )}
+          </dl>
+        </div>
+
+        {/* Reported summary (analyst-curated text from the alert row) */}
+        {alert.summary && (
+          <div className="bg-card border border-border rounded-lg p-4">
+            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Summary</div>
+            <pre className="whitespace-pre-wrap break-words font-sans text-sm text-foreground/85 leading-relaxed">
+              {alert.summary}
+            </pre>
+          </div>
+        )}
+
+        {/* Nano EASM Assistant */}
+        <NanoAiBar state={aiState} onLoad={onLoadAi} />
+        <NanoAiPanel state={aiState} onRegenerate={onRegenerateAi} onHide={onHideAi} />
       </div>
     </div>
   );
