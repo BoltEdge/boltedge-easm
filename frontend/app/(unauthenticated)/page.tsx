@@ -15,6 +15,7 @@ import QuickDiscoveryCard from "./QuickDiscoveryCard";
 import QuickToolsCard from "./QuickToolsCard";
 import FadeInOnScroll from "./Fadeinonscroll";
 import AnimatedDashboard from "./AnimatedDashboard";
+import ContactForm from "./ContactForm";
 import {
   HeroStagger, HeroItem, HeroDashboard, HeroFadeIn,
 } from "./Animatedhero";
@@ -344,6 +345,24 @@ export default function UnauthenticatedHomePage() {
             </FadeInOnScroll>
           </div>
         </section>
+
+        {/* ================= CONTACT ================= */}
+        <section id="contact" className="py-24 sm:py-32 border-t border-white/[0.04]">
+          <div className="mx-auto max-w-3xl px-4 sm:px-6">
+            <FadeInOnScroll>
+              <div className="text-center mb-10">
+                <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">Get in touch</span>
+                <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">Contact us</h2>
+                <p className="mt-4 text-base text-white/40 max-w-xl mx-auto">
+                  Questions, feedback, or interested in Enterprise? Send us a message and we&apos;ll get back to you within one business day.
+                </p>
+              </div>
+            </FadeInOnScroll>
+            <FadeInOnScroll delay={100}>
+              <ContactForm />
+            </FadeInOnScroll>
+          </div>
+        </section>
       </main>
 
       {/* ================= FOOTER ================= */}
@@ -366,8 +385,8 @@ export default function UnauthenticatedHomePage() {
             </div>
             <div className="flex items-center gap-8 text-sm text-white/30">
               <Link href="/terms" className="hover:text-white/60 transition-colors">Terms</Link>
+              <Link href="/#contact" className="hover:text-white/60 transition-colors">Contact</Link>
               <a href="https://nanoasm.com" target="_blank" rel="noopener" className="hover:text-white/60 transition-colors">nanoasm.com</a>
-              <a href="mailto:contact@nanoasm.com" className="hover:text-white/60 transition-colors">Support</a>
             </div>
           </div>
           <div className="mt-8 pt-6 border-t border-white/[0.04] text-xs text-white/20 text-center">

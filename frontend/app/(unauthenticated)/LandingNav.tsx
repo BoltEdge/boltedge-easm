@@ -19,6 +19,7 @@ const ALL_NAV_LINKS: NavLink[] = [
   { href: "/#try-it", label: "Quick Test" },
   { href: "/#pricing", label: "Pricing", billingOnly: true },
   { href: "/api-docs", label: "API", external: true },
+  { href: "/#contact", label: "Contact" },
 ];
 
 const NAV_LINKS = ALL_NAV_LINKS.filter((l) => !l.billingOnly || BILLING_ENABLED);

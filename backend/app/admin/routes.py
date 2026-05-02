@@ -32,7 +32,7 @@ from flask import Blueprint, request, jsonify, g, current_app
 from sqlalchemy import text
 
 from app.extensions import db
-from app.models import User, Organization, OrganizationMember, AuditLog, ScanJob, Asset, DiscoveryJob, PlatformAnnouncement, QuickScanLog, BlockedIP
+from app.models import User, Organization, OrganizationMember, AuditLog, ScanJob, Asset, DiscoveryJob, PlatformAnnouncement, QuickScanLog, BlockedIP, ContactRequest
 from app.auth.decorators import require_superadmin
 from app.audit.routes import log_audit
 
@@ -1446,3 +1446,252 @@ def unblock_ip(block_id: int):
     )
     db.session.commit()
     return jsonify(message=f"IP {ip} unblocked."), 200
+
+
+# ════════════════════════════════════════════════════════════════
+# CONTACT REQUESTS — public form submissions (admin triage + reply)
+# ════════════════════════════════════════════════════════════════
+
+_VALID_CONTACT_STATUSES = ("open", "in_progress", "replied", "closed", "spam")
+
+
+def _contact_row(c: ContactRequest, *, include_message: bool = False) -> dict:
+    row = {
+        "id": c.id,
+        "displayId": c.public_id,
+        "name": c.name,
+        "email": c.email,
+        "subject": c.subject,
+        "status": c.status,
+        "ipAddress": c.ip_address,
+        "userAgent": c.user_agent,
+        "referer": c.referer,
+        "repliedAt": c.replied_at.isoformat() + "Z" if c.replied_at else None,
+        "repliedBy": c.replier.email if c.replier else None,
+        "replySubject": c.reply_subject,
+        "adminNotes": c.admin_notes,
+        "createdAt": c.created_at.isoformat() + "Z" if c.created_at else None,
+        "updatedAt": c.updated_at.isoformat() + "Z" if c.updated_at else None,
+    }
+    if include_message:
+        row["message"] = c.message
+        row["replyMessage"] = c.reply_message
+    return row
+
+
+@admin_bp.get("/contact-requests")
+@require_superadmin
+def list_contact_requests():
+    page = max(1, int(request.args.get("page", 1)))
+    limit = min(100, max(1, int(request.args.get("limit", 50))))
+    status_filter = (request.args.get("status") or "").strip().lower()
+    search = (request.args.get("search") or "").strip().lower()
+
+    q = ContactRequest.query
+    if status_filter and status_filter in _VALID_CONTACT_STATUSES:
+        q = q.filter(ContactRequest.status == status_filter)
+    if search:
+        pattern = f"%{search}%"
+        q = q.filter(
+            db.or_(
+                ContactRequest.name.ilike(pattern),
+                ContactRequest.email.ilike(pattern),
+                ContactRequest.subject.ilike(pattern),
+                ContactRequest.message.ilike(pattern),
+            )
+        )
+
+    q = q.order_by(ContactRequest.created_at.desc())
+    total = q.count()
+    rows = q.offset((page - 1) * limit).limit(limit).all()
+
+    # Status counts so the UI can render badge totals.
+    counts = dict.fromkeys(_VALID_CONTACT_STATUSES, 0)
+    for status, n in (
+        db.session.query(ContactRequest.status, db.func.count(ContactRequest.id))
+        .group_by(ContactRequest.status)
+        .all()
+    ):
+        if status in counts:
+            counts[status] = int(n)
+
+    return jsonify(
+        requests=[_contact_row(r) for r in rows],
+        total=total,
+        page=page,
+        limit=limit,
+        pages=(total + limit - 1) // limit,
+        statusCounts=counts,
+    ), 200
+
+
+@admin_bp.get("/contact-requests/<int:req_id>")
+@require_superadmin
+def get_contact_request(req_id: int):
+    cr = ContactRequest.query.get(req_id)
+    if not cr:
+        return jsonify(error="not found"), 404
+    return jsonify(_contact_row(cr, include_message=True)), 200
+
+
+@admin_bp.post("/contact-requests/<int:req_id>/status")
+@require_superadmin
+def set_contact_request_status(req_id: int):
+    cr = ContactRequest.query.get(req_id)
+    if not cr:
+        return jsonify(error="not found"), 404
+
+    body = request.get_json(silent=True) or {}
+    status = (body.get("status") or "").strip().lower()
+    if status not in _VALID_CONTACT_STATUSES:
+        return jsonify(
+            error=f"status must be one of {', '.join(_VALID_CONTACT_STATUSES)}",
+        ), 400
+
+    notes = body.get("adminNotes")
+    if notes is not None:
+        cr.admin_notes = (notes or "").strip() or None
+
+    old_status = cr.status
+    cr.status = status
+    cr.updated_at = _now_utc()
+
+    log_audit(
+        organization_id=None,
+        user_id=g.current_user.id,
+        action="admin.contact_status_changed",
+        category="admin",
+        target_type="contact_request",
+        target_id=str(cr.id),
+        target_label=cr.email,
+        description=f"Admin changed contact request {cr.public_id} status: {old_status} → {status}",
+        metadata={"changed_by": g.current_user.email},
+    )
+
+    db.session.commit()
+    return jsonify(_contact_row(cr, include_message=True)), 200
+
+
+@admin_bp.post("/contact-requests/<int:req_id>/reply")
+@require_superadmin
+def reply_contact_request(req_id: int):
+    """Send a reply email via Resend and persist it on the row."""
+    cr = ContactRequest.query.get(req_id)
+    if not cr:
+        return jsonify(error="not found"), 404
+
+    body = request.get_json(silent=True) or {}
+    reply_subject = (body.get("subject") or "").strip()
+    reply_message = (body.get("message") or "").strip()
+    notes = body.get("adminNotes")
+
+    if not reply_message:
+        return jsonify(error="reply message is required"), 400
+    if len(reply_message) > 10000:
+        return jsonify(error="reply message is too long (max 10,000 characters)"), 400
+
+    # Default subject: "Re: <original subject>" or generic.
+    if not reply_subject:
+        original = cr.subject or "your message"
+        reply_subject = f"Re: {original}"
+    if len(reply_subject) > 200:
+        reply_subject = reply_subject[:200]
+
+    import os
+    resend_key = os.environ.get("RESEND_API_KEY", "")
+    email_sent = False
+
+    if resend_key:
+        try:
+            import resend
+            resend.api_key = resend_key
+
+            # HTML escaping is intentionally light — admin authors the body,
+            # we just preserve newlines as <br>.
+            from html import escape as _esc
+            html_body = _esc(reply_message).replace("\n", "<br>")
+            html = f"""
+            <p>Hi {_esc(cr.name)},</p>
+            <div style="white-space:normal;line-height:1.55;color:#0f172a;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;">
+              {html_body}
+            </div>
+            <p style="color:#64748b;font-size:13px;margin-top:24px;">— The Nano EASM team</p>
+            <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+            <p style="color:#94a3b8;font-size:12px;">
+              This is a reply to your enquiry sent on
+              {cr.created_at.strftime("%Y-%m-%d") if cr.created_at else ""}.
+              Reference: {cr.public_id or cr.id}.
+            </p>
+            """
+
+            resend.Emails.send({
+                "from": os.environ.get("EMAIL_FROM", "Nano EASM <no-reply@nanoasm.com>"),
+                "to": [cr.email],
+                "subject": reply_subject,
+                "html": html,
+                "reply_to": "contact@nanoasm.com",
+            })
+            email_sent = True
+        except Exception:
+            logger.exception("Resend reply failed for contact request %s", cr.id)
+
+    # Persist regardless of email-send result so the admin still has a
+    # record of what they intended to send.
+    cr.reply_subject = reply_subject
+    cr.reply_message = reply_message
+    cr.replied_at = _now_utc()
+    cr.replied_by = g.current_user.id
+    cr.status = "replied" if email_sent else cr.status
+    if notes is not None:
+        cr.admin_notes = (notes or "").strip() or None
+    cr.updated_at = _now_utc()
+
+    log_audit(
+        organization_id=None,
+        user_id=g.current_user.id,
+        action="admin.contact_reply_sent",
+        category="admin",
+        target_type="contact_request",
+        target_id=str(cr.id),
+        target_label=cr.email,
+        description=f"Admin replied to contact request {cr.public_id} ({cr.email})",
+        metadata={
+            "changed_by": g.current_user.email,
+            "email_sent": email_sent,
+        },
+    )
+
+    db.session.commit()
+
+    return jsonify(
+        request=_contact_row(cr, include_message=True),
+        emailSent=email_sent,
+        message=(
+            "Reply sent." if email_sent
+            else "Reply saved, but email could not be sent (RESEND_API_KEY missing or rejected). Check logs."
+        ),
+    ), 200
+
+
+@admin_bp.delete("/contact-requests/<int:req_id>")
+@require_superadmin
+def delete_contact_request(req_id: int):
+    cr = ContactRequest.query.get(req_id)
+    if not cr:
+        return jsonify(error="not found"), 404
+
+    log_audit(
+        organization_id=None,
+        user_id=g.current_user.id,
+        action="admin.contact_deleted",
+        category="admin",
+        target_type="contact_request",
+        target_id=str(cr.id),
+        target_label=cr.email,
+        description=f"Admin deleted contact request {cr.public_id}",
+        metadata={"changed_by": g.current_user.email},
+    )
+
+    db.session.delete(cr)
+    db.session.commit()
+    return jsonify(message="Contact request deleted."), 200

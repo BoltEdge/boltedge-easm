@@ -1841,6 +1841,67 @@ export async function resendVerification(email: string): Promise<{ message: stri
   } as any);
 }
 
+// ────────────────────────────────────────────────────────────
+// Contact requests (public submit + admin triage)
+// ────────────────────────────────────────────────────────────
+
+export async function submitContactRequest(payload: {
+  name: string;
+  email: string;
+  subject?: string;
+  message: string;
+  /** Honeypot. Real users leave this empty; bots fill it. */
+  website?: string;
+}): Promise<{ message: string; requestId?: string }> {
+  return apiFetch<any>("/contact-requests", {
+    method: "POST",
+    body: JSON.stringify(payload),
+    skipAuthRedirect: true,
+  } as any);
+}
+
+export async function getAdminContactRequests(params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  search?: string;
+}): Promise<any> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.status) qs.set("status", params.status);
+  if (params?.search) qs.set("search", params.search);
+  return apiFetch<any>(`/admin/contact-requests?${qs.toString()}`);
+}
+
+export async function getAdminContactRequest(id: number): Promise<any> {
+  return apiFetch<any>(`/admin/contact-requests/${id}`);
+}
+
+export async function setAdminContactRequestStatus(
+  id: number,
+  data: { status: string; adminNotes?: string },
+): Promise<any> {
+  return apiFetch<any>(`/admin/contact-requests/${id}/status`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function replyAdminContactRequest(
+  id: number,
+  data: { subject?: string; message: string; adminNotes?: string },
+): Promise<any> {
+  return apiFetch<any>(`/admin/contact-requests/${id}/reply`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteAdminContactRequest(id: number): Promise<any> {
+  return apiFetch<any>(`/admin/contact-requests/${id}`, { method: "DELETE" });
+}
+
 export async function deleteAdminUser(userId: number): Promise<any> {
   return apiFetch<any>(`/admin/users/${userId}`, { method: "DELETE" });
 }

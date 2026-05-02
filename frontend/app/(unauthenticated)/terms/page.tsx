@@ -132,10 +132,10 @@ export default function TermsPage() {
             <section>
               <h2 className="text-xl font-semibold text-white mb-3">9. Contact</h2>
               <p>
-                Questions about these Terms can be sent to{" "}
-                <a href="mailto:contact@nanoasm.com" className="text-teal-400 hover:text-teal-300">
-                  contact@nanoasm.com
-                </a>
+                Questions about these Terms can be sent via the{" "}
+                <Link href="/#contact" className="text-teal-400 hover:text-teal-300">
+                  contact form
+                </Link>
                 .
               </p>
             </section>

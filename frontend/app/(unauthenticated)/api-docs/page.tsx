@@ -568,12 +568,12 @@ export default function ApiDocsPage() {
             {/* Footer */}
             <section className="pt-8 border-t border-white/[0.06] text-sm text-white/40">
               Need something not in this list? The full UI runs on a JWT-only API
-              that mirrors most of the surface — get in touch at{" "}
+              that mirrors most of the surface — drop us a note via the{" "}
               <a
-                href="mailto:contact@nanoasm.com"
+                href="/#contact"
                 className="text-teal-300 hover:text-teal-200"
               >
-                contact@nanoasm.com
+                contact form
               </a>
               .
             </section>

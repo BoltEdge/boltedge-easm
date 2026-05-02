@@ -1034,6 +1034,56 @@ class BlockedIP(db.Model):
     admin = db.relationship("User")
 
 
+class ContactRequest(db.Model):
+    """
+    Public contact-form submission. Replaces the old
+    `mailto:contact@nanoasm.com` link so admins can triage requests
+    in-app and reply via Resend without leaving the dashboard.
+
+    Status workflow: open -> in_progress -> replied -> closed
+    Or: open -> spam (for abuse, no reply sent)
+    """
+    __tablename__ = "contact_request"
+
+    id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
+
+    # Submitter
+    name = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(255), nullable=False, index=True)
+    subject = db.Column(db.String(200), nullable=True)
+    message = db.Column(db.Text, nullable=False)
+
+    # Origin tracking — helps with spam/abuse triage
+    ip_address = db.Column(db.String(45), nullable=True, index=True)
+    user_agent = db.Column(db.String(500), nullable=True)
+    referer = db.Column(db.String(500), nullable=True)
+
+    # Workflow status
+    status = db.Column(
+        db.String(20), nullable=False, default="open", index=True
+    )  # open | in_progress | replied | closed | spam
+
+    # Reply tracking
+    replied_by = db.Column(
+        db.Integer,
+        db.ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    replied_at = db.Column(db.DateTime, nullable=True)
+    reply_subject = db.Column(db.String(200), nullable=True)
+    reply_message = db.Column(db.Text, nullable=True)
+
+    # Internal notes — never sent to the user
+    admin_notes = db.Column(db.Text, nullable=True)
+
+    # Timestamps
+    created_at = db.Column(db.DateTime, nullable=False, default=now_utc, index=True)
+    updated_at = db.Column(db.DateTime, nullable=False, default=now_utc, onupdate=now_utc)
+
+    replier = db.relationship("User")
+
+
 class DiscoveryModuleResult(db.Model):
     """
     Tracks the execution status of each module within a discovery job.
