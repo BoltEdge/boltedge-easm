@@ -45,7 +45,7 @@ export default function UnauthenticatedHomePage() {
             />
           </div>
 
-          <div className="relative mx-auto max-w-6xl px-4 sm:px-6 pt-20 sm:pt-28 lg:pt-36 pb-16">
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-20 sm:pt-28 lg:pt-36 pb-16">
             <HeroStagger>
               <HeroItem>
                 <div className="inline-flex items-center gap-2 rounded-full border border-teal-500/20 bg-teal-500/[0.06] px-4 py-1.5 mb-8">
@@ -65,12 +65,11 @@ export default function UnauthenticatedHomePage() {
               </HeroItem>
 
               <HeroItem>
-                <p className="mt-6 max-w-2xl text-base text-white/45 leading-relaxed sm:text-lg">
+                <p className="mt-6 max-w-3xl text-base text-white/70 leading-7 sm:text-lg sm:leading-8">
                   Nano EASM helps IT teams, security generalists, and small MSSPs stay on top
-                  of their external exposure without juggling multiple tools. Start with a
-                  domain, IP, or cloud asset — we&apos;ll uncover exposed assets, scan for
-                  risk, flag changes as they happen, prioritise what matters, and translate
-                  findings into clear next steps.
+                  of external exposure without juggling multiple tools. Start with a domain,
+                  IP, or cloud asset — uncover exposed assets, scan for risk, monitor
+                  changes, prioritise what matters, and turn findings into clear next steps.
                 </p>
               </HeroItem>
 
@@ -87,8 +86,12 @@ export default function UnauthenticatedHomePage() {
               </HeroItem>
             </HeroStagger>
 
-            <HeroDashboard className="mt-20 relative">
-              <div className="absolute -inset-4 bg-gradient-to-b from-teal-500/10 to-transparent rounded-3xl blur-2xl pointer-events-none" />
+            <HeroDashboard className="mt-12 sm:mt-14 relative">
+              {/* Outer ambient glow — slightly stronger and broader so the
+                  dashboard reads as "lit" against the dark background. */}
+              <div className="absolute -inset-8 bg-gradient-to-b from-teal-500/[0.18] via-cyan-500/[0.06] to-transparent rounded-[2rem] blur-3xl pointer-events-none" />
+              {/* Subtle inner ring to lift the panel edge without going bright. */}
+              <div className="absolute inset-0 rounded-2xl ring-1 ring-white/10 pointer-events-none" />
               <AnimatedDashboard />
             </HeroDashboard>
 
@@ -389,9 +392,10 @@ export default function UnauthenticatedHomePage() {
               </p>
             </div>
             <div className="flex items-center gap-8 text-sm text-white/30">
-              <Link href="/terms" className="hover:text-white/60 transition-colors">Terms</Link>
+              <Link href="/terms-and-policies/terms-of-use" className="hover:text-white/60 transition-colors">Terms</Link>
+              <Link href="/terms-and-policies/privacy-policy" className="hover:text-white/60 transition-colors">Privacy</Link>
+              <Link href="/terms-and-policies" className="hover:text-white/60 transition-colors">Terms &amp; Policies</Link>
               <Link href="/#contact" className="hover:text-white/60 transition-colors">Contact</Link>
-              <a href="https://nanoasm.com" target="_blank" rel="noopener" className="hover:text-white/60 transition-colors">nanoasm.com</a>
             </div>
           </div>
           <div className="mt-8 pt-6 border-t border-white/[0.04] text-xs text-white/20 text-center">

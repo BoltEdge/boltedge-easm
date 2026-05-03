@@ -219,3 +219,85 @@
     radial-gradient(1200px 700px at 50% 85%, rgba(255, 255, 255, 0.04), transparent 60%),
     radial-gradient(1200px 900px at 50% 50%, rgba(0, 0, 0, 0.65), transparent 70%);
 }
+
+/* ───────────────────────────────────────────────────────────────────
+ * Legal docs — typography for markdown-rendered content
+ * (server-rendered into .legal-doc by /legal/[slug]/page.tsx)
+ * ─────────────────────────────────────────────────────────────────── */
+.legal-doc h2 {
+  color: rgb(255 255 255);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.01em;
+}
+.legal-doc h3 {
+  color: rgb(255 255 255 / 0.92);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+.legal-doc p {
+  margin-bottom: 1rem;
+}
+.legal-doc ul,
+.legal-doc ol {
+  margin: 0.75rem 0 1rem 1.5rem;
+}
+.legal-doc ul { list-style: disc; }
+.legal-doc ol { list-style: decimal; }
+.legal-doc li { margin: 0.4rem 0; }
+.legal-doc li > p { margin: 0.25rem 0; }
+.legal-doc strong { color: rgb(255 255 255 / 0.92); font-weight: 600; }
+.legal-doc em { color: rgb(255 255 255 / 0.7); }
+.legal-doc a {
+  color: rgb(45 212 191);
+  text-decoration: none;
+}
+.legal-doc a:hover {
+  color: rgb(94 234 212);
+  text-decoration: underline;
+}
+.legal-doc code {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.85em;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+.legal-doc blockquote {
+  margin: 1.25rem 0;
+  padding: 1rem 1.25rem;
+  background: rgba(245, 158, 11, 0.06);
+  border-left: 3px solid rgba(245, 158, 11, 0.5);
+  border-radius: 8px;
+  color: rgb(254 215 170 / 0.9);
+}
+.legal-doc blockquote p { margin: 0; }
+.legal-doc blockquote strong { color: rgb(252 211 77); }
+.legal-doc hr {
+  margin: 2rem 0;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.legal-doc table {
+  width: 100%;
+  margin: 1.25rem 0;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.legal-doc th,
+.legal-doc td {
+  text-align: left;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: top;
+}
+.legal-doc th {
+  color: rgb(255 255 255 / 0.85);
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.02);
+}
