@@ -929,15 +929,18 @@ def asset_overview(asset_id: str):
     ]
 
     # ── Scan history ──
+    # ScanJob has no organization_id of its own — it's scoped through
+    # `asset_id`. The asset is already verified org-scoped above, so
+    # filtering on asset_id alone is sufficient.
     last_scan = (
         ScanJob.query
-        .filter(ScanJob.asset_id == asset.id, ScanJob.organization_id == org_id)
+        .filter(ScanJob.asset_id == asset.id)
         .order_by(ScanJob.id.desc())
         .first()
     )
     total_scans = (
         db.session.query(func.count(ScanJob.id))
-        .filter(ScanJob.asset_id == asset.id, ScanJob.organization_id == org_id)
+        .filter(ScanJob.asset_id == asset.id)
         .scalar() or 0
     )
     last_scan_profile = None

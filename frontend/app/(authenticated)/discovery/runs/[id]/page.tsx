@@ -79,14 +79,16 @@ function getProfileMeta(profile: ScanProfile) {
 }
 
 function engineList(profile: ScanProfile): string[] {
-  const engines: string[] = [];
-  if (profile.useShodan) engines.push("Shodan");
-  if (profile.useNmap) engines.push("Nmap");
-  if (profile.useNuclei) engines.push("Nuclei");
-  if (profile.useSslyze) engines.push("SSLyze");
-  if (profile.shodanIncludeHistory) engines.push("History");
-  if (profile.shodanIncludeCves) engines.push("CVEs");
-  return engines;
+  // Customer-facing labels — never name the underlying scanners.
+  // Mirrors the friendly-name pattern used in scan/initiate.
+  const features: string[] = [];
+  if (profile.useShodan) features.push("Host intelligence");
+  if (profile.useNmap) features.push("Port scan");
+  if (profile.useNuclei) features.push("Vulnerability check");
+  if (profile.useSslyze) features.push("TLS analysis");
+  if (profile.shodanIncludeHistory) features.push("Historical data");
+  if (profile.shodanIncludeCves) features.push("CVE database");
+  return features;
 }
 
 /* ── Profile Card ─────────────────────────────────────── */

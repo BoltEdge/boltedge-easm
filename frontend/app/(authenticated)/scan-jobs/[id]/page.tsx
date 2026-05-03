@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ChevronLeft, Shield, Clock, CheckCircle2, XCircle, Loader2,
@@ -153,9 +153,59 @@ export default function ScanJobDetailPage() {
   const [severityFilter, setSeverityFilter] = useState<"all" | SeverityKey>("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
 
-  // Detail dialog
+  // Detail panel — opens as a resizable side panel on lg+ (matches
+  // the Findings page UX), falls back to a stacked card on mobile.
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selected, setSelected] = useState<any>(null);
+
+  // Resizable details panel — width is a percentage (lg+ only). Bounded
+  // to 30..70 so neither column collapses. Persisted in localStorage,
+  // shared key with /findings so users get a consistent feel.
+  const PANEL_MIN = 30;
+  const PANEL_MAX = 70;
+  const PANEL_DEFAULT = 45;
+  const [panelWidth, setPanelWidth] = useState<number>(() => {
+    if (typeof window === "undefined") return PANEL_DEFAULT;
+    const saved = parseFloat(localStorage.getItem("findings-panel-width") || "");
+    if (Number.isFinite(saved)) {
+      return Math.max(PANEL_MIN, Math.min(PANEL_MAX, saved));
+    }
+    return PANEL_DEFAULT;
+  });
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+
+  function startResize(e: React.MouseEvent) {
+    e.preventDefault();
+    draggingRef.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (!draggingRef.current || !splitContainerRef.current) return;
+      const rect = splitContainerRef.current.getBoundingClientRect();
+      const next = ((rect.right - e.clientX) / rect.width) * 100;
+      const clamped = Math.max(PANEL_MIN, Math.min(PANEL_MAX, next));
+      setPanelWidth(clamped);
+    }
+    function onUp() {
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      try {
+        localStorage.setItem("findings-panel-width", String(panelWidth));
+      } catch {}
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [panelWidth]);
 
   // Cloud section collapse state
   const [cloudExpanded, setCloudExpanded] = useState(true);
@@ -419,6 +469,14 @@ export default function ScanJobDetailPage() {
             )}
           </div>
         )}
+
+        {/* ── Findings + side panel (resizable split-pane on lg+).
+            Job Info Cards + severity breakdown above stay full-width
+            so the panel doesn't extend up over the dashboard tiles. */}
+        <div ref={splitContainerRef} className="flex flex-col lg:flex-row gap-5 lg:gap-0 items-start">
+
+        {/* Left: findings column */}
+        <div className="w-full min-w-0 flex-1 space-y-6">
 
         {/* ═══ Cloud Assets Section ═══ */}
         {job.status === "completed" && hasCloudFindings && (
@@ -707,15 +765,45 @@ export default function ScanJobDetailPage() {
             <p className="text-sm text-muted-foreground">This scan completed without detecting any security issues.</p>
           </div>
         )}
-      </div>
 
-      {/* Finding Details Dialog */}
-      <FindingDetailsDialog
-        open={detailsOpen}
-        onOpenChange={setDetailsOpen}
-        finding={selected}
-        onToggleIgnore={handleToggleIgnore}
-      />
+        </div>{/* end left column */}
+
+        {/* Drag handle — only when panel is visible, only on lg+ */}
+        {selected && detailsOpen && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize details panel"
+            onMouseDown={startResize}
+            className="hidden lg:flex shrink-0 self-stretch w-2 mx-1 cursor-col-resize group sticky top-4 lg:h-[calc(100vh-2rem)] items-center justify-center"
+          >
+            <div className="w-px h-12 bg-border group-hover:bg-primary/60 group-active:bg-primary transition-colors" />
+          </div>
+        )}
+
+        {/* Right: details panel (sticky on lg+, stacks below on mobile) */}
+        {selected && detailsOpen && (
+          <aside
+            className="w-full shrink-0 lg:sticky lg:top-4 lg:self-start lg:h-[calc(100vh-2rem)] flex lg:w-[var(--panel-w)]"
+            style={{ "--panel-w": `${panelWidth}%` } as React.CSSProperties}
+          >
+            <FindingDetailsDialog
+              open={true}
+              onOpenChange={(o) => {
+                if (!o) {
+                  setSelected(null);
+                  setDetailsOpen(false);
+                }
+              }}
+              finding={selected}
+              mode="panel"
+              onToggleIgnore={handleToggleIgnore}
+            />
+          </aside>
+        )}
+
+        </div>{/* end split-pane container */}
+      </div>
     </div>
   );
 }

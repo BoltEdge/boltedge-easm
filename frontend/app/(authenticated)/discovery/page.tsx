@@ -698,8 +698,10 @@ function JobDetailView({ job, filteredAssets, typeCounts, allTags, tagFilter, se
         </div>
       )}
 
-      {/* Discovery overview — TL;DR summary card */}
-      {!isActive && job.status === "completed" && (
+      {/* Discovery overview — TL;DR summary card. Show for any job
+          that's no longer running so failed/cancelled jobs still get
+          a summary of whatever was discovered before they stopped. */}
+      {!isActive && (
         <DiscoverySummaryCard jobId={job.id} />
       )}
 

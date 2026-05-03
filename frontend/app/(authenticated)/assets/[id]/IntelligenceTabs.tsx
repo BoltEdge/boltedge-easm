@@ -10,6 +10,7 @@ import {
   ChevronRight, Loader2, Info, Tag,
 } from "lucide-react";
 import { apiFetch } from "../../../lib/api";
+import { friendlyScannerName } from "../../../lib/scanner-labels";
 import { SeverityBadge } from "../../../SeverityBadge";
 
 function cn(...parts: Array<string | false | null | undefined>) {
@@ -222,7 +223,7 @@ function TechTab({ data }: { data: IntelligenceData }) {
                     {t.port && (
                       <span className="text-xs text-muted-foreground font-mono">:{t.port}</span>
                     )}
-                    <span className="text-[10px] text-muted-foreground bg-accent rounded px-1.5 py-0.5">{t.source}</span>
+                    <span className="text-[10px] text-muted-foreground bg-accent rounded px-1.5 py-0.5">{friendlyScannerName(t.source)}</span>
                     <SeverityBadge severity={t.severity} />
                   </div>
                 </div>

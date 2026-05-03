@@ -69,7 +69,19 @@ export default function AssetOverviewPanel({ assetId }: { assetId: string | numb
     );
   }
 
-  if (error || !data) return null;  // Silent fail — page works without us.
+  if (error || !data) {
+    return (
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.05] p-4 flex items-start gap-3 text-sm">
+        <Sparkles className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+        <div className="flex-1">
+          <div className="font-medium text-foreground">Overview unavailable</div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            {error || "Couldn't load the asset overview just now. Refresh to try again."}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const { asset, scan, findings, monitor, recommendations } = data;
 

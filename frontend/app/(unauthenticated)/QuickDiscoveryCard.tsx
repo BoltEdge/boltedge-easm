@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Globe2 } from "lucide-react";
 
 import { publicQuickDiscover, type QuickDiscoveryResponse } from "../lib/api";
+import { friendlyScannerName } from "../lib/scanner-labels";
 
 type DiscoveryNormalized = { domain: string; counts: { ct: number; brute: number; subdomains: number; resolvedNames: number }; subdomains: string[]; apexIps: string[]; resolved: Record<string, string[]>; errors: Array<{ source: string; error: string }>; };
 
@@ -94,7 +95,7 @@ export default function QuickDiscoveryCard() {
             </div>
           )}
           {result && !result.subdomains.length && <div className="mt-4 text-xs text-muted-foreground">No subdomains returned.</div>}
-          {result && result.errors.length > 0 && (<div className="mt-3 rounded-lg border border-border bg-card/30 p-3"><div className="text-[10px] font-semibold text-foreground mb-1">Discovery errors</div><ul className="space-y-0.5 text-[10px] text-muted-foreground">{result.errors.slice(0, 10).map((e, idx) => <li key={`${e.source}-${idx}`} className="break-words"><span className="font-mono">{e.source}:</span> {e.error}</li>)}</ul></div>)}
+          {result && result.errors.length > 0 && (<div className="mt-3 rounded-lg border border-border bg-card/30 p-3"><div className="text-[10px] font-semibold text-foreground mb-1">Discovery errors</div><ul className="space-y-0.5 text-[10px] text-muted-foreground">{result.errors.slice(0, 10).map((e, idx) => <li key={`${e.source}-${idx}`} className="break-words"><span className="font-mono">{friendlyScannerName(e.source)}:</span> {e.error}</li>)}</ul></div>)}
         </div>
       </div>
     </div>

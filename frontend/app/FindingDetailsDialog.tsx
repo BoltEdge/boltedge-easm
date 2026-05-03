@@ -427,10 +427,6 @@ export function NanoAiPanel({
             <ExplanationSection label="Evidence" body={state.explanation.evidence} mono />
             <ExplanationSection label="Recommended remediation" body={state.explanation.remediation} />
             <ExplanationSection label="Summary" body={state.explanation.clientSummary} />
-
-            <p className="text-[10px] text-muted-foreground/60 pt-1 border-t border-border/30">
-              Generated from the Nano EASM finding knowledge base — deterministic, no external AI services involved.
-            </p>
           </>
         )}
       </div>

@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
-  Eye, Plus, Search, RefreshCcw, Trash2, Shield, ShieldAlert,
+  Eye, Plus, Search, RefreshCcw, Trash2, Shield, ShieldAlert, Pencil,
   BellRing, Settings, SlidersHorizontal, Clock, CheckCircle2,
   Globe, Lock, Server, FileCode, Zap, ToggleLeft, ToggleRight, Pause,
   X, Loader2, Target, Cpu, Calendar, ArrowUpDown, AlertCircle, Sparkles,
@@ -17,6 +17,7 @@ import { SeverityBadge } from "../../SeverityBadge";
 import { useOrg } from "../contexts/OrgContext";
 import { usePlanLimit, PlanLimitDialog } from "../../ui/plan-limit-dialog";
 import { isPlanError } from "../../lib/api";
+import { friendlyScannerName } from "../../lib/scanner-labels";
 import { getAllAssets, explainAlert } from "../../lib/api";
 import { BILLING_ENABLED } from "../../lib/billing-config";
 import { NanoAiBar, NanoAiPanel, type AiState } from "../../FindingDetailsDialog";
@@ -44,9 +45,12 @@ function sourceBadge(source?: string): { label: string; className: string } | nu
   }
 }
 
+// Translate a backend tool/source ID to a customer-friendly label.
+// Delegates to the shared scanner-labels mapper so we never leak
+// third-party scanner names ("shodan", "nuclei", etc.) into the UI.
 function prettySourceTool(toolId?: string): string {
   if (!toolId) return "";
-  return toolId.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return friendlyScannerName(toolId);
 }
 
 // Icon lookup for monitor type badges
@@ -187,6 +191,7 @@ function OverviewTab({ monitors, loading, onRefresh, setBanner, monitoringFreque
   const canDelete = canDo("delete_monitors");
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingMonitor, setEditingMonitor] = useState<Monitor | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Monitor | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -362,6 +367,17 @@ function OverviewTab({ monitors, loading, onRefresh, setBanner, monitoringFreque
                     {(canEdit || canDelete) && (
                       <td className="p-4">
                         <div className="flex items-center justify-end gap-2">
+                          {canEdit && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEditingMonitor(m)}
+                              className="border-border text-foreground hover:bg-accent"
+                              title="Edit what to monitor on this entry"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                          )}
                           {canDelete && (
                             <Button size="sm" variant="outline" onClick={() => setDeleteTarget(m)}
                               className="border-red-500/50 text-red-500 hover:bg-red-500/10">
@@ -379,8 +395,26 @@ function OverviewTab({ monitors, loading, onRefresh, setBanner, monitoringFreque
         )}
       </div>
 
-      {/* Create Monitor Dialog */}
-      <CreateMonitorDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} monitoringFrequency={monitoringFrequency} setBanner={setBanner} onCreated={onRefresh} planLimit={planLimit} />
+      {/* Create / Edit Monitor Dialog (same component, edit mode when
+          `editingMonitor` is set — target is fixed in edit mode, only
+          monitor types are mutable). */}
+      <CreateMonitorDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        monitoringFrequency={monitoringFrequency}
+        setBanner={setBanner}
+        onCreated={onRefresh}
+        planLimit={planLimit}
+      />
+      <CreateMonitorDialog
+        open={!!editingMonitor}
+        onOpenChange={(o) => { if (!o) setEditingMonitor(null); }}
+        monitoringFrequency={monitoringFrequency}
+        setBanner={setBanner}
+        onCreated={() => { setEditingMonitor(null); onRefresh(); }}
+        planLimit={planLimit}
+        editingMonitor={editingMonitor}
+      />
 
       {/* Delete Confirmation */}
       <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
@@ -407,12 +441,16 @@ function OverviewTab({ monitors, loading, onRefresh, setBanner, monitoringFreque
    CREATE MONITOR DIALOG
    ================================================================ */
 
-function CreateMonitorDialog({ open, onOpenChange, monitoringFrequency, setBanner, onCreated, planLimit }: {
+function CreateMonitorDialog({ open, onOpenChange, monitoringFrequency, setBanner, onCreated, planLimit, editingMonitor }: {
   open: boolean; onOpenChange: (v: boolean) => void; monitoringFrequency: string;
   setBanner: (b: { kind: "ok" | "err"; text: string } | null) => void;
   onCreated: () => void;
   planLimit: ReturnType<typeof usePlanLimit>;
+  /** When set, the dialog operates in edit mode — target is fixed
+      (read-only) and only `monitorTypes` is mutable. */
+  editingMonitor?: Monitor | null;
 }) {
+  const isEdit = !!editingMonitor;
   const [targetType, setTargetType] = useState<"asset" | "group">("asset");
   const [groups, setGroups] = useState<Array<{ id: any; name: string }>>([]);
   const [assets, setAssets] = useState<any[]>([]);
@@ -421,6 +459,23 @@ function CreateMonitorDialog({ open, onOpenChange, monitoringFrequency, setBanne
   const [selAssetId, setSelAssetId] = useState("");
   const [monitorTypes, setMonitorTypes] = useState<string[]>(["all"]);
   const [creating, setCreating] = useState(false);
+
+  // When opening in edit mode, hydrate the form from the monitor.
+  // Avoid running this in create mode, which would clobber user input.
+  useEffect(() => {
+    if (!open) return;
+    if (editingMonitor) {
+      setMonitorTypes(editingMonitor.monitorTypes && editingMonitor.monitorTypes.length > 0 ? editingMonitor.monitorTypes : ["all"]);
+      const isGroup = !!(editingMonitor.groupId || editingMonitor.group_id);
+      setTargetType(isGroup ? "group" : "asset");
+    } else {
+      // Fresh open in create mode — reset to defaults.
+      setMonitorTypes(["all"]);
+      setSelGroupId("");
+      setSelAssetId("");
+      setTargetType("asset");
+    }
+  }, [open, editingMonitor]);
 
   useEffect(() => { if (open) getGroups().then((gs) => setGroups(gs.map((g) => ({ id: g.id, name: g.name })))).catch(() => {}); }, [open]);
 
@@ -443,6 +498,22 @@ function CreateMonitorDialog({ open, onOpenChange, monitoringFrequency, setBanne
   }
 
   async function handleCreate() {
+    // ── Edit mode: only monitor types are mutable ──
+    if (isEdit && editingMonitor) {
+      try {
+        setCreating(true);
+        await updateMonitor(editingMonitor.id, { monitorTypes });
+        setBanner({ kind: "ok", text: "Monitor updated." });
+        onOpenChange(false);
+        onCreated();
+      } catch (e: any) {
+        if (isPlanError(e)) { onOpenChange(false); planLimit.handle(e.planError); }
+        else setBanner({ kind: "err", text: e?.message || "Failed." });
+      } finally { setCreating(false); }
+      return;
+    }
+
+    // ── Create mode ──
     if (targetType === "asset" && !selAssetId) { setBanner({ kind: "err", text: "Select an asset." }); return; }
     if (targetType === "group" && !selGroupId) { setBanner({ kind: "err", text: "Select a group." }); return; }
     try {
@@ -471,14 +542,35 @@ function CreateMonitorDialog({ open, onOpenChange, monitoringFrequency, setBanne
       <DialogContent className="bg-card border-border text-foreground sm:max-w-[540px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Plus className="w-5 h-5 text-primary" />Add Monitor
+            {isEdit
+              ? <><Pencil className="w-5 h-5 text-primary" />Edit Monitor</>
+              : <><Plus className="w-5 h-5 text-primary" />Add Monitor</>}
           </DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground -mt-2">
-          Assets must have at least one completed scan to establish a baseline.
+          {isEdit
+            ? "Adjust what's monitored on this entry. The target itself can't be changed — remove and re-add to switch targets."
+            : "Assets must have at least one completed scan to establish a baseline."}
         </p>
         <div className="space-y-4 pt-2">
-          {/* Target type */}
+          {/* Read-only target summary in edit mode */}
+          {isEdit && editingMonitor && (
+            <div className="rounded-lg border border-border bg-muted/20 px-4 py-3">
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">
+                {(editingMonitor.groupId || editingMonitor.group_id) ? "Group" : "Asset"}
+              </div>
+              <div className="font-mono text-sm text-foreground">
+                {(editingMonitor.groupId || editingMonitor.group_id)
+                  ? (editingMonitor.groupName || editingMonitor.group_name || `Group #${editingMonitor.groupId || editingMonitor.group_id}`)
+                  : (editingMonitor.assetValue || editingMonitor.asset_value || `Asset #${editingMonitor.assetId || editingMonitor.asset_id}`)}
+              </div>
+            </div>
+          )}
+
+          {/* Target type + selector — create mode only. Edit mode
+              shows the read-only target summary above instead. */}
+          {!isEdit && (
+          <>
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground block">Monitor Target</label>
             <div className="grid grid-cols-2 gap-3">
@@ -533,6 +625,8 @@ function CreateMonitorDialog({ open, onOpenChange, monitoringFrequency, setBanne
               </select>
             </div>
           )}
+          </>
+          )}
 
           {/* Monitor types */}
           <div className="space-y-1.5">
@@ -562,8 +656,14 @@ function CreateMonitorDialog({ open, onOpenChange, monitoringFrequency, setBanne
           {/* Actions */}
           <div className="flex gap-3 justify-end pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border text-foreground hover:bg-accent">Cancel</Button>
-            <Button onClick={handleCreate} disabled={creating || (targetType === "asset" ? !selAssetId : !selGroupId)} className="bg-primary hover:bg-primary/90">
-              <Eye className="w-4 h-4 mr-2" />{creating ? "Creating..." : "Start Monitoring"}
+            <Button
+              onClick={handleCreate}
+              disabled={creating || (!isEdit && (targetType === "asset" ? !selAssetId : !selGroupId)) || monitorTypes.length === 0}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {isEdit
+                ? <><Pencil className="w-4 h-4 mr-2" />{creating ? "Saving…" : "Save changes"}</>
+                : <><Eye className="w-4 h-4 mr-2" />{creating ? "Creating..." : "Start Monitoring"}</>}
             </Button>
           </div>
         </div>
@@ -748,6 +848,29 @@ function AlertsTab({ setBanner, planLimit }: {
           <RefreshCcw className="w-4 h-4 mr-2" />Refresh
         </Button>
       </div>
+
+      {/* Integrations CTA — surfaces the route to /settings/integrations
+          so users on the Alerts tab can find Slack / Jira / webhooks
+          without having to discover the Settings menu. */}
+      <Link
+        href="/settings/integrations"
+        className="group flex items-center gap-3 rounded-lg border border-border bg-card/40 hover:border-primary/30 hover:bg-card/70 transition-colors px-4 py-3"
+      >
+        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+          <BellRing className="w-4 h-4 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-foreground">
+            Get alerts in Slack, Jira, or a webhook
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Alerts are saved here in-app. Connect a destination so your team gets notified outside Nano EASM.
+          </div>
+        </div>
+        <span className="text-xs text-primary group-hover:translate-x-0.5 transition-transform shrink-0">
+          Manage destinations →
+        </span>
+      </Link>
 
       {/* Filter bar */}
       <div className="flex items-center gap-3 flex-wrap">
@@ -1124,10 +1247,10 @@ function AlertDetailsPanel({
    MAIN PAGE — Overview + Alerts tabs, uses useOrg()
    ================================================================ */
 
-type TabKey = "overview" | "alerts";
+type TabKey = "alerts" | "overview";
 
 export default function MonitoringPage() {
-  const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [activeTab, setActiveTab] = useState<TabKey>("alerts");
   const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [monitors, setMonitors] = useState<Monitor[]>([]);
   const [loadingMonitors, setLoadingMonitors] = useState(true);
@@ -1246,7 +1369,7 @@ export default function MonitoringPage() {
 
             {/* Tabs */}
             <div className="inline-flex items-center mb-8 rounded-xl bg-muted/30 p-1 gap-1">
-              {([["overview", Eye, "Overview"], ["alerts", BellRing, "Alerts"]] as const).map(([key, Icon, label]) => (
+              {([["alerts", BellRing, "Alerts"], ["overview", Plus, "Add Monitor"]] as const).map(([key, Icon, label]) => (
                 <button key={key} type="button" onClick={() => setActiveTab(key as TabKey)}
                   className={cn("h-10 px-5 rounded-lg text-sm font-medium inline-flex items-center justify-center gap-2 transition whitespace-nowrap",
                     activeTab === key ? "bg-background/40 border border-border text-foreground" : "text-muted-foreground hover:text-foreground")}>
