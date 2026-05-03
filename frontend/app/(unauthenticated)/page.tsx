@@ -59,16 +59,18 @@ export default function UnauthenticatedHomePage() {
 
               <HeroItem>
                 <h1 className="max-w-4xl text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-[3.5rem]">
-                  Know your exposure<br />
-                  <span className="bg-gradient-to-r from-teal-400/80 via-cyan-400/70 to-teal-500/80 bg-clip-text text-transparent">before attackers do</span>
+                  You can&apos;t defend<br />
+                  <span className="bg-gradient-to-r from-teal-400/80 via-cyan-400/70 to-teal-500/80 bg-clip-text text-transparent">what you don&apos;t know you own.</span>
                 </h1>
               </HeroItem>
 
               <HeroItem>
                 <p className="mt-6 max-w-2xl text-base text-white/45 leading-relaxed sm:text-lg">
-                  Discover assets, scan for vulnerabilities, and quantify risk across your
-                  entire external attack surface. From subdomain enumeration to remediation
-                  tracking — one platform, full visibility.
+                  Nano EASM helps IT teams, security generalists, and small MSSPs stay on top
+                  of their external exposure without juggling multiple tools. Start with a
+                  domain, IP, or cloud asset — we&apos;ll uncover exposed assets, scan for
+                  risk, flag changes as they happen, prioritise what matters, and translate
+                  findings into clear next steps.
                 </p>
               </HeroItem>
 
@@ -91,16 +93,17 @@ export default function UnauthenticatedHomePage() {
             </HeroDashboard>
 
             <HeroFadeIn delay={0.9} className="mt-16 text-center">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-2xl mx-auto">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto">
                 {[
-                  { value: "9", label: "Scan engines" },
-                  { value: "3", label: "Scan profiles" },
-                  { value: "6+", label: "Integration types" },
-                  { value: "100%", label: "API coverage" },
-                ].map(({ value, label }) => (
+                  "Free tier, no card",
+                  "Multi-tenant by default",
+                  "Public quick scan",
+                  "Plain-English findings",
+                ].map((label) => (
                   <div key={label}>
-                    <div className="text-2xl font-bold bg-gradient-to-r from-teal-400/80 to-cyan-400/70 bg-clip-text text-transparent">{value}</div>
-                    <div className="text-xs text-white/30 mt-1">{label}</div>
+                    <div className="text-sm font-semibold bg-gradient-to-r from-teal-400/80 to-cyan-400/70 bg-clip-text text-transparent">
+                      {label}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -278,7 +281,7 @@ export default function UnauthenticatedHomePage() {
                 { name: "Free", price: "$0", period: "", desc: "Explore the platform", limits: ["2 assets","5 scans / month","2 discoveries / month","Quick & Standard profiles","1 team member","1 scheduled scan"], excluded: ["Monitoring","Webhooks","Deep discovery"], cta: "Get started", href: "/register", highlight: false, trial: false },
                 { name: "Starter", price: "$19", period: "/mo", desc: "For individuals & small teams", limits: ["15 assets","100 scans / month","10 discoveries / month","Monitor up to 5 assets (weekly)","All scan profiles","5 team members","5 scheduled scans","3 API keys"], excluded: ["Webhooks","Deep discovery"], cta: "Request free trial", href: "/?type=trial#contact", highlight: false, trial: true },
                 { name: "Professional", price: "$99", period: "/mo", desc: "For growing security teams", limits: ["100 assets","1,000 scans / month","50 discoveries / month","Monitor up to 25 assets (every 3 days)","20 team members","25 scheduled scans","10 API keys","Webhooks & integrations","Deep discovery"], excluded: [], cta: "Request free trial", href: "/?type=trial#contact", highlight: true, trial: true },
-                { name: "Enterprise Silver", price: "$499", period: "/mo", desc: "For organisations at scale", limits: ["1,000 assets","6,000 scans / month","200 discoveries / month","Monitor up to 100 assets daily","100 team members","100 scheduled scans","Unlimited API keys","Audit log","Priority support"], excluded: [], cta: "Request free trial", href: "/?type=trial#contact", highlight: false, trial: true },
+                { name: "Enterprise Silver", price: "$499", period: "/mo", desc: "For organisations at scale", limits: ["5,000 assets","6,000 scans / month","200 discoveries / month","Monitor up to 100 assets daily","100 team members","100 scheduled scans","Unlimited API keys","Audit log","Priority support"], excluded: [], cta: "Request free trial", href: "/?type=trial#contact", highlight: false, trial: true },
               ].map(({ name, price, period, desc, limits, excluded, cta, href, highlight, trial }, idx) => (
                 <FadeInOnScroll key={name} delay={idx * 100}>
                   <div className={`relative rounded-2xl border p-6 flex flex-col h-full ${highlight ? "border-teal-500/30 bg-gradient-to-b from-teal-500/[0.08] to-transparent" : "border-white/[0.06] bg-white/[0.02]"}`}>
@@ -308,8 +311,8 @@ export default function UnauthenticatedHomePage() {
               <div className="mt-8 max-w-5xl mx-auto">
                 <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div>
-                    <div className="text-sm font-semibold text-white">Need more? Enterprise Gold — from $1,999/mo</div>
-                    <p className="text-xs text-white/40 mt-1">10,000+ assets, 500 monitored every 12 hours, custom scan profiles, SSO, SLA, and dedicated support. Sales-priced for larger contracts.</p>
+                    <div className="text-sm font-semibold text-white">Need more? Enterprise Gold</div>
+                    <p className="text-xs text-white/40 mt-1">10,000+ assets, 500 monitored every 12 hours, custom scan profiles, SSO, SLA, and dedicated support. Pricing tailored to your scale — talk to our sales team.</p>
                   </div>
                   <Link href="/?type=trial#contact" className="shrink-0 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-5 py-2.5 text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-all">
                     Contact sales<ArrowRight className="w-3.5 h-3.5" />

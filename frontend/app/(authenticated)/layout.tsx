@@ -8,8 +8,9 @@ import { useSessionGuard } from "../lib/useSessionGuard";
 import { OrgProvider } from "./contexts/OrgContext";
 import Sidebar from "../Sidebar";
 import TopBar from "../TopBar";
-import { getAnnouncements } from "../lib/api";
-import { Info, AlertTriangle, AlertOctagon, X, ExternalLink } from "lucide-react";
+import { getAnnouncements, getSubscriptionStatus, createPortalSession, type SubscriptionStatus } from "../lib/api";
+import { BILLING_ENABLED } from "../lib/billing-config";
+import { Info, AlertTriangle, AlertOctagon, X, ExternalLink, CreditCard, Clock } from "lucide-react";
 
 const KIND_ICON = { info: Info, warning: AlertTriangle, critical: AlertOctagon };
 const KIND_STYLE = {
@@ -74,6 +75,92 @@ function AnnouncementBanners() {
   );
 }
 
+/**
+ * Billing status banner — shown when the org's Stripe subscription
+ * needs the user's attention.
+ *
+ *   past_due           → red "Payment failed — update your card"
+ *   cancel_at_period_end → amber "Subscription ends on {date} — Reactivate"
+ *
+ * Both link to the Stripe Customer Portal where the action is taken.
+ * Phase 1 routes everything through the Portal; Phase 2 may bring
+ * cancel/reactivate buttons in-app.
+ */
+function BillingStatusBanner() {
+  const [sub, setSub] = useState<SubscriptionStatus | null>(null);
+  const [opening, setOpening] = useState(false);
+
+  useEffect(() => {
+    if (!BILLING_ENABLED) return;
+    getSubscriptionStatus().then(setSub).catch(() => {});
+  }, []);
+
+  async function openPortal() {
+    try {
+      setOpening(true);
+      const res = await createPortalSession();
+      window.location.href = res.url;
+    } catch {
+      setOpening(false);
+    }
+  }
+
+  if (!BILLING_ENABLED || !sub) return null;
+
+  const isPastDue = sub.subscriptionStatus === "past_due";
+  const isCancelling = sub.cancelAtPeriodEnd && sub.subscriptionStatus !== "canceled";
+
+  if (!isPastDue && !isCancelling) return null;
+
+  const periodEnd = sub.currentPeriodEnd
+    ? new Date(sub.currentPeriodEnd).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : null;
+
+  const style = isPastDue
+    ? "bg-red-500/10 border-red-500/20 text-red-200"
+    : "bg-amber-500/10 border-amber-500/20 text-amber-200";
+  const Icon = isPastDue ? AlertOctagon : Clock;
+
+  return (
+    <div className={`border-b px-6 py-2.5 flex items-center justify-between gap-3 shrink-0 ${style}`}>
+      <div className="flex items-center gap-3 min-w-0">
+        <Icon className="w-4 h-4 shrink-0 opacity-80" />
+        <div className="text-sm min-w-0">
+          {isPastDue ? (
+            <>
+              <span className="font-semibold">Payment failed.</span>
+              <span className="ml-2 opacity-80">
+                Update your payment method to keep your subscription active — Stripe will retry automatically once a valid card is on file.
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="font-semibold">
+                Subscription ends{periodEnd ? ` on ${periodEnd}` : " at the end of the billing period"}.
+              </span>
+              <span className="ml-2 opacity-80">
+                You can reactivate any time before then to keep your current plan.
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+      <button
+        onClick={openPortal}
+        disabled={opening}
+        className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium border border-current/30 px-2.5 py-1 rounded-lg hover:bg-current/10 transition-colors disabled:opacity-50"
+      >
+        <CreditCard className="w-3.5 h-3.5" />
+        {opening ? "Opening…" : isPastDue ? "Update payment" : "Reactivate"}
+      </button>
+    </div>
+  );
+}
+
 function ImpersonationBanner({ info }: { info: ImpersonatingInfo }) {
   return (
     <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-2 flex items-center justify-between shrink-0">
@@ -129,6 +216,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
         <div className="flex-1 flex flex-col min-w-0">
           <TopBar />
           {impersonating && <ImpersonationBanner info={impersonating} />}
+          <BillingStatusBanner />
           <AnnouncementBanners />
           {children}
         </div>

@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify, g
@@ -30,6 +31,9 @@ from app.auth.decorators import require_auth, current_user_id, current_organizat
 from app.models import Organization, TrialHistory, OrganizationMember, Asset
 from app.auth.permissions import require_permission
 from app.audit.routes import log_audit
+from . import stripe_service, stripe_webhook
+
+logger = logging.getLogger(__name__)
 
 billing_bp = Blueprint("billing", __name__, url_prefix="/billing")
 
@@ -117,7 +121,7 @@ PLAN_CONFIG = {
         "price_annual_total": 4788,
         "trial_days": 30,
         "limits": {
-            "assets": 1000,
+            "assets": 5000,
             "scans_per_month": 6000,
             "discoveries_per_month": 200,
             "monitored_assets": 100,
@@ -133,10 +137,11 @@ PLAN_CONFIG = {
     },
     "enterprise_gold": {
         "label": "Enterprise Gold",
-        # Anchor price; sales can quote higher for true unlimited contracts.
-        "price_monthly": 1999,
-        "price_annual_monthly": 1599,
-        "price_annual_total": 19188,
+        # Sales-priced — no public anchor. The "Contact sales" UI is
+        # triggered by price_monthly == -1 throughout the codebase.
+        "price_monthly": -1,
+        "price_annual_monthly": -1,
+        "price_annual_total": -1,
         "trial_days": 45,  # sales approval required
         "trial_requires_approval": True,
         "limits": {
@@ -692,3 +697,211 @@ def check_expired_trials():
         db.session.commit()
 
     return len(expired_orgs)
+
+
+# ════════════════════════════════════════════════════════════════
+# STRIPE — Checkout, Portal, Webhook, Subscription status
+# ════════════════════════════════════════════════════════════════
+#
+# All Stripe-backed endpoints early-return 503 when ENABLE_BILLING=false
+# so the community-preview free-upgrade flow keeps working unchanged.
+# The /upgrade endpoint above is preserved for that flow — Stripe never
+# touches it.
+
+def _billing_disabled_response():
+    return jsonify(
+        error="Stripe billing is currently disabled.",
+        billingEnabled=False,
+    ), 503
+
+
+def _success_url() -> str:
+    return os.environ.get(
+        "STRIPE_SUCCESS_URL",
+        "https://nanoasm.com/settings/billing?checkout=success",
+    )
+
+
+def _cancel_url() -> str:
+    return os.environ.get(
+        "STRIPE_CANCEL_URL",
+        "https://nanoasm.com/settings/billing?checkout=cancel",
+    )
+
+
+# POST /billing/checkout — admin+ (manage_billing)
+# Creates a Stripe-hosted Checkout Session for the requested plan and
+# billing cycle, then returns the URL the client should redirect to.
+@billing_bp.post("/checkout")
+@require_auth
+@require_permission("manage_billing")
+def create_checkout():
+    if not ENABLE_BILLING:
+        return _billing_disabled_response()
+
+    body = request.get_json(silent=True) or {}
+    target_plan = (body.get("plan") or "").strip().lower()
+    billing_cycle = (body.get("billingCycle") or "monthly").strip().lower()
+
+    if billing_cycle not in ("monthly", "annual"):
+        return jsonify(error="billingCycle must be 'monthly' or 'annual'."), 400
+
+    if target_plan == "enterprise_gold":
+        return jsonify(
+            error="Enterprise Gold requires a custom agreement. Please contact sales.",
+            contactSales=True,
+        ), 403
+
+    if target_plan not in PLAN_CONFIG or target_plan == "free":
+        return jsonify(error="Invalid plan tier."), 400
+
+    price_id = stripe_service.plan_to_price(target_plan, billing_cycle)
+    if not price_id:
+        logger.error(
+            "No Stripe price configured for plan=%s cycle=%s", target_plan, billing_cycle
+        )
+        return jsonify(
+            error="This plan is not yet available for purchase. Please contact us.",
+        ), 503
+
+    org = g.current_organization
+    user = g.current_user
+
+    try:
+        session = stripe_service.create_checkout_session(
+            price_id=price_id,
+            customer_id=org.stripe_customer_id,
+            customer_email=org.billing_email or user.email,
+            organization_id=org.id,
+            success_url=_success_url(),
+            cancel_url=_cancel_url(),
+            billing_cycle=billing_cycle,
+        )
+    except Exception as e:
+        logger.exception("Stripe checkout session creation failed.")
+        return jsonify(error="Could not start checkout. Please try again."), 502
+
+    log_audit(
+        organization_id=org.id,
+        user_id=current_user_id(),
+        action="billing.checkout_started",
+        category="billing",
+        target_type="organization",
+        target_id=str(org.id),
+        target_label=org.name,
+        description=f"Started Stripe Checkout for {target_plan} ({billing_cycle})",
+        metadata={
+            "plan": target_plan,
+            "billing_cycle": billing_cycle,
+            "session_id": session.get("id"),
+        },
+    )
+
+    return jsonify(
+        url=session["url"],
+        sessionId=session["id"],
+    ), 200
+
+
+# POST /billing/portal — admin+ (manage_billing)
+# Returns a one-shot Stripe Customer Portal URL for managing payment
+# method, viewing invoices, and cancelling.
+@billing_bp.post("/portal")
+@require_auth
+@require_permission("manage_billing")
+def create_portal():
+    if not ENABLE_BILLING:
+        return _billing_disabled_response()
+
+    org = g.current_organization
+    if not org.stripe_customer_id:
+        return jsonify(
+            error="No Stripe customer for this organisation yet. Subscribe first."
+        ), 400
+
+    return_url = os.environ.get(
+        "STRIPE_PORTAL_RETURN_URL",
+        "https://nanoasm.com/settings/billing",
+    )
+
+    try:
+        session = stripe_service.create_portal_session(
+            customer_id=org.stripe_customer_id,
+            return_url=return_url,
+        )
+    except Exception:
+        logger.exception("Stripe portal session creation failed.")
+        return jsonify(error="Could not open billing portal. Please try again."), 502
+
+    return jsonify(url=session["url"]), 200
+
+
+# GET /billing/subscription — all roles
+# Lightweight subscription status for the post-checkout success poll.
+# Frontend hits this every 2s for ~30s after the redirect to detect
+# when the webhook lands.
+@billing_bp.get("/subscription")
+@require_auth
+def get_subscription_status():
+    org = g.current_organization
+    return jsonify({
+        "plan": org.plan,
+        "planStatus": org.plan_status,
+        "billingCycle": org.billing_cycle,
+        "stripeCustomerId": org.stripe_customer_id,
+        "stripeSubscriptionId": org.stripe_subscription_id,
+        "subscriptionStatus": org.stripe_subscription_status,
+        "cancelAtPeriodEnd": org.cancel_at_period_end,
+        "currentPeriodStart": (
+            org.current_period_start.isoformat() + "Z"
+            if org.current_period_start else None
+        ),
+        "currentPeriodEnd": (
+            org.current_period_end.isoformat() + "Z"
+            if org.current_period_end else None
+        ),
+        "billingEnabled": ENABLE_BILLING,
+    }), 200
+
+
+# POST /billing/stripe-webhook — NO normal auth.
+#
+# Authentication for this endpoint is the Stripe-Signature header,
+# verified against STRIPE_WEBHOOK_SECRET. Anyone can hit the URL but
+# only Stripe can produce a valid signature.
+#
+# The handler is idempotent: each Stripe event_id is recorded in
+# `stripe_event` and skipped on redelivery.
+@billing_bp.post("/stripe-webhook")
+def stripe_webhook_endpoint():
+    if not ENABLE_BILLING:
+        # Don't even verify when billing is off — Stripe shouldn't be
+        # configured to send to this URL in that mode.
+        return jsonify(error="Stripe billing is disabled."), 503
+
+    payload = request.get_data()
+    signature = request.headers.get("Stripe-Signature", "")
+
+    event, status, _msg = stripe_webhook.verify_and_log_event(payload, signature)
+    if status != 200:
+        return jsonify(received=False), status
+    if event is None:
+        # Duplicate event — already processed.
+        return jsonify(received=True, duplicate=True), 200
+
+    event_id = event["id"]
+    try:
+        stripe_webhook.dispatch(event)
+        db.session.commit()
+        stripe_webhook.mark_event_processed(event_id)
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(
+            "Stripe webhook handler failed (event=%s, type=%s).",
+            event_id, event.get("type"),
+        )
+        stripe_webhook.mark_event_processed(event_id, error=str(e))
+        # Return 500 so Stripe retries the delivery.
+        return jsonify(received=False, error="handler failed"), 500
+
+    return jsonify(received=True), 200

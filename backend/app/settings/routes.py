@@ -611,7 +611,7 @@ PLAN_LIMITS = {
     },
     "enterprise_silver": {
         "name": "Enterprise Silver",
-        "assetLimit": 1000,
+        "assetLimit": 5000,
         "scansPerMonth": 6000,
         "schedulesLimit": 100,
         "membersLimit": 100,
@@ -630,12 +630,12 @@ PLAN_LIMITS = {
             "Everything in Enterprise Silver", "Custom Scan Profiles",
             "12-hour Monitoring", "SSO", "Dedicated Support", "SLA",
         ],
-        "price": 1999,
+        "price": -1,  # sales-priced
     },
     # Legacy alias — maps to enterprise_silver shape for back-compat.
     "enterprise": {
         "name": "Enterprise",
-        "assetLimit": 1000,
+        "assetLimit": 5000,
         "scansPerMonth": 6000,
         "schedulesLimit": 100,
         "membersLimit": 100,

@@ -68,10 +68,23 @@ class Organization(db.Model):
     # Billing cycle: monthly, annual
     billing_cycle = db.Column(db.String(20), nullable=True)
     
-    # Stripe-ready fields (null until payment integration)
-    stripe_customer_id = db.Column(db.String(255), nullable=True)
-    stripe_subscription_id = db.Column(db.String(255), nullable=True)
-    
+    # ── Stripe Subscription State ───────────────────────────────────
+    # All nullable. When ENABLE_BILLING=false, none of these are touched.
+    # When billing is enabled, these are kept in sync by Stripe webhooks
+    # (`customer.subscription.*` events) and are the source of truth for
+    # subscription status — `plan_status` mirrors them for UI convenience.
+    stripe_customer_id = db.Column(db.String(255), nullable=True, index=True)
+    stripe_subscription_id = db.Column(db.String(255), nullable=True, index=True)
+    # active | trialing | past_due | canceled | incomplete | incomplete_expired | unpaid
+    stripe_subscription_status = db.Column(db.String(30), nullable=True)
+    current_period_start = db.Column(db.DateTime, nullable=True)
+    current_period_end = db.Column(db.DateTime, nullable=True)
+    cancel_at_period_end = db.Column(db.Boolean, nullable=False, default=False)
+    # pm_... — used to render "Mastercard ending 4242" in the UI
+    default_payment_method = db.Column(db.String(100), nullable=True)
+    # Optional override; Stripe receipts go to this address if set, else owner's email
+    billing_email = db.Column(db.String(255), nullable=True)
+
     # ── Usage Limits (cached for performance) ───────────────────────
     asset_limit = db.Column(db.Integer, nullable=False, default=2)
     assets_count = db.Column(db.Integer, nullable=False, default=0)
@@ -1510,5 +1523,57 @@ class AuditLog(db.Model):
 
     # When
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
+# =============================================================================
+# Stripe billing — webhook idempotency + user-visible audit trail
+# =============================================================================
+
+class StripeEvent(db.Model):
+    """
+    Idempotency log for Stripe webhooks. Stripe occasionally redelivers
+    events; we process each `stripe_id` exactly once.
+    """
+    __tablename__ = "stripe_event"
+
+    id = db.Column(db.Integer, primary_key=True)
+    stripe_id = db.Column(db.String(100), unique=True, index=True, nullable=False)
+    type = db.Column(db.String(100), nullable=False)
+    received_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    processed_at = db.Column(db.DateTime, nullable=True)
+    payload = db.Column(db.JSON, nullable=False)
+    error = db.Column(db.Text, nullable=True)
+
+
+class BillingEvent(db.Model):
+    """
+    User-visible billing audit trail. One row per Stripe-side event we
+    want surfaced in the UI (subscription created, payment succeeded,
+    payment failed, plan changed, refund issued, ...).
+    """
+    __tablename__ = "billing_event"
+
+    id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
+    organization_id = db.Column(
+        db.Integer,
+        db.ForeignKey("organization.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # subscription_created | subscription_updated | subscription_canceled |
+    # payment_succeeded | payment_failed | refund_issued | plan_changed
+    kind = db.Column(db.String(40), nullable=False)
+    amount_cents = db.Column(db.Integer, nullable=True)
+    currency = db.Column(db.String(3), nullable=True)
+    description = db.Column(db.String(500), nullable=True)
+    # Stripe object ID this event references (invoice/charge/subscription)
+    stripe_object_id = db.Column(db.String(100), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+
+    organization = db.relationship(
+        "Organization",
+        backref=db.backref("billing_events", cascade="all, delete-orphan"),
+    )
 
     

@@ -1,5 +1,5 @@
 # frontend/Dockerfile
-# BoltEdge EASM — Next.js Frontend
+# Nano EASM — Next.js Frontend
 # NEXT_PUBLIC_ vars are baked at build time
 
 # ── Stage 1: Install dependencies ────────────────────────────
@@ -25,6 +25,9 @@ ENV NEXT_PUBLIC_MICROSOFT_OAUTH_ENABLED=${NEXT_PUBLIC_MICROSOFT_OAUTH_ENABLED}
 
 ARG NEXT_PUBLIC_ENABLE_BILLING=false
 ENV NEXT_PUBLIC_ENABLE_BILLING=${NEXT_PUBLIC_ENABLE_BILLING}
+
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .

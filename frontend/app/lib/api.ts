@@ -1960,3 +1960,54 @@ export async function explainAlert(alertId: string | number): Promise<{
 export async function deleteAdminUser(userId: number): Promise<any> {
   return apiFetch<any>(`/admin/users/${userId}`, { method: "DELETE" });
 }
+
+
+// ─────────────────────────────────────────────────────────────────
+// Stripe billing (Phase 1)
+// ─────────────────────────────────────────────────────────────────
+
+export type SubscriptionStatus = {
+  plan: string;
+  planStatus: string;
+  billingCycle: "monthly" | "annual" | null;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  subscriptionStatus: string | null;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  billingEnabled: boolean;
+};
+
+/**
+ * Create a Stripe-hosted Checkout Session and return its URL. The
+ * caller should redirect the browser to that URL — Stripe handles
+ * card entry, 3DS, and receipts.
+ *
+ * Returns 503 when ENABLE_BILLING=false on the backend.
+ */
+export async function createCheckoutSession(
+  plan: string,
+  billingCycle: "monthly" | "annual" = "monthly",
+): Promise<{ url: string; sessionId: string }> {
+  return apiFetch<{ url: string; sessionId: string }>("/billing/checkout", {
+    method: "POST",
+    body: JSON.stringify({ plan, billingCycle }),
+  });
+}
+
+/**
+ * Create a Stripe Customer Portal session for self-service billing
+ * management (payment method, invoices, cancellation).
+ */
+export async function createPortalSession(): Promise<{ url: string }> {
+  return apiFetch<{ url: string }>("/billing/portal", { method: "POST" });
+}
+
+/**
+ * Lightweight subscription status — used by the post-checkout success
+ * poll to detect when the webhook lands.
+ */
+export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
+  return apiFetch<SubscriptionStatus>("/billing/subscription");
+}

@@ -25,6 +25,7 @@ requests-file==3.0.1
 resend==2.7.0
 shodan==1.31.0
 SQLAlchemy==2.0.46
+stripe==11.5.0
 tldextract==5.3.1
 typing-extensions==4.15.0
 urllib3==2.6.3

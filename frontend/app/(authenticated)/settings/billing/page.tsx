@@ -4,17 +4,19 @@
 // When BILLING_ENABLED=true: full payment/subscription/trial UI is restored.
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Layers, Check, Clock, Zap, Sparkles, Loader2, X, RefreshCcw, Mail, AlertTriangle, Trash2 } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Layers, Check, Clock, Zap, Sparkles, Loader2, X, RefreshCcw, Mail, AlertTriangle, Trash2, CreditCard } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Button } from "../../../ui/button";
 import { Input } from "../../../ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../ui/dialog";
-import { apiFetch, isPlanError } from "../../../lib/api";
+import { apiFetch, isPlanError, createCheckoutSession, createPortalSession, getSubscriptionStatus, type SubscriptionStatus } from "../../../lib/api";
 import { useOrg } from "../../contexts/OrgContext";
 import { usePlanLimit, PlanLimitDialog } from "../../../ui/plan-limit-dialog";
 import { BILLING_ENABLED } from "../../../lib/billing-config";
+import { canCheckout } from "../../../lib/stripe-config";
 import { logout } from "../../../lib/auth";
 
 function formatDate(iso: string | null | undefined): string {
@@ -35,6 +37,7 @@ export default function BillingPage() {
 
   const [planData, setPlanData] = useState<any>(null);
   const [plans, setPlans] = useState<any[]>([]);
+  const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionPlan, setActionPlan] = useState<string | null>(null);
@@ -42,20 +45,32 @@ export default function BillingPage() {
   const [endingTrial, setEndingTrial] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState<string | null>(null);
   const [upgrading, setUpgrading] = useState(false);
+  const [upgradeCycle, setUpgradeCycle] = useState<"monthly" | "annual">("monthly");
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [activatingSubscription, setActivatingSubscription] = useState(false);
   const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [showDeleteOrg, setShowDeleteOrg] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingOrg, setDeletingOrg] = useState(false);
 
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pollHandledRef = useRef(false);
+
   async function loadBilling(isRefresh = false) {
     if (isRefresh) setRefreshing(true); else setLoading(true);
     try {
-      const [pd, pl] = await Promise.all([
+      const subPromise = BILLING_ENABLED
+        ? getSubscriptionStatus().catch(() => null)
+        : Promise.resolve(null);
+      const [pd, pl, sub] = await Promise.all([
         apiFetch<any>("/billing/plan"),
         apiFetch<any>("/billing/plans"),
+        subPromise,
       ]);
       setPlanData(pd);
       setPlans(Array.isArray(pl) ? pl : pl?.plans || []);
+      setSubStatus(sub);
     } catch (e: any) {
       if (isPlanError(e)) planLimit.handle(e.planError);
       else setBanner({ kind: "err", text: e?.message || "Failed to load plans" });
@@ -64,6 +79,84 @@ export default function BillingPage() {
 
   useEffect(() => { loadBilling(); }, []);
   useEffect(() => { if (banner) { const t = setTimeout(() => setBanner(null), 5000); return () => clearTimeout(t); } }, [banner]);
+
+  // ── Stripe Checkout return handler ────────────────────────────
+  // After Stripe redirects back, we may arrive before the webhook has
+  // updated our DB. Poll subscription status for up to 30s, then strip
+  // the query param so a refresh doesn't re-trigger the poll.
+  useEffect(() => {
+    const result = searchParams.get("checkout");
+    if (!result || pollHandledRef.current) return;
+    pollHandledRef.current = true;
+
+    if (result === "cancel") {
+      setBanner({ kind: "err", text: "Checkout was cancelled. No changes were made." });
+      router.replace("/settings/billing");
+      return;
+    }
+
+    if (result !== "success") return;
+
+    setActivatingSubscription(true);
+    let elapsed = 0;
+    const poll = async (): Promise<boolean> => {
+      try {
+        const sub = await getSubscriptionStatus();
+        return sub.subscriptionStatus === "active" || sub.subscriptionStatus === "trialing";
+      } catch {
+        return false;
+      }
+    };
+
+    const interval = setInterval(async () => {
+      elapsed += 2000;
+      const ready = await poll();
+      if (ready) {
+        clearInterval(interval);
+        setActivatingSubscription(false);
+        setBanner({ kind: "ok", text: "Subscription activated." });
+        loadBilling(true);
+        refreshOrg();
+        router.replace("/settings/billing");
+      } else if (elapsed >= 30000) {
+        clearInterval(interval);
+        setActivatingSubscription(false);
+        setBanner({
+          kind: "ok",
+          text: "Checkout complete. If your plan doesn't update in a moment, click Refresh.",
+        });
+        router.replace("/settings/billing");
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // ── Stripe Checkout — redirects browser to Stripe-hosted page ──
+  async function handleStripeCheckout(planKey: string, billingCycle: "monthly" | "annual" = "monthly") {
+    try {
+      setUpgrading(true);
+      const res = await createCheckoutSession(planKey, billingCycle);
+      window.location.href = res.url;
+    } catch (e: any) {
+      if (isPlanError(e)) planLimit.handle(e.planError);
+      else setBanner({ kind: "err", text: e?.message || "Failed to start checkout." });
+      setUpgrading(false);
+    }
+  }
+
+  // ── Stripe Customer Portal — self-serve billing management ─────
+  async function handleManageBilling() {
+    try {
+      setPortalLoading(true);
+      const res = await createPortalSession();
+      window.location.href = res.url;
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || "Could not open the billing portal." });
+      setPortalLoading(false);
+    }
+  }
 
   async function handleStartTrial(planKey: string) {
     try {
@@ -168,6 +261,18 @@ export default function BillingPage() {
     ? "Manage your subscription, trial, and usage."
     : "Manage your plan tier and usage limits.";
 
+  // Once an org has a live Stripe subscription, all plan changes go
+  // through the Stripe Customer Portal — keeping our DB and Stripe in
+  // lockstep. Trying to flip plans via the legacy /upgrade endpoint
+  // would charge them on Stripe while our DB shows a different plan.
+  const hasActiveStripeSub = !!(
+    BILLING_ENABLED &&
+    subStatus?.stripeSubscriptionId &&
+    (subStatus.subscriptionStatus === "active" ||
+      subStatus.subscriptionStatus === "trialing" ||
+      subStatus.subscriptionStatus === "past_due")
+  );
+
   return (
     <main className="flex-1 overflow-y-auto bg-background">
       <div className="p-8 space-y-6">
@@ -189,6 +294,20 @@ export default function BillingPage() {
             banner.kind === "ok" ? "border-[#10b981]/30 bg-[#10b981]/10 text-[#b7f7d9]" : "border-red-500/30 bg-red-500/10 text-red-200")}>
             <span>{banner.text}</span>
             <button onClick={() => setBanner(null)} className="hover:opacity-70"><X className="w-4 h-4" /></button>
+          </div>
+        )}
+
+        {/* Activating subscription — shown after Stripe redirect, while
+            the webhook propagates. Cleared once subscription goes active. */}
+        {activatingSubscription && (
+          <div className="rounded-xl border border-primary/30 bg-primary/10 px-5 py-4 flex items-center gap-3">
+            <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
+            <div>
+              <div className="text-sm font-semibold text-foreground">Activating your subscription…</div>
+              <div className="text-xs text-muted-foreground">
+                Payment confirmed. Just waiting for Stripe to finish setting things up — this usually takes a few seconds.
+              </div>
+            </div>
           </div>
         )}
 
@@ -250,6 +369,31 @@ export default function BillingPage() {
             <UsageBar label="Team members" current={usage.teamMembers} limit={limits.teamMembers} />
             <UsageBar label="API keys" current={usage.apiKeys} limit={limits.apiKeys} />
           </div>
+
+          {/* Manage billing — opens Stripe Customer Portal. Only shown when
+              billing is enabled and the org is on a paid plan with an
+              active subscription, so we know there's a Stripe customer
+              to manage. */}
+          {BILLING_ENABLED && canManageBilling && currentPlan !== "free" && (
+            <div className="mt-6 pt-4 border-t border-border/60 flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-foreground">Billing & invoices</div>
+                <div className="text-xs text-muted-foreground">
+                  Update your payment method, download invoices, or cancel — handled securely by Stripe.
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleManageBilling}
+                disabled={portalLoading}
+                className="border-border text-foreground hover:bg-accent shrink-0"
+              >
+                {portalLoading
+                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Opening…</>
+                  : <><CreditCard className="w-4 h-4 mr-2" />Manage Billing</>}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Available Plans */}
@@ -317,16 +461,29 @@ export default function BillingPage() {
                           <Mail className="w-3.5 h-3.5 mr-1.5" />Contact Us
                         </Button>
                       </Link>
-                    ) : canManageBilling && isUpgrade ? (
+                    ) : !canManageBilling ? (
+                      <Button variant="outline" disabled className="w-full border-border text-muted-foreground">Ask admin to change plan</Button>
+                    ) : hasActiveStripeSub ? (
+                      /* Active Stripe sub — route all plan changes through the
+                         Customer Portal so our DB and Stripe stay in sync. */
+                      <Button
+                        variant="outline"
+                        onClick={handleManageBilling}
+                        disabled={portalLoading}
+                        className="w-full border-border text-foreground hover:bg-accent"
+                      >
+                        {portalLoading
+                          ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Opening…</>
+                          : <><CreditCard className="w-3.5 h-3.5 mr-1.5" />Change in Stripe</>}
+                      </Button>
+                    ) : isUpgrade ? (
                       <Button onClick={() => setShowUpgrade(p.key)} className="w-full bg-primary hover:bg-primary/90">
                         {BILLING_ENABLED ? "Upgrade" : "Switch to this plan"}
                       </Button>
-                    ) : canManageBilling && isDowngrade ? (
+                    ) : isDowngrade ? (
                       <Button variant="outline" onClick={() => setShowUpgrade(p.key)} className="w-full border-border text-foreground hover:bg-accent">
                         {BILLING_ENABLED ? "Downgrade" : "Switch to this plan"}
                       </Button>
-                    ) : !canManageBilling && !isCurrent ? (
-                      <Button variant="outline" disabled className="w-full border-border text-muted-foreground">Ask admin to change plan</Button>
                     ) : null}
 
                     {/* Trial request button — submits a contact_request, no auto-grant */}
@@ -443,30 +600,97 @@ export default function BillingPage() {
                   : "Switch Plan"}
               </DialogTitle>
             </DialogHeader>
-            {showUpgrade && (() => {
+            {(() => {
+              if (!showUpgrade) return null;
               const target = plans.find((p) => p.key === showUpgrade);
               const isDown = PLAN_ORDER.indexOf(showUpgrade) < currentIdx;
+              const useStripe = BILLING_ENABLED && !isDown && canCheckout(showUpgrade);
+              const annualMonthly = target?.priceAnnualMonthly ?? 0;
+              const monthly = target?.priceMonthly ?? 0;
+              const annualSavings = monthly > 0 && annualMonthly > 0 && annualMonthly < monthly
+                ? Math.round((1 - annualMonthly / monthly) * 100)
+                : 0;
+
               return (
-                <p className="text-sm text-muted-foreground">
-                  {BILLING_ENABLED
-                    ? isDown
-                      ? <>Downgrading to <span className="text-foreground font-medium">{target?.label}</span> will reduce your limits.</>
-                      : <>Upgrade to <span className="text-foreground font-medium">{target?.label}</span>{target?.priceMonthly > 0 ? <> at <span className="text-foreground font-medium">${target.priceMonthly}/mo</span></> : ""}? New limits take effect immediately.</>
-                    : <>Switch to <span className="text-foreground font-medium">{target?.label}</span>? Your new limits will take effect immediately.</>
-                  }
-                </p>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    {BILLING_ENABLED
+                      ? isDown
+                        ? <>Downgrading to <span className="text-foreground font-medium">{target?.label}</span> will reduce your limits.</>
+                        : useStripe
+                          ? <>Subscribe to <span className="text-foreground font-medium">{target?.label}</span>. You&apos;ll be redirected to Stripe to enter your payment details — your subscription becomes active immediately.</>
+                          : <>Upgrade to <span className="text-foreground font-medium">{target?.label}</span>? New limits take effect immediately.</>
+                      : <>Switch to <span className="text-foreground font-medium">{target?.label}</span>? Your new limits will take effect immediately.</>
+                    }
+                  </p>
+
+                  {useStripe && monthly > 0 && (
+                    <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Billing cycle</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setUpgradeCycle("monthly")}
+                          className={cn(
+                            "rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                            upgradeCycle === "monthly"
+                              ? "border-primary bg-primary/10 text-foreground"
+                              : "border-border text-muted-foreground hover:bg-accent",
+                          )}
+                        >
+                          <div className="font-medium">Monthly</div>
+                          <div className="text-xs">${monthly}/mo</div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setUpgradeCycle("annual")}
+                          disabled={annualMonthly <= 0}
+                          className={cn(
+                            "rounded-md border px-3 py-2 text-left text-sm transition-colors disabled:opacity-50",
+                            upgradeCycle === "annual"
+                              ? "border-primary bg-primary/10 text-foreground"
+                              : "border-border text-muted-foreground hover:bg-accent",
+                          )}
+                        >
+                          <div className="font-medium flex items-center gap-1.5">
+                            Annual
+                            {annualSavings > 0 && (
+                              <span className="text-[10px] text-[#10b981] bg-[#10b981]/10 px-1.5 py-0.5 rounded">
+                                Save {annualSavings}%
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs">
+                            {annualMonthly > 0 ? `$${annualMonthly}/mo billed annually` : "—"}
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 justify-end pt-2">
+                    <Button variant="outline" onClick={() => setShowUpgrade(null)} className="border-border text-foreground hover:bg-accent">Cancel</Button>
+                    <Button
+                      onClick={() => {
+                        if (!showUpgrade) return;
+                        if (useStripe) handleStripeCheckout(showUpgrade, upgradeCycle);
+                        else handleUpgrade(showUpgrade);
+                      }}
+                      disabled={upgrading}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      {upgrading
+                        ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing…</>
+                        : useStripe
+                          ? <><CreditCard className="w-4 h-4 mr-2" />Continue to Stripe</>
+                          : BILLING_ENABLED
+                            ? (isDown ? "Confirm Downgrade" : "Confirm Upgrade")
+                            : "Confirm Switch"}
+                    </Button>
+                  </div>
+                </div>
               );
             })()}
-            <div className="flex gap-3 justify-end pt-4">
-              <Button variant="outline" onClick={() => setShowUpgrade(null)} className="border-border text-foreground hover:bg-accent">Cancel</Button>
-              <Button onClick={() => showUpgrade && handleUpgrade(showUpgrade)} disabled={upgrading} className="bg-primary hover:bg-primary/90">
-                {upgrading
-                  ? "Processing..."
-                  : BILLING_ENABLED
-                    ? (showUpgrade && PLAN_ORDER.indexOf(showUpgrade) < currentIdx ? "Confirm Downgrade" : "Confirm Upgrade")
-                    : "Confirm Switch"}
-              </Button>
-            </div>
           </DialogContent>
         </Dialog>
       </div>

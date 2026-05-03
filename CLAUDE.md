@@ -257,8 +257,8 @@ DELETE /billing/organization — delete org (owner only)
 | Free | $0 | 2 | 0 | — | 5 | 2 | 1 | 1 | 1 | ✗ | ✗ |
 | Starter | $19 | 15 | 5 | every 7d | 100 | 10 | 5 | 5 | 3 | ✗ | ✗ |
 | Professional | $99 | 100 | 25 | every 3d | 1,000 | 50 | 20 | 25 | 10 | ✓ | ✓ |
-| Enterprise Silver | $499 | 1,000 | 100 | daily | 6,000 | 200 | 100 | 100 | ∞ | ✓ | ✓ |
-| Enterprise Gold | from $1,999 | 10,000 | 500 | every 12h | 50,000 (fair use) | ∞ | ∞ | ∞ | ∞ | ✓ | ✓ |
+| Enterprise Silver | $499 | 5,000 | 100 | daily | 6,000 | 200 | 100 | 100 | ∞ | ✓ | ✓ |
+| Enterprise Gold | Contact sales | 10,000 | 500 | every 12h | 50,000 (fair use) | ∞ | ∞ | ∞ | ∞ | ✓ | ✓ |
 
 **Trials are request-only** for every paid tier — clicking "Request free trial" creates a typed `contact_request` that admins review and approve manually. Admin sets the trial duration when granting (no hard-coded `trialDays`). See `POST /billing/start-trial`.
 
@@ -282,7 +282,7 @@ The big lever is **monitored-assets × monitoring frequency**. A monitor is a re
 | Starter | $19 | $2.00 | $0.50 | $0.50 | $3.00 | $16 | 84% |
 | Professional | $99 | $20.00 | $2.50 | $2.00 | $24.50 | $74 | 75% |
 | Enterprise Silver | $499 | $120.00 | $10.00 | $5.00 | $135.00 | $364 | 73% |
-| Enterprise Gold | $1,999 | $1,000 (capped) | — | $20.00 | ~$1,020 | $979 | 49% |
+| Enterprise Gold | sales-priced (typical: $1,999+) | $1,000 (capped) | — | $20.00 | ~$1,020 | sales decides | sales decides |
 
 **Hard rules — verify against these before changing any limit:**
 
