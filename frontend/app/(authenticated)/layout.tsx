@@ -134,7 +134,7 @@ function BillingStatusBanner() {
             <>
               <span className="font-semibold">Payment failed.</span>
               <span className="ml-2 opacity-80">
-                Update your payment method to keep your subscription active — Stripe will retry automatically once a valid card is on file.
+                Update your payment method to keep your subscription active — we&apos;ll retry automatically once a valid card is on file.
               </span>
             </>
           ) : (

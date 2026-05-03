@@ -7,7 +7,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Layers, Check, Clock, Zap, Sparkles, Loader2, X, RefreshCcw, Mail, AlertTriangle, Trash2, CreditCard } from "lucide-react";
+import { Layers, Check, Clock, Zap, Sparkles, Loader2, X, RefreshCcw, Mail, AlertTriangle, Trash2, CreditCard, Lock } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Button } from "../../../ui/button";
 import { Input } from "../../../ui/input";
@@ -26,6 +26,94 @@ function formatDate(iso: string | null | undefined): string {
   else d = new Date(iso);
   if (isNaN(d.getTime())) return "—";
   return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+// ── Plan-change delta helpers ──────────────────────────────────────
+const FREQ_LABELS: Record<string, string> = {
+  every_7_days: "every 7 days",
+  every_3_days: "every 3 days",
+  every_2_days: "every 2 days",
+  daily: "daily",
+  every_12_hours: "every 12 hours",
+};
+
+type PlanDelta = { kind: "added" | "removed"; text: string };
+
+/**
+ * Compute the difference between the user's current plan limits and
+ * the target plan's limits. Used to render "what you get" / "what
+ * changes" inside the upgrade dialog so the value of the change is
+ * front-and-centre, not a generic feature list.
+ */
+function computeDeltas(currentLimits: any, targetLimits: any): PlanDelta[] {
+  if (!currentLimits || !targetLimits) return [];
+  const out: PlanDelta[] = [];
+
+  const numericFields: Array<{ key: string; label: string }> = [
+    { key: "assets",                label: "assets" },
+    { key: "scansPerMonth",         label: "scans per month" },
+    { key: "monitoredAssets",       label: "monitored assets" },
+    { key: "discoveriesPerMonth",   label: "discoveries per month" },
+    { key: "teamMembers",           label: "team members" },
+    { key: "scheduledScans",        label: "scheduled scans" },
+    { key: "apiKeys",               label: "API keys" },
+  ];
+
+  for (const f of numericFields) {
+    const cur = currentLimits[f.key];
+    const tgt = targetLimits[f.key];
+    if (cur == null || tgt == null || cur === tgt) continue;
+
+    // Skip monitored_assets when the monitoring boolean is toggling —
+    // the boolean line ("Continuous monitoring (every 7 days)" or
+    // "Continuous monitoring removed") already carries the message.
+    if (f.key === "monitoredAssets" && currentLimits.monitoring !== targetLimits.monitoring) continue;
+
+    if (tgt === -1) {
+      out.push({ kind: "added", text: `Unlimited ${f.label}` });
+    } else if (cur === -1) {
+      out.push({ kind: "removed", text: `${f.label}: capped at ${tgt}` });
+    } else if (tgt === 0 && cur > 0) {
+      // "0 X (down from N)" reads awkwardly — just say it's gone.
+      out.push({ kind: "removed", text: `${f.label.charAt(0).toUpperCase()}${f.label.slice(1)} no longer included` });
+    } else if (tgt > cur) {
+      out.push({ kind: "added", text: `${tgt} ${f.label}${cur > 0 ? ` (was ${cur})` : ""}` });
+    } else {
+      out.push({ kind: "removed", text: `${tgt} ${f.label} (down from ${cur})` });
+    }
+  }
+
+  // Monitoring — combine on/off with frequency so we don't double-list.
+  if (!currentLimits.monitoring && targetLimits.monitoring) {
+    const freq = targetLimits.monitoringFrequency
+      ? ` (${FREQ_LABELS[targetLimits.monitoringFrequency] || String(targetLimits.monitoringFrequency).replace(/_/g, " ")})`
+      : "";
+    out.push({ kind: "added", text: `Continuous monitoring${freq}` });
+  } else if (currentLimits.monitoring && !targetLimits.monitoring) {
+    out.push({ kind: "removed", text: "Continuous monitoring removed" });
+  } else if (
+    currentLimits.monitoring &&
+    targetLimits.monitoring &&
+    currentLimits.monitoringFrequency !== targetLimits.monitoringFrequency &&
+    targetLimits.monitoringFrequency
+  ) {
+    const label = FREQ_LABELS[targetLimits.monitoringFrequency] || String(targetLimits.monitoringFrequency).replace(/_/g, " ");
+    out.push({ kind: "added", text: `Monitoring runs ${label}` });
+  }
+
+  if (!currentLimits.deepDiscovery && targetLimits.deepDiscovery) {
+    out.push({ kind: "added", text: "Deep discovery" });
+  } else if (currentLimits.deepDiscovery && !targetLimits.deepDiscovery) {
+    out.push({ kind: "removed", text: "Deep discovery removed" });
+  }
+
+  if (!currentLimits.webhooks && targetLimits.webhooks) {
+    out.push({ kind: "added", text: "Webhook integrations" });
+  } else if (currentLimits.webhooks && !targetLimits.webhooks) {
+    out.push({ kind: "removed", text: "Webhook integrations removed" });
+  }
+
+  return out;
 }
 
 export default function BillingPage() {
@@ -305,7 +393,7 @@ export default function BillingPage() {
             <div>
               <div className="text-sm font-semibold text-foreground">Activating your subscription…</div>
               <div className="text-xs text-muted-foreground">
-                Payment confirmed. Just waiting for Stripe to finish setting things up — this usually takes a few seconds.
+                Payment confirmed. Finalising your subscription — this usually takes a few seconds.
               </div>
             </div>
           </div>
@@ -379,7 +467,7 @@ export default function BillingPage() {
               <div>
                 <div className="text-sm font-medium text-foreground">Billing & invoices</div>
                 <div className="text-xs text-muted-foreground">
-                  Update your payment method, download invoices, or cancel — handled securely by Stripe.
+                  Update your payment method, download invoices, or cancel anytime.
                 </div>
               </div>
               <Button
@@ -390,7 +478,7 @@ export default function BillingPage() {
               >
                 {portalLoading
                   ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Opening…</>
-                  : <><CreditCard className="w-4 h-4 mr-2" />Manage Billing</>}
+                  : <><CreditCard className="w-4 h-4 mr-2" />Manage billing</>}
               </Button>
             </div>
           )}
@@ -464,25 +552,33 @@ export default function BillingPage() {
                     ) : !canManageBilling ? (
                       <Button variant="outline" disabled className="w-full border-border text-muted-foreground">Ask admin to change plan</Button>
                     ) : hasActiveStripeSub ? (
-                      /* Active Stripe sub — route all plan changes through the
-                         Customer Portal so our DB and Stripe stay in sync. */
+                      /* Active subscription — every plan change opens the
+                         hosted billing portal so our DB and the payment
+                         provider stay in lockstep. */
                       <Button
-                        variant="outline"
+                        variant={isUpgrade ? "default" : "outline"}
                         onClick={handleManageBilling}
                         disabled={portalLoading}
-                        className="w-full border-border text-foreground hover:bg-accent"
+                        className={cn(
+                          "w-full",
+                          isUpgrade
+                            ? "bg-primary hover:bg-primary/90"
+                            : "border-border text-foreground hover:bg-accent",
+                        )}
                       >
                         {portalLoading
-                          ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Opening…</>
-                          : <><CreditCard className="w-3.5 h-3.5 mr-1.5" />Change in Stripe</>}
+                          ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Opening billing portal…</>
+                          : isUpgrade
+                            ? <>Upgrade to {p.label}</>
+                            : <>Downgrade to {p.label}</>}
                       </Button>
                     ) : isUpgrade ? (
                       <Button onClick={() => setShowUpgrade(p.key)} className="w-full bg-primary hover:bg-primary/90">
-                        {BILLING_ENABLED ? "Upgrade" : "Switch to this plan"}
+                        {BILLING_ENABLED ? `Upgrade to ${p.label}` : `Switch to ${p.label}`}
                       </Button>
                     ) : isDowngrade ? (
                       <Button variant="outline" onClick={() => setShowUpgrade(p.key)} className="w-full border-border text-foreground hover:bg-accent">
-                        {BILLING_ENABLED ? "Downgrade" : "Switch to this plan"}
+                        {BILLING_ENABLED ? `Downgrade to ${p.label}` : `Switch to ${p.label}`}
                       </Button>
                     ) : null}
 
@@ -590,69 +686,135 @@ export default function BillingPage() {
           </Dialog>
         )}
 
-        {/* Switch / Upgrade / Downgrade Dialog */}
+        {/* Switch / Upgrade / Downgrade Dialog — order-review style */}
         <Dialog open={!!showUpgrade} onOpenChange={(o) => { if (!o) setShowUpgrade(null); }}>
-          <DialogContent className="bg-card border-border text-foreground sm:max-w-[440px]">
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[520px]">
             <DialogHeader>
               <DialogTitle>
-                {BILLING_ENABLED
-                  ? (showUpgrade && PLAN_ORDER.indexOf(showUpgrade) < currentIdx ? "Downgrade" : "Upgrade") + " Plan"
-                  : "Switch Plan"}
+                {(() => {
+                  if (!showUpgrade) return "";
+                  const isDown = PLAN_ORDER.indexOf(showUpgrade) < currentIdx;
+                  const target = plans.find((p) => p.key === showUpgrade);
+                  const useStripeTitle = BILLING_ENABLED && !isDown && canCheckout(showUpgrade);
+                  const verb = !BILLING_ENABLED
+                    ? "Switch to"
+                    : isDown
+                      ? "Downgrade to"
+                      : useStripeTitle
+                        ? "Subscribe to"
+                        : "Upgrade to";
+                  return `${verb} ${target?.label || "plan"}`;
+                })()}
               </DialogTitle>
             </DialogHeader>
             {(() => {
               if (!showUpgrade) return null;
               const target = plans.find((p) => p.key === showUpgrade);
+              if (!target) return null;
+
               const isDown = PLAN_ORDER.indexOf(showUpgrade) < currentIdx;
               const useStripe = BILLING_ENABLED && !isDown && canCheckout(showUpgrade);
-              const annualMonthly = target?.priceAnnualMonthly ?? 0;
-              const monthly = target?.priceMonthly ?? 0;
+              const annualMonthly = target.priceAnnualMonthly ?? 0;
+              const monthly = target.priceMonthly ?? 0;
+              const annualTotal = target.priceAnnualTotal ?? 0;
               const annualSavings = monthly > 0 && annualMonthly > 0 && annualMonthly < monthly
                 ? Math.round((1 - annualMonthly / monthly) * 100)
                 : 0;
+              const todayPrice = useStripe
+                ? (upgradeCycle === "annual" ? annualTotal : monthly)
+                : 0;
+              const tierColor = TIER_COLORS[target.key] || "#7c5cfc";
+              const deltas = computeDeltas(limits, target.limits);
 
               return (
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    {BILLING_ENABLED
-                      ? isDown
-                        ? <>Downgrading to <span className="text-foreground font-medium">{target?.label}</span> will reduce your limits.</>
-                        : useStripe
-                          ? <>Subscribe to <span className="text-foreground font-medium">{target?.label}</span>. You&apos;ll be redirected to Stripe to enter your payment details — your subscription becomes active immediately.</>
-                          : <>Upgrade to <span className="text-foreground font-medium">{target?.label}</span>? New limits take effect immediately.</>
-                      : <>Switch to <span className="text-foreground font-medium">{target?.label}</span>? Your new limits will take effect immediately.</>
-                    }
-                  </p>
+                <div className="space-y-5">
+                  {/* ── Plan header ── */}
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: `${tierColor}15` }}
+                    >
+                      <Sparkles className="w-5 h-5" style={{ color: tierColor }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        {!BILLING_ENABLED
+                          ? "New plan"
+                          : isDown
+                            ? `Currently ${planData.planLabel}`
+                            : useStripe
+                              ? "New subscription"
+                              : `Currently ${planData.planLabel}`}
+                      </div>
+                      <div className="text-base font-semibold text-foreground truncate">{target.label}</div>
+                    </div>
+                    {BILLING_ENABLED && monthly > 0 && (
+                      <div className="text-right shrink-0">
+                        <div className="text-2xl font-bold text-foreground leading-none">
+                          ${useStripe && upgradeCycle === "annual" ? annualMonthly : monthly}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-1">
+                          /month{useStripe && upgradeCycle === "annual" ? " · billed annually" : ""}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
+                  {/* ── Delta — what you get / lose ── */}
+                  {deltas.length > 0 ? (
+                    <div className="rounded-lg border border-border bg-muted/20 p-4">
+                      <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-2.5">
+                        {isDown ? "What changes" : "What you get"}
+                      </div>
+                      <ul className="space-y-1.5">
+                        {deltas.map((d, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm">
+                            {d.kind === "removed"
+                              ? <X className="w-4 h-4 mt-0.5 text-red-400 shrink-0" />
+                              : <Check className="w-4 h-4 mt-0.5 text-[#10b981] shrink-0" />}
+                            <span className={d.kind === "removed" ? "text-muted-foreground" : "text-foreground"}>
+                              {d.text}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      Your limits and features stay the same — only the plan tier changes.
+                    </div>
+                  )}
+
+                  {/* ── Billing cycle toggle (paid checkout only) ── */}
                   {useStripe && monthly > 0 && (
-                    <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Billing cycle</div>
+                    <div className="space-y-2">
+                      <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Billing cycle</div>
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           type="button"
                           onClick={() => setUpgradeCycle("monthly")}
                           className={cn(
-                            "rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                            "rounded-lg border px-3 py-2.5 text-left transition-colors",
                             upgradeCycle === "monthly"
-                              ? "border-primary bg-primary/10 text-foreground"
-                              : "border-border text-muted-foreground hover:bg-accent",
+                              ? "border-primary bg-primary/10"
+                              : "border-border hover:bg-accent",
                           )}
                         >
-                          <div className="font-medium">Monthly</div>
-                          <div className="text-xs">${monthly}/mo</div>
+                          <div className="text-sm font-medium text-foreground">Monthly</div>
+                          <div className="text-xs text-muted-foreground">${monthly}/mo</div>
                         </button>
                         <button
                           type="button"
                           onClick={() => setUpgradeCycle("annual")}
                           disabled={annualMonthly <= 0}
                           className={cn(
-                            "rounded-md border px-3 py-2 text-left text-sm transition-colors disabled:opacity-50",
+                            "rounded-lg border px-3 py-2.5 text-left transition-colors disabled:opacity-50",
                             upgradeCycle === "annual"
-                              ? "border-primary bg-primary/10 text-foreground"
-                              : "border-border text-muted-foreground hover:bg-accent",
+                              ? "border-primary bg-primary/10"
+                              : "border-border hover:bg-accent",
                           )}
                         >
-                          <div className="font-medium flex items-center gap-1.5">
+                          <div className="text-sm font-medium text-foreground flex items-center gap-1.5">
                             Annual
                             {annualSavings > 0 && (
                               <span className="text-[10px] text-[#10b981] bg-[#10b981]/10 px-1.5 py-0.5 rounded">
@@ -660,16 +822,39 @@ export default function BillingPage() {
                               </span>
                             )}
                           </div>
-                          <div className="text-xs">
-                            {annualMonthly > 0 ? `$${annualMonthly}/mo billed annually` : "—"}
+                          <div className="text-xs text-muted-foreground">
+                            {annualMonthly > 0 ? `$${annualMonthly}/mo · billed annually` : "—"}
                           </div>
                         </button>
                       </div>
                     </div>
                   )}
 
-                  <div className="flex gap-3 justify-end pt-2">
-                    <Button variant="outline" onClick={() => setShowUpgrade(null)} className="border-border text-foreground hover:bg-accent">Cancel</Button>
+                  {/* ── Order summary (paid checkout only) ── */}
+                  {useStripe && monthly > 0 && (
+                    <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          {target.label} — {upgradeCycle === "annual" ? "Annual" : "Monthly"}
+                        </span>
+                        <span className="font-mono text-foreground">${todayPrice.toLocaleString()}.00</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Tax</span>
+                        <span>Calculated at checkout</span>
+                      </div>
+                      <div className="border-t border-border/60 pt-1.5 flex items-center justify-between text-sm font-semibold">
+                        <span className="text-foreground">Total today</span>
+                        <span className="font-mono text-foreground">${todayPrice.toLocaleString()}.00</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Buttons ── */}
+                  <div className="flex gap-3 justify-end">
+                    <Button variant="outline" onClick={() => setShowUpgrade(null)} className="border-border text-foreground hover:bg-accent">
+                      Cancel
+                    </Button>
                     <Button
                       onClick={() => {
                         if (!showUpgrade) return;
@@ -680,14 +865,28 @@ export default function BillingPage() {
                       className="bg-primary hover:bg-primary/90"
                     >
                       {upgrading
-                        ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing…</>
+                        ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{useStripe ? "Redirecting to secure checkout…" : "Processing…"}</>
                         : useStripe
-                          ? <><CreditCard className="w-4 h-4 mr-2" />Continue to Stripe</>
+                          ? <><CreditCard className="w-4 h-4 mr-2" />Continue to secure checkout</>
                           : BILLING_ENABLED
-                            ? (isDown ? "Confirm Downgrade" : "Confirm Upgrade")
-                            : "Confirm Switch"}
+                            ? (isDown ? "Confirm downgrade" : "Confirm upgrade")
+                            : "Confirm switch"}
                     </Button>
                   </div>
+
+                  {/* ── Trust strip (paid checkout only) ── */}
+                  {useStripe && (
+                    <div className="flex items-center justify-center flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">
+                        <Lock className="w-3 h-3" />
+                        Secure payment
+                      </span>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span>Cancel anytime</span>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span>No long-term commitment</span>
+                    </div>
+                  )}
                 </div>
               );
             })()}

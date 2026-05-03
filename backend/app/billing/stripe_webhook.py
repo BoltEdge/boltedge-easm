@@ -36,6 +36,7 @@ from app.extensions import db
 from app.models import BillingEvent, Organization, StripeEvent
 
 from . import stripe_service
+from . import emails as billing_emails
 
 
 logger = logging.getLogger(__name__)
@@ -351,6 +352,14 @@ def handle_invoice_paid(obj: dict) -> None:
         org.stripe_subscription_status = "active"
         org.plan_status = "active"
 
+    # Send the customer-facing receipt. Wrapped so a Resend failure
+    # doesn't abort the webhook commit — Stripe would retry the whole
+    # event and we'd risk duplicate billing-event rows.
+    try:
+        billing_emails.send_receipt_email(org, obj)
+    except Exception:
+        logger.exception("Receipt email send failed for org %s", org.id)
+
 
 # ── invoice.payment_failed ──
 def handle_invoice_failed(obj: dict) -> None:
@@ -375,6 +384,59 @@ def handle_invoice_failed(obj: dict) -> None:
         stripe_object_id=obj.get("id"),
     )
 
+    # Notify the customer so they can update the card before access is
+    # affected. Wrapped — failure here doesn't abort the webhook commit.
+    try:
+        billing_emails.send_payment_failed_email(org, obj)
+    except Exception:
+        logger.exception("Payment-failed email send failed for org %s", org.id)
+
+
+# ── charge.refunded ──
+def handle_charge_refunded(obj: dict) -> None:
+    """
+    Fired when a refund is created on a charge. The Charge object's
+    `refunds.data[0]` holds the most recent refund (partial or full).
+    We log per-refund (using the most recent refund's amount), not
+    cumulative — so a charge that's refunded twice produces two
+    BillingEvent rows of the actual refund amounts.
+    """
+    org = _find_org_for_event(obj)
+    if not org:
+        logger.warning(
+            "charge.refunded for unknown org (charge=%s)", obj.get("id")
+        )
+        return
+
+    refunds_list = (obj.get("refunds") or {}).get("data") or []
+    # `refunds.data[0]` is the most recently created refund — use its
+    # individual amount, not the cumulative `amount_refunded`.
+    if refunds_list:
+        latest = refunds_list[0]
+        refund_amount = latest.get("amount", 0) or 0
+        refund_id = latest.get("id") or obj.get("id")
+    else:
+        refund_amount = obj.get("amount_refunded", 0) or 0
+        refund_id = obj.get("id")
+
+    currency = obj.get("currency")
+
+    _record_billing_event(
+        org=org,
+        kind="refund_issued",
+        description=(
+            f"Refund of {(refund_amount or 0) / 100:.2f} {(currency or 'usd').upper()} issued."
+        ),
+        amount_cents=refund_amount,
+        currency=currency,
+        stripe_object_id=refund_id,
+    )
+
+    try:
+        billing_emails.send_refund_email(org, obj)
+    except Exception:
+        logger.exception("Refund email send failed for org %s", org.id)
+
 
 # ── customer.updated ──
 def handle_customer_updated(obj: dict) -> None:
@@ -396,6 +458,7 @@ HANDLERS = {
     "customer.subscription.deleted": handle_subscription_deleted,
     "invoice.payment_succeeded":     handle_invoice_paid,
     "invoice.payment_failed":        handle_invoice_failed,
+    "charge.refunded":               handle_charge_refunded,
     "customer.updated":              handle_customer_updated,
 }
 

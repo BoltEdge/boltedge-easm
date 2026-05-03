@@ -2011,3 +2011,105 @@ export async function createPortalSession(): Promise<{ url: string }> {
 export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
   return apiFetch<SubscriptionStatus>("/billing/subscription");
 }
+
+
+// ─────────────────────────────────────────────────────────────────
+// Admin billing dashboard (superadmin only)
+// ─────────────────────────────────────────────────────────────────
+
+export type AdminBillingOverview = {
+  counts: { active: number; trialing: number; past_due: number; cancelling: number; other: number };
+  mrrCents: number;
+  monthlyRevenueCents: number;
+  webhookHealth: { errorsLast24h: number; unprocessedLast24h: number };
+  billingEnabled: boolean;
+};
+
+export type AdminBillingSubscription = {
+  id: number;
+  displayId: string | null;
+  name: string;
+  plan: string;
+  billingCycle: "monthly" | "annual" | null;
+  subscriptionStatus: string | null;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
+  currentPeriodStart: string | null;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  billingEmail: string | null;
+  mrrCents: number;
+};
+
+export type AdminBillingEvent = {
+  id: number;
+  displayId: string | null;
+  organizationId: number;
+  organizationName: string | null;
+  organizationDisplayId: string | null;
+  kind: string;
+  amountCents: number | null;
+  currency: string | null;
+  description: string | null;
+  stripeObjectId: string | null;
+  createdAt: string | null;
+};
+
+export type AdminWebhookLogEntry = {
+  id: number;
+  stripeId: string;
+  type: string;
+  status: "processed" | "failed" | "pending";
+  receivedAt: string | null;
+  processedAt: string | null;
+  error: string | null;
+};
+
+export type Paginated<T> = { items: T[]; page: number; perPage: number; total: number };
+
+export async function getAdminBillingOverview(): Promise<AdminBillingOverview> {
+  return apiFetch<AdminBillingOverview>("/admin/billing/overview");
+}
+
+export async function getAdminBillingSubscriptions(params?: {
+  status?: string;
+  search?: string;
+  page?: number;
+  perPage?: number;
+}): Promise<Paginated<AdminBillingSubscription>> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  if (params?.search) qs.set("search", params.search);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.perPage) qs.set("perPage", String(params.perPage));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiFetch<Paginated<AdminBillingSubscription>>(`/admin/billing/subscriptions${suffix}`);
+}
+
+export async function getAdminBillingEvents(params?: {
+  kind?: string;
+  page?: number;
+  perPage?: number;
+}): Promise<Paginated<AdminBillingEvent>> {
+  const qs = new URLSearchParams();
+  if (params?.kind) qs.set("kind", params.kind);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.perPage) qs.set("perPage", String(params.perPage));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiFetch<Paginated<AdminBillingEvent>>(`/admin/billing/events${suffix}`);
+}
+
+export async function getAdminWebhookLog(params?: {
+  errorOnly?: boolean;
+  type?: string;
+  page?: number;
+  perPage?: number;
+}): Promise<Paginated<AdminWebhookLogEntry>> {
+  const qs = new URLSearchParams();
+  if (params?.errorOnly) qs.set("errorOnly", "1");
+  if (params?.type) qs.set("type", params.type);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.perPage) qs.set("perPage", String(params.perPage));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiFetch<Paginated<AdminWebhookLogEntry>>(`/admin/billing/webhook-log${suffix}`);
+}

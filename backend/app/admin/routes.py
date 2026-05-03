@@ -27,12 +27,12 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from flask import Blueprint, request, jsonify, g, current_app
 from sqlalchemy import text
 
 from app.extensions import db
-from app.models import User, Organization, OrganizationMember, AuditLog, ScanJob, Asset, DiscoveryJob, PlatformAnnouncement, QuickScanLog, BlockedIP, ContactRequest
+from app.models import User, Organization, OrganizationMember, AuditLog, ScanJob, Asset, DiscoveryJob, PlatformAnnouncement, QuickScanLog, BlockedIP, ContactRequest, BillingEvent, StripeEvent
 from app.auth.decorators import require_superadmin
 from app.audit.routes import log_audit
 
@@ -1728,3 +1728,285 @@ def delete_contact_request(req_id: int):
     db.session.delete(cr)
     db.session.commit()
     return jsonify(message="Contact request deleted."), 200
+
+
+# ════════════════════════════════════════════════════════════════
+# BILLING — platform-wide subscription overview
+# ════════════════════════════════════════════════════════════════
+#
+# Read-only views over Organization.stripe_*, BillingEvent, and
+# StripeEvent. All write actions (refunds, manual subscription edits)
+# stay in the Stripe dashboard — this page surfaces state, doesn't
+# duplicate the full Stripe admin UI.
+
+def _plan_to_monthly_cents(plan_key: str, billing_cycle: str | None) -> int:
+    """
+    Monthly-equivalent revenue for an org. Annual cycles divide by 12.
+    Returns cents. Sales-priced tiers (price_monthly == -1) return 0
+    since their MRR is unknown without the contract.
+    """
+    from app.billing.routes import PLAN_CONFIG
+    cfg = PLAN_CONFIG.get(plan_key)
+    if not cfg:
+        return 0
+    monthly = cfg.get("price_monthly", 0)
+    if monthly == -1 or monthly == 0:
+        return 0
+    if billing_cycle == "annual":
+        annual_total = cfg.get("price_annual_total", 0)
+        if annual_total > 0:
+            return int(round(annual_total * 100 / 12))
+    return int(monthly * 100)
+
+
+# GET /admin/billing/overview — superadmin only
+@admin_bp.get("/billing/overview")
+@require_superadmin
+def billing_overview():
+    """
+    Top-of-page stats tiles for the admin Billing page. Counts orgs by
+    subscription status, computes MRR estimate, and sums recognised
+    revenue this month from BillingEvent.
+    """
+    now = _now_utc()
+    first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    # Bucket orgs with Stripe subscriptions by their current status.
+    subscribed_orgs = Organization.query.filter(
+        Organization.stripe_subscription_id.isnot(None)
+    ).all()
+
+    counts = {"active": 0, "trialing": 0, "past_due": 0, "cancelling": 0, "other": 0}
+    mrr_cents = 0
+
+    for org in subscribed_orgs:
+        s = org.stripe_subscription_status
+
+        # Cancelling: cancel_at_period_end set but still active until period end
+        if org.cancel_at_period_end and s in ("active", "trialing"):
+            counts["cancelling"] += 1
+            mrr_cents += _plan_to_monthly_cents(org.plan, org.billing_cycle)
+            continue
+
+        if s == "active":
+            counts["active"] += 1
+            mrr_cents += _plan_to_monthly_cents(org.plan, org.billing_cycle)
+        elif s == "trialing":
+            counts["trialing"] += 1
+            # No MRR contribution while trialing
+        elif s == "past_due":
+            counts["past_due"] += 1
+            # Still counted toward MRR — they're still subscribed,
+            # just behind on payment. Stripe Smart Retries will recover
+            # most; if not, customer.subscription.deleted fires later.
+            mrr_cents += _plan_to_monthly_cents(org.plan, org.billing_cycle)
+        else:
+            # canceled / incomplete / unpaid / unknown
+            counts["other"] += 1
+
+    # Recognised revenue this month — sum of payment_succeeded events.
+    revenue_row = db.session.query(
+        db.func.coalesce(db.func.sum(BillingEvent.amount_cents), 0)
+    ).filter(
+        BillingEvent.kind == "payment_succeeded",
+        BillingEvent.created_at >= first_of_month,
+    ).scalar() or 0
+
+    # Webhook health — unprocessed or errored events in last 24h
+    last_24h = now - timedelta(hours=24)
+    webhook_errors = StripeEvent.query.filter(
+        StripeEvent.received_at >= last_24h,
+        StripeEvent.error.isnot(None),
+    ).count()
+    webhook_unprocessed = StripeEvent.query.filter(
+        StripeEvent.received_at >= last_24h,
+        StripeEvent.processed_at.is_(None),
+        StripeEvent.error.is_(None),
+    ).count()
+
+    return jsonify({
+        "counts": counts,
+        "mrrCents": mrr_cents,
+        "monthlyRevenueCents": int(revenue_row),
+        "webhookHealth": {
+            "errorsLast24h": webhook_errors,
+            "unprocessedLast24h": webhook_unprocessed,
+        },
+        "billingEnabled": ENABLE_BILLING,
+    }), 200
+
+
+# GET /admin/billing/subscriptions — superadmin only
+@admin_bp.get("/billing/subscriptions")
+@require_superadmin
+def billing_subscriptions():
+    """
+    Paginated list of orgs with a Stripe subscription. Filters:
+      - status: active | trialing | past_due | cancelling | canceled | all
+      - search: matches org name (case-insensitive)
+    """
+    page = max(1, int(request.args.get("page", 1)))
+    per_page = min(100, max(1, int(request.args.get("perPage", 50))))
+    status_filter = (request.args.get("status") or "all").strip().lower()
+    search = (request.args.get("search") or "").strip()
+
+    query = Organization.query.filter(Organization.stripe_subscription_id.isnot(None))
+
+    if search:
+        query = query.filter(Organization.name.ilike(f"%{search}%"))
+
+    if status_filter == "cancelling":
+        query = query.filter(
+            Organization.cancel_at_period_end.is_(True),
+            Organization.stripe_subscription_status.in_(("active", "trialing")),
+        )
+    elif status_filter in ("active", "trialing", "past_due", "canceled"):
+        query = query.filter(Organization.stripe_subscription_status == status_filter)
+        if status_filter in ("active", "trialing"):
+            # exclude cancelling so the "Active" bucket = truly active
+            query = query.filter(Organization.cancel_at_period_end.is_(False))
+
+    total = query.count()
+    rows = (
+        query.order_by(Organization.current_period_end.asc().nullslast())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    items = []
+    for org in rows:
+        items.append({
+            "id": org.id,
+            "displayId": org.public_id,
+            "name": org.name,
+            "plan": org.plan,
+            "billingCycle": org.billing_cycle,
+            "subscriptionStatus": org.stripe_subscription_status,
+            "cancelAtPeriodEnd": bool(org.cancel_at_period_end),
+            "currentPeriodEnd": org.current_period_end.isoformat() + "Z" if org.current_period_end else None,
+            "currentPeriodStart": org.current_period_start.isoformat() + "Z" if org.current_period_start else None,
+            "stripeCustomerId": org.stripe_customer_id,
+            "stripeSubscriptionId": org.stripe_subscription_id,
+            "billingEmail": org.billing_email,
+            "mrrCents": _plan_to_monthly_cents(org.plan, org.billing_cycle),
+        })
+
+    return jsonify({
+        "items": items,
+        "page": page,
+        "perPage": per_page,
+        "total": total,
+    }), 200
+
+
+# GET /admin/billing/events — superadmin only
+@admin_bp.get("/billing/events")
+@require_superadmin
+def billing_events_list():
+    """Recent BillingEvent rows across all orgs (paginated)."""
+    page = max(1, int(request.args.get("page", 1)))
+    per_page = min(200, max(1, int(request.args.get("perPage", 50))))
+    kind_filter = (request.args.get("kind") or "").strip()
+
+    query = BillingEvent.query
+
+    if kind_filter:
+        query = query.filter(BillingEvent.kind == kind_filter)
+
+    total = query.count()
+
+    # Join to Organization to surface org name without N+1
+    rows = (
+        query.order_by(BillingEvent.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    org_ids = list({r.organization_id for r in rows})
+    orgs = {o.id: o for o in Organization.query.filter(Organization.id.in_(org_ids)).all()} if org_ids else {}
+
+    items = []
+    for r in rows:
+        org = orgs.get(r.organization_id)
+        items.append({
+            "id": r.id,
+            "displayId": r.public_id,
+            "organizationId": r.organization_id,
+            "organizationName": org.name if org else None,
+            "organizationDisplayId": org.public_id if org else None,
+            "kind": r.kind,
+            "amountCents": r.amount_cents,
+            "currency": r.currency,
+            "description": r.description,
+            "stripeObjectId": r.stripe_object_id,
+            "createdAt": r.created_at.isoformat() + "Z" if r.created_at else None,
+        })
+
+    return jsonify({
+        "items": items,
+        "page": page,
+        "perPage": per_page,
+        "total": total,
+    }), 200
+
+
+# GET /admin/billing/webhook-log — superadmin only
+@admin_bp.get("/billing/webhook-log")
+@require_superadmin
+def billing_webhook_log():
+    """
+    Recent StripeEvent rows. Useful for debugging webhook delivery and
+    idempotency. `errorOnly=1` filters to events that failed handler
+    processing. Payload is omitted from list view to keep responses
+    small — fetch a single event for the full body if needed.
+    """
+    page = max(1, int(request.args.get("page", 1)))
+    per_page = min(200, max(1, int(request.args.get("perPage", 50))))
+    error_only = request.args.get("errorOnly") in ("1", "true", "yes")
+    type_filter = (request.args.get("type") or "").strip()
+
+    query = StripeEvent.query
+
+    if error_only:
+        query = query.filter(StripeEvent.error.isnot(None))
+    if type_filter:
+        query = query.filter(StripeEvent.type == type_filter)
+
+    total = query.count()
+    rows = (
+        query.order_by(StripeEvent.received_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+
+    items = []
+    for r in rows:
+        # processed_at == None && error == None => still in flight
+        # processed_at set => succeeded
+        # error set => failed
+        if r.error:
+            status = "failed"
+        elif r.processed_at:
+            status = "processed"
+        else:
+            status = "pending"
+
+        items.append({
+            "id": r.id,
+            "stripeId": r.stripe_id,
+            "type": r.type,
+            "status": status,
+            "receivedAt": r.received_at.isoformat() + "Z" if r.received_at else None,
+            "processedAt": r.processed_at.isoformat() + "Z" if r.processed_at else None,
+            "error": (r.error[:300] + "…") if r.error and len(r.error) > 300 else r.error,
+        })
+
+    return jsonify({
+        "items": items,
+        "page": page,
+        "perPage": per_page,
+        "total": total,
+    }), 200

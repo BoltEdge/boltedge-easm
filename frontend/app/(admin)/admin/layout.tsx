@@ -4,12 +4,13 @@ import { useRouter } from "next/navigation";
 import { getAccessToken, getIsSuperadmin, logout } from "../../lib/auth";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building2, Users, LogOut, ShieldAlert, ScrollText, ScanLine, Megaphone, HeartPulse, ShieldBan, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Building2, Users, LogOut, ShieldAlert, ScrollText, ScanLine, Megaphone, HeartPulse, ShieldBan, MessageSquare, CreditCard } from "lucide-react";
 
 const NAV = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/organizations", label: "Organizations", icon: Building2 },
   { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/billing", label: "Billing", icon: CreditCard },
   { href: "/admin/contact-requests", label: "Contact Requests", icon: MessageSquare },
   { href: "/admin/audit-log", label: "Audit Log", icon: ScrollText },
   { href: "/admin/scans", label: "Active Scans", icon: ScanLine },

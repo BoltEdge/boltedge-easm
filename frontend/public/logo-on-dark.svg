@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" preserveAspectRatio="xMidYMid meet">
+  <!-- Icon — bolt in rounded navy square -->
+  <g transform="translate(0, 8) scale(1.5)">
+    <rect width="32" height="32" rx="7" fill="#0a0f1e"/>
+    <path d="M17.5 4L9.5 17H14.5L13 28L21.5 14.5H16L17.5 4Z" fill="#14b8a6"/>
+  </g>
+  <!-- Wordmark — for dark backgrounds -->
+  <text x="62" y="42" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Roboto, 'Helvetica Neue', Arial, sans-serif" font-weight="700" font-size="28" fill="#f8fafc" letter-spacing="-0.5">Nano<tspan fill="#14b8a6">EASM</tspan></text>
+</svg>
