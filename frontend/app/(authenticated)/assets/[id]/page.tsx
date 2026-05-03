@@ -19,6 +19,7 @@ import { SeverityBadge } from "../../../SeverityBadge";
 import { StatusBadge } from "../../../StatusBadge";
 import IntelligenceTabs from "./IntelligenceTabs";
 import ScanComparison from "./ScanComparison";
+import AssetOverviewPanel from "./AssetOverviewPanel";
 import {
   apiFetch, getAssetRisk, getScanProfiles, createScanJob, runScanJob,
   getScanJobs, updateAsset, deleteAsset, isPlanError,
@@ -394,6 +395,10 @@ export default function AssetDetailPage() {
             </DropdownMenu>
           </div>
         </div>
+
+        {/* "At a glance" overview panel — pulls structured data from
+            /assets/<id>/overview. Renders nothing if it fails to load. */}
+        <AssetOverviewPanel assetId={asset.id} />
 
         {/* Cloud Info Card — only for cloud assets */}
         {isCloud && (

@@ -8,7 +8,7 @@ import {
   Eye, Shield, Zap, ShieldCheck, ShieldAlert, AlertTriangle,
   Layers, Clock, Target, TrendingUp, CheckSquare, Square,
   Trash2, ArrowRightLeft, Cloud, Database, Box, Cpu, Radio,
-  Loader2,
+  Loader2, Download,
 } from "lucide-react";
 
 import type { Asset, AssetGroup, AssetType, ScanProfile } from "../../../types";
@@ -23,6 +23,7 @@ import { Input } from "../../../ui/input";
 import { Label } from "../../../ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../ui/dialog";
+import { ExportColumnPicker } from "../../../ui/export-column-picker";
 import { SeverityBadge } from "../../../SeverityBadge";
 import { StatusBadge } from "../../../StatusBadge";
 
@@ -346,6 +347,9 @@ export default function AssetGroupDetailsPage() {
   const [bulkText, setBulkText] = useState("");
   const [bulkLabel, setBulkLabel] = useState("");
   const [bulkType, setBulkType] = useState<"domain" | "ip" | "cloud" | "auto">("auto");
+
+  // Export
+  const [exportOpen, setExportOpen] = useState(false);
   const [bulkResults, setBulkResults] = useState<any>(null);
   const [bulkAdding, setBulkAdding] = useState(false);
   const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -594,6 +598,15 @@ export default function AssetGroupDetailsPage() {
             <p className="text-muted-foreground mt-1">{assets.length} asset{assets.length !== 1 ? "s" : ""}</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setExportOpen(true)}
+              disabled={assets.length === 0}
+              className="gap-2"
+              title={assets.length === 0 ? "Nothing to export yet" : "Export assets as CSV"}
+            >
+              <Download className="w-4 h-4" />Export
+            </Button>
             <Button variant="outline" onClick={() => { setBulkAddOpen(true); setBulkText(""); setBulkLabel(""); setBulkType("auto"); setBulkResults(null); }} className="gap-2"><Plus className="w-4 h-4" />Bulk Add</Button>
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4" />Add Asset</Button>
           </div>
@@ -971,6 +984,61 @@ export default function AssetGroupDetailsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Export CSV — column-picker modal */}
+      <ExportColumnPicker
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        title={`Export ${assets.length} asset${assets.length !== 1 ? "s" : ""} from "${group?.name || ""}"`}
+        description="Pick a preset or choose individual columns. Downloads as CSV."
+        endpoint={`/groups/${groupId}/assets/export`}
+        filename={`assets-${(group?.name || "group").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}-${new Date().toISOString().slice(0, 10)}.csv`}
+        defaultPreset="standard"
+        presets={[
+          { key: "essentials", label: "Essentials", columns: ["display_id", "type", "value", "label"] },
+          { key: "standard",   label: "Standard",   columns: ["display_id", "type", "value", "label", "group", "last_scan_at", "scan_status", "findings_total"] },
+          { key: "all",        label: "All",        columns: ["display_id", "type", "value", "label", "group", "added_on", "last_scan_at", "scan_status", "findings_total", "findings_critical", "findings_high", "findings_medium", "findings_low", "findings_info", "provider", "cloud_category", "monitored"] },
+        ]}
+        groups={[
+          {
+            title: "Identification",
+            columns: [
+              { key: "display_id", label: "Display ID" },
+              { key: "type",       label: "Type" },
+              { key: "value",      label: "Value" },
+              { key: "label",      label: "Label" },
+            ],
+          },
+          {
+            title: "Group & timing",
+            columns: [
+              { key: "group",        label: "Group" },
+              { key: "added_on",     label: "Added on" },
+              { key: "last_scan_at", label: "Last scan" },
+              { key: "scan_status",  label: "Scan status" },
+            ],
+          },
+          {
+            title: "Findings",
+            columns: [
+              { key: "findings_total",    label: "Total findings" },
+              { key: "findings_critical", label: "Critical" },
+              { key: "findings_high",     label: "High" },
+              { key: "findings_medium",   label: "Medium" },
+              { key: "findings_low",      label: "Low" },
+              { key: "findings_info",     label: "Info" },
+            ],
+          },
+          {
+            title: "Cloud & monitoring",
+            columns: [
+              { key: "provider",       label: "Cloud provider" },
+              { key: "cloud_category", label: "Cloud category" },
+              { key: "monitored",      label: "Monitored" },
+            ],
+          },
+        ]}
+      />
     </div>
   );
 }

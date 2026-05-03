@@ -19,7 +19,11 @@ import socket
 from typing import Any, Dict, Optional, Tuple, List
 from urllib.parse import urlparse
 
-from flask import Blueprint, request, jsonify
+import csv
+from datetime import datetime
+from io import StringIO
+
+from flask import Blueprint, request, jsonify, Response
 from sqlalchemy import func, case, desc
 
 from app.extensions import db
@@ -269,6 +273,161 @@ def list_group_assets(group_id: str):
         out.append(item)
 
     return jsonify(out), 200
+
+
+# ═══════════════════════════════════════════════════════════════
+# CSV export — group assets
+# ═══════════════════════════════════════════════════════════════
+#
+# GET /groups/<id>/assets/export?columns=display_id,type,value,...
+#
+# Returns text/csv with the columns the caller selected (or the
+# Standard preset if no `columns` query is provided). Open-format
+# export so the user can pull their own data into spreadsheets,
+# CRMs, or compliance reports without API integration.
+
+# Catalogue of every column we know how to render. Each entry is
+# (header label, value extractor). The extractor receives the Asset
+# row plus a precomputed `ctx` dict with shared lookups (group,
+# findings counts, monitored asset IDs) — this keeps per-asset work
+# O(1) even on large groups.
+_EXPORT_COLUMNS: dict[str, tuple[str, callable]] = {
+    "display_id":       ("Display ID",      lambda a, ctx: a.public_id or ""),
+    "type":             ("Type",            lambda a, ctx: a.asset_type or ""),
+    "value":            ("Value",           lambda a, ctx: a.value or ""),
+    "label":            ("Label",           lambda a, ctx: a.label or ""),
+    "group":            ("Group",           lambda a, ctx: ctx["group_name"]),
+    "added_on":         ("Added on",        lambda a, ctx: a.created_at.strftime("%Y-%m-%d") if a.created_at else ""),
+    "last_scan_at":     ("Last scan",       lambda a, ctx: a.last_scan_at.strftime("%Y-%m-%d %H:%M") if a.last_scan_at else ""),
+    "scan_status":      ("Scan status",     lambda a, ctx: a.scan_status or "never_scanned"),
+    "findings_total":   ("Findings",        lambda a, ctx: ctx["findings"].get(a.id, {}).get("total", 0)),
+    "findings_critical":("Critical",        lambda a, ctx: ctx["findings"].get(a.id, {}).get("critical", 0)),
+    "findings_high":    ("High",            lambda a, ctx: ctx["findings"].get(a.id, {}).get("high", 0)),
+    "findings_medium":  ("Medium",          lambda a, ctx: ctx["findings"].get(a.id, {}).get("medium", 0)),
+    "findings_low":     ("Low",             lambda a, ctx: ctx["findings"].get(a.id, {}).get("low", 0)),
+    "findings_info":    ("Info",            lambda a, ctx: ctx["findings"].get(a.id, {}).get("info", 0)),
+    "provider":         ("Provider",        lambda a, ctx: a.provider or ""),
+    "cloud_category":   ("Cloud category",  lambda a, ctx: a.cloud_category or ""),
+    "monitored":        ("Monitored",       lambda a, ctx: "yes" if a.id in ctx["monitored_ids"] else "no"),
+}
+
+_EXPORT_PRESETS: dict[str, list[str]] = {
+    "essentials": ["display_id", "type", "value", "label"],
+    "standard":   ["display_id", "type", "value", "label", "group", "last_scan_at", "scan_status", "findings_total"],
+    "all":        list(_EXPORT_COLUMNS.keys()),
+}
+
+
+def _resolve_export_columns(raw: Optional[str]) -> list[str]:
+    """
+    Translate the `columns` query string into a validated list of
+    column keys. Accepts a preset name ("essentials"/"standard"/"all")
+    or a comma-separated list of explicit columns. Unknown columns
+    are silently dropped. Falls back to the Standard preset when
+    nothing usable is provided.
+    """
+    if not raw:
+        return _EXPORT_PRESETS["standard"]
+    raw = raw.strip().lower()
+    if raw in _EXPORT_PRESETS:
+        return _EXPORT_PRESETS[raw]
+    cols = [c.strip() for c in raw.split(",") if c.strip()]
+    cols = [c for c in cols if c in _EXPORT_COLUMNS]
+    return cols or _EXPORT_PRESETS["standard"]
+
+
+def _slugify_for_filename(s: str) -> str:
+    """Make a filename-safe slug from a group name."""
+    s = re.sub(r"[^a-zA-Z0-9]+", "-", (s or "").strip().lower())
+    return s.strip("-") or "group"
+
+
+# GET /groups/<id>/assets/export — all roles can export their org's data
+@assets_bp.get("/groups/<group_id>/assets/export")
+@require_auth
+@allow_api_key
+def export_group_assets(group_id: str):
+    org_id = current_organization_id()
+
+    g1 = AssetGroup.query.filter_by(id=int(group_id), organization_id=org_id).first()
+    if not g1 or not g1.is_active:
+        return jsonify(error="group not found"), 404
+
+    columns = _resolve_export_columns(request.args.get("columns"))
+
+    assets = (
+        Asset.query.filter(Asset.group_id == g1.id, Asset.organization_id == org_id)
+        .order_by(Asset.id.asc())
+        .all()
+    )
+    asset_ids = [a.id for a in assets]
+
+    # ── Precompute shared lookups so each row render is O(1) ──
+    findings_by_asset: dict[int, dict[str, int]] = {}
+    if asset_ids and any(c.startswith("findings_") for c in columns):
+        rows = (
+            db.session.query(
+                Finding.asset_id, Finding.severity, func.count(Finding.id)
+            )
+            .filter(Finding.asset_id.in_(asset_ids))
+            .group_by(Finding.asset_id, Finding.severity)
+            .all()
+        )
+        for asset_id, severity, count in rows:
+            bucket = findings_by_asset.setdefault(
+                asset_id, {"total": 0, "critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+            )
+            sev_key = (severity or "info").lower()
+            if sev_key in bucket:
+                bucket[sev_key] = count
+            bucket["total"] += count
+
+    monitored_ids: set[int] = set()
+    if asset_ids and "monitored" in columns:
+        from app.models import Monitor
+        monitor_rows = (
+            db.session.query(Monitor.asset_id)
+            .filter(Monitor.organization_id == org_id, Monitor.enabled == True, Monitor.asset_id.in_(asset_ids))
+            .all()
+        )
+        monitored_ids = {row[0] for row in monitor_rows if row[0] is not None}
+
+    ctx = {
+        "group_name": g1.name,
+        "findings": findings_by_asset,
+        "monitored_ids": monitored_ids,
+    }
+
+    # ── Render CSV ──
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow([_EXPORT_COLUMNS[c][0] for c in columns])
+    for asset in assets:
+        writer.writerow([_EXPORT_COLUMNS[c][1](asset, ctx) for c in columns])
+
+    # Audit — exports are sensitive enough to log who took what.
+    log_audit(
+        organization_id=org_id,
+        user_id=current_user_id(),
+        action="assets.exported",
+        category="assets",
+        target_type="asset_group",
+        target_id=str(g1.id),
+        target_label=g1.name,
+        description=f"Exported {len(assets)} assets from group '{g1.name}' as CSV",
+        metadata={"row_count": len(assets), "columns": columns},
+    )
+
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    filename = f"assets-{_slugify_for_filename(g1.name)}-{today}.csv"
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 # POST /groups/<id>/assets — analyst+ (single add) with asset limit check
@@ -682,6 +841,197 @@ def delete_asset(asset_id: str):
     db.session.delete(a1)
     db.session.commit()
     return jsonify(message="deleted", assetId=_sid(asset_id)), 200
+
+
+# GET /assets/<id>/overview — "At a glance" summary card.
+#
+# Pulls together the assorted fragments scattered across /risk,
+# /coverage, /timeline etc. into a single payload optimised for the
+# overview panel at the top of the asset detail page. Pure
+# templated rendering — no LLM, no new analysis. Shape:
+#
+#   {
+#     "asset":     { displayId, type, value, label, group, addedOn, ageDays },
+#     "scan":      { lastScanAt, lastScanProfile, scanStatus, totalScans },
+#     "findings":  { total, open, bySeverity, topOpen },
+#     "monitor":   { enabled, frequency, lastCheckedAt, nextCheckAt },
+#     "recommendations": [ "…", "…" ]   # at most 5, ordered by importance
+#   }
+@assets_bp.get("/assets/<asset_id>/overview")
+@require_auth
+@allow_api_key
+def asset_overview(asset_id: str):
+    org_id = current_organization_id()
+
+    asset = Asset.query.filter_by(id=int(asset_id), organization_id=org_id).first()
+    if not asset:
+        return jsonify(error="asset not found"), 404
+
+    from sqlalchemy import or_, and_
+    from app.models import ScanJob, Monitor
+
+    now = datetime.utcnow()
+
+    group = AssetGroup.query.get(asset.group_id) if asset.group_id else None
+
+    age_days = (now - asset.created_at).days if asset.created_at else None
+
+    # ── Findings (open only, by severity) ──
+    open_filter = and_(
+        or_(Finding.ignored == False, Finding.ignored == None),
+        or_(Finding.resolved == False, Finding.resolved == None),
+        or_(Finding.in_progress == False, Finding.in_progress == None),
+        or_(Finding.accepted_risk == False, Finding.accepted_risk == None),
+    )
+    sev_rows = (
+        db.session.query(Finding.severity, func.count(Finding.id))
+        .filter(Finding.asset_id == asset.id)
+        .filter(open_filter)
+        .group_by(Finding.severity)
+        .all()
+    )
+    counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+    for sev, cnt in sev_rows:
+        s = (sev or "info").lower()
+        if s not in counts:
+            s = "info"
+        counts[s] += int(cnt)
+    open_total = sum(counts.values())
+
+    findings_total = (
+        db.session.query(func.count(Finding.id))
+        .filter(Finding.asset_id == asset.id)
+        .scalar() or 0
+    )
+
+    # Top 3 open findings — by severity priority then most-recent.
+    SEVERITY_ORDER = case(
+        {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4},
+        value=Finding.severity, else_=4,
+    )
+    top_findings_q = (
+        Finding.query
+        .filter(Finding.asset_id == asset.id)
+        .filter(open_filter)
+        .order_by(SEVERITY_ORDER.asc(), Finding.created_at.desc())
+        .limit(3)
+        .all()
+    )
+    top_findings = [
+        {
+            "id": str(f.id),
+            "displayId": f.public_id,
+            "title": f.title,
+            "severity": f.severity,
+            "category": f.category,
+        }
+        for f in top_findings_q
+    ]
+
+    # ── Scan history ──
+    last_scan = (
+        ScanJob.query
+        .filter(ScanJob.asset_id == asset.id, ScanJob.organization_id == org_id)
+        .order_by(ScanJob.id.desc())
+        .first()
+    )
+    total_scans = (
+        db.session.query(func.count(ScanJob.id))
+        .filter(ScanJob.asset_id == asset.id, ScanJob.organization_id == org_id)
+        .scalar() or 0
+    )
+    last_scan_profile = None
+    if last_scan and getattr(last_scan, "nmap_scan_type", None):
+        last_scan_profile = last_scan.nmap_scan_type.title()
+
+    # ── Monitor ──
+    monitor = (
+        Monitor.query
+        .filter(Monitor.asset_id == asset.id, Monitor.organization_id == org_id)
+        .order_by(Monitor.id.desc())
+        .first()
+    )
+    monitor_payload = None
+    if monitor:
+        monitor_payload = {
+            "enabled": bool(monitor.enabled),
+            "frequency": monitor.frequency,
+            "lastCheckedAt": monitor.last_checked_at.isoformat() if monitor.last_checked_at else None,
+            "nextCheckAt": monitor.next_check_at.isoformat() if monitor.next_check_at else None,
+        }
+
+    # ── Recommendations ──
+    # Deterministic rules, ordered by importance. Capped at 5 so the
+    # panel doesn't become a wall of text.
+    recommendations: list[str] = []
+
+    if total_scans == 0 or asset.scan_status == "never_scanned":
+        recommendations.append("Run your first scan to discover what's exposed.")
+    else:
+        if asset.last_scan_at:
+            days_since = (now - asset.last_scan_at).days
+            if days_since >= 30:
+                recommendations.append(f"Run a fresh scan — the last one was {days_since} days ago.")
+            elif (
+                last_scan_profile
+                and last_scan_profile.lower() in ("quick",)
+                and open_total > 0
+            ):
+                recommendations.append("Run a Deep scan to surface issues a Quick scan misses.")
+
+    if counts["critical"] > 0:
+        recommendations.append(
+            f"Address the {counts['critical']} open critical finding"
+            + ("s" if counts["critical"] != 1 else "")
+            + " before they age further."
+        )
+    elif counts["high"] > 0:
+        recommendations.append(
+            f"Address the {counts['high']} open high-severity finding"
+            + ("s" if counts["high"] != 1 else "")
+            + "."
+        )
+
+    if not monitor or not monitor.enabled:
+        recommendations.append(
+            "Enable continuous monitoring to catch new findings as they appear."
+        )
+
+    if asset.scan_status == "scan_failed":
+        recommendations.append("The last scan failed — retry it from the Scan Jobs page.")
+
+    recommendations = recommendations[:5]
+
+    return jsonify({
+        "asset": {
+            "id": str(asset.id),
+            "displayId": asset.public_id,
+            "type": asset.asset_type,
+            "value": asset.value,
+            "label": asset.label,
+            "groupId": str(asset.group_id) if asset.group_id else None,
+            "groupName": group.name if group else None,
+            "groupDisplayId": group.public_id if group else None,
+            "addedOn": asset.created_at.isoformat() if asset.created_at else None,
+            "ageDays": age_days,
+            "provider": asset.provider,
+            "cloudCategory": asset.cloud_category,
+        },
+        "scan": {
+            "lastScanAt": asset.last_scan_at.isoformat() if asset.last_scan_at else None,
+            "lastScanProfile": last_scan_profile,
+            "scanStatus": asset.scan_status or "never_scanned",
+            "totalScans": int(total_scans),
+        },
+        "findings": {
+            "total": int(findings_total),
+            "open": open_total,
+            "bySeverity": counts,
+            "topOpen": top_findings,
+        },
+        "monitor": monitor_payload,
+        "recommendations": recommendations,
+    }), 200
 
 
 # GET /assets/<id>/risk — all roles can view

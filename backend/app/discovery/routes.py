@@ -457,6 +457,278 @@ def add_assets_to_inventory(job_id: int):
 
 
 # ═══════════════════════════════════════════════════════════════
+# CSV export — discovered assets
+# ═══════════════════════════════════════════════════════════════
+#
+# GET /discovery/jobs/<id>/export?columns=...&ids=...
+#
+# Returns text/csv of discovered assets for one job. `columns` works
+# the same way as the asset export (preset name OR comma-separated
+# column keys). `ids` is an optional comma-separated list of
+# DiscoveredAsset IDs — when present, only those rows are exported
+# (used by the "Export selected" path on the discovery results page).
+
+_DISC_EXPORT_COLUMNS: dict[str, tuple[str, "callable"]] = {
+    "id":             ("ID",              lambda d, ctx: d.id),
+    "type":           ("Type",            lambda d, ctx: d.asset_type or ""),
+    "value":          ("Value",           lambda d, ctx: d.value or ""),
+    "discovered_via": ("Discovered via",  lambda d, ctx: ", ".join(d.sources or [])),
+    "confidence":     ("Confidence",      lambda d, ctx: round(float(d.confidence or 0), 2)),
+    "discovered_at":  ("Discovered",      lambda d, ctx: d.discovered_at.strftime("%Y-%m-%d %H:%M") if d.discovered_at else ""),
+    "is_new":         ("New",             lambda d, ctx: "yes" if d.is_new else "no"),
+    "in_inventory":   ("In inventory",    lambda d, ctx: "yes" if d.added_to_inventory else "no"),
+    "tags":           ("Tags",            lambda d, ctx: ", ".join(d.tags or [])),
+}
+
+_DISC_EXPORT_PRESETS: dict[str, list[str]] = {
+    "essentials": ["id", "type", "value"],
+    "standard":   ["id", "type", "value", "discovered_via", "confidence", "is_new", "in_inventory"],
+    "all":        list(_DISC_EXPORT_COLUMNS.keys()),
+}
+
+
+def _resolve_disc_columns(raw):
+    if not raw:
+        return _DISC_EXPORT_PRESETS["standard"]
+    raw = raw.strip().lower()
+    if raw in _DISC_EXPORT_PRESETS:
+        return _DISC_EXPORT_PRESETS[raw]
+    cols = [c.strip() for c in raw.split(",") if c.strip()]
+    cols = [c for c in cols if c in _DISC_EXPORT_COLUMNS]
+    return cols or _DISC_EXPORT_PRESETS["standard"]
+
+
+# ═══════════════════════════════════════════════════════════════
+# Discovery summary — TL;DR card for the results page
+# ═══════════════════════════════════════════════════════════════
+#
+# GET /discovery/jobs/<id>/summary
+#
+# Pure templated rules. Returns:
+#   {
+#     "job":   { id, displayId, target, status, completedAt },
+#     "totals":{ discovered, new, alreadyInInventory, byType: {...} },
+#     "notable":[ { kind, label, sample: [...] }, ... ],   # up to 5
+#     "recommendations": [ "...", ... ]                    # up to 3
+#   }
+#
+# `notable` items are deterministic detections — keyword matching for
+# dev/staging hosts, file-extension matching for cloud asset paths,
+# etc. No LLM, no fancy heuristics.
+
+# Subdomain keywords that indicate dev / staging / sensitive infra.
+_INTERESTING_SUBDOMAIN_KEYWORDS = (
+    "admin", "staging", "stage", "dev", "test", "qa", "uat",
+    "internal", "intranet", "api", "vpn", "jenkins", "gitlab",
+    "jira", "confluence", "kibana", "grafana",
+)
+
+@discovery_bp.get("/jobs/<job_id>/summary")
+@require_auth
+@allow_api_key
+def get_job_summary(job_id: str):
+    from app.models import DiscoveryJob, DiscoveredAsset
+    int_id = resolve_id(job_id, "DC")
+    if int_id is None:
+        return jsonify(error="Discovery job not found."), 404
+    org_id = int(current_organization_id())
+    job = DiscoveryJob.query.filter_by(id=int_id, organization_id=org_id).first()
+    if not job:
+        return jsonify(error="Discovery job not found."), 404
+
+    rows = (
+        DiscoveredAsset.query
+        .filter_by(job_id=job.id, organization_id=org_id)
+        .all()
+    )
+
+    # ── Totals ──
+    by_type: dict[str, int] = {}
+    new_count = 0
+    in_inventory_count = 0
+    for r in rows:
+        by_type[r.asset_type] = by_type.get(r.asset_type, 0) + 1
+        if r.is_new:
+            new_count += 1
+        if r.added_to_inventory:
+            in_inventory_count += 1
+
+    # ── Notable patterns (deterministic rules) ──
+    notable: list[dict] = []
+
+    # 1. Dev / staging / admin hostnames (most useful signal for triage)
+    interesting_hosts = [
+        r for r in rows
+        if r.asset_type in ("domain", "subdomain") and any(
+            kw in (r.value or "").lower() for kw in _INTERESTING_SUBDOMAIN_KEYWORDS
+        )
+    ]
+    if interesting_hosts:
+        notable.append({
+            "kind": "dev_or_staging",
+            "label": (
+                f"{len(interesting_hosts)} subdomain"
+                + ("s" if len(interesting_hosts) != 1 else "")
+                + " look like dev / staging / admin infrastructure"
+            ),
+            "sample": [r.value for r in interesting_hosts[:5]],
+        })
+
+    # 2. Cloud assets — often the most exposed surface
+    cloud_assets = [r for r in rows if r.asset_type == "cloud"]
+    if cloud_assets:
+        notable.append({
+            "kind": "cloud_assets",
+            "label": (
+                f"{len(cloud_assets)} cloud asset"
+                + ("s" if len(cloud_assets) != 1 else "")
+                + " discovered (S3, Azure, GCP)"
+            ),
+            "sample": [r.value for r in cloud_assets[:5]],
+        })
+
+    # 3. New since last run — the highest-leverage discoveries
+    new_assets = [r for r in rows if r.is_new]
+    if new_assets and len(rows) > new_count:  # only flag if there were also "old" ones
+        notable.append({
+            "kind": "new_assets",
+            "label": (
+                f"{new_count} new asset"
+                + ("s" if new_count != 1 else "")
+                + " since the previous discovery run"
+            ),
+            "sample": [r.value for r in new_assets[:5]],
+        })
+
+    # 4. IP ranges — usually require manual review for scope
+    ip_ranges = [r for r in rows if r.asset_type == "ip_range"]
+    if ip_ranges:
+        notable.append({
+            "kind": "ip_ranges",
+            "label": (
+                f"{len(ip_ranges)} IP range"
+                + ("s" if len(ip_ranges) != 1 else "")
+                + " — review which addresses are actually yours"
+            ),
+            "sample": [r.value for r in ip_ranges[:5]],
+        })
+
+    # 5. URLs (often deep links to admin panels, dashboards, etc.)
+    url_assets = [r for r in rows if r.asset_type == "url"]
+    if url_assets:
+        notable.append({
+            "kind": "urls",
+            "label": (
+                f"{len(url_assets)} URL"
+                + ("s" if len(url_assets) != 1 else "")
+                + " discovered — may include admin panels or APIs"
+            ),
+            "sample": [r.value for r in url_assets[:5]],
+        })
+
+    notable = notable[:5]
+
+    # ── Recommendations ──
+    recommendations: list[str] = []
+    if not rows:
+        recommendations.append("No assets were discovered. Try a deeper discovery profile or a different target.")
+    else:
+        not_in_inventory = len(rows) - in_inventory_count
+        if new_count > 0:
+            recommendations.append(
+                f"Review the {new_count} new asset"
+                + ("s" if new_count != 1 else "")
+                + " and add the in-scope ones to your inventory."
+            )
+        elif not_in_inventory > 0:
+            recommendations.append(
+                f"{not_in_inventory} discovered asset"
+                + ("s are" if not_in_inventory != 1 else " is")
+                + " not yet in your inventory — review and add the in-scope ones."
+            )
+        if interesting_hosts:
+            recommendations.append(
+                "Investigate the dev / staging / admin hosts first — they often have weaker access controls."
+            )
+        if cloud_assets:
+            recommendations.append(
+                "Verify each cloud asset's exposure — public buckets and storage are common breach vectors."
+            )
+
+    recommendations = recommendations[:3]
+
+    return jsonify({
+        "job": {
+            "id": job.id,
+            "displayId": job.public_id,
+            "target": job.target,
+            "status": job.status,
+            "completedAt": job.completed_at.isoformat() if job.completed_at else None,
+        },
+        "totals": {
+            "discovered": len(rows),
+            "new": new_count,
+            "alreadyInInventory": in_inventory_count,
+            "byType": by_type,
+        },
+        "notable": notable,
+        "recommendations": recommendations,
+    }), 200
+
+
+@discovery_bp.get("/jobs/<job_id>/export")
+@require_auth
+@allow_api_key
+def export_discovered_assets(job_id: str):
+    import csv
+    from io import StringIO
+    from datetime import datetime as _dt
+    from flask import Response
+
+    from app.models import DiscoveryJob, DiscoveredAsset
+    int_id = resolve_id(job_id, "DC")
+    if int_id is None:
+        return jsonify(error="Discovery job not found."), 404
+    org_id = int(current_organization_id())
+    job = DiscoveryJob.query.filter_by(id=int_id, organization_id=org_id).first()
+    if not job:
+        return jsonify(error="Discovery job not found."), 404
+
+    columns = _resolve_disc_columns(request.args.get("columns"))
+
+    q = DiscoveredAsset.query.filter_by(job_id=job.id, organization_id=org_id)
+
+    # Optional row filter — selected-only export.
+    ids_raw = (request.args.get("ids") or "").strip()
+    if ids_raw:
+        try:
+            id_list = [int(x) for x in ids_raw.split(",") if x.strip().isdigit()]
+        except ValueError:
+            id_list = []
+        if id_list:
+            q = q.filter(DiscoveredAsset.id.in_(id_list))
+
+    rows = q.order_by(DiscoveredAsset.id.asc()).all()
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow([_DISC_EXPORT_COLUMNS[c][0] for c in columns])
+    for d in rows:
+        writer.writerow([_DISC_EXPORT_COLUMNS[c][1](d, {}) for c in columns])
+
+    today = _dt.utcnow().strftime("%Y-%m-%d")
+    filename = f"discovery-{job.public_id or job.id}-{today}.csv"
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
 # DELETE /discovery/jobs/<id>
 # ═══════════════════════════════════════════════════════════════
 

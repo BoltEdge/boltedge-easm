@@ -2014,6 +2014,51 @@ export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
 
 
 // ─────────────────────────────────────────────────────────────────
+// Asset overview ("At a glance" panel)
+// ─────────────────────────────────────────────────────────────────
+
+export type AssetOverview = {
+  asset: {
+    id: string;
+    displayId: string | null;
+    type: string;
+    value: string;
+    label: string | null;
+    groupId: string | null;
+    groupName: string | null;
+    groupDisplayId: string | null;
+    addedOn: string | null;
+    ageDays: number | null;
+    provider: string | null;
+    cloudCategory: string | null;
+  };
+  scan: {
+    lastScanAt: string | null;
+    lastScanProfile: string | null;
+    scanStatus: string;
+    totalScans: number;
+  };
+  findings: {
+    total: number;
+    open: number;
+    bySeverity: { critical: number; high: number; medium: number; low: number; info: number };
+    topOpen: Array<{ id: string; displayId: string | null; title: string; severity: string; category: string | null }>;
+  };
+  monitor: {
+    enabled: boolean;
+    frequency: string | null;
+    lastCheckedAt: string | null;
+    nextCheckAt: string | null;
+  } | null;
+  recommendations: string[];
+};
+
+export async function getAssetOverview(assetId: string | number): Promise<AssetOverview> {
+  return apiFetch<AssetOverview>(`/assets/${assetId}/overview`);
+}
+
+
+// ─────────────────────────────────────────────────────────────────
 // Admin billing dashboard (superadmin only)
 // ─────────────────────────────────────────────────────────────────
 

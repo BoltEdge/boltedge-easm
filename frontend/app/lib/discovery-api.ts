@@ -241,3 +241,34 @@ export async function deleteDiscoverySchedule(id: number): Promise<void> {
 export async function runScheduleNow(id: number): Promise<{ jobId: number }> {
   return apiFetch<{ jobId: number }>(`/discovery/schedules/${id}/run`, { method: "POST" });
 }
+
+
+// ─────────────────────────────────────────────────────────────────
+// Discovery summary — TL;DR card for the results page
+// ─────────────────────────────────────────────────────────────────
+
+export type DiscoverySummary = {
+  job: {
+    id: number;
+    displayId: string | null;
+    target: string;
+    status: string;
+    completedAt: string | null;
+  };
+  totals: {
+    discovered: number;
+    new: number;
+    alreadyInInventory: number;
+    byType: Record<string, number>;
+  };
+  notable: Array<{
+    kind: "dev_or_staging" | "cloud_assets" | "new_assets" | "ip_ranges" | "urls";
+    label: string;
+    sample: string[];
+  }>;
+  recommendations: string[];
+};
+
+export async function getDiscoverySummary(jobId: number): Promise<DiscoverySummary> {
+  return apiFetch<DiscoverySummary>(`/discovery/jobs/${jobId}/summary`);
+}

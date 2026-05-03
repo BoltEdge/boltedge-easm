@@ -3,12 +3,14 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
   Radar, Search, FolderPlus, Check, Clock, RefreshCcw, Trash2,
-  Info, Loader2, ArrowLeft, EyeOff, Eye, Play,
+  Info, Loader2, ArrowLeft, EyeOff, Eye, Play, Download,
 } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../ui/dialog";
+import { ExportColumnPicker } from "../../ui/export-column-picker";
+import DiscoverySummaryCard from "./DiscoverySummaryCard";
 import { useOrg } from "../contexts/OrgContext";
 import { usePlanLimit, PlanLimitDialog } from "../../ui/plan-limit-dialog";
 import {
@@ -49,6 +51,7 @@ export default function DiscoveryPage() {
   const [groups, setGroups] = useState<Array<{ id: any; name: string }>>([]);
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [exportOpen, setExportOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addingAssets, setAddingAssets] = useState(false);
   const [dialogStep, setDialogStep] = useState<"select-group" | "scan-prompt">("select-group");
@@ -494,6 +497,7 @@ export default function DiscoveryPage() {
             onBulkTag={handleBulkTag}
             onIgnoreSelected={handleIgnoreSelected}
             onIgnoreSingle={handleIgnoreSingle}
+            onExport={() => setExportOpen(true)}
           />}
 
           {/* ── Jobs History (always visible) ── */}
@@ -579,6 +583,56 @@ export default function DiscoveryPage() {
         )}
       </div>
       <PlanLimitDialog {...planLimit} />
+
+      {/* Export CSV — column picker (selected-only when checkboxes are
+          set, otherwise all discovered assets in the viewing job). */}
+      {viewingJob && (
+        <ExportColumnPicker
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          title={
+            selectedIds.size > 0
+              ? `Export ${selectedIds.size} selected discovery result${selectedIds.size !== 1 ? "s" : ""}`
+              : `Export all ${viewingJob.totalFound || 0} discovery results`
+          }
+          description="Pick a preset or choose individual columns. Downloads as CSV."
+          endpoint={`/discovery/jobs/${viewingJob.id}/export`}
+          extraParams={selectedIds.size > 0 ? { ids: Array.from(selectedIds).join(",") } : undefined}
+          filename={`discovery-${viewingJob.id}-${new Date().toISOString().slice(0, 10)}.csv`}
+          defaultPreset="standard"
+          presets={[
+            { key: "essentials", label: "Essentials", columns: ["id", "type", "value"] },
+            { key: "standard",   label: "Standard",   columns: ["id", "type", "value", "discovered_via", "confidence", "is_new", "in_inventory"] },
+            { key: "all",        label: "All",        columns: ["id", "type", "value", "discovered_via", "confidence", "discovered_at", "is_new", "in_inventory", "tags"] },
+          ]}
+          groups={[
+            {
+              title: "Identification",
+              columns: [
+                { key: "id",    label: "ID" },
+                { key: "type",  label: "Type" },
+                { key: "value", label: "Value" },
+              ],
+            },
+            {
+              title: "Discovery",
+              columns: [
+                { key: "discovered_via", label: "Discovered via" },
+                { key: "confidence",     label: "Confidence" },
+                { key: "discovered_at",  label: "Discovered at" },
+                { key: "is_new",         label: "New" },
+              ],
+            },
+            {
+              title: "Status & tags",
+              columns: [
+                { key: "in_inventory", label: "In inventory" },
+                { key: "tags",         label: "Tags" },
+              ],
+            },
+          ]}
+        />
+      )}
     </main>
   );
 }
@@ -594,6 +648,7 @@ function JobDetailView({ job, filteredAssets, typeCounts, allTags, tagFilter, se
   selectedIds, toggleSelect, selectAll, canCreate, isActive,
   onBack, onDelete, onCancel, onOpenAddDialog,
   onToggleTag, onBulkTag, onIgnoreSelected, onIgnoreSingle,
+  onExport,
 }: any) {
 
   const TAG_COLORS: Record<string, string> = {
@@ -641,6 +696,11 @@ function JobDetailView({ job, filteredAssets, typeCounts, allTags, tagFilter, se
               style={{ width: `${Math.round((job.engineProgress.completed / job.engineProgress.total) * 100)}%` }} />
           </div>
         </div>
+      )}
+
+      {/* Discovery overview — TL;DR summary card */}
+      {!isActive && job.status === "completed" && (
+        <DiscoverySummaryCard jobId={job.id} />
       )}
 
       {/* Stats */}
@@ -721,6 +781,18 @@ function JobDetailView({ job, filteredAssets, typeCounts, allTags, tagFilter, se
           </button>
         </div>
         <div className="flex items-center gap-2">
+          {filteredAssets.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onExport}
+              className="border-border text-foreground hover:bg-accent text-xs h-8"
+              title={selectedIds.size > 0 ? `Export ${selectedIds.size} selected as CSV` : "Export all discovered as CSV"}
+            >
+              <Download className="w-3.5 h-3.5 mr-1.5" />
+              Export {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+            </Button>
+          )}
           {canCreate && selectedIds.size > 0 && (
             <>
               <Button variant="outline" size="sm" onClick={onIgnoreSelected}
