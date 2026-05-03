@@ -391,7 +391,8 @@ export default function UnauthenticatedHomePage() {
                 Nano EASM &mdash; External Attack Surface Management for modern security teams.
               </p>
             </div>
-            <div className="flex items-center gap-8 text-sm text-white/30">
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-white/30">
+              <Link href="/faq" className="hover:text-white/60 transition-colors">FAQ</Link>
               <Link href="/terms-and-policies/terms-of-use" className="hover:text-white/60 transition-colors">Terms</Link>
               <Link href="/terms-and-policies/privacy-policy" className="hover:text-white/60 transition-colors">Privacy</Link>
               <Link href="/terms-and-policies" className="hover:text-white/60 transition-colors">Terms &amp; Policies</Link>

@@ -42,8 +42,8 @@ represent that you have authority to bind that organisation, and
 - **Account** — your registered user account on the Service.
 - **Organisation** — the workspace or tenant that owns assets, scans,
   findings, and members created in the Service.
-- **Asset** — a domain, subdomain, IP address, email address, or cloud
-  asset added to the Service for discovery, scanning, or monitoring.
+- **Asset** — a domain, subdomain, IP address, or cloud asset added
+  to the Service for discovery, scanning, or monitoring.
 - **Customer Data** — data you submit to the Service, including
   assets, scan results, findings, configuration, integrations
   metadata, and uploaded files.

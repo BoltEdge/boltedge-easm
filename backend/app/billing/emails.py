@@ -22,10 +22,20 @@ state changes).
 from __future__ import annotations
 
 import logging
-import os
 from typing import Optional
 
 from app.models import Organization, OrganizationMember, User
+from app.utils.email_shell import (
+    shell,
+    send_via_resend,
+    frontend_url,
+    BRAND_TEAL as _BRAND_TEAL,
+    BRAND_DARK as _BRAND_DARK,
+    TEXT_DARK as _TEXT_DARK,
+    TEXT_MUTED as _TEXT_MUTED,
+    BORDER as _BORDER,
+    BG_LIGHT as _BG_LIGHT,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -65,98 +75,17 @@ def _recipient_for(org: Organization) -> Optional[str]:
     return None
 
 
-# ─────────────────────────────────────────────────────────────────────
-# Resend send helper
-# ─────────────────────────────────────────────────────────────────────
-
-def _send(*, to: str, subject: str, html: str) -> bool:
-    """
-    Send via Resend. Returns True on success, False on any failure
-    (key missing, network, Resend error). Never raises — caller is
-    inside a webhook handler and should not abort the transaction.
-    """
-    api_key = os.environ.get("RESEND_API_KEY", "").strip()
-    if not api_key:
-        logger.warning("RESEND_API_KEY not set; skipping billing email to %s", to)
-        return False
-
-    from_addr = (
-        os.environ.get("EMAIL_FROM")
-        or "Nano EASM <no-reply@nanoasm.com>"
+# Per-email footer for billing emails — points at /settings/billing
+# so the recipient has a one-click path to update their card or view
+# invoices. Reused by all three send functions below.
+def _billing_footer() -> str:
+    fe = frontend_url()
+    return (
+        f'This is an automated email from Nano EASM. You received it because you have an active subscription on this organisation.<br>'
+        f'<a href="{fe}/settings/billing" style="color:{_BRAND_TEAL};text-decoration:none;">Manage billing</a>'
+        f'&nbsp;·&nbsp;'
+        f'<a href="mailto:contact@nanoasm.com" style="color:{_BRAND_TEAL};text-decoration:none;">contact@nanoasm.com</a>'
     )
-
-    try:
-        import resend
-        resend.api_key = api_key
-        resend.Emails.send({
-            "from": from_addr,
-            "to": [to],
-            "subject": subject,
-            "html": html,
-        })
-        return True
-    except Exception:
-        logger.exception("Resend send failed for billing email to %s", to)
-        return False
-
-
-# ─────────────────────────────────────────────────────────────────────
-# Email body builders
-# ─────────────────────────────────────────────────────────────────────
-
-_BRAND_TEAL = "#14b8a6"
-_BRAND_DARK = "#0a0f1e"
-_TEXT_DARK = "#1f2937"
-_TEXT_MUTED = "#6b7280"
-_BORDER = "#e5e7eb"
-_BG_LIGHT = "#f9fafb"
-
-
-def _frontend_url() -> str:
-    return os.environ.get("FRONTEND_URL", "https://nanoasm.com").rstrip("/")
-
-
-def _shell(title: str, body_html: str) -> str:
-    """Common email shell — header, content, footer."""
-    fe = _frontend_url()
-    return f"""<!doctype html>
-<html>
-<body style="margin:0;padding:0;background:{_BG_LIGHT};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:{_TEXT_DARK};">
-  <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-    <!-- Header -->
-    <div style="text-align:left;padding-bottom:24px;border-bottom:1px solid {_BORDER};">
-      <table cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td style="padding-right:10px;vertical-align:middle;">
-            <div style="width:32px;height:32px;background:{_BRAND_DARK};border-radius:7px;display:inline-block;text-align:center;line-height:32px;">
-              <span style="color:{_BRAND_TEAL};font-size:20px;font-weight:bold;">⚡</span>
-            </div>
-          </td>
-          <td style="vertical-align:middle;">
-            <span style="font-size:16px;font-weight:600;color:{_TEXT_DARK};">Nano<span style="color:{_BRAND_TEAL};">EASM</span></span>
-          </td>
-        </tr>
-      </table>
-    </div>
-
-    <!-- Title -->
-    <h1 style="font-size:22px;font-weight:600;color:{_TEXT_DARK};margin:24px 0 8px 0;">{title}</h1>
-
-    <!-- Body -->
-    {body_html}
-
-    <!-- Footer -->
-    <div style="margin-top:32px;padding-top:16px;border-top:1px solid {_BORDER};font-size:12px;color:{_TEXT_MUTED};line-height:1.6;">
-      This is an automated email from Nano EASM. You received it because you have an active subscription on this organisation.<br>
-      <a href="{fe}/settings/billing" style="color:{_BRAND_TEAL};text-decoration:none;">Manage billing</a>
-      &nbsp;·&nbsp;
-      <a href="mailto:contact@nanoasm.com" style="color:{_BRAND_TEAL};text-decoration:none;">contact@nanoasm.com</a>
-      &nbsp;·&nbsp;
-      <a href="{fe}" style="color:{_BRAND_TEAL};text-decoration:none;">nanoasm.com</a>
-    </div>
-  </div>
-</body>
-</html>"""
 
 
 def _format_money(amount_cents: int, currency: str) -> str:
@@ -376,7 +305,7 @@ def send_receipt_email(org: Organization, invoice: dict) -> bool:
     invoice_pdf = invoice.get("invoice_pdf") or invoice.get("hosted_invoice_url") or ""
     hosted_url = invoice.get("hosted_invoice_url") or ""
 
-    fe = _frontend_url()
+    fe = frontend_url()
     pdf_button = ""
     if invoice_pdf:
         pdf_button = f"""
@@ -432,8 +361,8 @@ def send_receipt_email(org: Organization, invoice: dict) -> bool:
     """
 
     subject = f"Receipt — Nano EASM {plan_label} · {_format_money(amount_cents, currency).split(' ')[0]}"
-    html = _shell("Payment received", body)
-    return _send(to=to, subject=subject, html=html)
+    html = shell(title="Payment received", body_html=body, footer_html=_billing_footer())
+    return send_via_resend(to=to, subject=subject, html=html)
 
 
 def send_payment_failed_email(org: Organization, invoice: dict) -> bool:
@@ -452,7 +381,7 @@ def send_payment_failed_email(org: Organization, invoice: dict) -> bool:
     amount_cents = invoice.get("amount_due", 0)
     currency = invoice.get("currency") or "usd"
     next_attempt = invoice.get("next_payment_attempt")
-    fe = _frontend_url()
+    fe = frontend_url()
 
     next_attempt_line = ""
     if next_attempt:
@@ -490,8 +419,8 @@ def send_payment_failed_email(org: Organization, invoice: dict) -> bool:
     """
 
     subject = "Payment failed — please update your card"
-    html = _shell("Your payment didn't go through", body)
-    return _send(to=to, subject=subject, html=html)
+    html = shell(title="Your payment didn't go through", body_html=body, footer_html=_billing_footer())
+    return send_via_resend(to=to, subject=subject, html=html)
 
 
 def send_refund_email(org: Organization, charge: dict) -> bool:
@@ -518,7 +447,7 @@ def send_refund_email(org: Organization, charge: dict) -> bool:
     refund_reason = (latest_refund.get("reason") or "").replace("_", " ")
     receipt_url = charge.get("receipt_url") or ""
 
-    fe = _frontend_url()
+    fe = frontend_url()
 
     reason_line = ""
     if refund_reason:
@@ -562,5 +491,5 @@ def send_refund_email(org: Organization, charge: dict) -> bool:
     """
 
     subject = f"Refund issued — {_format_money(refund_amount, currency).split(' ')[0]}"
-    html = _shell("Refund issued", body)
-    return _send(to=to, subject=subject, html=html)
+    html = shell(title="Refund issued", body_html=body, footer_html=_billing_footer())
+    return send_via_resend(to=to, subject=subject, html=html)

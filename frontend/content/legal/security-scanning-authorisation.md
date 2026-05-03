@@ -34,9 +34,9 @@ programmatically.
 ## 2. Authorisation warranty
 
 By submitting any asset (domain, subdomain, IP address, IP range,
-email address, cloud asset, URL, or other identifier) to the Service
-for discovery, scanning, monitoring, or any other security-testing
-function, **you represent and warrant** that:
+cloud asset, URL, or other identifier) to the Service for discovery,
+scanning, monitoring, or any other security-testing function, **you
+represent and warrant** that:
 
 1. **Authority.** You either (a) own the asset and have the legal
    authority to authorise security testing of it, or (b) hold prior

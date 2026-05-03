@@ -22,7 +22,7 @@ its discovery, scanning, or monitoring features at — assets that:
 2. you have prior written permission from the asset owner to test.
 
 This includes domains, subdomains, IP addresses, IP ranges, cloud
-assets, email addresses, and any other identifier you submit.
+assets, and any other identifier you submit.
 
 You are **solely responsible** for the legal and operational
 consequences of any scan you initiate. The Service does not

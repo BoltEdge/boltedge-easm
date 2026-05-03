@@ -41,9 +41,14 @@ def _now_utc():
 
 def _send_verification_email(user: User) -> bool:
     """
-    Send the verification link to user.email via Resend.
-    Returns True on success, False on any failure (including missing API key).
-    Updates email_verification_sent_at on success. Caller must commit.
+    Send the email-verification link to user.email via Resend.
+
+    Returns True on success, False on any failure (including missing
+    API key). Updates email_verification_sent_at on success. Caller
+    must commit.
+
+    Wraps the branded `send_verification_email` template from
+    `app.auth.emails` and stamps the timestamp on success.
     """
     import os
 
@@ -53,40 +58,22 @@ def _send_verification_email(user: User) -> bool:
         email=user.email,
     )
 
-    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoasm.com").rstrip("/")
-    verify_link = f"{frontend_url}/verify-email?token={token}"
+    fe = os.environ.get("FRONTEND_URL", "https://nanoasm.com").rstrip("/")
+    verify_link = f"{fe}/verify-email?token={token}"
 
-    resend_key = os.environ.get("RESEND_API_KEY", "")
-    if not resend_key:
-        # Without an API key we can't send. Log it and let the resend endpoint
-        # try again later — or the operator can grab the link from the audit log.
+    if not os.environ.get("RESEND_API_KEY", "").strip():
+        # No key — log the link so an operator can hand-deliver if needed.
         current_app.logger.warning(
             "RESEND_API_KEY not set; verification email not sent for %s. Link: %s",
             user.email, verify_link,
         )
         return False
 
-    try:
-        import resend
-        resend.api_key = resend_key
-        resend.Emails.send({
-            "from": os.environ.get("EMAIL_FROM", "Nano EASM <no-reply@nanoasm.com>"),
-            "to": [user.email],
-            "subject": "Verify your Nano EASM email address",
-            "html": f"""
-            <p>Hi {user.name or user.email},</p>
-            <p>Welcome to Nano EASM! Please confirm this is your email address so you can sign in.</p>
-            <p><a href="{verify_link}" style="display:inline-block;padding:10px 18px;background:#14b8a6;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Verify my email</a></p>
-            <p>Or paste this link into your browser:<br><span style="font-family:monospace;color:#475569;">{verify_link}</span></p>
-            <p style="color:#64748b;font-size:13px;">This link expires in 48 hours. If you didn't create a Nano EASM account, you can safely ignore this email.</p>
-            <p style="color:#64748b;font-size:13px;">— Nano EASM</p>
-            """,
-        })
+    from app.auth.emails import send_verification_email as _send_branded
+    sent = _send_branded(user, verify_link)
+    if sent:
         user.email_verification_sent_at = _now_utc()
-        return True
-    except Exception:
-        current_app.logger.exception("Failed to send verification email to %s", user.email)
-        return False
+    return sent
 
 
 def _build_org_payload(org, include_billing: bool = False) -> dict:
@@ -246,6 +233,15 @@ def register():
 
     # Invite signups skip verification → log them in immediately.
     if is_invite_signup:
+        # Invited users won't go through /verify-email, so this is the
+        # right hook for their welcome email. Pass org so the greeting
+        # acknowledges the workspace they just joined.
+        try:
+            from app.auth.emails import send_welcome_email
+            send_welcome_email(u, organization=org)
+        except Exception:
+            current_app.logger.exception("Welcome email send failed for invited user %s", u.id)
+
         token = create_access_token(secret_key=current_app.config["SECRET_KEY"], user_id=u.id)
         return jsonify(
             accessToken=token,
@@ -416,25 +412,11 @@ def forgot_password():
     frontend_url = os.environ.get("FRONTEND_URL", "https://nanoasm.com").rstrip("/")
     reset_link = f"{frontend_url}/reset-password/{token}"
 
-    resend_key = os.environ.get("RESEND_API_KEY", "")
-    if resend_key:
-        try:
-            import resend
-            resend.api_key = resend_key
-            resend.Emails.send({
-                "from": os.environ.get("EMAIL_FROM", "Nano EASM <no-reply@nanoasm.com>"),
-                "to": [user.email],
-                "subject": "Reset your Nano EASM password",
-                "html": f"""
-                <p>Hi {user.name or user.email},</p>
-                <p>We received a request to reset your password.</p>
-                <p><a href="{reset_link}">Click here to set a new password</a></p>
-                <p>This link expires in 24 hours. If you didn't request this, you can safely ignore this email.</p>
-                <p>— Nano EASM</p>
-                """,
-            })
-        except Exception:
-            pass
+    # Use the branded shell. send_password_reset_email handles the
+    # missing-key case (logs warning, returns False) — we don't need
+    # to guard here.
+    from app.auth.emails import send_password_reset_email
+    send_password_reset_email(user, reset_link)
 
     return generic
 
@@ -583,6 +565,19 @@ def verify_email():
         target_label=user.email,
         description=f"Email verified: {user.email}",
     )
+
+    # Send the one-time welcome email. Wrapped because a Resend
+    # outage shouldn't break verification — the user already saw the
+    # success response above implicitly by reaching this point.
+    try:
+        from app.auth.emails import send_welcome_email
+        org = None
+        if membership:
+            from app.models import Organization
+            org = Organization.query.get(membership.organization_id)
+        send_welcome_email(user, organization=org)
+    except Exception:
+        current_app.logger.exception("Welcome email send failed for user %s", user.id)
 
     return jsonify(
         message="Email verified. You can now sign in.",
@@ -784,6 +779,14 @@ def oauth_google_callback():
             metadata={"provider": "google"},
         )
 
+        # OAuth users are auto-verified, so this is the right hook
+        # to send the welcome email — they won't go through /verify-email.
+        try:
+            from app.auth.emails import send_welcome_email
+            send_welcome_email(user, organization=org)
+        except Exception:
+            current_app.logger.exception("Welcome email send failed for Google OAuth user %s", user.id)
+
     is_new = not user.job_title and not user.company and not user.country
     jwt = create_access_token(secret_key=current_app.config["SECRET_KEY"], user_id=user.id)
     import urllib.parse
@@ -938,6 +941,12 @@ def oauth_microsoft_callback():
             description=f"User registered via Microsoft OAuth: {user.email}",
             metadata={"provider": "microsoft"},
         )
+
+        try:
+            from app.auth.emails import send_welcome_email
+            send_welcome_email(user, organization=org)
+        except Exception:
+            current_app.logger.exception("Welcome email send failed for Microsoft OAuth user %s", user.id)
 
     is_new = not user.job_title and not user.company and not user.country
     jwt = create_access_token(secret_key=current_app.config["SECRET_KEY"], user_id=user.id)

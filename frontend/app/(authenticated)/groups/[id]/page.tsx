@@ -126,7 +126,6 @@ function getScanButtonLabel(status: string) { if (status === "running") return "
 function getAssetPlaceholder(type: AssetType) {
   switch (type) {
     case "ip": return "e.g., 8.8.8.8";
-    case "email": return "e.g., security@example.com";
     case "cloud": return "e.g., https://mybucket.s3.amazonaws.com";
     default: return "e.g., example.com";
   }
@@ -346,7 +345,7 @@ export default function AssetGroupDetailsPage() {
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [bulkText, setBulkText] = useState("");
   const [bulkLabel, setBulkLabel] = useState("");
-  const [bulkType, setBulkType] = useState<"domain" | "ip" | "email" | "cloud" | "auto">("auto");
+  const [bulkType, setBulkType] = useState<"domain" | "ip" | "cloud" | "auto">("auto");
   const [bulkResults, setBulkResults] = useState<any>(null);
   const [bulkAdding, setBulkAdding] = useState(false);
   const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -764,7 +763,6 @@ export default function AssetGroupDetailsPage() {
                 {([
                   { value: "domain" as AssetType, label: "Domain", icon: "🌐" },
                   { value: "ip" as AssetType,     label: "IP",     icon: "🖥" },
-                  { value: "email" as AssetType,  label: "Email",  icon: "✉" },
                   { value: "cloud" as AssetType,  label: "Cloud",  icon: "☁" },
                 ]).map(({ value, label, icon }) => (
                   <button
@@ -928,11 +926,11 @@ export default function AssetGroupDetailsPage() {
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-foreground block">Asset Type</label>
                 <div className="flex gap-2">
-                  {(["domain", "ip", "email", "cloud", "auto"] as const).map((t) => (
+                  {(["domain", "ip", "cloud", "auto"] as const).map((t) => (
                     <button key={t} type="button" onClick={() => setBulkType(t)}
                       className={cn("flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-all capitalize",
                         bulkType === t ? "bg-primary/15 text-primary border-primary/30" : "bg-card text-muted-foreground border-border hover:border-primary/30")}>
-                      {t === "auto" ? "Auto-detect" : t === "ip" ? "IP Address" : t === "domain" ? "Domain" : t === "cloud" ? "Cloud URL" : "Email"}
+                      {t === "auto" ? "Auto-detect" : t === "ip" ? "IP Address" : t === "domain" ? "Domain" : "Cloud URL"}
                     </button>
                   ))}
                 </div>
@@ -945,10 +943,9 @@ export default function AssetGroupDetailsPage() {
                 className="w-full h-40 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground font-mono outline-none focus:ring-2 focus:ring-primary/40 resize-none"
                 placeholder={
                   bulkType === "ip" ? "192.168.1.1\n10.0.0.1\n172.16.0.5" :
-                  bulkType === "email" ? "admin@example.com\nsecurity@company.org\ndev@startup.io" :
                   bulkType === "domain" ? "example.com\napi.company.org\napp.startup.io" :
                   bulkType === "cloud" ? "mybucket.s3.amazonaws.com\nmyaccount.blob.core.windows.net\nmyregistry.azurecr.io" :
-                  "example.com\n192.168.1.1\nuser@company.com\nmybucket.s3.amazonaws.com"
+                  "example.com\n192.168.1.1\nmybucket.s3.amazonaws.com"
                 }
                 value={bulkText}
                 onChange={(e) => setBulkText(e.target.value)}
