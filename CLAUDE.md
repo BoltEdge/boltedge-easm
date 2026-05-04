@@ -12,7 +12,7 @@ Nano EASM (nanoasm.com) is an External Attack Surface Management platform. Users
 ## Current Product Status (v2 — April 2026)
 Nano EASM v2 is open-source and **free to use during community preview**. Plans still exist and control feature limits, but billing and payment are disabled. Key points:
 
-- Plans (Free, Starter, Professional, Enterprise Silver, Enterprise Gold) are **free upgrade tiers** — no payment is required
+- Plans (Free, Starter, Professional, Enterprise Silver, Enterprise Gold, Custom) are **free upgrade tiers** — no payment is required
 - All pricing, payment, subscription, checkout, and trial wording is **hidden from the UI**
 - Plan limits and feature gates still enforce (assets, scans, team members, schedules, API keys, monitoring, deep discovery, webhooks)
 - Real billing can be re-enabled later via a feature flag — **do not remove billing code**
@@ -223,7 +223,7 @@ ENABLE_BILLING = os.environ.get("ENABLE_BILLING", "false").lower() == "true"
 **Frontend:**
 - Landing page: pricing section hidden, "Pricing" nav link hidden, hero CTA says "Get started free"
 - Sidebar: "Payment & Plans" → "Plans"
-- Plans page (`/settings/billing`): no prices shown, no trial buttons, upgrade buttons say "Switch to this plan", Enterprise Gold shows "Contact Us" (mailto:contact@nanoasm.com)
+- Plans page (`/settings/billing`): no prices shown, no trial buttons, upgrade buttons say "Switch to this plan", Custom shows "Contact Us" (mailto:contact@nanoasm.com)
 - Monitoring upgrade prompt: no prices shown, "Switch to {plan}" instead of "Start Trial"
 - TopBar and Sidebar: trial countdown badge hidden
 - Register page: "No credit card required" → "Free to use"
@@ -236,7 +236,7 @@ ENABLE_BILLING = os.environ.get("ENABLE_BILLING", "false").lower() == "true"
 - Full pricing UI restored on landing page, Plans page, and monitoring upgrade prompt
 - Trial buttons restored (14/21/30/45-day trials)
 - Upgrade sets `plan_expires_at` (30 days monthly, 365 days annual)
-- Enterprise Gold requires contacting sales (403 response from backend)
+- Custom requires contacting sales (403 response from backend)
 - Trial expiry scheduler downgrades orgs automatically
 
 ### Billing backend endpoints (always present, regardless of flag)
@@ -250,55 +250,63 @@ POST /billing/cancel      — cancel trial or subscription
 DELETE /billing/organization — delete org (owner only)
 ```
 
-### Plan tiers and limits *(redesigned May 2026, cost-aware — see "Cost rationale" below before changing)*
+### Plan tiers and limits *(updated May 2026 — repriced in AUD, Silver bumped to 10K assets, Gold bumped to 20K assets)*
 
-| Plan | Price | Assets (inventory) | Monitored assets | Monitor freq | Scans/mo | Discoveries/mo | Members | Schedules | API Keys | Deep Discovery | Webhooks |
-|------|-------|--------------------|------------------|--------------|----------|----------------|---------|-----------|----------|----------------|----------|
-| Free | $0 | 2 | 0 | — | 5 | 2 | 1 | 1 | 1 | ✗ | ✗ |
-| Starter | $19 | 15 | 5 | every 7d | 100 | 10 | 5 | 5 | 3 | ✗ | ✗ |
-| Professional | $99 | 100 | 25 | every 3d | 1,000 | 50 | 20 | 25 | 10 | ✓ | ✓ |
-| Enterprise Silver | $499 | 5,000 | 100 | daily | 6,000 | 200 | 100 | 100 | ∞ | ✓ | ✓ |
-| Enterprise Gold | Contact sales | 10,000 | 500 | every 12h | 50,000 (fair use) | ∞ | ∞ | ∞ | ∞ | ✓ | ✓ |
+All prices are in **Australian dollars (AUD)**. Per-scan/per-discovery costs further down are in USD because Shodan and EC2 are USD-billed; AUD margin is computed at 1 USD ≈ 1.55 AUD.
+
+| Plan | Monthly | Annual /mo | Assets (inventory) | Monitored assets | Monitor freq | Scans/mo | Discoveries/mo | Members | Schedules | API Keys | Deep Discovery | Webhooks | Audit log | Priority support |
+|------|---------|------------|--------------------|------------------|--------------|----------|----------------|---------|-----------|----------|----------------|----------|-----------|------------------|
+| Free | A$0 | — | 2 | 0 | — | 5 | 2 | 1 | 1 | 1 | ✗ | ✗ | ✗ | ✗ |
+| Starter | A$29 | A$24 | 15 | 5 | every 7d | 100 | 10 | 3 | 5 | 1 | ✗ | ✗ | ✗ | ✗ |
+| Professional | A$149 | A$129 | 100 | 25 | every 3d | 1,000 | 50 | 10 | 25 | 5 | ✓ | ✓ | ✗ | ✗ |
+| Enterprise Silver | A$749 | A$649 | 10,000 | 100 | daily | 6,000 | 200 | 50 | 100 | 10 | ✓ | ✓ | ✗ | ✗ |
+| Enterprise Gold | A$1,349 | A$1,149 | 20,000 | 250 | daily | 12,000 | 400 | 100 | 200 | 20 | ✓ | ✓ | ✓ | ✓ |
+| Custom | Contact sales | — | ∞ | ∞ | hourly | ∞ | ∞ | ∞ | ∞ | ∞ | ✓ | ✓ | ✓ | ✓ |
 
 **Trials are request-only** for every paid tier — clicking "Request free trial" creates a typed `contact_request` that admins review and approve manually. Admin sets the trial duration when granting (no hard-coded `trialDays`). See `POST /billing/start-trial`.
 
 ### Cost rationale (DO NOT remove caps without re-running this math)
 
-The big lever is **monitored-assets × monitoring frequency**. A monitor is a recurring scan job — the cost compounds every cycle, forever, per customer. Earlier plan designs that said "Silver: 15,000 assets, daily monitoring, unlimited scans" would have burned **$3,000+/mo per Silver customer in marginal cost** on a $249 plan. The redesigned plans separate `assets` (cheap inventory) from `monitored_assets` (the expensive recurring dial) and cap `scans_per_month` to cover BOTH manual and monitoring traffic in one budget.
+The big lever is **monitored-assets × monitoring frequency**. A monitor is a recurring scan job — the cost compounds every cycle, forever, per customer. Earlier plan designs that said "Silver: 15,000 assets, daily monitoring, unlimited scans" would have burned thousands/mo per Silver customer in marginal cost on a sub-$300 plan. The redesigned plans separate `assets` (cheap inventory — bumped to 10K Silver / 20K Gold for positioning, since DB rows are essentially free) from `monitored_assets` (the expensive recurring dial) and cap `scans_per_month` to cover BOTH manual and monitoring traffic in one budget.
 
-**Per-scan marginal costs** (Shodan Corporate ~$0.001/credit, EC2 t2.medium near full utilisation):
+**Per-scan marginal costs in USD** (Shodan Corporate ~$0.001/credit, EC2 t2.medium near full utilisation):
 
-| Operation | Cost |
-|---|---|
-| Quick scan (3–5 Shodan credits + ~5s compute) | ~$0.01 |
-| Standard scan (10–15 credits + ~30s compute) | ~$0.02 |
-| Deep scan (15–25 credits + ~120s compute) | ~$0.04 |
-| Discovery job (CT + brute + ~30s compute) | ~$0.05 |
+| Operation | Cost (USD) | Cost (AUD ≈ ×1.55) |
+|---|---|---|
+| Quick scan (3–5 Shodan credits + ~5s compute) | ~$0.01 | ~A$0.015 |
+| Standard scan (10–15 credits + ~30s compute) | ~$0.02 | ~A$0.031 |
+| Deep scan (15–25 credits + ~120s compute) | ~$0.04 | ~A$0.062 |
+| Discovery job (CT + brute + ~30s compute) | ~$0.05 | ~A$0.078 |
 
-**Margin check per tier** (Standard-scan averages, full-quota usage):
+**Margin check per tier — AUD** (Standard-scan averages, full-quota usage; A$ = AUD):
 
 | Tier | Price | Max scan cost | Disc cost | Hosting/Stripe | Total cost | Margin | Margin % |
 |---|---|---|---|---|---|---|---|
-| Starter | $19 | $2.00 | $0.50 | $0.50 | $3.00 | $16 | 84% |
-| Professional | $99 | $20.00 | $2.50 | $2.00 | $24.50 | $74 | 75% |
-| Enterprise Silver | $499 | $120.00 | $10.00 | $5.00 | $135.00 | $364 | 73% |
-| Enterprise Gold | sales-priced (typical: $1,999+) | $1,000 (capped) | — | $20.00 | ~$1,020 | sales decides | sales decides |
+| Starter | A$29 | A$3.10 | A$0.78 | A$0.77 | A$4.65 | A$24.35 | 84% |
+| Professional | A$149 | A$31.00 | A$3.88 | A$3.10 | A$37.98 | A$111.02 | 75% |
+| Enterprise Silver | A$749 | A$186.00 | A$15.50 | A$7.75 | A$209.25 | A$539.75 | 72% |
+| Enterprise Gold | A$1,349 | A$372.00 | A$31.00 | A$15.50 | A$418.50 | A$930.50 | 69% |
+| Custom | sales-priced (typical: A$3,000+/mo) | A$1,550 (capped) | — | A$46.50 | ~A$1,596.50 | sales decides | sales decides |
 
 **Hard rules — verify against these before changing any limit:**
 
-1. **Never give a tier `scans_per_month: -1` (unlimited)** — Enterprise Gold has a soft 50,000/mo "fair use" cap; sales prices anything above that as a separate contract. Only Pro+ get explicit unlimited on `api_keys` (cheap to give) and Gold on `members`/`schedules` (also cheap).
+1. **Never give a self-serve tier `scans_per_month: -1` (unlimited).** Gold caps at 12,000 scans/mo to keep margins above 65%. Custom is sales-priced and only that tier gets unlimited — anything resembling "unlimited everything" needs a real contract with usage caps.
 2. **Free tier never gets monitoring** — recurring scans on a $0 plan = unbounded loss.
-3. **Asset count and monitored_assets are independent dials.** Inventory is cheap (DB rows). Monitored is what bleeds.
-4. **scans_per_month must mathematically cover monitoring + manual usage.** Formula: `monitored_assets × scans_per_month_per_monitored_asset_at_freq + manual_headroom`. If a Silver customer monitors 100 assets daily that's 3,000 scans/mo gone — `scans_per_month: 6,000` leaves them 3,000 for manual scans.
-5. **Multi-million-asset prospects are sales-priced contracts**, not auto-provisioned via the website. Per-asset pricing ($1–$10/asset/mo) negotiated annually with usage caps. Don't accept "10M assets monitored hourly" via the contact form without quoting properly.
-6. **API costs scale with Shodan plan tier.** If you downgrade your Shodan subscription, every margin number above shifts.
+3. **Asset count and monitored_assets are independent dials.** Inventory is cheap (DB rows — 20K assets × 2KB ≈ 40MB per org). Monitored is what bleeds.
+4. **scans_per_month must mathematically cover monitoring + manual usage.** Formula: `monitored_assets × scans_per_month_per_monitored_asset_at_freq + manual_headroom`. Gold monitoring 250 assets daily = 7,500 scans/mo just for monitoring; the 12,000 cap leaves ~4,500 for manual scans.
+5. **Multi-million-asset prospects are Custom-tier contracts**, not auto-provisioned via Stripe. Per-asset pricing (A$1.50–A$15/asset/mo) negotiated annually with usage caps. Don't accept "10M assets monitored hourly" via the contact form without quoting properly.
+6. **API costs scale with Shodan plan tier and AUD/USD FX.** If the AUD weakens against USD or you downgrade your Shodan subscription, every margin number above shifts. Re-run the table when FX moves >10%.
 
 ### Tracking real costs
 
 `scans_per_month` is enforced via `check_limit("scans_per_month")` on the scan-job creation route — both manual and monitoring scans count against this single budget. `monitored_assets` is enforced via `check_limit("monitored_assets")` on the monitor-creation route. `discoveries_per_month` is enforced on `POST /discovery/run`. Live counts come from `_get_current_usage()` in `app/auth/permissions.py`.
 
 ### Stripe status
-Stripe is **not implemented**. The database has `stripe_customer_id` and `stripe_subscription_id` nullable columns on the `Organization` model as stubs for future integration. No Stripe SDK, no API calls, no webhooks.
+Stripe is **wired but currently gated off** by `ENABLE_BILLING=false`. When enabled:
+- AUD-denominated Prices for Starter / Professional / Silver / Gold (monthly + annual) live in the Stripe dashboard. Their `price_…` IDs are pasted into env vars `STRIPE_PRICE_STARTER_MONTHLY` / `_ANNUAL`, `STRIPE_PRICE_PRO_*`, `STRIPE_PRICE_SILVER_*`, `STRIPE_PRICE_GOLD_*` (see `app/billing/stripe_service.py` for the full key list — the env var names are currency-agnostic, so when switching currencies you just point them at AUD-denominated Prices in Stripe).
+- `/billing/checkout` opens hosted Checkout. `/billing/portal` opens the Customer Portal. `/billing/stripe-webhook` is signature-verified and idempotent (each event id stored in `stripe_event` table).
+- Receipts, payment-failed, and refund emails are sent from our domain via Resend (not Stripe's defaults). See `app/billing/emails.py`.
+- Custom tier is **not** Stripe-purchasable — it routes to the contact form for a sales-quoted contract.
 
 ## Environment Variables (Local Dev)
 ```
@@ -330,6 +338,44 @@ python run.py
 cd frontend
 npm run dev
 ```
+
+## Finding Template Catalogue
+
+The finding-template registry (`backend/app/scanner/templates.py`) is documented in `docs/finding-templates.md` — a 400+ KB Markdown file containing every template's title, severity, CWE, description, remediation, references, and metadata. Used for review (with ChatGPT etc.) and as the customer-facing catalogue.
+
+**The catalogue must stay in sync with the registry.** A regen script + pre-commit hook keep this enforced.
+
+### Regenerate manually
+```bash
+python backend/scripts/generate_catalogue.py
+```
+
+### Drift check (CI / verification)
+```bash
+python backend/scripts/generate_catalogue.py --check
+```
+Exits non-zero if the catalogue is stale.
+
+### Pre-commit hook (recommended)
+The `.pre-commit-config.yaml` at the repo root runs the regen automatically when `templates.py` is staged, and runs the drift check on every commit.
+
+```bash
+pip install pre-commit
+pre-commit install
+# pre-commit run --all-files   # one-off run on the working tree
+```
+
+Without pre-commit, devs are responsible for running the regen script manually after editing `templates.py`. CI can run `python backend/scripts/generate_catalogue.py --check` to fail builds on drift.
+
+### Key invariants
+- The script never imports the Flask app context — works in lightweight CI without a database, secrets, or full deps.
+- The drift check ignores the auto-generated date stamp; only semantic content drift fails.
+
+## Compliance Framework Mappings
+
+`backend/app/scanner/compliance_map.py` maps finding CWE IDs to controls in OWASP ASVS 4.0, CIS Controls v8, NIST CSF v2.0, PCI-DSS 4.0, SOC 2 Trust Services Criteria, and ISO/IEC 27001:2022 Annex A. Surfaced in the finding-details panel, the findings-page filter, and the Compliance PDF report preset.
+
+**Never claim "direct" mapping for SOC 2 or ISO 27001.** These frameworks have no machine-readable taxonomy and every claim must be derived via NIST CSF cross-walks. The code structurally enforces this — see invariants 2-4 in the test plan. Marketing copy should say *"surfaces findings that may inform your compliance evidence — verify with your auditor"*, never *"audit-ready for SOC 2"*.
 
 ## Production Deployment (EC2)
 - **Server:** AWS EC2 t2.medium, Ubuntu 24.04, IP 34.232.100.29

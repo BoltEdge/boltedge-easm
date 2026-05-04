@@ -15,7 +15,13 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     public_id = db.Column(db.String(20), unique=True, index=True, nullable=True)
     email = db.Column(db.String(255), nullable=False, unique=True, index=True)
+    # `name` remains the canonical display name (first + " " + last for
+    # email/password signups; full name from the IdP for OAuth).
+    # Kept for backward compat with everywhere the UI / emails / audit
+    # logs already render `user.name`.
     name = db.Column(db.String(120), nullable=True)
+    first_name = db.Column(db.String(60), nullable=True)
+    last_name = db.Column(db.String(60), nullable=True)
     password_hash = db.Column(db.String(255), nullable=True)
 
     # OAuth / SSO
@@ -36,6 +42,11 @@ class User(db.Model):
     # flows trust the IdP/inviter, so they're auto-set to True.
     email_verified = db.Column(db.Boolean, nullable=False, default=False)
     email_verification_sent_at = db.Column(db.DateTime, nullable=True)
+    # Stamped the first time we send the one-shot welcome email (after
+    # verification + first login for email/password users; immediately
+    # for OAuth / invite users). NULL means we still owe one. Drives
+    # send-once idempotency in app/auth/emails.py.
+    welcome_email_sent_at = db.Column(db.DateTime, nullable=True)
 
     created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
     updated_at = db.Column(db.DateTime, nullable=False, default=now_utc, onupdate=now_utc)
@@ -235,6 +246,12 @@ class Asset(db.Model):
     last_scan_at = db.Column(db.DateTime, nullable=True)
     scan_status = db.Column(db.String(20), nullable=True, default="never_scanned")
     # scan_status values: never_scanned, scan_pending, scanned, scan_failed
+
+    # Business criticality. Findings on tier_1 assets count more in
+    # exposure-score rollups (see app/utils/scoring.TIER_WEIGHTS).
+    # Values: tier_1 (mission-critical) | tier_2 (normal) | tier_3 (low).
+    criticality = db.Column(db.String(10), nullable=False, default="tier_2",
+                            server_default="tier_2", index=True)
 
     __table_args__ = (
         UniqueConstraint("organization_id", "asset_type", "value", name="uq_org_asset_type_value"),

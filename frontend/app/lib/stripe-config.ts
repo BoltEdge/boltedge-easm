@@ -18,18 +18,20 @@ export type BillingCycle = "monthly" | "annual";
 export type StripePlanKey =
   | "starter"
   | "professional"
-  | "enterprise_silver";
+  | "enterprise_silver"
+  | "enterprise_gold";
 
 /**
  * Whether a given plan key is purchasable through Stripe Checkout.
- * Free is never purchasable; Enterprise Gold is sales-priced and
- * routed through the contact form, not Checkout.
+ * Free is never purchasable; Custom is sales-priced and routed
+ * through the contact form, not Checkout.
  */
 export function isStripePurchasable(plan: string): plan is StripePlanKey {
   return (
     plan === "starter" ||
     plan === "professional" ||
-    plan === "enterprise_silver"
+    plan === "enterprise_silver" ||
+    plan === "enterprise_gold"
   );
 }
 

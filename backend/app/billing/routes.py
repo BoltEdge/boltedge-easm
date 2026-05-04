@@ -1,7 +1,7 @@
 # =============================================================================
 # File: app/billing/routes.py
 # Description: Billing & Plan Management routes.
-#   5 tiers: free, starter, professional, enterprise_silver, enterprise_gold
+#   6 tiers: free, starter, professional, enterprise_silver, enterprise_gold, custom
 #   Trial support: one free trial per paid tier per organization
 #   Stripe-ready: stub endpoints designed for future Stripe integration
 #
@@ -53,6 +53,7 @@ def _now_utc() -> datetime:
 PLAN_CONFIG = {
     "free": {
         "label": "Free",
+        "currency": "AUD",
         "price_monthly": 0,
         "price_annual_monthly": 0,
         "price_annual_total": 0,
@@ -70,100 +71,151 @@ PLAN_CONFIG = {
             "monitoring_frequency": None,
             "deep_discovery": False,
             "webhooks": False,
+            "audit_log": False,
+            "priority_support": False,
+            "white_label": False,
+            "onboarding_included": False,
         },
     },
     "starter": {
         "label": "Starter",
-        "price_monthly": 19,
-        "price_annual_monthly": 15,
-        "price_annual_total": 180,
+        "currency": "AUD",
+        "price_monthly": 29,
+        "price_annual_monthly": 24,
+        "price_annual_total": 288,
         "trial_days": 14,
         "limits": {
             "assets": 15,
             "scans_per_month": 100,
             "discoveries_per_month": 10,
             "monitored_assets": 5,
-            "team_members": 5,
+            "team_members": 3,
             "scheduled_scans": 5,
-            "api_keys": 3,
+            "api_keys": 1,
             "scan_profiles": ["quick", "standard", "deep"],
             "monitoring": True,
             "monitoring_frequency": "every_7_days",
             "deep_discovery": False,
             "webhooks": False,
+            "audit_log": False,
+            "priority_support": False,
+            "white_label": False,
+            "onboarding_included": False,
         },
     },
     "professional": {
         "label": "Professional",
-        "price_monthly": 99,
-        "price_annual_monthly": 79,
-        "price_annual_total": 948,
+        "currency": "AUD",
+        "price_monthly": 149,
+        "price_annual_monthly": 129,
+        "price_annual_total": 1548,
         "trial_days": 21,
         "limits": {
             "assets": 100,
             "scans_per_month": 1000,
             "discoveries_per_month": 50,
             "monitored_assets": 25,
-            "team_members": 20,
+            "team_members": 10,
             "scheduled_scans": 25,
-            "api_keys": 10,
+            "api_keys": 5,
             "scan_profiles": ["quick", "standard", "deep"],
             "monitoring": True,
             "monitoring_frequency": "every_3_days",
             "deep_discovery": True,
             "webhooks": True,
+            "audit_log": False,
+            "priority_support": False,
+            "white_label": False,
+            "onboarding_included": False,
         },
     },
     "enterprise_silver": {
         "label": "Enterprise Silver",
-        "price_monthly": 499,
-        "price_annual_monthly": 399,
-        "price_annual_total": 4788,
+        "currency": "AUD",
+        "price_monthly": 749,
+        "price_annual_monthly": 649,
+        "price_annual_total": 7788,
         "trial_days": 30,
         "limits": {
-            "assets": 5000,
+            "assets": 10000,
             "scans_per_month": 6000,
             "discoveries_per_month": 200,
             "monitored_assets": 100,
-            "team_members": 100,
+            "team_members": 50,
             "scheduled_scans": 100,
-            "api_keys": -1,
+            "api_keys": 10,
             "scan_profiles": ["quick", "standard", "deep"],
             "monitoring": True,
             "monitoring_frequency": "daily",
             "deep_discovery": True,
             "webhooks": True,
+            "audit_log": False,
+            "priority_support": False,
+            "white_label": False,
+            "onboarding_included": False,
         },
     },
     "enterprise_gold": {
         "label": "Enterprise Gold",
-        # Sales-priced — no public anchor. The "Contact sales" UI is
-        # triggered by price_monthly == -1 throughout the codebase.
+        "currency": "AUD",
+        # Self-serve top tier — A$1,349/mo, A$1,149/mo billed annually
+        # (~15% saving). Beyond this, customers go to Custom (sales).
+        "price_monthly": 1349,
+        "price_annual_monthly": 1149,
+        "price_annual_total": 13788,
+        "trial_days": 30,
+        "limits": {
+            "assets": 20000,
+            "scans_per_month": 12000,
+            "discoveries_per_month": 400,
+            "monitored_assets": 250,
+            "team_members": 100,
+            "scheduled_scans": 200,
+            "api_keys": 20,
+            "scan_profiles": ["quick", "standard", "deep"],
+            "monitoring": True,
+            "monitoring_frequency": "daily",
+            "deep_discovery": True,
+            "webhooks": True,
+            "audit_log": True,
+            "priority_support": True,
+            "white_label": False,
+            "onboarding_included": False,
+        },
+    },
+    "custom": {
+        "label": "Custom",
+        "currency": "AUD",
+        # Sales-quoted contract — no public price. The "Contact sales"
+        # UI is triggered by price_monthly == -1 throughout the codebase.
         "price_monthly": -1,
         "price_annual_monthly": -1,
         "price_annual_total": -1,
-        "trial_days": 45,  # sales approval required
+        "trial_days": 0,
         "trial_requires_approval": True,
         "limits": {
-            "assets": 10000,
-            # Soft "fair use" cap — anything beyond is a separate sales contract.
-            "scans_per_month": 50000,
+            "assets": -1,             # unlimited
+            "scans_per_month": -1,    # unlimited (fair use, contract-defined)
             "discoveries_per_month": -1,
-            "monitored_assets": 500,
+            "monitored_assets": -1,
             "team_members": -1,
             "scheduled_scans": -1,
             "api_keys": -1,
             "scan_profiles": ["quick", "standard", "deep", "custom"],
             "monitoring": True,
-            "monitoring_frequency": "every_12_hours",
+            "monitoring_frequency": "hourly",  # sub-hourly negotiable per contract
             "deep_discovery": True,
             "webhooks": True,
+            "audit_log": True,
+            "priority_support": True,
+            "white_label": True,           # MSSP-friendly rebranding
+            "onboarding_included": True,   # dedicated onboarding + training
         },
     },
 }
 
 # Plan tier ordering for upgrade/downgrade logic
-PLAN_ORDER = ["free", "starter", "professional", "enterprise_silver", "enterprise_gold"]
+PLAN_ORDER = ["free", "starter", "professional", "enterprise_silver", "enterprise_gold", "custom"]
 
 
 def get_plan_limits(plan_key: str) -> dict:
@@ -281,6 +333,7 @@ def _build_plan_response(org: Organization) -> dict:
             "apiKeys": api_key_count,
         },
         "pricing": {
+            "currency": config.get("currency", "AUD"),
             "monthly": config["price_monthly"],
             "annualMonthly": config["price_annual_monthly"],
             "annualTotal": config["price_annual_total"],
@@ -316,6 +369,7 @@ def list_plans():
         plans.append({
             "key": key,
             "label": config["label"],
+            "currency": config.get("currency", "AUD"),
             "priceMonthly": config["price_monthly"],
             "priceAnnualMonthly": config["price_annual_monthly"],
             "priceAnnualTotal": config["price_annual_total"],
@@ -475,9 +529,9 @@ def upgrade():
 
     config = PLAN_CONFIG[target_plan]
 
-    if target_plan == "enterprise_gold":
+    if target_plan == "custom":
         return jsonify(
-            error="Enterprise Gold requires a custom agreement. Please contact sales.",
+            error="The Custom plan requires a tailored contract. Please contact sales.",
             contactSales=True,
         ), 403
 
@@ -746,9 +800,9 @@ def create_checkout():
     if billing_cycle not in ("monthly", "annual"):
         return jsonify(error="billingCycle must be 'monthly' or 'annual'."), 400
 
-    if target_plan == "enterprise_gold":
+    if target_plan == "custom":
         return jsonify(
-            error="Enterprise Gold requires a custom agreement. Please contact sales.",
+            error="The Custom plan requires a tailored contract. Please contact sales.",
             contactSales=True,
         ), 403
 

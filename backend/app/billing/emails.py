@@ -88,11 +88,25 @@ def _billing_footer() -> str:
     )
 
 
+_CURRENCY_SYMBOLS: dict[str, str] = {
+    "aud": "A$",
+    "usd": "$",
+    "nzd": "NZ$",
+    "cad": "C$",
+    "gbp": "£",
+    "eur": "€",
+}
+
+
+def _currency_symbol(currency: str) -> str:
+    return _CURRENCY_SYMBOLS.get(currency.lower(), "")
+
+
 def _format_money(amount_cents: int, currency: str) -> str:
-    """e.g. 1900, 'usd' → '$19.00 USD'"""
+    """e.g. 2900, 'aud' → 'A$29.00 AUD'."""
     if amount_cents is None:
         return "—"
-    sym = "$" if currency.lower() == "usd" else ""
+    sym = _currency_symbol(currency)
     return f"{sym}{amount_cents / 100:,.2f} {currency.upper()}"
 
 
@@ -134,7 +148,7 @@ def _format_signed_money(cents: Optional[int], currency: str) -> str:
     """Render a money value with explicit sign — credits are negative."""
     if cents is None:
         return "—"
-    sym = "$" if currency.lower() == "usd" else ""
+    sym = _currency_symbol(currency)
     if cents < 0:
         return f"-{sym}{abs(cents) / 100:,.2f}"
     return f"{sym}{cents / 100:,.2f}"
@@ -158,7 +172,7 @@ def _line_items_html(invoice: dict) -> str:
     so we don't need to add period info separately.
     """
     lines = (invoice.get("lines") or {}).get("data") or []
-    currency = (invoice.get("currency") or "usd").lower()
+    currency = (invoice.get("currency") or "aud").lower()
     subtotal = invoice.get("subtotal", 0) or 0
     total = invoice.get("total", subtotal) or 0
     # `tax` field is populated when Stripe Tax is active. Otherwise
@@ -298,7 +312,7 @@ def send_receipt_email(org: Organization, invoice: dict) -> bool:
     plan_label = PLAN_CONFIG.get(org.plan, {}).get("label", org.plan)
 
     amount_cents = invoice.get("amount_paid", 0)
-    currency = invoice.get("currency") or "usd"
+    currency = invoice.get("currency") or "aud"
     period_start = invoice.get("period_start") or invoice.get("status_transitions", {}).get("paid_at")
     period_end = invoice.get("period_end")
     invoice_number = invoice.get("number") or invoice.get("id", "")
@@ -379,7 +393,7 @@ def send_payment_failed_email(org: Organization, invoice: dict) -> bool:
     plan_label = PLAN_CONFIG.get(org.plan, {}).get("label", org.plan)
 
     amount_cents = invoice.get("amount_due", 0)
-    currency = invoice.get("currency") or "usd"
+    currency = invoice.get("currency") or "aud"
     next_attempt = invoice.get("next_payment_attempt")
     fe = frontend_url()
 
@@ -438,7 +452,7 @@ def send_refund_email(org: Organization, charge: dict) -> bool:
         logger.warning("No billing recipient for org %s; skipping refund email", org.id)
         return False
 
-    currency = charge.get("currency") or "usd"
+    currency = charge.get("currency") or "aud"
 
     refunds_list = (charge.get("refunds") or {}).get("data") or []
     latest_refund = refunds_list[0] if refunds_list else {}

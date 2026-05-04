@@ -641,8 +641,248 @@ def _render_report_html(report: Report, data: dict) -> str:
     """Render the report HTML based on template type."""
     if report.template == "executive":
         return _render_executive_html(report, data)
+    if report.template == "compliance":
+        return _render_compliance_html(report, data)
+    return _render_technical_html(report, data)
+
+
+# ─── Compliance grouping helper ─────────────────────────────────────────
+# Used by _render_compliance_html. Computes a framework-keyed bucket of
+# findings, where each bucket maps controls → list of findings + a
+# relationship summary (direct vs supports). Defensive against
+# compliance_map import failure so a misconfigured environment still
+# produces a (mostly empty) report rather than a 500.
+
+def _compute_compliance_groupings(all_findings: list) -> dict:
+    """Group findings by framework + control via the compliance map.
+
+    Returns a dict where each framework key maps to:
+        {
+          "label": "OWASP ASVS 4.0",
+          "totalFindings": N,            # unique findings under this framework
+          "controls": [
+            {
+              "controlId": "9.1.1",
+              "findings": [<finding>, ...],
+              "directCount": N,
+              "supportsCount": N,
+            },
+            ...
+          ],
+          "relationshipNote": ""          # caveat for soc2/iso_27001, else ""
+        }
+    """
+    try:
+        from app.scanner.compliance_map import (
+            FRAMEWORK_LABELS, get_compliance_mappings,
+        )
+    except Exception:
+        return {}
+
+    # framework -> control_id -> { findings, finding_ids, direct, supports }
+    groupings: dict = {}
+
+    for f in all_findings:
+        cwe = f.get("cwe")
+        category = f.get("category")
+        mappings = get_compliance_mappings(cwe, category)
+        if not mappings:
+            continue
+        for m in mappings:
+            fw = m["framework"]
+            relationship = m["relationship"]
+            for control_id in m["controls"]:
+                fw_bucket = groupings.setdefault(fw, {})
+                ctrl_bucket = fw_bucket.setdefault(control_id, {
+                    "findings": [],
+                    "finding_ids": set(),
+                    "direct": 0,
+                    "supports": 0,
+                })
+                fid = f.get("id") or f.get("title")
+                if fid not in ctrl_bucket["finding_ids"]:
+                    ctrl_bucket["finding_ids"].add(fid)
+                    ctrl_bucket["findings"].append(f)
+                if relationship == "direct":
+                    ctrl_bucket["direct"] += 1
+                else:
+                    ctrl_bucket["supports"] += 1
+
+    out = {}
+    for fw, ctrls in groupings.items():
+        all_ids = set()
+        for c in ctrls.values():
+            all_ids.update(c["finding_ids"])
+        ctrl_list = [
+            {
+                "controlId": ctrl_id,
+                "findings": ctrls[ctrl_id]["findings"],
+                "directCount": ctrls[ctrl_id]["direct"],
+                "supportsCount": ctrls[ctrl_id]["supports"],
+            }
+            for ctrl_id in sorted(ctrls.keys())
+        ]
+        relationship_note = ""
+        if fw in ("soc2", "iso_27001"):
+            relationship_note = (
+                "Mappings derived from NIST CSF cross-walk. Verify with "
+                "your auditor before using as compliance evidence."
+            )
+        out[fw] = {
+            "label": FRAMEWORK_LABELS.get(fw, fw),
+            "totalFindings": len(all_ids),
+            "controls": ctrl_list,
+            "relationshipNote": relationship_note,
+        }
+
+    return out
+
+
+def _render_compliance_html(report: Report, data: dict) -> str:
+    """Render compliance-by-framework report.
+
+    Pulls all findings from data["what"]["allFindings"], runs them
+    through _compute_compliance_groupings, and renders one section
+    per framework with controls + finding counts. Findings that don't
+    map to anything are summarised at the end as "uncategorised".
+    """
+    org = data.get("organization", {})
+    summary = data.get("summary", {})
+    what = data.get("what", {})
+    all_findings = what.get("allFindings", []) or []
+
+    groupings = _compute_compliance_groupings(all_findings)
+
+    # Figure out which findings didn't map to anything
+    mapped_ids = set()
+    for fw_data in groupings.values():
+        for ctrl in fw_data["controls"]:
+            for f in ctrl["findings"]:
+                mapped_ids.add(f.get("id") or f.get("title"))
+    unmapped = [
+        f for f in all_findings
+        if (f.get("id") or f.get("title")) not in mapped_ids
+    ]
+
+    scope_label = data.get("groupName") or org.get("name", "Organization")
+    generated_at = data.get("generatedAt", "")
+    if generated_at:
+        try:
+            dt = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+            generated_at = dt.strftime("%B %d, %Y at %H:%M UTC")
+        except Exception:
+            pass
+
+    # Display order — primary frameworks first, derived ones (soc2 / iso) last.
+    fw_order = ["owasp_asvs", "cis_v8", "nist_csf", "pci_dss_4", "soc2", "iso_27001"]
+    fw_blocks_html = ""
+    for fw in fw_order:
+        info = groupings.get(fw)
+        if not info or not info["controls"]:
+            continue
+        ctrl_rows = ""
+        for ctrl in info["controls"]:
+            sample_titles = [f["title"] for f in ctrl["findings"][:5]]
+            sample_html = "<br/>".join(
+                f"&bull; {t}" for t in sample_titles
+            )
+            if len(ctrl["findings"]) > 5:
+                sample_html += (
+                    f"<br/>&hellip; and {len(ctrl['findings']) - 5} more"
+                )
+            relationship_marker = ""
+            if ctrl["supportsCount"] > 0 and ctrl["directCount"] == 0:
+                relationship_marker = (
+                    "<span style='color:#94a3b8;font-style:italic;'>"
+                    "(supports)</span>"
+                )
+            elif ctrl["supportsCount"] > 0:
+                relationship_marker = (
+                    "<span style='color:#94a3b8;font-style:italic;'>"
+                    "(direct + supports)</span>"
+                )
+            ctrl_rows += f"""
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">{ctrl['controlId']} {relationship_marker}</td>
+              <td>{len(ctrl['findings'])}</td>
+              <td>{sample_html}</td>
+            </tr>
+            """
+        note_html = ""
+        if info["relationshipNote"]:
+            note_html = (
+                f'<p style="color:#94a3b8;font-size:9pt;font-style:italic;'
+                f'margin-top:4px;">{info["relationshipNote"]}</p>'
+            )
+        fw_blocks_html += f"""
+        <h2>{info['label']}</h2>
+        {note_html}
+        <p>{info['totalFindings']} finding(s) mapped across {len(info['controls'])} control(s).</p>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:18%;">Control</th>
+              <th style="width:8%;">Findings</th>
+              <th>Top examples</th>
+            </tr>
+          </thead>
+          <tbody>{ctrl_rows}</tbody>
+        </table>
+        """
+
+    unmapped_html = ""
+    if unmapped:
+        unmapped_html = f"""
+        <h2>Findings without compliance mapping</h2>
+        <p>{len(unmapped)} finding(s) didn't match any framework in our
+        cross-walk. These typically have no CWE or fall outside the
+        crypto / network / web-app scope of the curated mappings.</p>
+        """
+
+    if not groupings:
+        body_html = """
+        <h2>No compliance mappings produced</h2>
+        <p>None of the findings in this report mapped to a framework
+        in our cross-walk catalogue. This is normal when the scope
+        produced only informational or change-detection findings.</p>
+        """
     else:
-        return _render_technical_html(report, data)
+        body_html = fw_blocks_html + unmapped_html
+
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/><title>Compliance Report — {org.get('name', 'Organization')}</title>
+<style>{COMMON_STYLES}</style></head>
+<body>
+<div class="header">
+  <h1>Compliance — Framework Coverage</h1>
+  <div class="org">{org.get('name', '—')}</div>
+  <div class="subtitle">Scope: {scope_label} &middot; Generated {generated_at}</div>
+</div>
+
+<p>This report groups the findings in scope by their associated
+compliance-framework controls. Mappings come from the Nano EASM
+CWE&rarr;framework cross-walk: <strong>direct</strong> mappings are
+explicitly published by the framework owner;
+<em>supports</em> mappings are derived from public cross-walks
+(typically NIST CSF informative references) and should be confirmed
+with your auditor before being used as compliance evidence.</p>
+
+<table class="metrics-table">
+  <tr>
+    <td class="metric-cell"><div class="metric-value">{summary.get('totalFindings', 0)}</div><div class="metric-label">Total Findings</div></td>
+    <td class="metric-cell"><div class="metric-value">{len(groupings)}</div><div class="metric-label">Frameworks Hit</div></td>
+    <td class="metric-cell"><div class="metric-value">{len(unmapped)}</div><div class="metric-label">Unmapped</div></td>
+  </tr>
+</table>
+
+{body_html}
+
+<div class="footer">
+  Compliance cross-walk sourced from public framework references
+  (OWASP ASVS, CIS Controls v8, NIST CSF v2.0). Generated by Nano EASM.
+</div>
+</body></html>
+"""
 
 
 def _render_executive_html(report: Report, data: dict) -> str:
@@ -1111,8 +1351,8 @@ def generate_report():
 
     # Validate template
     template = body.get("template", "executive")
-    if template not in ("executive", "technical"):
-        return jsonify(error="template must be 'executive' or 'technical'"), 400
+    if template not in ("executive", "technical", "compliance"):
+        return jsonify(error="template must be one of executive, technical, compliance"), 400
 
     # Validate scope
     scope = body.get("scope", "organization")
@@ -1275,8 +1515,8 @@ def create_schedule():
         return jsonify(error="name is required"), 400
 
     template = body.get("template", "executive")
-    if template not in ("executive", "technical"):
-        return jsonify(error="template must be 'executive' or 'technical'"), 400
+    if template not in ("executive", "technical", "compliance"):
+        return jsonify(error="template must be one of executive, technical, compliance"), 400
 
     scope = body.get("scope", "organization")
     if scope not in ("organization", "group"):
@@ -1348,7 +1588,7 @@ def update_schedule(schedule_id: int):
     if "name" in body:
         s.name = (body["name"] or "").strip() or s.name
         updated_fields.append("name")
-    if "template" in body and body["template"] in ("executive", "technical"):
+    if "template" in body and body["template"] in ("executive", "technical", "compliance"):
         s.template = body["template"]
         updated_fields.append("template")
     if "frequency" in body and body["frequency"] in ("weekly", "monthly"):

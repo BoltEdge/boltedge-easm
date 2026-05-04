@@ -40,8 +40,8 @@ const PLAN_LABELS: Record<string, string> = {
 };
 
 function formatMoney(cents: number | null | undefined): string {
-  if (!cents) return "$0";
-  return `$${(cents / 100).toLocaleString(undefined, {
+  if (!cents) return "A$0";
+  return `A$${(cents / 100).toLocaleString(undefined, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   })}`;

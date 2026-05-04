@@ -190,6 +190,7 @@ def launch_discovery():
         "professional": ("standard", "deep"),
         "enterprise_silver": ("standard", "deep"),
         "enterprise_gold": ("standard", "deep"),
+        "custom": ("standard", "deep"),
     }
     allowed_depths = PLAN_DEPTH_LIMIT.get(plan, ("standard",))
     if scan_depth not in allowed_depths:
@@ -207,6 +208,7 @@ def launch_discovery():
         "professional": ("domain", "ip", "asn", "org_name", "cidr"),
         "enterprise_silver": ("domain", "ip", "asn", "org_name", "cidr"),
         "enterprise_gold": ("domain", "ip", "asn", "org_name", "cidr"),
+        "custom": ("domain", "ip", "asn", "org_name", "cidr"),
     }
     allowed_targets = PLAN_TARGET_LIMIT.get(plan, ("domain", "ip"))
     if target_type not in allowed_targets:

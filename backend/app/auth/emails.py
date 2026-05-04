@@ -34,6 +34,28 @@ from app.utils.email_shell import (
 logger = logging.getLogger(__name__)
 
 
+def _greeting_name(user: User) -> str:
+    """
+    Resolve a friendly first-name greeting for an email.
+
+    Order of preference:
+      1. `user.first_name` — explicit, set on every email/password
+         signup since the first-name/last-name split.
+      2. First word of `user.name` — legacy users registered before
+         the split, plus OAuth signups whose IdP only returns a
+         single full name.
+      3. The local-part of `user.email` — last resort so we never
+         greet "there".
+    """
+    if user.first_name and user.first_name.strip():
+        return user.first_name.strip()
+    if user.name and user.name.strip():
+        return user.name.strip().split()[0]
+    if user.email and "@" in user.email:
+        return user.email.split("@", 1)[0]
+    return "there"
+
+
 # ─────────────────────────────────────────────────────────────────────
 # Welcome email — sent once per user
 # ─────────────────────────────────────────────────────────────────────
@@ -59,6 +81,12 @@ def send_welcome_email(user: User, organization: Optional[Organization] = None) 
     """
     Send the one-time welcome email to a newly active user.
 
+    Idempotent: returns False without sending if `user.welcome_email_sent_at`
+    is already populated. Stamps the timestamp + commits on a successful
+    send so subsequent calls are no-ops. This is what lets us trigger
+    welcome from multiple call sites (login, OAuth, invite) without
+    risking duplicate emails.
+
     `organization` is optional — when present, the greeting acknowledges
     the workspace name. For invite-based signups (where a user joins an
     existing org), this gives the email a slightly more personal frame.
@@ -66,8 +94,13 @@ def send_welcome_email(user: User, organization: Optional[Organization] = None) 
     if not user.email:
         return False
 
+    # Idempotency guard — once we've sent the welcome, never send again.
+    if getattr(user, "welcome_email_sent_at", None) is not None:
+        logger.info("Welcome email already sent for user %s; skipping.", user.id)
+        return False
+
     fe = frontend_url()
-    name = (user.name or user.email.split("@")[0] or "there").strip()
+    name = _greeting_name(user)
 
     if organization and organization.name:
         intro = (
@@ -125,7 +158,23 @@ def send_welcome_email(user: User, organization: Optional[Organization] = None) 
         "alerts you configure, and your account &mdash; never marketing without your consent."
     )
     html = shell(title=title, body_html=body, footer_html=footer)
-    return send_via_resend(to=user.email, subject=subject, html=html)
+    sent = send_via_resend(to=user.email, subject=subject, html=html)
+
+    # Stamp timestamp on a successful send so future calls become
+    # no-ops. We commit immediately rather than relying on the caller —
+    # a missed commit here would mean a duplicate welcome on the next
+    # trigger, which is worse than the (rare) wasted DB write.
+    if sent:
+        from datetime import datetime as _dt, timezone as _tz
+        from app.extensions import db
+        try:
+            user.welcome_email_sent_at = _dt.now(_tz.utc).replace(tzinfo=None)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            logger.exception("Failed to stamp welcome_email_sent_at for user %s", user.id)
+
+    return sent
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -137,7 +186,7 @@ def send_verification_email(user: User, verify_link: str) -> bool:
     if not user.email:
         return False
 
-    name = (user.name or user.email.split("@")[0] or "there").strip()
+    name = _greeting_name(user)
 
     body = f"""
     <p style="font-size:15px;line-height:1.6;color:{TEXT_DARK};margin:0 0 16px 0;">
@@ -179,7 +228,7 @@ def send_password_reset_email(user: User, reset_link: str) -> bool:
     if not user.email:
         return False
 
-    name = (user.name or user.email.split("@")[0] or "there").strip()
+    name = _greeting_name(user)
 
     body = f"""
     <p style="font-size:15px;line-height:1.6;color:{TEXT_DARK};margin:0 0 16px 0;">

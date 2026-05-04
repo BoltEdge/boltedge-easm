@@ -10,6 +10,7 @@ import { getAllAssets } from "../../../lib/api";
 
 import { Input } from "../../../ui/input";
 import { Button } from "../../../ui/button";
+import { CriticalityBadge } from "../../../ui/criticality";
 
 export default function AllAssetsPage() {
   const [loading, setLoading] = useState(true);
@@ -108,7 +109,8 @@ export default function AllAssetsPage() {
         <div className="rounded-lg border border-border overflow-hidden bg-card">
           <div className="grid grid-cols-12 gap-3 px-4 py-3 text-xs font-semibold text-muted-foreground border-b border-border">
             <div className="col-span-2">Type</div>
-            <div className="col-span-6">Value</div>
+            <div className="col-span-5">Value</div>
+            <div className="col-span-1">Tier</div>
             <div className="col-span-2">Label</div>
             <div className="col-span-2">Group</div>
           </div>
@@ -131,8 +133,12 @@ export default function AllAssetsPage() {
                     {type}
                   </div>
 
-                  <div className="col-span-6 font-mono text-foreground">
-                    {value}
+                  <div className="col-span-5 font-mono text-foreground truncate" title={value}>
+                    <Link href={`/assets/${a.id}`} className="text-primary hover:underline">{value}</Link>
+                  </div>
+
+                  <div className="col-span-1">
+                    <CriticalityBadge value={(a as any).criticality} size="xs" withIcon={false} />
                   </div>
 
                   <div className="col-span-2 text-muted-foreground">

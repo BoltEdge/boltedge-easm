@@ -45,7 +45,7 @@ export default function UnauthenticatedHomePage() {
             />
           </div>
 
-          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-20 sm:pt-28 lg:pt-36 pb-16">
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-16 sm:pt-24 lg:pt-28 pb-12">
             <HeroStagger>
               <HeroItem>
                 <div className="inline-flex items-center gap-2 rounded-full border border-teal-500/20 bg-teal-500/[0.06] px-4 py-1.5 mb-8">
@@ -95,7 +95,7 @@ export default function UnauthenticatedHomePage() {
               <AnimatedDashboard />
             </HeroDashboard>
 
-            <HeroFadeIn delay={0.9} className="mt-16 text-center">
+            <HeroFadeIn delay={0.9} className="mt-10 text-center">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto">
                 {[
                   "Free tier, no card",
@@ -115,10 +115,10 @@ export default function UnauthenticatedHomePage() {
         </section>
 
         {/* ================= TRY IT ================= */}
-        <section id="try-it" className="py-24 sm:py-32">
+        <section id="try-it" className="py-16 sm:py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <FadeInOnScroll>
-              <div className="text-center mb-12">
+              <div className="text-center mb-10">
                 <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">Try it now</span>
                 <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">See it in action — no signup needed</h2>
                 <p className="mt-4 text-base text-white/40 max-w-xl mx-auto">
@@ -142,11 +142,11 @@ export default function UnauthenticatedHomePage() {
         </section>
 
         {/* ================= FEATURES ================= */}
-        <section id="features" className="relative py-24 sm:py-32">
+        <section id="features" className="relative py-16 sm:py-20">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-teal-500/[0.02] to-transparent pointer-events-none" />
           <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
             <FadeInOnScroll>
-              <div className="text-center mb-16">
+              <div className="text-center mb-10">
                 <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">Capabilities</span>
                 <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
                   Everything you need to manage<br /><span className="text-white/50">your attack surface</span>
@@ -184,10 +184,10 @@ export default function UnauthenticatedHomePage() {
         </section>
 
         {/* ================= HOW IT WORKS ================= */}
-        <section id="how-it-works" className="py-24 sm:py-32">
+        <section id="how-it-works" className="py-16 sm:py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <FadeInOnScroll>
-              <div className="text-center mb-16">
+              <div className="text-center mb-10">
                 <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">How it works</span>
                 <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">Four steps to full visibility</h2>
               </div>
@@ -215,7 +215,7 @@ export default function UnauthenticatedHomePage() {
 
         {/* ================= COMMUNITY PREVIEW (shown when billing is off) ================= */}
         {!BILLING_ENABLED && (
-        <section className="py-24 sm:py-32">
+        <section className="py-16 sm:py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <FadeInOnScroll>
               <div className="relative overflow-hidden rounded-3xl border border-teal-500/20 bg-gradient-to-br from-teal-500/[0.06] via-[#060b18] to-[#060b18] px-8 py-14 sm:px-16">
@@ -247,11 +247,11 @@ export default function UnauthenticatedHomePage() {
                   {/* Right: plan limit cards */}
                   <div className="w-full lg:w-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3 lg:min-w-[440px]">
                     {[
-                      { plan: "Free", detail: "2 assets · 4 scans/mo", color: "border-white/[0.06]" },
-                      { plan: "Starter", detail: "15 assets · 500 scans/mo", color: "border-white/[0.06]" },
-                      { plan: "Professional", detail: "100 assets · 5k scans/mo", color: "border-teal-500/20 bg-teal-500/[0.04]" },
-                      { plan: "Ent. Silver", detail: "15k assets · unlimited scans", color: "border-white/[0.06]" },
-                      { plan: "Ent. Gold", detail: "50k assets · unlimited scans", color: "border-white/[0.06]" },
+                      { plan: "Free", detail: "2 assets · 5 scans/mo", color: "border-white/[0.06]" },
+                      { plan: "Starter", detail: "15 assets · 100 scans/mo", color: "border-white/[0.06]" },
+                      { plan: "Professional", detail: "100 assets · 1k scans/mo", color: "border-teal-500/20 bg-teal-500/[0.04]" },
+                      { plan: "Ent. Silver", detail: "5k assets · 6k scans/mo", color: "border-white/[0.06]" },
+                      { plan: "Ent. Gold", detail: "1k assets · 12k scans/mo · audit log", color: "border-white/[0.06]" },
                     ].map(({ plan, detail, color }) => (
                       <div key={plan} className={`rounded-xl border ${color} bg-white/[0.02] px-4 py-3`}>
                         <div className="text-xs font-semibold text-white/70">{plan}</div>
@@ -269,23 +269,24 @@ export default function UnauthenticatedHomePage() {
 
         {/* ================= PRICING (billing-gated) ================= */}
         {BILLING_ENABLED && (
-        <section id="pricing" className="py-24 sm:py-32">
+        <section id="pricing" className="py-16 sm:py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <FadeInOnScroll>
-              <div className="text-center mb-16">
+              <div className="text-center mb-10">
                 <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">Pricing</span>
                 <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">Start free, scale when ready</h2>
                 <p className="mt-4 text-base text-white/40 max-w-lg mx-auto">Free trials available on every paid plan — request one and we&apos;ll get back to you within one business day.</p>
               </div>
             </FadeInOnScroll>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 max-w-6xl mx-auto">
               {[
-                { name: "Free", price: "$0", period: "", desc: "Explore the platform", limits: ["2 assets","5 scans / month","2 discoveries / month","Quick & Standard profiles","1 team member","1 scheduled scan"], excluded: ["Monitoring","Webhooks","Deep discovery"], cta: "Get started", href: "/register", highlight: false, trial: false },
-                { name: "Starter", price: "$19", period: "/mo", desc: "For individuals & small teams", limits: ["15 assets","100 scans / month","10 discoveries / month","Monitor up to 5 assets (weekly)","All scan profiles","5 team members","5 scheduled scans","3 API keys"], excluded: ["Webhooks","Deep discovery"], cta: "Request free trial", href: "/?type=trial#contact", highlight: false, trial: true },
-                { name: "Professional", price: "$99", period: "/mo", desc: "For growing security teams", limits: ["100 assets","1,000 scans / month","50 discoveries / month","Monitor up to 25 assets (every 3 days)","20 team members","25 scheduled scans","10 API keys","Webhooks & integrations","Deep discovery"], excluded: [], cta: "Request free trial", href: "/?type=trial#contact", highlight: true, trial: true },
-                { name: "Enterprise Silver", price: "$499", period: "/mo", desc: "For organisations at scale", limits: ["5,000 assets","6,000 scans / month","200 discoveries / month","Monitor up to 100 assets daily","100 team members","100 scheduled scans","Unlimited API keys","Audit log","Priority support"], excluded: [], cta: "Request free trial", href: "/?type=trial#contact", highlight: false, trial: true },
-              ].map(({ name, price, period, desc, limits, excluded, cta, href, highlight, trial }, idx) => (
+                { name: "Free", price: "A$0", period: "", desc: "Explore the platform", limits: ["2 assets","5 scans / month","2 discoveries / month","Quick & Standard profiles","1 team member","1 scheduled scan"], excluded: ["Monitoring","Webhooks","Deep discovery"], cta: "Get started", href: "/register", highlight: false, trial: false, annual: null },
+                { name: "Starter", price: "A$29", period: "/mo", desc: "For individuals & small teams", limits: ["15 assets","100 scans / month","10 discoveries / month","Monitor up to 5 assets (weekly)","All scan profiles","3 team members","5 scheduled scans","1 API key"], excluded: ["Webhooks","Deep discovery"], cta: "Request free trial", href: "/?type=trial#contact", highlight: false, trial: true, annual: "A$24/mo billed annually" },
+                { name: "Professional", price: "A$149", period: "/mo", desc: "For growing security teams", limits: ["100 assets","1,000 scans / month","50 discoveries / month","Monitor up to 25 assets (every 3 days)","10 team members","25 scheduled scans","5 API keys","Webhooks & integrations","Deep discovery"], excluded: [], cta: "Request free trial", href: "/?type=trial#contact", highlight: true, trial: true, annual: "A$129/mo billed annually" },
+                { name: "Enterprise Silver", price: "A$749", period: "/mo", desc: "For organisations at scale", limits: ["10,000 assets","6,000 scans / month","200 discoveries / month","Monitor up to 100 assets daily","50 team members","100 scheduled scans","10 API keys","Webhooks & integrations","Deep discovery"], excluded: [], cta: "Request free trial", href: "/?type=trial#contact", highlight: false, trial: true, annual: "A$649/mo billed annually" },
+                { name: "Enterprise Gold", price: "A$1,349", period: "/mo", desc: "Full featureset for serious teams", limits: ["20,000 assets","12,000 scans / month","400 discoveries / month","Monitor up to 250 assets daily","100 team members","200 scheduled scans","20 API keys","Audit log","Priority support"], excluded: [], cta: "Request free trial", href: "/?type=trial#contact", highlight: false, trial: true, annual: "A$1,149/mo billed annually" },
+              ].map(({ name, price, period, desc, limits, excluded, cta, href, highlight, trial, annual }, idx) => (
                 <FadeInOnScroll key={name} delay={idx * 100}>
                   <div className={`relative rounded-2xl border p-6 flex flex-col h-full ${highlight ? "border-teal-500/30 bg-gradient-to-b from-teal-500/[0.08] to-transparent" : "border-white/[0.06] bg-white/[0.02]"}`}>
                     {highlight && (
@@ -298,6 +299,7 @@ export default function UnauthenticatedHomePage() {
                       <span className="text-3xl font-bold text-white">{price}</span>
                       {period && <span className="text-sm text-white/30">{period}</span>}
                     </div>
+                    {annual && <div className="text-[11px] text-white/40 mb-1">{annual}</div>}
                     <p className="text-xs text-white/40 mb-5">{desc}</p>
                     {trial && <div className="text-[10px] text-teal-400/80 font-medium mb-4 uppercase tracking-wide">Free trial available</div>}
                     <ul className="space-y-2 mb-6 flex-1">
@@ -310,16 +312,33 @@ export default function UnauthenticatedHomePage() {
               ))}
             </div>
 
-            <FadeInOnScroll delay={450}>
-              <div className="mt-8 max-w-5xl mx-auto">
-                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div>
-                    <div className="text-sm font-semibold text-white">Need more? Enterprise Gold</div>
-                    <p className="text-xs text-white/40 mt-1">10,000+ assets, 500 monitored every 12 hours, custom scan profiles, SSO, SLA, and dedicated support. Pricing tailored to your scale — talk to our sales team.</p>
+            <FadeInOnScroll delay={500}>
+              <div className="mt-10 max-w-6xl mx-auto">
+                <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-teal-500/[0.04] to-transparent px-8 py-6">
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+                    <div className="lg:max-w-2xl">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">Custom</span>
+                        <span className="text-xs text-white/40">·  Contact sales</span>
+                      </div>
+                      <div className="text-base font-semibold text-white mt-2">Beyond Enterprise Gold</div>
+                      <p className="text-sm text-white/50 mt-2 leading-relaxed">
+                        Tailored to organisations and MSSPs that need scale, integration depth, or
+                        rebrandable delivery. Pricing negotiated per contract.
+                      </p>
+                      <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-[13px] text-white/60">
+                        <li className="flex items-start gap-2"><Check className="w-3.5 h-3.5 text-teal-500/70 shrink-0 mt-0.5" />Unlimited assets, scans &amp; discoveries</li>
+                        <li className="flex items-start gap-2"><Check className="w-3.5 h-3.5 text-teal-500/70 shrink-0 mt-0.5" />Unlimited team members, schedules, API keys</li>
+                        <li className="flex items-start gap-2"><Check className="w-3.5 h-3.5 text-teal-500/70 shrink-0 mt-0.5" />Hourly monitoring (sub-hourly negotiable)</li>
+                        <li className="flex items-start gap-2"><Check className="w-3.5 h-3.5 text-teal-500/70 shrink-0 mt-0.5" />Audit log + priority support</li>
+                        <li className="flex items-start gap-2"><Check className="w-3.5 h-3.5 text-teal-500/70 shrink-0 mt-0.5" />Onboarding &amp; training included</li>
+                        <li className="flex items-start gap-2"><Check className="w-3.5 h-3.5 text-teal-500/70 shrink-0 mt-0.5" />White-label option for MSSPs</li>
+                      </ul>
+                    </div>
+                    <Link href="/?type=trial#contact" className="shrink-0 inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-medium text-white shadow-md shadow-teal-900/20 hover:bg-teal-500 transition-all">
+                      Contact sales<ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
                   </div>
-                  <Link href="/?type=trial#contact" className="shrink-0 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-5 py-2.5 text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-all">
-                    Contact sales<ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
                 </div>
               </div>
             </FadeInOnScroll>
@@ -328,7 +347,7 @@ export default function UnauthenticatedHomePage() {
         )}
 
         {/* ================= FINAL CTA ================= */}
-        <section className="py-24 sm:py-32">
+        <section className="py-16 sm:py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <FadeInOnScroll>
               <div className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-gradient-to-br from-[#0d1a2e] to-[#0a1121] px-8 py-16 text-center sm:px-16">
@@ -353,7 +372,7 @@ export default function UnauthenticatedHomePage() {
         </section>
 
         {/* ================= CONTACT ================= */}
-        <section id="contact" className="py-24 sm:py-32 border-t border-white/[0.04]">
+        <section id="contact" className="py-16 sm:py-20 border-t border-white/[0.04]">
           <div className="mx-auto max-w-3xl px-4 sm:px-6">
             <FadeInOnScroll>
               <div className="text-center mb-10">

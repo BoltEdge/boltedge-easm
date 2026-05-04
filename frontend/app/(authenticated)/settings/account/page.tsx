@@ -82,7 +82,8 @@ export default function AccountPage() {
   const planLimit = usePlanLimit();
 
   // Profile state
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -136,10 +137,22 @@ export default function AccountPage() {
   // Auto-clear banner
   useEffect(() => { if (banner) { const t = setTimeout(() => setBanner(null), 5000); return () => clearTimeout(t); } }, [banner]);
 
-  // Load profile data from OrgContext
+  // Load profile data from OrgContext. Prefer the explicit
+  // firstName/lastName fields when the backend has them; fall back
+  // to splitting the legacy `name` for users registered before the
+  // first/last split was introduced.
   useEffect(() => {
     if (user) {
-      setName(user.name || "");
+      const first = (user as any).firstName || (user as any).first_name || "";
+      const last = (user as any).lastName || (user as any).last_name || "";
+      if (first || last) {
+        setFirstName(first);
+        setLastName(last);
+      } else if (user.name) {
+        const parts = user.name.trim().split(/\s+/);
+        setFirstName(parts[0] || "");
+        setLastName(parts.slice(1).join(" ") || "");
+      }
       setJobTitle((user as any).jobTitle || (user as any).job_title || "");
     }
   }, [user]);
@@ -175,12 +188,16 @@ export default function AccountPage() {
   // ─── Handlers ──────────────────────────────────────
 
   async function handleSaveProfile() {
-    if (!name.trim()) return;
+    if (!firstName.trim() || !lastName.trim()) return;
     try {
       setSavingProfile(true);
       await apiFetch<any>("/settings/me", {
         method: "PATCH",
-        body: JSON.stringify({ name: name.trim(), jobTitle: jobTitle.trim() || null }),
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          jobTitle: jobTitle.trim() || null,
+        }),
       });
       setBanner({ kind: "ok", text: "Profile updated." });
       refreshOrg();
@@ -284,7 +301,12 @@ export default function AccountPage() {
   }
 
   const RIcon = ROLE_ICONS[role || "viewer"] || User;
-  const profileDirty = name.trim() !== (user?.name || "") || (jobTitle.trim() || "") !== ((user as any)?.jobTitle || (user as any)?.job_title || "");
+  const currentFirst = (user as any)?.firstName || (user as any)?.first_name || "";
+  const currentLast = (user as any)?.lastName || (user as any)?.last_name || "";
+  const profileDirty =
+    firstName.trim() !== currentFirst ||
+    lastName.trim() !== currentLast ||
+    (jobTitle.trim() || "") !== ((user as any)?.jobTitle || (user as any)?.job_title || "");
   const orgDirty =
     orgName.trim() !== ((organization as any)?.name || "") ||
     (orgIndustry || "") !== ((organization as any)?.industry || "") ||
@@ -352,10 +374,14 @@ export default function AccountPage() {
               {/* Editable fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground block">Display Name</label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+                  <label className="text-sm font-medium text-foreground block">First name</label>
+                  <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Jane" autoComplete="given-name" />
                 </div>
                 <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground block">Last name</label>
+                  <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Smith" autoComplete="family-name" />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
                   <label className="text-sm font-medium text-foreground block">Job Title</label>
                   <div className="relative">
                     <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -383,7 +409,7 @@ export default function AccountPage() {
                 )}
                 <Button
                   onClick={handleSaveProfile}
-                  disabled={savingProfile || !name.trim() || !profileDirty}
+                  disabled={savingProfile || !firstName.trim() || !lastName.trim() || !profileDirty}
                   className="bg-primary hover:bg-primary/90"
                 >
                   <Save className="w-4 h-4 mr-2" />{savingProfile ? "Saving..." : "Save Profile"}

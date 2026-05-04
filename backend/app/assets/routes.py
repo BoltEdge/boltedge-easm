@@ -208,6 +208,9 @@ def normalize_asset_value(asset_type: str, value: Any) -> str:
     return v
 
 
+ASSET_CRITICALITIES = {"tier_1", "tier_2", "tier_3"}
+
+
 def asset_to_ui(a: Asset) -> Dict[str, Any]:
     result = {
         "id": _sid(a.id),
@@ -216,6 +219,7 @@ def asset_to_ui(a: Asset) -> Dict[str, Any]:
         "type": a.asset_type,
         "value": a.value,
         "label": a.label,
+        "criticality": a.criticality or "tier_2",
         "createdAt": a.created_at.isoformat() if a.created_at else None,
     }
     # Include cloud-specific fields when present
@@ -261,6 +265,7 @@ def list_group_assets(group_id: str):
             "type": a.asset_type,
             "value": a.value,
             "label": a.label,
+            "criticality": a.criticality or "tier_2",
             "createdAt": a.created_at.isoformat() if a.created_at else None,
             "status": a.scan_status or "never_scanned",
             "lastScanAt": a.last_scan_at.isoformat() if a.last_scan_at else None,
@@ -296,6 +301,7 @@ _EXPORT_COLUMNS: dict[str, tuple[str, callable]] = {
     "type":             ("Type",            lambda a, ctx: a.asset_type or ""),
     "value":            ("Value",           lambda a, ctx: a.value or ""),
     "label":            ("Label",           lambda a, ctx: a.label or ""),
+    "criticality":      ("Criticality",     lambda a, ctx: a.criticality or "tier_2"),
     "group":            ("Group",           lambda a, ctx: ctx["group_name"]),
     "added_on":         ("Added on",        lambda a, ctx: a.created_at.strftime("%Y-%m-%d") if a.created_at else ""),
     "last_scan_at":     ("Last scan",       lambda a, ctx: a.last_scan_at.strftime("%Y-%m-%d %H:%M") if a.last_scan_at else ""),
@@ -312,8 +318,8 @@ _EXPORT_COLUMNS: dict[str, tuple[str, callable]] = {
 }
 
 _EXPORT_PRESETS: dict[str, list[str]] = {
-    "essentials": ["display_id", "type", "value", "label"],
-    "standard":   ["display_id", "type", "value", "label", "group", "last_scan_at", "scan_status", "findings_total"],
+    "essentials": ["display_id", "type", "value", "label", "criticality"],
+    "standard":   ["display_id", "type", "value", "label", "criticality", "group", "last_scan_at", "scan_status", "findings_total"],
     "all":        list(_EXPORT_COLUMNS.keys()),
 }
 
@@ -453,6 +459,12 @@ def add_asset_to_group(group_id: str):
     value = normalize_asset_value(asset_type, body.get("value"))
     label = (body.get("label") or "").strip() or None
 
+    # Optional criticality at creation time. Falls through to the column
+    # default ("tier_2") when not provided.
+    criticality = (body.get("criticality") or "").strip().lower() or None
+    if criticality is not None and criticality not in ASSET_CRITICALITIES:
+        return jsonify(error=f"criticality must be one of {sorted(ASSET_CRITICALITIES)}"), 400
+
     ok, err = validate_asset_value(asset_type, value)
     if not ok:
         return jsonify(error=err), 400
@@ -510,6 +522,8 @@ def add_asset_to_group(group_id: str):
         provider=provider,
         cloud_category=cloud_category,
     )
+    if criticality:
+        a1.criticality = criticality
     db.session.add(a1)
     db.session.flush()  # get the ID before logging
 
@@ -702,6 +716,7 @@ def list_assets():
             "type": a.asset_type,
             "value": a.value,
             "label": a.label,
+            "criticality": a.criticality or "tier_2",
             "status": a.scan_status or "never_scanned",
             "lastScanAt": a.last_scan_at.isoformat() if a.last_scan_at else None,
             "latestScanId": None,
@@ -751,6 +766,7 @@ def update_asset(asset_id: str):
     body = request.get_json(silent=True) or {}
     label = body.get("label")
     value = body.get("value")
+    criticality = body.get("criticality")
 
     changes = {}
 
@@ -759,6 +775,15 @@ def update_asset(asset_id: str):
         a1.label = (label or "").strip() or None
         if old_label != a1.label:
             changes["label"] = {"old": old_label, "new": a1.label}
+
+    if criticality is not None:
+        crit = str(criticality).strip().lower()
+        if crit not in ASSET_CRITICALITIES:
+            return jsonify(error=f"criticality must be one of {sorted(ASSET_CRITICALITIES)}"), 400
+        old_crit = a1.criticality or "tier_2"
+        if old_crit != crit:
+            a1.criticality = crit
+            changes["criticality"] = {"old": old_crit, "new": crit}
 
     if value is not None:
         asset_type = a1.asset_type

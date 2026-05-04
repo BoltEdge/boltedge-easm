@@ -573,6 +573,16 @@ export function FindingDetailsDialog({
   // Tags
   const tags: string[] = finding.tags ?? [];
 
+  // Compliance framework mappings (CWE → frameworks). Each entry is
+  // { framework, label, controls[], relationship: "direct" | "supports", citation }.
+  const compliance: Array<{
+    framework: string;
+    label: string;
+    controls: string[];
+    relationship: "direct" | "supports";
+    citation: string;
+  }> = finding.compliance ?? [];
+
   // Core details
   const detectedAt =
     finding.detectedAt || finding.detected_at || finding.createdAt || finding.created_at || finding.timestamp || null;
@@ -864,6 +874,46 @@ export function FindingDetailsDialog({
                     {ref}
                   </a>
                 ))}
+              </div>
+            </Section>
+          )}
+
+          {/* Compliance — CWE → framework mappings. Direct vs supports
+              relationship is rendered visually so the "supports via NIST
+              cross-walk" case can't be mistaken for a primary-source
+              SOC 2 / ISO mapping. */}
+          {compliance.length > 0 && (
+            <Section icon={<ShieldCheck className="w-4 h-4" />} title="Maps to">
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground/80">
+                  Framework references derived from this finding's CWE.
+                  Direct mappings are explicitly published by the framework
+                  owner; <span className="italic">supports</span> mappings
+                  are derived from public cross-walks (NIST CSF, etc.) —
+                  verify with your auditor for compliance evidence.
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {compliance.map((c, i) => {
+                    const isDirect = c.relationship === "direct";
+                    return (
+                      <span
+                        key={i}
+                        title={`${c.label} — ${c.relationship} mapping (${c.citation})`}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium",
+                          isDirect
+                            ? "bg-emerald-500/10 text-emerald-200 border-emerald-500/30"
+                            : "bg-muted/40 text-muted-foreground border-border italic",
+                        )}
+                      >
+                        <span className="font-semibold">{c.label}</span>
+                        <span className="text-foreground/60">
+                          {c.controls.join(", ")}
+                        </span>
+                      </span>
+                    );
+                  })}
+                </div>
               </div>
             </Section>
           )}

@@ -107,7 +107,24 @@ def register():
     body = request.get_json(silent=True) or {}
     email = (body.get("email") or "").strip().lower()
     password = (body.get("password") or "").strip()
-    name = (body.get("name") or "").strip() or None
+    # Names — accept first/last (preferred) and/or full name. Build
+    # canonical `name` from first+last when present; fall back to a
+    # provided `name` string for backward compat (older API clients,
+    # OAuth flows that only have a single string).
+    first_name = (body.get("firstName") or body.get("first_name") or "").strip() or None
+    last_name = (body.get("lastName") or body.get("last_name") or "").strip() or None
+    raw_name = (body.get("name") or "").strip() or None
+    if first_name or last_name:
+        name = " ".join(p for p in (first_name, last_name) if p) or None
+    else:
+        name = raw_name
+        # If only `name` was provided, best-effort split for the new columns.
+        if name and " " in name:
+            parts = name.split(" ", 1)
+            first_name = parts[0].strip() or None
+            last_name = parts[1].strip() or None
+        elif name:
+            first_name = name
 
     # Optional profile fields
     job_title = (body.get("job_title") or "").strip() or None
@@ -147,6 +164,8 @@ def register():
     u = User(
         email=email,
         name=name,
+        first_name=first_name,
+        last_name=last_name,
         password_hash=generate_password_hash(password),
         job_title=job_title,
         company=company,
@@ -249,6 +268,8 @@ def register():
                 "id": str(u.id),
                 "email": u.email,
                 "name": u.name,
+                "firstName": u.first_name,
+                "lastName": u.last_name,
                 "job_title": u.job_title,
                 "company": u.company,
                 "country": u.country,
@@ -320,6 +341,20 @@ def login():
             description=f"User logged in: {u.email}",
         )
 
+    # First successful login post-verification → fire the welcome
+    # email. send_welcome_email is idempotent (skips if
+    # welcome_email_sent_at is already set), so subsequent logins are
+    # no-ops. This deferral guarantees the verification email lands
+    # first — Resend can't reorder them when there's a real human-time
+    # gap between registration and login.
+    if u.welcome_email_sent_at is None:
+        try:
+            from app.auth.emails import send_welcome_email
+            org_for_welcome = membership.organization if membership else None
+            send_welcome_email(u, organization=org_for_welcome)
+        except Exception:
+            current_app.logger.exception("Welcome email send failed for user %s", u.id)
+
     response = {
         "accessToken": token,
         "user": {
@@ -373,6 +408,8 @@ def me():
             "id": str(u.id),
             "email": u.email,
             "name": u.name,
+            "firstName": u.first_name,
+            "lastName": u.last_name,
             "job_title": u.job_title,
             "company": u.company,
             "country": u.country,
@@ -566,18 +603,11 @@ def verify_email():
         description=f"Email verified: {user.email}",
     )
 
-    # Send the one-time welcome email. Wrapped because a Resend
-    # outage shouldn't break verification — the user already saw the
-    # success response above implicitly by reaching this point.
-    try:
-        from app.auth.emails import send_welcome_email
-        org = None
-        if membership:
-            from app.models import Organization
-            org = Organization.query.get(membership.organization_id)
-        send_welcome_email(user, organization=org)
-    except Exception:
-        current_app.logger.exception("Welcome email send failed for user %s", user.id)
+    # NOTE: welcome email is NOT sent here. It fires from /auth/login
+    # the first time the user successfully signs in after verifying.
+    # That guarantees a real time-gap between the verification email
+    # (sent at registration) and the welcome email — otherwise Resend
+    # can deliver them out of order and the welcome lands first.
 
     return jsonify(
         message="Email verified. You can now sign in.",

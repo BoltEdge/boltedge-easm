@@ -57,6 +57,15 @@ def _calc_exposure_score(severity_counts: dict) -> dict:
     return {"score": score, "label": label, "color": color}
 
 
+def _calc_weighted_exposure_score(by_tier: dict) -> dict:
+    """Tier-weighted exposure score — tier_1 findings count 1.5x, tier_3 count 0.5x."""
+    from app.utils.scoring import calc_weighted_exposure_score, exposure_label_and_color
+
+    score = calc_weighted_exposure_score(by_tier)
+    label, color = exposure_label_and_color(score)
+    return {"score": score, "label": label, "color": color}
+
+
 def _is_open_filter():
     """
     Filter expression for 'open' findings — the only status that counts
@@ -161,10 +170,13 @@ def list_groups():
         .all()
     )
 
-    # Finding severity counts per group — ONLY open findings count toward risk
+    # Finding severity counts per group — ONLY open findings count toward risk.
+    # We also group by Asset.criticality so we can compute a tier-weighted
+    # exposure score below (tier_1 findings count 1.5x, tier_3 count 0.5x).
     finding_counts = (
         db.session.query(
             Asset.group_id,
+            Asset.criticality,
             Finding.severity,
             func.count(Finding.id),
         )
@@ -173,21 +185,30 @@ def list_groups():
             Asset.organization_id == org_id,
             _is_open_filter(),
         )
-        .group_by(Asset.group_id, Finding.severity)
+        .group_by(Asset.group_id, Asset.criticality, Finding.severity)
         .all()
     )
 
-    # Build severity map per group (open findings only)
-    group_findings = {}
-    for gid, sev, cnt in finding_counts:
+    # Build raw severity map per group (for display) plus a per-tier map
+    # (for the weighted exposure score).
+    group_findings: dict = {}
+    group_findings_by_tier: dict = {}
+    for gid, crit, sev, cnt in finding_counts:
         gid_str = str(gid)
         if gid_str not in group_findings:
             group_findings[gid_str] = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "total": 0}
+            group_findings_by_tier[gid_str] = {}
         s = (sev or "info").lower()
         if s not in group_findings[gid_str]:
             s = "info"
-        group_findings[gid_str][s] += int(cnt)
-        group_findings[gid_str]["total"] += int(cnt)
+        n = int(cnt)
+        group_findings[gid_str][s] += n
+        group_findings[gid_str]["total"] += n
+        tier = crit or "tier_2"
+        tier_bucket = group_findings_by_tier[gid_str].setdefault(
+            tier, {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+        )
+        tier_bucket[s] += n
 
     # Status counts per group (all findings, for the status breakdown)
     status_cases = _status_count_cases()
@@ -242,8 +263,10 @@ def list_groups():
                 max_sev = s
                 break
 
-        # Exposure score (from open findings only)
-        exposure = _calc_exposure_score(findings_data)
+        # Exposure score — weighted by asset criticality so a group full
+        # of tier_1 assets scores higher than the same finding mix on
+        # tier_3 assets.
+        exposure = _calc_weighted_exposure_score(group_findings_by_tier.get(gid, {}))
 
         out.append({
             "id": gid,
@@ -293,24 +316,32 @@ def group_summary(group_id: int):
     total_assets = int(asset_counts.total or 0) if asset_counts else 0
     scanned_assets = int(asset_counts.scanned or 0) if asset_counts else 0
 
-    # Finding severity counts — ONLY open findings count toward risk
+    # Finding severity counts — ONLY open findings count toward risk.
+    # Also broken down by asset criticality for the weighted exposure score.
     severity_rows = (
-        db.session.query(Finding.severity, func.count(Finding.id))
+        db.session.query(Asset.criticality, Finding.severity, func.count(Finding.id))
         .join(Asset, Finding.asset_id == Asset.id)
         .filter(
             Asset.group_id == group_id,
             Asset.organization_id == org_id,
             _is_open_filter(),
         )
-        .group_by(Finding.severity)
+        .group_by(Asset.criticality, Finding.severity)
         .all()
     )
 
     severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
-    for sev, cnt in severity_rows:
+    severity_by_tier: dict = {}
+    for crit, sev, cnt in severity_rows:
         s = (sev or "info").lower()
         if s in severity_counts:
-            severity_counts[s] = int(cnt)
+            severity_counts[s] += int(cnt)
+        tier = crit or "tier_2"
+        bucket = severity_by_tier.setdefault(
+            tier, {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+        )
+        if s in bucket:
+            bucket[s] += int(cnt)
     total_open_findings = sum(severity_counts.values())
 
     # Status counts (all findings in group)
@@ -340,8 +371,8 @@ def group_summary(group_id: int):
     }
     total_all_findings = sum(status_counts.values())
 
-    # Exposure score (open findings only)
-    exposure = _calc_exposure_score(severity_counts)
+    # Exposure score (open findings only) — criticality-weighted
+    exposure = _calc_weighted_exposure_score(severity_by_tier)
 
     # Top risky assets (by OPEN finding count, critical first)
     risky_assets = (

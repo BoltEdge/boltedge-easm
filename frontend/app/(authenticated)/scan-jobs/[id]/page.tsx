@@ -138,6 +138,48 @@ function statusConfig(status: string) {
   }
 }
 
+/**
+ * Profile-aware expected scan duration. Mirrors the per-profile
+ * vulnerability-scan caps in the orchestrator (Quick: ~120s,
+ * Standard: 1800s, Deep: 7200s) but reports realistic typical
+ * windows rather than the hard caps.
+ *
+ * `expectedMaxSeconds` is the upper bound past which we surface a
+ * "running longer than usual" message — calibrated below the profile
+ * cap so a deep scan that's genuinely going to run 90 min doesn't
+ * trigger the alarm at minute 60.
+ */
+function profileDuration(profileName: string | null | undefined): {
+  label: string;
+  expectedMaxSeconds: number;
+} {
+  const name = (profileName || "").toLowerCase();
+  if (name.includes("deep") || name.includes("full")) {
+    return { label: "30 min – 2 hr", expectedMaxSeconds: 7200 };
+  }
+  if (name.includes("standard")) {
+    return { label: "5 – 30 min", expectedMaxSeconds: 1800 };
+  }
+  if (name.includes("quick")) {
+    return { label: "~2 min", expectedMaxSeconds: 180 };
+  }
+  // Unknown profile — be generous, don't surface the warning prematurely.
+  return { label: "—", expectedMaxSeconds: 1800 };
+}
+
+/** Format a duration in seconds as "MM:SS" or "Hh MMm" past an hour. */
+function formatElapsed(seconds: number): string {
+  if (seconds < 0 || !Number.isFinite(seconds)) return "—";
+  if (seconds < 3600) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return `${h}h ${String(m).padStart(2, "0")}m`;
+}
+
 export default function ScanJobDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -272,6 +314,15 @@ export default function ScanJobDetailPage() {
     return () => clearInterval(iv);
   }, [job, loadJob]);
 
+  // Tick once a second while the job is running so the elapsed-time
+  // display updates between 5-second backend polls.
+  const [now, setNow] = useState<number>(() => Date.now());
+  useEffect(() => {
+    if (!job || (job.status !== "running" && job.status !== "queued")) return;
+    const iv = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(iv);
+  }, [job]);
+
   // Severity counts
   const severityCounts: Record<string, number> = {};
   for (const f of findings) {
@@ -392,16 +443,73 @@ export default function ScanJobDetailPage() {
           </div>
         </div>
 
-        {/* Running state */}
-        {(job.status === "running" || job.status === "queued") && (
-          <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-6 flex items-center gap-4">
-            <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
-            <div>
-              <div className="text-foreground font-semibold">Scan in progress…</div>
-              <div className="text-sm text-muted-foreground mt-0.5">This page will automatically update when the scan completes.</div>
+        {/* Running state — profile-aware expected-duration window plus
+            live elapsed-time counter. Once elapsed exceeds the profile's
+            expected window, surface a "running longer than usual" hint
+            so users know it's still healthy on a complex asset. */}
+        {(job.status === "running" || job.status === "queued") && (() => {
+          const startMs = (() => {
+            const raw = job.startedAt || job.timeStarted || job.createdAt;
+            if (!raw) return null;
+            const s = typeof raw === "string" && !raw.endsWith("Z") && !raw.includes("+")
+              ? raw + "Z" : raw;
+            const t = new Date(s).getTime();
+            return Number.isFinite(t) ? t : null;
+          })();
+          const elapsedSec = startMs ? Math.max(0, Math.floor((now - startMs) / 1000)) : 0;
+          const dur = profileDuration(job.profileName);
+          const overrun = elapsedSec > dur.expectedMaxSeconds;
+          return (
+            <div className={cn(
+              "rounded-xl p-6 border flex items-start gap-4",
+              overrun
+                ? "bg-amber-500/5 border-amber-500/20"
+                : "bg-cyan-500/5 border-cyan-500/20",
+            )}>
+              <Loader2 className={cn(
+                "w-6 h-6 animate-spin shrink-0 mt-0.5",
+                overrun ? "text-amber-400" : "text-cyan-400",
+              )} />
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="text-foreground font-semibold">
+                    {job.status === "queued" ? "Scan queued…" : "Scan in progress…"}
+                  </div>
+                  {job.profileName && (
+                    <span className="px-2 py-0.5 rounded-md bg-muted/40 text-xs font-medium text-muted-foreground border border-border">
+                      {job.profileName}
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:flex sm:items-center sm:gap-6 gap-2 text-sm">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Elapsed</div>
+                    <div className="text-foreground font-mono font-semibold">{formatElapsed(elapsedSec)}</div>
+                  </div>
+                  {dur.label !== "—" && (
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Typical</div>
+                      <div className="text-foreground font-medium">{dur.label}</div>
+                    </div>
+                  )}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {overrun ? (
+                    <>
+                      This scan is taking longer than the typical window for
+                      a {job.profileName || "scan"}. That's normal on complex
+                      assets — deep scanning runs thousands of checks and
+                      slow services can extend total runtime. The page will
+                      refresh automatically when it finishes.
+                    </>
+                  ) : (
+                    <>This page refreshes automatically every few seconds and updates when the scan completes.</>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Failed state */}
         {job.status === "failed" && (

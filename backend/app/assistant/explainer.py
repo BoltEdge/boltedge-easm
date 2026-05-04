@@ -371,10 +371,25 @@ def explain_finding(finding) -> dict:
 
     asset_value = finding.asset.value if finding.asset else "this asset"
     details = finding.details_json or {}
+    # Whitelist of substitution keys. Templates can reference any of these
+    # in their title / description / remediation / summary; missing keys
+    # are left as the literal {placeholder} rather than blanking out, so a
+    # mis-set key is visible at review time instead of silently disappearing.
+    _is_dict = isinstance(details, dict)
     placeholders = {
         "asset": asset_value,
-        "port": details.get("port") if isinstance(details, dict) else None,
-        "value": details.get("value") if isinstance(details, dict) else None,
+        "port": details.get("port") if _is_dict else None,
+        "value": details.get("value") if _is_dict else None,
+        "cname_target": details.get("cname_target") if _is_dict else None,
+        "service": details.get("service") if _is_dict else None,
+        "cve": details.get("cve") if _is_dict else None,
+        "header_name": details.get("header_name") if _is_dict else None,
+        "path": details.get("path") if _is_dict else None,
+        # `provider` resolves the human-readable cloud provider label
+        # (e.g., "AWS S3"), with `provider_label` taking precedence when
+        # the analyzer wrote one explicitly.
+        "provider": (details.get("provider_label") or details.get("provider")) if _is_dict else None,
+        "url": details.get("url") if _is_dict else None,
     }
 
     # ── Summary (one-liner) ──────────────────────────────────────────────

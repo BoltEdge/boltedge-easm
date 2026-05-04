@@ -925,11 +925,36 @@ def update_current_user_settings():
     body = request.get_json(silent=True) or {}
     updated_fields = []
 
-    if "name" in body:
+    # First / last name — preferred path. When either is provided we
+    # rebuild `name` so the canonical display field stays in sync.
+    has_first = "firstName" in body or "first_name" in body
+    has_last = "lastName" in body or "last_name" in body
+    if has_first or has_last:
+        if has_first:
+            user.first_name = str(body.get("firstName") or body.get("first_name") or "").strip() or None
+            updated_fields.append("firstName")
+        if has_last:
+            user.last_name = str(body.get("lastName") or body.get("last_name") or "").strip() or None
+            updated_fields.append("lastName")
+        # Rebuild canonical name from current first + last on the row.
+        user.name = " ".join(p for p in (user.first_name, user.last_name) if p) or None
+        if user.name:
+            updated_fields.append("name")
+
+    elif "name" in body:
+        # Backward compat: callers passing only a full `name` string.
+        # Best-effort split so first/last stay consistent.
         name = str(body["name"]).strip()
         if not name:
             return jsonify(error="Name cannot be empty"), 400
         user.name = name
+        if " " in name:
+            parts = name.split(" ", 1)
+            user.first_name = parts[0].strip() or None
+            user.last_name = parts[1].strip() or None
+        else:
+            user.first_name = name
+            user.last_name = None
         updated_fields.append("name")
 
     if "jobTitle" in body:

@@ -630,7 +630,42 @@ def list_job_findings(job_id: str):
     if not job:
         return jsonify(error="scan job not found"), 404
 
-    rows = Finding.query.filter_by(scan_job_id=job.id).order_by(Finding.id.desc()).all()
+    # Eager-load asset + group so the per-finding shape can include
+    # them without an N+1 SELECT chain.
+    rows = (
+        Finding.query.filter_by(scan_job_id=job.id)
+        .options(db.joinedload(Finding.asset).joinedload(Asset.group))
+        .order_by(Finding.id.desc())
+        .all()
+    )
+
+    # Compliance mappings: derived from each finding's CWE (with category
+    # fallback). Imported defensively so a missing module doesn't 500
+    # the endpoint — the field just falls back to [].
+    try:
+        from app.scanner.compliance_map import get_compliance_mappings
+    except Exception:
+        get_compliance_mappings = None
+
+    def _compliance_for(f):
+        if get_compliance_mappings is None:
+            return []
+        try:
+            return get_compliance_mappings(
+                getattr(f, "cwe", None),
+                getattr(f, "category", None),
+            )
+        except Exception:
+            return []
+
+    # The job is single-asset (FindingDraft.asset_id == job.asset_id)
+    # so resolve the asset + group once and reuse for every finding row.
+    asset = job.asset
+    group = asset.group if asset else None
+    asset_value = asset.value if asset else None
+    asset_type = asset.asset_type if asset else None
+    group_id = str(group.id) if group else None
+    group_name = group.name if group else None
 
     return jsonify([{
         "id": str(f.id),
@@ -646,6 +681,15 @@ def list_job_findings(job_id: str):
         "confidence": getattr(f, "confidence", None),
         "tags": getattr(f, "tags_json", None),
         "references": getattr(f, "references_json", None),
+        # Asset / group context — drives the "Asset", "Type", "Group"
+        # rows in the FindingDetailsDialog when opened from this page.
+        # Pulled from job.asset (single-asset job) so every finding
+        # under the job carries the same context without an N+1 query.
+        "assetId": str(f.asset_id),
+        "assetValue": asset_value,
+        "assetType": asset_type,
+        "groupId": group_id,
+        "groupName": group_name,
         # Human-readable summary from template registry
         "summary": (
             _get_template(f.template_id).summary
@@ -653,4 +697,7 @@ def list_job_findings(job_id: str):
             and _get_template(f.template_id)
             else None
         ),
+        # CWE-driven compliance framework mappings (same shape as the
+        # /findings endpoint). Drives the "Maps to" panel in the UI.
+        "compliance": _compliance_for(f),
     } for f in rows]), 200

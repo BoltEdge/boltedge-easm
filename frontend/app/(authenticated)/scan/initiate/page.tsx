@@ -20,9 +20,37 @@ function cn(...parts: Array<string | false | null | undefined>) { return parts.f
 
 function getProfileMeta(profile: ScanProfile) {
   const name = (profile.name || "").toLowerCase();
-  if (name.includes("deep")) return { icon: ShieldAlert, accent: "text-[#ff8800]", accentBg: "bg-[#ff8800]/10 border-[#ff8800]/30", badge: "bg-[#ff8800]/10 text-[#ff8800]", duration: "2-4 hours", depth: "Maximum depth" };
-  if (name.includes("standard")) return { icon: ShieldCheck, accent: "text-primary", accentBg: "bg-primary/10 border-primary/30", badge: "bg-primary/10 text-primary", duration: "30-60 min", depth: "Full coverage" };
-  return { icon: Zap, accent: "text-[#00b8d4]", accentBg: "bg-[#00b8d4]/10 border-[#00b8d4]/30", badge: "bg-[#00b8d4]/10 text-[#00b8d4]", duration: "5-10 min", depth: "Essential checks" };
+  // Duration ranges reflect realistic typical scan durations against
+  // a single asset, with the upper bound matching the per-profile
+  // vulnerability-scanning cap configured in the orchestrator.
+  if (name.includes("deep") || name.includes("full")) {
+    return {
+      icon: ShieldAlert,
+      accent: "text-[#ff8800]",
+      accentBg: "bg-[#ff8800]/10 border-[#ff8800]/30",
+      badge: "bg-[#ff8800]/10 text-[#ff8800]",
+      duration: "30 min – 2 hr",
+      depth: "Full vulnerability sweep, all severities",
+    };
+  }
+  if (name.includes("standard")) {
+    return {
+      icon: ShieldCheck,
+      accent: "text-primary",
+      accentBg: "bg-primary/10 border-primary/30",
+      badge: "bg-primary/10 text-primary",
+      duration: "5 – 30 min",
+      depth: "Critical / High / Medium severity",
+    };
+  }
+  return {
+    icon: Zap,
+    accent: "text-[#00b8d4]",
+    accentBg: "bg-[#00b8d4]/10 border-[#00b8d4]/30",
+    badge: "bg-[#00b8d4]/10 text-[#00b8d4]",
+    duration: "~2 min",
+    depth: "Surface-level check",
+  };
 }
 
 function engineList(profile: ScanProfile): string[] {

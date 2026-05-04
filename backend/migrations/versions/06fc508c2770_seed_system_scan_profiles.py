@@ -23,7 +23,7 @@ depends_on = None
 _SYSTEM_PROFILES = [
     {
         "name": "Quick Scan",
-        "description": "Fast Shodan host lookup — basic information only",
+        "description": "Fast surface-level check — basic asset reconnaissance",
         "is_default": False,
         "use_shodan": True, "use_nmap": False, "use_nuclei": False, "use_sslyze": False,
         "shodan_include_history": False, "shodan_include_cves": False, "shodan_include_dns": False,
@@ -33,7 +33,7 @@ _SYSTEM_PROFILES = [
     },
     {
         "name": "Standard Scan",
-        "description": "Shodan + Nmap top-1000 port scan with CVE enrichment",
+        "description": "Port scan with CVE enrichment for everyday monitoring",
         "is_default": True,
         "use_shodan": True, "use_nmap": True, "use_nuclei": False, "use_sslyze": False,
         "shodan_include_history": True, "shodan_include_cves": True, "shodan_include_dns": False,
@@ -43,7 +43,7 @@ _SYSTEM_PROFILES = [
     },
     {
         "name": "Deep Scan",
-        "description": "Shodan + wider Nmap port range + Nuclei vulnerability templates",
+        "description": "Wider port range plus comprehensive vulnerability scanning",
         "is_default": False,
         "use_shodan": True, "use_nmap": True, "use_nuclei": True, "use_sslyze": False,
         "shodan_include_history": True, "shodan_include_cves": True, "shodan_include_dns": True,
@@ -53,7 +53,7 @@ _SYSTEM_PROFILES = [
     },
     {
         "name": "Full Scan",
-        "description": "Comprehensive scan — every engine (Shodan, Nmap, Nuclei, SSLyze) on the full port range",
+        "description": "Comprehensive scan covering every engine — port scanning, vulnerability checks, and TLS analysis",
         "is_default": False,
         "use_shodan": True, "use_nmap": True, "use_nuclei": True, "use_sslyze": True,
         "shodan_include_history": True, "shodan_include_cves": True, "shodan_include_dns": True,

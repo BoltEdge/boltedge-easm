@@ -26,6 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../ui/di
 import { ExportColumnPicker } from "../../../ui/export-column-picker";
 import { SeverityBadge } from "../../../SeverityBadge";
 import { StatusBadge } from "../../../StatusBadge";
+import { CriticalityBadge, CriticalitySelector } from "../../../ui/criticality";
 
 // ─── Types ──────────────────────────────────────
 
@@ -320,6 +321,7 @@ export default function AssetGroupDetailsPage() {
   const [assetType, setAssetType] = useState<AssetType>("domain");
   const [assetValue, setAssetValue] = useState("");
   const [assetLabel, setAssetLabel] = useState("");
+  const [assetCriticality, setAssetCriticality] = useState<"tier_1" | "tier_2" | "tier_3">("tier_2");
   const [addError, setAddError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
 
@@ -460,12 +462,21 @@ export default function AssetGroupDetailsPage() {
   };
 
   // Add Asset
-  const closeAddModal = () => { setAddOpen(false); setAssetType("domain"); setAssetValue(""); setAssetLabel(""); setAddError(null); setAdding(false); };
+  const closeAddModal = () => { setAddOpen(false); setAssetType("domain"); setAssetValue(""); setAssetLabel(""); setAssetCriticality("tier_2"); setAddError(null); setAdding(false); };
   const canSubmit = assetValue.trim().length > 0 && !adding;
   const onAddAsset = async () => {
     if (!canSubmit) return;
-    try { setAdding(true); setAddError(null); const created = await addAssetToGroup(groupId, { type: assetType, value: assetValue.trim(), label: assetLabel.trim() || undefined }); setAssets((prev) => [created, ...prev]); closeAddModal(); }
-    catch (e: any) { setAddError(e?.message || "Failed to add asset"); setAdding(false); }
+    try {
+      setAdding(true); setAddError(null);
+      const created = await addAssetToGroup(groupId, {
+        type: assetType,
+        value: assetValue.trim(),
+        label: assetLabel.trim() || undefined,
+        criticality: assetCriticality,
+      });
+      setAssets((prev) => [created, ...prev]);
+      closeAddModal();
+    } catch (e: any) { setAddError(e?.message || "Failed to add asset"); setAdding(false); }
   };
 
   // Edit Asset
@@ -713,7 +724,10 @@ export default function AssetGroupDetailsPage() {
                     <td className="px-4 py-3"><AssetTypeBadge asset={asset} /></td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-1">
-                        <Link href={`/assets/${id}`} className="text-primary font-mono text-sm hover:underline truncate max-w-xs block">{asset.value}</Link>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Link href={`/assets/${id}`} className="text-primary font-mono text-sm hover:underline truncate max-w-xs block">{asset.value}</Link>
+                          <CriticalityBadge value={(asset as any).criticality} size="xs" />
+                        </div>
                         {isCloud && (asset as any).provider && (
                           <CloudProviderBadge provider={(asset as any).provider} category={(asset as any).cloudCategory} />
                         )}
@@ -845,6 +859,15 @@ export default function AssetGroupDetailsPage() {
             <div className="space-y-2">
               <Label>Label (Optional)</Label>
               <Input placeholder="e.g., Main Website" value={assetLabel} onChange={(e) => setAssetLabel(e.target.value)} maxLength={100} />
+            </div>
+
+            {/* Criticality (defaults to Tier 2 — leave alone unless you know it's mission-critical or low-impact) */}
+            <div className="space-y-2">
+              <Label>Criticality (Optional)</Label>
+              <CriticalitySelector value={assetCriticality} onChange={setAssetCriticality} />
+              <p className="text-xs text-muted-foreground">
+                Tier 1 findings count 1.5× in exposure scores; Tier 3 count 0.5×. You can change this later.
+              </p>
             </div>
 
             {addError && <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{addError}</div>}

@@ -397,7 +397,12 @@ export type RegisterResponse =
   | { verificationRequired: true; email: string; message?: string };
 
 export async function register(payload: {
-  name: string;
+  // `firstName` + `lastName` are the canonical inputs. `name` is
+  // accepted for backward compat — legacy callers and the OAuth
+  // bridges still pass a single string.
+  firstName?: string;
+  lastName?: string;
+  name?: string;
   email: string;
   password: string;
   job_title?: string;
@@ -478,7 +483,12 @@ export async function getGroupAssets(groupId: string): Promise<Asset[]> {
 
 export async function addAssetToGroup(
   groupId: string,
-  payload: { type: "domain" | "ip" | "email" | "cloud"; value: string; label?: string }
+  payload: {
+    type: "domain" | "ip" | "email" | "cloud";
+    value: string;
+    label?: string;
+    criticality?: "tier_1" | "tier_2" | "tier_3";
+  }
 ): Promise<Asset> {
   const a = await apiFetch<any>(`${API.groups}/${groupId}/assets`, {
     method: "POST",
@@ -494,7 +504,7 @@ export async function getAllAssets(): Promise<Asset[]> {
 
 export async function updateAsset(
   assetId: string,
-  payload: { value?: string; label?: string | null }
+  payload: { value?: string; label?: string | null; criticality?: "tier_1" | "tier_2" | "tier_3" }
 ): Promise<Asset> {
   const a = await apiFetch<any>(`${API.assets}/${assetId}`, {
     method: "PATCH",
@@ -1296,7 +1306,7 @@ export async function getMySettings(): Promise<any> {
 // ────────────────────────────────────────────────────────────
 
 export type ReportScope = "organization" | "group";
-export type ReportTemplate = "executive" | "technical";
+export type ReportTemplate = "executive" | "technical" | "compliance";
 export type ReportStatus = "pending" | "generating" | "ready" | "failed";
 
 export type ReportSummaryData = {

@@ -60,6 +60,13 @@ function statusBadge(status: string) {
 }
 
 function templateBadge(template: string) {
+  if (template === "compliance") {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400">
+        Compliance
+      </span>
+    );
+  }
   const isExec = template === "executive";
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -186,7 +193,7 @@ function GenerateDialog({
         {/* Template Selection */}
         <div className="mb-5">
           <label className="block text-sm font-medium text-white/70 mb-2">Report Template</label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <button
               type="button"
               onClick={() => setTemplate("executive")}
@@ -214,6 +221,20 @@ function GenerateDialog({
                 Full Technical
               </div>
               <div className="text-xs text-white/40 mt-1">All findings with remediation details. For security teams.</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTemplate("compliance")}
+              className={`p-4 rounded-lg border text-left transition-all ${
+                template === "compliance"
+                  ? "border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/30"
+                  : "border-white/10 bg-white/5 hover:border-white/20"
+              }`}
+            >
+              <div className={`text-sm font-semibold ${template === "compliance" ? "text-amber-400" : "text-white/80"}`}>
+                Compliance
+              </div>
+              <div className="text-xs text-white/40 mt-1">Findings grouped by OWASP / CIS / NIST CSF / PCI / SOC 2 controls. For audit handoffs.</div>
             </button>
           </div>
         </div>
@@ -540,6 +561,7 @@ export default function ReportsPage() {
             <option value="all" className="bg-[#0f1729]">All Templates</option>
             <option value="executive" className="bg-[#0f1729]">Executive</option>
             <option value="technical" className="bg-[#0f1729]">Technical</option>
+            <option value="compliance" className="bg-[#0f1729]">Compliance</option>
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
         </div>

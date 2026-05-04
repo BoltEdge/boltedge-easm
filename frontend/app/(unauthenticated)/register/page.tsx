@@ -69,7 +69,8 @@ function RegisterPageInner() {
     return n && n.startsWith("/") ? n : "/assets";
   }, [searchParams]);
 
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -121,7 +122,8 @@ function RegisterPageInner() {
   }, [inviteToken]);
 
   const canSubmit =
-    name.trim().length > 0 &&
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
     email.trim().length > 0 &&
     password.length >= 8 &&
     acceptedTerms &&
@@ -136,7 +138,11 @@ function RegisterPageInner() {
       setError(null);
 
       const res = await register({
-        name: name.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        // Keep `name` populated as a backward-compat convenience for any
+        // older API consumer that still expects it on the request body.
+        name: `${firstName.trim()} ${lastName.trim()}`.trim(),
         email: email.trim().toLowerCase(),
         password,
         job_title: jobTitle.trim() || undefined,
@@ -391,18 +397,31 @@ function RegisterPageInner() {
           )}
 
           <form className={inviteToken ? "mt-8 space-y-4" : "mt-6 space-y-4"} onSubmit={onSubmit}>
-            {/* Name */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-white/50 block">Full name</label>
-              <input
-                className={inputClass}
-                placeholder="Jane Smith"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                autoComplete="name"
-                autoFocus
-                required
-              />
+            {/* First + last name — side-by-side on sm+, stacked on mobile */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-white/50 block">First name</label>
+                <input
+                  className={inputClass}
+                  placeholder="Jane"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  autoComplete="given-name"
+                  autoFocus
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-white/50 block">Last name</label>
+                <input
+                  className={inputClass}
+                  placeholder="Smith"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  autoComplete="family-name"
+                  required
+                />
+              </div>
             </div>
 
             {/* Email */}

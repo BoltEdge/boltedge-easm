@@ -140,7 +140,11 @@ class NucleiEngine(BaseEngine):
         rate_limit = config.get("rate_limit", 150)
         timeout_per_req = config.get("timeout", 10)
         bulk_size = config.get("bulk_size", 25)
-        max_duration = config.get("max_duration", 300)
+        # Default raised from 300s → 1800s (30 min) so a Standard scan
+        # can complete the critical+high+medium template set against a
+        # complex asset. Per-profile overrides in scan_profiles bring
+        # Quick down to 120s and Deep up to 7200s.
+        max_duration = config.get("max_duration", 1800)
         template_exclude = config.get("template_exclude", [])
 
         # --- Build target URL ---

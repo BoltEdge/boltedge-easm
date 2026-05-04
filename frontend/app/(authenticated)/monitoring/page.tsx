@@ -70,10 +70,10 @@ function UpgradePrompt() {
   // Trials are request-based across all paid plans — clicking "Request trial"
   // creates a typed contact_request the admin reviews from /admin/contact-requests.
   const plans = [
-    { key: "starter",           label: "Starter",            price: "$19/mo",  freq: "Scans every 5 days", trialDays: 14, color: "#00b8d4", tags: ["DNS", "SSL", "Ports", "Headers"] },
-    { key: "professional",      label: "Professional",       price: "$79/mo",  freq: "Scans every 2 days", trialDays: 21, color: "#7c5cfc", tags: ["Everything", "Webhooks", "Deep Discovery"] },
-    { key: "enterprise_silver", label: "Enterprise Silver",  price: "$249/mo", freq: "Daily scans",        trialDays: 30, color: "#ff8800", tags: ["Everything", "Custom Profiles", "Priority"] },
-    { key: "enterprise_gold",   label: "Enterprise Gold",    price: "Custom",  freq: "Real-time scans",    trialDays: 45, color: "#ffd700", tags: ["Unlimited", "SSO", "Dedicated Support"], needsApproval: true },
+    { key: "starter",           label: "Starter",            price: "A$29/mo",    freq: "Scans every 7 days",  trialDays: 14, color: "#00b8d4", tags: ["DNS", "SSL", "Ports", "Headers"] },
+    { key: "professional",      label: "Professional",       price: "A$149/mo",   freq: "Scans every 3 days",  trialDays: 21, color: "#7c5cfc", tags: ["Everything", "Webhooks", "Deep Discovery"] },
+    { key: "enterprise_silver", label: "Enterprise Silver",  price: "A$749/mo",   freq: "Daily scans",         trialDays: 30, color: "#ff8800", tags: ["Everything", "Audit log option", "Priority"] },
+    { key: "enterprise_gold",   label: "Enterprise Gold",    price: "A$1,349/mo", freq: "Daily scans",         trialDays: 30, color: "#ffd700", tags: ["Audit log", "Priority support", "Full features"] },
   ];
 
   async function handleStartTrial(planKey: string) {

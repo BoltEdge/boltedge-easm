@@ -226,6 +226,7 @@ export default function FindingsPage() {
   const [groupFilter, setGroupFilter] = useState("all");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [frameworkFilter, setFrameworkFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusKey>("open");
   const [page, setPage] = useState(1);
@@ -258,7 +259,7 @@ export default function FindingsPage() {
   }, [searchQuery]);
 
   // Reset page on filter change
-  useEffect(() => { setPage(1); }, [groupFilter, severityFilter, categoryFilter, statusFilter]);
+  useEffect(() => { setPage(1); }, [groupFilter, severityFilter, categoryFilter, frameworkFilter, statusFilter]);
 
   // Auto-clear banner
   useEffect(() => {
@@ -272,6 +273,7 @@ export default function FindingsPage() {
       const params = new URLSearchParams();
       if (severityFilter !== "all") params.set("severity", severityFilter);
       if (categoryFilter !== "all") params.set("category", categoryFilter);
+      if (frameworkFilter !== "all") params.set("framework", frameworkFilter);
       if (groupFilter !== "all") params.set("group_id", groupFilter);
       if (debouncedSearch) params.set("q", debouncedSearch);
       params.set("status", statusFilter);
@@ -295,7 +297,7 @@ export default function FindingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [severityFilter, categoryFilter, groupFilter, debouncedSearch, statusFilter, page]);
+  }, [severityFilter, categoryFilter, frameworkFilter, groupFilter, debouncedSearch, statusFilter, page]);
 
   useEffect(() => { loadFindings(); }, [loadFindings]);
 
@@ -397,6 +399,7 @@ export default function FindingsPage() {
     const params = new URLSearchParams();
     if (severityFilter !== "all") params.set("severity", severityFilter);
     if (categoryFilter !== "all") params.set("category", categoryFilter);
+    if (frameworkFilter !== "all") params.set("framework", frameworkFilter);
     if (groupFilter !== "all") params.set("group_id", groupFilter);
     if (debouncedSearch) params.set("q", debouncedSearch);
     params.set("status", statusFilter);
@@ -591,6 +594,38 @@ export default function FindingsPage() {
               })}
           </div>
         )}
+
+        {/* ── Compliance Framework Filter ── */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground mr-1">
+            <ShieldCheck className="w-3.5 h-3.5 inline-block mr-1" />Framework:
+          </span>
+          <select
+            value={frameworkFilter}
+            onChange={(e) => setFrameworkFilter(e.target.value)}
+            className={cn(
+              "h-8 rounded-md border px-2 text-xs font-medium transition-all outline-none",
+              frameworkFilter === "all"
+                ? "bg-card text-muted-foreground border-border hover:border-primary/30"
+                : "bg-primary/15 text-primary border-primary/30",
+            )}
+          >
+            <option value="all">All frameworks</option>
+            <option value="owasp_asvs">OWASP ASVS 4.0</option>
+            <option value="cis_v8">CIS Controls v8</option>
+            <option value="nist_csf">NIST CSF v2.0</option>
+            <option value="pci_dss_4">PCI-DSS 4.0</option>
+            <option value="soc2">SOC 2 (TSC)</option>
+            <option value="iso_27001">ISO/IEC 27001:2022</option>
+          </select>
+          {frameworkFilter !== "all" && (
+            <span className="text-[10px] text-muted-foreground/80 italic">
+              showing findings that map to {frameworkFilter === "soc2" || frameworkFilter === "iso_27001"
+                ? "this framework via NIST cross-walk (verify with auditor)"
+                : "this framework"}
+            </span>
+          )}
+        </div>
 
         {/* ── Search + Group Filter ── */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

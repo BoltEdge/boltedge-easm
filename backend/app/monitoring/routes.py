@@ -68,6 +68,8 @@ def _now() -> datetime:
 def _compute_next_check(frequency: str, from_dt: datetime | None = None) -> datetime:
     """Compute the next check time based on frequency."""
     base = from_dt or _now()
+    if frequency == "hourly":
+        return base + timedelta(hours=1)
     if frequency == "every_12_hours":
         return base + timedelta(hours=12)
     elif frequency == "daily":
@@ -90,8 +92,10 @@ def _allowed_frequency(org: Organization) -> str:
     app/billing/routes.py — see CLAUDE.md cost rationale.
     """
     plan = (org.plan or "free").lower()
+    if plan == "custom":
+        return "hourly"
     if plan in ("enterprise_gold", "enterprise gold"):
-        return "every_12_hours"
+        return "daily"
     if plan in ("enterprise_silver", "enterprise silver"):
         return "daily"
     if plan == "professional":

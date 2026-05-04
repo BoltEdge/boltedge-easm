@@ -19,6 +19,17 @@ from __future__ import annotations
 import math
 
 
+# Asset criticality multipliers — applied in calc_weighted_exposure_score.
+# A finding on a tier_1 asset contributes 1.5x its severity weight to
+# the org-level exposure rollup; tier_3 contributes only 0.5x. Default
+# weight is 1.0 so unclassified assets behave exactly like before.
+TIER_WEIGHTS: dict[str, float] = {
+    "tier_1": 1.5,
+    "tier_2": 1.0,
+    "tier_3": 0.5,
+}
+
+
 def calc_exposure_score(
     critical: int = 0,
     high: int = 0,
@@ -45,6 +56,39 @@ def calc_exposure_score(
 
     raw = c_score + h_score + m_score + l_score
     return round(min(100.0, raw), 1)
+
+
+def calc_weighted_exposure_score(by_tier: dict[str, dict[str, int]]) -> float:
+    """
+    Like calc_exposure_score, but weights each finding by its asset's
+    criticality tier before applying the severity formula.
+
+    Input shape:
+        {
+          "tier_1": {"critical": 2, "high": 5, "medium": 0, "low": 1, "info": 0},
+          "tier_2": {...},
+          "tier_3": {...},
+        }
+
+    Missing tiers / severities are treated as 0. An unknown tier key
+    falls back to weight 1.0 so we never silently drop a finding.
+    """
+    weighted: dict[str, float] = {"critical": 0.0, "high": 0.0, "medium": 0.0, "low": 0.0, "info": 0.0}
+    for tier, counts in (by_tier or {}).items():
+        w = TIER_WEIGHTS.get(tier, 1.0)
+        for sev in weighted:
+            weighted[sev] += float((counts or {}).get(sev, 0)) * w
+
+    # Round to ints so the existing severity formula (which expects
+    # discrete counts) behaves the same way; the multiplier just shifts
+    # the effective count.
+    return calc_exposure_score(
+        critical=int(round(weighted["critical"])),
+        high=int(round(weighted["high"])),
+        medium=int(round(weighted["medium"])),
+        low=int(round(weighted["low"])),
+        info=int(round(weighted["info"])),
+    )
 
 
 def exposure_grade(score: float) -> tuple[str, str]:

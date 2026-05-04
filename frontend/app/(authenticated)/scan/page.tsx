@@ -163,13 +163,28 @@ export default function ScanJobsPage() {
                   const pm = getProfileMetaByName(job.profileName);
                   return (
                     <tr key={job.id} className="hover:bg-accent/30 transition-colors">
-                      <td className="p-4"><span className={cn("inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-semibold", jobStatusBadge(job.status))}><StatusIcon className={cn("w-3 h-3", job.status === "running" && "animate-spin")} />{job.status}</span></td>
+                      <td className="p-4">
+                        <span className={cn("inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-semibold", jobStatusBadge(job.status))}>
+                          <StatusIcon className={cn("w-3 h-3", job.status === "running" && "animate-spin")} />{job.status}
+                        </span>
+                        {job.status === "failed" && job.error && (
+                          <div className="mt-1.5 text-[11px] text-red-300/80 max-w-xs leading-snug" title={job.error}>
+                            {job.error.length > 80 ? `${job.error.slice(0, 80)}…` : job.error}
+                          </div>
+                        )}
+                      </td>
                       <td className="p-4"><div className="flex flex-col gap-0.5"><span className="font-mono text-sm text-foreground">{job.assetValue || `Asset #${job.assetId}`}</span>{job.groupName && <span className="text-xs text-muted-foreground">{job.groupName}</span>}</div></td>
                       <td className="p-4">{job.profileName ? <span className={cn("px-2 py-0.5 rounded text-xs font-semibold", pm.bg, pm.color)}>{job.profileName}</span> : <span className="text-xs text-muted-foreground">-</span>}</td>
                       <td className="p-4"><span className="text-sm text-muted-foreground">{formatWhen(job.startedAt || job.createdAt)}</span></td>
                       <td className="p-4"><span className="text-sm text-muted-foreground">{job.finishedAt ? formatWhen(job.finishedAt) : job.status === "running" ? "In progress..." : "-"}</span></td>
                       <td className="p-4"><div className="flex items-center justify-end gap-2">
-                        {job.status === "completed" && <a href={`/scan-jobs/${job.id}`}><Button size="sm" variant="outline" className="border-primary/50 text-primary hover:bg-primary/10"><Eye className="w-3 h-3 mr-1" />Details</Button></a>}
+                        {(job.status === "completed" || job.status === "failed" || job.status === "cancelled") && (
+                          <a href={`/scan-jobs/${job.id}`}>
+                            <Button size="sm" variant="outline" className="border-primary/50 text-primary hover:bg-primary/10">
+                              <Eye className="w-3 h-3 mr-1" />Details
+                            </Button>
+                          </a>
+                        )}
                         {(job.status === "queued" || job.status === "running") && (
                           <Button
                             size="sm"

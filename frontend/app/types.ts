@@ -41,12 +41,15 @@ export interface AssetGroup {
 // --------------------
 // Assets
 // --------------------
+export type AssetCriticality = "tier_1" | "tier_2" | "tier_3";
+
 export interface Asset {
   id: string;
   groupId: string;
   type: AssetType;
   value: string;
   label?: string;
+  criticality?: AssetCriticality;
   status: ScanStatus;
   lastScan?: Date;
   lastScanAt?: Date;

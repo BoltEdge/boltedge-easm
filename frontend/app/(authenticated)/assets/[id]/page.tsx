@@ -20,6 +20,8 @@ import { StatusBadge } from "../../../StatusBadge";
 import IntelligenceTabs from "./IntelligenceTabs";
 import ScanComparison from "./ScanComparison";
 import AssetOverviewPanel from "./AssetOverviewPanel";
+import { CriticalitySelector, CRITICALITY_META } from "../../../ui/criticality";
+import type { AssetCriticality } from "../../../types";
 import {
   apiFetch, getAssetRisk, getScanProfiles, createScanJob, runScanJob,
   getScanJobs, updateAsset, deleteAsset, isPlanError,
@@ -126,6 +128,11 @@ export default function AssetDetailPage() {
   const { canDo } = useOrg();
   const planLimit = usePlanLimit();
   const canScan = canDo("start_scans");
+  // Asset edits use the same analyst+ gate as scans on the backend
+  // (require_role("analyst") on PATCH /assets/<id>).
+  const canEditAsset = canScan;
+
+  const [savingCriticality, setSavingCriticality] = useState(false);
 
   const [asset, setAsset] = useState<any>(null);
   const [risk, setRisk] = useState<any>(null);
@@ -238,6 +245,24 @@ export default function AssetDetailPage() {
       setBanner({ kind: "ok", text: "Asset updated" });
     } catch (e: any) { setBanner({ kind: "err", text: e?.message || "Failed" }); }
     finally { setSaving(false); }
+  }
+
+  async function handleCriticalityChange(next: AssetCriticality) {
+    if (!asset || asset.criticality === next) return;
+    const previous = asset.criticality;
+    // Optimistic update so the pill flips immediately.
+    setAsset({ ...asset, criticality: next });
+    setSavingCriticality(true);
+    try {
+      const updated = await updateAsset(assetId, { criticality: next });
+      setAsset(updated);
+      setBanner({ kind: "ok", text: `Criticality set to ${CRITICALITY_META[next].short}` });
+    } catch (e: any) {
+      setAsset({ ...asset, criticality: previous });
+      setBanner({ kind: "err", text: e?.message || "Failed to update criticality" });
+    } finally {
+      setSavingCriticality(false);
+    }
   }
 
   async function handleDelete() {
@@ -367,6 +392,15 @@ export default function AssetDetailPage() {
                   )}
                   {asset.label && <span className="flex items-center gap-1"><Tag className="w-3 h-3" />{asset.label}</span>}
                   {groupName && <span>Group: <Link href={`/groups/${groupId}`} className="text-primary hover:underline">{groupName}</Link></span>}
+                </div>
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Criticality</span>
+                  <CriticalitySelector
+                    value={asset.criticality}
+                    onChange={handleCriticalityChange}
+                    disabled={!canEditAsset || savingCriticality}
+                  />
+                  {savingCriticality && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
                 </div>
               </div>
             </div>

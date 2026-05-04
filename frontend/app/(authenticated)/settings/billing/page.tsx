@@ -5,9 +5,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Layers, Check, Clock, Zap, Sparkles, Loader2, X, RefreshCcw, Mail, AlertTriangle, Trash2, CreditCard, Lock } from "lucide-react";
+import { Layers, Check, Clock, Zap, Sparkles, Loader2, X, RefreshCcw, AlertTriangle, Trash2, CreditCard, Lock } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Button } from "../../../ui/button";
 import { Input } from "../../../ui/input";
@@ -444,7 +443,7 @@ export default function BillingPage() {
             {BILLING_ENABLED && (
               <div className="text-right">
                 <div className="text-3xl font-bold text-foreground">
-                  {pricing.monthly === 0 ? "Free" : pricing.monthly === -1 ? "Custom" : `$${pricing.monthly}`}
+                  {pricing.monthly === 0 ? "Free" : pricing.monthly === -1 ? "Custom" : `A$${pricing.monthly}`}
                 </div>
                 {pricing.monthly > 0 && <div className="text-xs text-muted-foreground">{isTrial ? "after trial ends" : "per month"}</div>}
               </div>
@@ -499,7 +498,6 @@ export default function BillingPage() {
               const isCurrent = p.isCurrent;
               const isUpgrade = planIdx > currentIdx;
               const isDowngrade = planIdx < currentIdx;
-              const isEnterpriseGold = p.key === "enterprise_gold";
               const color = TIER_COLORS[p.key] || "#7c5cfc";
               const canTrial = BILLING_ENABLED && p.canTrial && !isTrial && !p.trialRequiresApproval;
               const needsApproval = BILLING_ENABLED && p.canTrial && p.trialRequiresApproval;
@@ -522,9 +520,9 @@ export default function BillingPage() {
                     <div className="mb-4">
                       {p.priceMonthly === 0 ? <span className="text-2xl font-bold text-foreground">Free</span>
                         : p.priceMonthly === -1 ? <span className="text-2xl font-bold text-foreground">Custom</span>
-                        : <><span className="text-2xl font-bold text-foreground">${p.priceMonthly}</span><span className="text-sm text-muted-foreground">/mo</span></>}
+                        : <><span className="text-2xl font-bold text-foreground">A${p.priceMonthly}</span><span className="text-sm text-muted-foreground">/mo</span></>}
                       {p.priceAnnualMonthly > 0 && p.priceAnnualMonthly < p.priceMonthly && (
-                        <div className="text-xs text-muted-foreground mt-0.5">${p.priceAnnualMonthly}/mo billed annually</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">A${p.priceAnnualMonthly}/mo billed annually</div>
                       )}
                     </div>
                   )}
@@ -542,13 +540,6 @@ export default function BillingPage() {
                   <div className="space-y-2">
                     {isCurrent ? (
                       <Button variant="outline" disabled className="w-full border-border text-muted-foreground">Current Plan</Button>
-                    ) : isEnterpriseGold ? (
-                      /* Enterprise Gold: contact us regardless of billing mode */
-                      <Link href="/?type=trial#contact" className="block">
-                        <Button className="w-full bg-primary hover:bg-primary/90">
-                          <Mail className="w-3.5 h-3.5 mr-1.5" />Contact Us
-                        </Button>
-                      </Link>
                     ) : !canManageBilling ? (
                       <Button variant="outline" disabled className="w-full border-border text-muted-foreground">Ask admin to change plan</Button>
                     ) : hasActiveStripeSub ? (
@@ -751,7 +742,7 @@ export default function BillingPage() {
                     {BILLING_ENABLED && monthly > 0 && (
                       <div className="text-right shrink-0">
                         <div className="text-2xl font-bold text-foreground leading-none">
-                          ${useStripe && upgradeCycle === "annual" ? annualMonthly : monthly}
+                          A${useStripe && upgradeCycle === "annual" ? annualMonthly : monthly}
                         </div>
                         <div className="text-[10px] text-muted-foreground mt-1">
                           /month{useStripe && upgradeCycle === "annual" ? " · billed annually" : ""}
@@ -801,7 +792,7 @@ export default function BillingPage() {
                           )}
                         >
                           <div className="text-sm font-medium text-foreground">Monthly</div>
-                          <div className="text-xs text-muted-foreground">${monthly}/mo</div>
+                          <div className="text-xs text-muted-foreground">A${monthly}/mo</div>
                         </button>
                         <button
                           type="button"
@@ -823,7 +814,7 @@ export default function BillingPage() {
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {annualMonthly > 0 ? `$${annualMonthly}/mo · billed annually` : "—"}
+                            {annualMonthly > 0 ? `A$${annualMonthly}/mo · billed annually` : "—"}
                           </div>
                         </button>
                       </div>
@@ -837,7 +828,7 @@ export default function BillingPage() {
                         <span className="text-muted-foreground">
                           {target.label} — {upgradeCycle === "annual" ? "Annual" : "Monthly"}
                         </span>
-                        <span className="font-mono text-foreground">${todayPrice.toLocaleString()}.00</span>
+                        <span className="font-mono text-foreground">A${todayPrice.toLocaleString()}.00</span>
                       </div>
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>Tax</span>
@@ -845,7 +836,7 @@ export default function BillingPage() {
                       </div>
                       <div className="border-t border-border/60 pt-1.5 flex items-center justify-between text-sm font-semibold">
                         <span className="text-foreground">Total today</span>
-                        <span className="font-mono text-foreground">${todayPrice.toLocaleString()}.00</span>
+                        <span className="font-mono text-foreground">A${todayPrice.toLocaleString()}.00</span>
                       </div>
                     </div>
                   )}

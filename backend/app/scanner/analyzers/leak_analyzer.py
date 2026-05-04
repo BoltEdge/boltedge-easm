@@ -1,9 +1,15 @@
-﻿# app/scanner/analyzers/leak_analyzer.py
+# app/scanner/analyzers/leak_analyzer.py
 """
 Leak Detection Analyzer.
 
 Reads leak engine data (sensitive paths + GitHub code search) and
-produces properly classified FindingDrafts.
+produces FindingDrafts whose copy comes from the curated registry in
+app/scanner/templates.py.
+
+Path findings are routed by file family via PATH_TEMPLATE_MAP — one
+template per family (.git, .env, ssh-key, sql-dump, etc.) rather than
+one per individual probe path. GitHub findings are routed by category
+(credentials / api_key / cloud_creds / etc.).
 
 Required engine: leak
 """
@@ -11,12 +17,139 @@ Required engine: leak
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from app.scanner.base import BaseAnalyzer, FindingDraft, ScanContext
+from app.scanner.templates import FindingTemplate, get_template
 
 logger = logging.getLogger(__name__)
 
+
+# ─── Path → template-family routing ──────────────────────────────────────
+# Each probe path the engine knows about maps to one curated template.
+# Paths added to the engine that aren't in this map fall through to the
+# generic `leak-path` template, so detection coverage doesn't depend on
+# this map being complete.
+
+PATH_TEMPLATE_MAP: Dict[str, str] = {
+    # Source control
+    "/.git/HEAD":                "leak-git-exposed",
+    "/.git/config":              "leak-git-exposed",
+    "/.svn/entries":             "leak-svn-exposed",
+    # Secrets / env files
+    "/.env":                     "leak-env-file",
+    "/.env.local":               "leak-env-file",
+    "/.env.production":          "leak-env-file",
+    "/.env.backup":              "leak-env-file",
+    # SSH keys
+    "/id_rsa":                   "leak-ssh-private-key",
+    "/.ssh/id_rsa":              "leak-ssh-private-key",
+    # Package manager creds
+    "/.npmrc":                   "leak-package-creds",
+    "/.pypirc":                  "leak-package-creds",
+    # Server config
+    "/.htpasswd":                "leak-htpasswd",
+    "/.htaccess":                "leak-htaccess",
+    "/web.config":               "leak-web-config",
+    # WordPress
+    "/wp-config.php.bak":        "leak-wp-config-backup",
+    "/wp-config.php~":           "leak-wp-config-backup",
+    "/wp-admin/install.php":     "leak-wp-installer",
+    # SQL dumps
+    "/backup.sql":               "leak-sql-dump",
+    "/dump.sql":                 "leak-sql-dump",
+    "/database.sql":             "leak-sql-dump",
+    "/db.sql":                   "leak-sql-dump",
+    # Debug endpoints
+    "/phpinfo.php":              "leak-phpinfo",
+    "/server-status":            "leak-apache-status",
+    "/server-info":              "leak-apache-status",
+    # API docs
+    "/swagger.json":             "leak-api-docs",
+    "/api-docs":                 "leak-api-docs",
+    "/openapi.json":             "leak-api-docs",
+    # Container / infra
+    "/docker-compose.yml":       "leak-docker-compose",
+    "/Dockerfile":               "leak-dockerfile",
+    # Dependency manifests
+    "/package.json":             "leak-package-manifest",
+    "/composer.json":            "leak-package-manifest",
+    # macOS metadata
+    "/.DS_Store":                "leak-ds-store",
+    # Recon paths (engine emits these as severity=info, filtered out below)
+    "/robots.txt":               None,
+    "/.well-known/security.txt": None,
+}
+
+
+# ─── GitHub category → template routing ──────────────────────────────────
+
+GITHUB_CATEGORY_MAP: Dict[str, str] = {
+    "credentials": "leak-github-credentials",
+    "api_key":     "leak-github-api-key",
+    "cloud_creds": "leak-github-cloud-creds",
+    "secrets":     "leak-github-secrets",
+    "env_file":    "leak-github-env-file",
+    "config":      "leak-github-config",
+}
+
+
+# ─── Render helper ───────────────────────────────────────────────────────
+
+def _render(text: Optional[str], **subs: Any) -> Optional[str]:
+    """Replace {key} placeholders with runtime values.
+
+    Uses str.replace rather than str.format so curly braces inside
+    Markdown / code snippets in templates don't blow up when a
+    placeholder dict doesn't cover every brace pair.
+    """
+    if not text:
+        return text
+    out = text
+    for k, v in subs.items():
+        if v is None or v == "":
+            continue
+        out = out.replace("{" + k + "}", str(v))
+    return out
+
+
+def _draft_from_template(
+    template: FindingTemplate,
+    *,
+    template_id: str,
+    severity_override: Optional[str],
+    confidence: str,
+    asset: str,
+    value: str,
+    extra_tags: List[str],
+    details: Dict[str, Any],
+    dedupe_fields: Dict[str, Any],
+    finding_type: str,
+) -> FindingDraft:
+    """Build a FindingDraft by rendering a registered template's copy."""
+    title = _render(template.title, asset=asset, value=value)
+    description = _render(template.description, asset=asset, value=value)
+    remediation = _render(template.remediation, asset=asset, value=value)
+
+    return FindingDraft(
+        template_id=template_id,
+        title=title or f"Leak finding for {asset}",
+        severity=severity_override or template.severity or "medium",
+        category=template.category or "leak",
+        description=description or "",
+        remediation=remediation,
+        finding_type=finding_type,
+        engine="leak",
+        confidence=confidence,
+        cwe=template.cwe,
+        references=list(template.references),
+        tags=list(template.tags) + extra_tags,
+        details=details,
+        dedupe_fields=dedupe_fields,
+    )
+
+
+# ─── Analyzer ────────────────────────────────────────────────────────────
 
 class LeakAnalyzer(BaseAnalyzer):
 
@@ -36,149 +169,114 @@ class LeakAnalyzer(BaseAnalyzer):
         drafts: List[FindingDraft] = []
         domain = leak_data.get("domain", ctx.asset_value)
 
-        # 1. Sensitive path findings
+        # ── 1. Sensitive path findings ──
         path_findings = leak_data.get("sensitive_paths", {}).get("findings", [])
         for pf in path_findings:
-            if pf.get("severity") == "info":
+            engine_severity = pf.get("severity", "medium")
+            if engine_severity == "info":
+                # Recon paths (robots.txt, security.txt) — engine flags them
+                # for inventory only, not as findings.
                 continue
 
-            severity = pf.get("severity", "medium")
             path = pf.get("path", "")
-            category = pf.get("category", "config")
             confirmed = pf.get("confirmed", False)
+            tid = PATH_TEMPLATE_MAP.get(path) or "leak-path"
 
-            title = pf.get("title", f"Exposed path: {path}")
-            description = pf.get("description", f"The path {path} is accessible on {domain}.")
+            template = get_template(tid)
+            if template is None:
+                logger.warning("Missing leak path template: %s (path=%s)", tid, path)
+                continue
 
-            cwe_map = {
-                "source_control": "CWE-538",
-                "secrets": "CWE-200",
-                "config": "CWE-16",
-                "data_leak": "CWE-200",
-                "info_leak": "CWE-200",
+            details = {
+                "value": path,
+                "path": path,
+                "url": pf.get("url"),
+                "status_code": pf.get("status"),
+                "category": pf.get("category"),
+                "confirmed": confirmed,
+                "snippet": pf.get("snippet", "")[:200] if pf.get("snippet") else None,
             }
 
-            remediation_map = {
-                "source_control": (
-                    f"Remove the {path} path from the web server. Add the directory to "
-                    f".gitignore or your deployment exclusion list. Verify with: curl -I https://{domain}{path}"
-                ),
-                "secrets": (
-                    f"Immediately remove {path} from the web server. Rotate ALL credentials "
-                    f"that may have been exposed. Add the file to your deployment exclusion list. "
-                    f"Consider using a secrets manager instead of filesystem-based credential storage."
-                ),
-                "config": (
-                    f"Remove or restrict access to {path}. Server configuration files should "
-                    f"never be accessible via HTTP. Update your web server config to deny access "
-                    f"to sensitive file extensions and paths."
-                ),
-                "data_leak": (
-                    f"Immediately remove {path} from the web server. If this contains real data, "
-                    f"assess the scope of the exposure. Database dumps should never exist in "
-                    f"web-accessible directories."
-                ),
-                "info_leak": (
-                    f"Remove or restrict access to {path}. Information leakage can help "
-                    f"attackers understand your infrastructure and plan targeted attacks."
-                ),
-            }
-
-            drafts.append(FindingDraft(
-                template_id=f"leak-path-{category}-{path.replace('/', '-').strip('-')}",
-                title=title,
-                severity=severity,
-                category="leak",
-                description=description,
-                remediation=remediation_map.get(category, f"Remove or restrict access to {path}."),
-                engine="leak",
+            # Engine severity wins over template default — the engine knows
+            # which specific path was found and the severity table inside
+            # the engine is the source of truth for path-level severity.
+            drafts.append(_draft_from_template(
+                template,
+                template_id=tid,
+                severity_override=engine_severity,
                 confidence="high" if confirmed else "medium",
-                cwe=cwe_map.get(category, "CWE-200"),
-                references=[
-                    "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/04-Review_Old_Backup_and_Unreferenced_Files_for_Sensitive_Information",
-                ],
-                tags=["exposed-file", category, path.split("/")[-1].lstrip(".")],
-                details={
-                    "path": path,
-                    "status_code": pf.get("status"),
-                    "category": category,
-                    "confirmed": confirmed,
-                    "url": pf.get("url"),
-                    "snippet": pf.get("snippet", "")[:200] if pf.get("snippet") else None,
-                },
+                asset=domain,
+                value=path,
+                extra_tags=[pf.get("category", "leak")],
+                details=details,
                 dedupe_fields={
                     "domain": domain,
                     "path": path,
                 },
+                finding_type="leak",
             ))
 
-        # 2. GitHub leak findings
+        # ── 2. GitHub code-search leaks ──
         gh_data = leak_data.get("github_leaks", {})
-        gh_searches = gh_data.get("searches", [])
-
-        for search in gh_searches:
+        for search in gh_data.get("searches", []):
             count = search.get("totalResults") or search.get("total_results", 0)
             if count == 0:
                 continue
 
-            severity = search.get("severity", "high")
             category = search.get("category", "credentials")
-            query = search.get("query", "")
-            files = search.get("files", [])
+            tid = GITHUB_CATEGORY_MAP.get(category) or "leak-github"
 
-            title = f"GitHub code leak: {search.get('title', category)} ({count} results)"
-            description = (
-                f"Public GitHub code search found {count} result(s) matching "
-                f"'{query}'. This may indicate leaked credentials, API keys, "
-                f"or configuration files in public repositories."
-            )
+            template = get_template(tid)
+            if template is None:
+                logger.warning("Missing leak github template: %s (category=%s)", tid, category)
+                continue
 
-            file_details = []
-            for f in files[:5]:
-                file_details.append({
+            files = search.get("files", []) or []
+            sample_files = [
+                {
                     "repository": f.get("repository", ""),
                     "path": f.get("path", ""),
                     "url": f.get("htmlUrl", f.get("html_url", "")),
-                })
+                }
+                for f in files[:5]
+            ]
 
-            drafts.append(FindingDraft(
-                template_id=f"leak-github-{category}",
-                title=title,
-                severity=severity,
-                category="leak",
-                description=description,
-                remediation=(
-                    "1. Review each GitHub result and determine if real secrets are exposed.\n"
-                    "2. If credentials are found: rotate them immediately.\n"
-                    "3. Contact the repository owner to request removal or make the repo private.\n"
-                    "4. Use GitHub's secret scanning alerts to prevent future leaks.\n"
-                    "5. Consider using git-secrets or truffleHog in CI/CD to prevent commits with secrets."
-                ),
-                engine="leak",
+            details = {
+                "value": search.get("title") or category,
+                "search_query": search.get("query", ""),
+                "total_results": count,
+                "category": category,
+                "sample_files": sample_files,
+            }
+
+            # Engine severity wins — its per-search-pattern severity is
+            # already tuned (e.g., AWS-creds match is critical even when
+            # the catch-all `credentials` family is high).
+            engine_severity = search.get("severity", template.severity or "high")
+
+            drafts.append(_draft_from_template(
+                template,
+                template_id=tid,
+                severity_override=engine_severity,
                 confidence="medium",
-                cwe="CWE-200",
-                references=[
-                    "https://docs.github.com/en/code-security/secret-scanning/about-secret-scanning",
-                ],
-                tags=["github-leak", category, "code-search"],
-                details={
-                    "search_query": query,
-                    "total_results": count,
-                    "category": category,
-                    "sample_files": file_details,
-                },
+                asset=domain,
+                value=search.get("title") or category,
+                extra_tags=[category],
+                details=details,
                 dedupe_fields={
                     "domain": domain,
                     "category": category,
-                    "query_hash": query[:50],
+                    "query_hash": (search.get("query", "") or "")[:50],
                 },
+                finding_type="leak",
             ))
 
         if drafts:
             logger.info(
-                f"LeakAnalyzer: {len(drafts)} finding(s) for {domain} - "
-                f"{sum(1 for d in drafts if d.severity == 'critical')} critical, "
-                f"{sum(1 for d in drafts if d.severity == 'high')} high"
+                "LeakAnalyzer: %d finding(s) for %s — %d critical, %d high",
+                len(drafts), domain,
+                sum(1 for d in drafts if d.severity == "critical"),
+                sum(1 for d in drafts if d.severity == "high"),
             )
 
         return drafts

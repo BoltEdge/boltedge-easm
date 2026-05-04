@@ -25,11 +25,23 @@ Each finding includes:
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, Dict, List, Optional
 
 from app.scanner.base import BaseAnalyzer, FindingDraft, ScanContext
 
 logger = logging.getLogger(__name__)
+
+
+# Service labels live in PORT_RISK_TABLE as human-readable strings
+# (e.g., "RDP (Remote Desktop)"). Template IDs need clean ASCII slugs
+# without parentheses or punctuation that would otherwise leak through
+# to the registry as template_id="port-rdp-(remote-desktop)-exposed".
+def _slug(label: str) -> str:
+    s = label.lower()
+    s = re.sub(r"\([^)]*\)", "", s)        # drop parenthetical detail
+    s = re.sub(r"[^a-z0-9]+", "-", s)      # collapse runs of non-alnum
+    return s.strip("-") or "service"
 
 
 # ---------------------------------------------------------------------------
@@ -498,7 +510,7 @@ class PortRiskAnalyzer(BaseAnalyzer):
             title += f" ({prod_str})"
 
         return FindingDraft(
-            template_id=f"port-{label.lower().replace(' ', '-').replace('/', '-')}-exposed",
+            template_id=f"port-{_slug(label)}-exposed",
             title=title,
             severity=severity,
             category="ports",

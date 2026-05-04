@@ -86,7 +86,11 @@ _PLAN_ENV_KEYS: dict[str, dict[str, str]] = {
         "monthly": "STRIPE_PRICE_SILVER_MONTHLY",
         "annual":  "STRIPE_PRICE_SILVER_ANNUAL",
     },
-    # enterprise_gold is sales-priced — no public Stripe price; admin
+    "enterprise_gold": {
+        "monthly": "STRIPE_PRICE_GOLD_MONTHLY",
+        "annual":  "STRIPE_PRICE_GOLD_ANNUAL",
+    },
+    # The "custom" tier is sales-priced — no public Stripe price; admin
     # creates a one-off Stripe Invoice manually after the contract is signed.
 }
 

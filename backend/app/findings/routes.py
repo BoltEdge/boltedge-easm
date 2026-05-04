@@ -70,6 +70,23 @@ def _lookup_summary(template_id: str) -> str | None:
     return tmpl.summary if tmpl else None
 
 
+def _lookup_compliance(cwe: str | None, category: str | None) -> list[dict]:
+    """Resolve compliance framework mappings for a finding.
+
+    Wraps app.scanner.compliance_map.get_compliance_mappings; defensive
+    against import failures so the findings API never breaks if the
+    compliance module isn't yet present in a given environment.
+    """
+    try:
+        from app.scanner.compliance_map import get_compliance_mappings
+    except Exception:
+        return []
+    try:
+        return get_compliance_mappings(cwe, category)
+    except Exception:
+        return []
+
+
 def _derive_status(f: Finding) -> str:
     """
     Derive display status from boolean flags.
@@ -277,6 +294,11 @@ def finding_to_ui(f: Finding) -> dict:
         "references": getattr(f, "references_json", None),
         # Human-readable summary from template registry
         "summary": _lookup_summary(template_id),
+        # Compliance framework mappings derived from CWE (with category
+        # fallback). Each entry is JSON-serialisable directly.
+        "compliance": _lookup_compliance(
+            getattr(f, "cwe", None), getattr(f, "category", None),
+        ),
     }
 
     return result
@@ -341,6 +363,7 @@ def list_findings():
     search = request.args.get("q", "").strip()
     ignored = request.args.get("ignored")
     status = request.args.get("status")           # open, in_progress, accepted_risk, suppressed, resolved, all
+    framework = request.args.get("framework")     # owasp_asvs, cis_v8, nist_csf, pci_dss_4, soc2, iso_27001
     page = request.args.get("page", 1, type=int)
     per_page = min(request.args.get("per_page", 100, type=int), 500)
 
@@ -353,6 +376,42 @@ def list_findings():
     if category and category != "all":
         if hasattr(Finding, "category"):
             query = query.filter(Finding.category == category)
+
+    # Compliance framework filter — keep findings whose CWE maps to the
+    # requested framework, plus findings without a CWE whose category
+    # has a fallback mapping. Matches across both direct and "supports"
+    # relationships, since a customer asking "what affects SOC 2?"
+    # wants both.
+    if framework and framework != "all":
+        try:
+            from app.scanner.compliance_map import (
+                get_cwes_for_framework, get_categories_for_framework,
+            )
+            cwes = get_cwes_for_framework(framework)
+            cats = get_categories_for_framework(framework)
+            if cwes or cats:
+                if hasattr(Finding, "category"):
+                    cwe_match = Finding.cwe.in_(cwes) if cwes else False
+                    cat_match = and_(
+                        Finding.cwe.is_(None),
+                        Finding.category.in_(cats),
+                    ) if cats else False
+                    if cwes and cats:
+                        query = query.filter(or_(cwe_match, cat_match))
+                    elif cwes:
+                        query = query.filter(cwe_match)
+                    else:
+                        query = query.filter(cat_match)
+                elif cwes:
+                    query = query.filter(Finding.cwe.in_(cwes))
+            else:
+                # Unknown framework key — return empty result rather than
+                # silently ignoring the filter.
+                query = query.filter(False)
+        except Exception:
+            # Defensive: if compliance_map is unavailable for any reason,
+            # fall through and ignore the filter rather than 500.
+            pass
 
     if group_id and group_id != "all":
         query = query.filter(Asset.group_id == int(group_id))

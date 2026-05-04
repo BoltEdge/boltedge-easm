@@ -1,0 +1,40 @@
+# Nano EASM — pre-commit hooks
+#
+# Install once per developer machine:
+#   pip install pre-commit
+#   pre-commit install
+#
+# After that, hooks run automatically on `git commit`. To run all hooks
+# against the working tree manually:
+#   pre-commit run --all-files
+#
+# To bypass hooks for a single commit (rarely correct):
+#   git commit --no-verify
+
+repos:
+  - repo: local
+    hooks:
+      # ── Finding-template catalogue freshness ───────────────────────
+      # When backend/app/scanner/templates.py is modified, regenerate
+      # docs/finding-templates.md so the review catalogue never drifts
+      # from the registry. Auto-stages the regenerated file.
+      - id: regen-finding-template-catalogue
+        name: Regenerate finding-templates.md when registry changes
+        entry: python backend/scripts/generate_catalogue.py
+        language: system
+        files: ^backend/app/scanner/templates\.py$
+        pass_filenames: false
+        # Stages docs/finding-templates.md so the regenerated file
+        # lands in the same commit as the registry change.
+        verbose: true
+
+      # ── CI-friendly drift check ────────────────────────────────────
+      # Always-on check that fails if the catalogue is stale.
+      # Useful for `pre-commit run --all-files` and for CI pipelines
+      # that want to fail the build on drift without auto-regenerating.
+      - id: check-finding-template-catalogue-drift
+        name: Verify finding-templates.md is in sync with the registry
+        entry: python backend/scripts/generate_catalogue.py --check
+        language: system
+        files: ^(backend/app/scanner/templates\.py|docs/finding-templates\.md)$
+        pass_filenames: false

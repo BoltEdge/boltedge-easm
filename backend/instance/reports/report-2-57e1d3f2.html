@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/><title>Compliance Report — NanoEASM Admin</title>
+<style>
+    @page { size: A4; margin: 1.8cm; }
+    body { font-family: Helvetica, Arial, sans-serif; color: #1e293b; font-size: 10pt; line-height: 1.5; }
+    .header { border-bottom: 3px solid #0d9488; padding-bottom: 12px; margin-bottom: 20px; }
+    .header h1 { font-size: 20pt; color: #0f172a; margin: 0 0 4px 0; }
+    .header .subtitle { font-size: 10pt; color: #64748b; }
+    .header .org { font-size: 12pt; color: #0d9488; font-weight: bold; }
+    h2 { font-size: 13pt; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-top: 24px; margin-bottom: 10px; }
+    h3 { font-size: 11pt; color: #334155; margin-top: 16px; margin-bottom: 6px; }
+    table { width: 100%; border-collapse: collapse; font-size: 9pt; margin: 8px 0; }
+    th { background-color: #f1f5f9; color: #475569; font-weight: bold; text-align: left; padding: 7px 8px; border-bottom: 2px solid #e2e8f0; }
+    td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+    .sev-critical { color: #ef4444; font-weight: bold; }
+    .sev-high { color: #f97316; font-weight: bold; }
+    .sev-medium { color: #f59e0b; font-weight: bold; }
+    .sev-low { color: #3b82f6; font-weight: bold; }
+    .sev-info { color: #94a3b8; }
+    .metrics-table { width: 100%; margin: 16px 0; border-collapse: separate; border-spacing: 6px; }
+    .metric-cell { background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 8px; text-align: center; width: 20%; }
+    .metric-value { font-size: 22pt; font-weight: bold; }
+    .metric-label { font-size: 8pt; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+    .chart-row { margin: 16px 0; }
+    .chart-img { max-width: 100%; }
+    .footer { margin-top: 28px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 8pt; color: #94a3b8; text-align: center; }
+    .tag { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 8pt; font-weight: bold; text-transform: uppercase; }
+    .tag-critical { background-color: #fef2f2; color: #ef4444; }
+    .tag-high { background-color: #fff7ed; color: #f97316; }
+    .tag-medium { background-color: #fffbeb; color: #f59e0b; }
+    .tag-low { background-color: #eff6ff; color: #3b82f6; }
+    .tag-info { background-color: #f8fafc; color: #94a3b8; }
+    .page-break { page-break-before: always; }
+</style></head>
+<body>
+<div class="header">
+  <h1>Compliance — Framework Coverage</h1>
+  <div class="org">NanoEASM Admin</div>
+  <div class="subtitle">Scope: NanoEASM Admin &middot; Generated May 04, 2026 at 06:18 UTC</div>
+</div>
+
+<p>This report groups the findings in scope by their associated
+compliance-framework controls. Mappings come from the Nano EASM
+CWE&rarr;framework cross-walk: <strong>direct</strong> mappings are
+explicitly published by the framework owner;
+<em>supports</em> mappings are derived from public cross-walks
+(typically NIST CSF informative references) and should be confirmed
+with your auditor before being used as compliance evidence.</p>
+
+<table class="metrics-table">
+  <tr>
+    <td class="metric-cell"><div class="metric-value">146</div><div class="metric-label">Total Findings</div></td>
+    <td class="metric-cell"><div class="metric-value">6</div><div class="metric-label">Frameworks Hit</div></td>
+    <td class="metric-cell"><div class="metric-value">5</div><div class="metric-label">Unmapped</div></td>
+  </tr>
+</table>
+
+
+        <h2>OWASP ASVS 4.0</h2>
+        
+        <p>6 finding(s) mapped across 4 control(s).</p>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:18%;">Control</th>
+              <th style="width:8%;">Findings</th>
+              <th>Top examples</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">14.3.1 </td>
+              <td>2</td>
+              <td>&bull; .env file publicly accessible on nexon.com.au<br/>&bull; .git repository exposed on nexon.com.au</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">14.3.2 </td>
+              <td>2</td>
+              <td>&bull; OpenAPI specification publicly accessible on nexon.com.au<br/>&bull; phpinfo() page publicly accessible on nexon.com.au</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">8.1.1 </td>
+              <td>2</td>
+              <td>&bull; OpenAPI specification publicly accessible on nexon.com.au<br/>&bull; phpinfo() page publicly accessible on nexon.com.au</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">9.2.4 </td>
+              <td>2</td>
+              <td>&bull; SSL certificate hostname mismatch on 198.202.211.1:443<br/>&bull; SSL certificate hostname mismatch on 162.159.135.42:443</td>
+            </tr>
+            </tbody>
+        </table>
+        
+        <h2>CIS Controls v8</h2>
+        
+        <p>139 finding(s) mapped across 7 control(s).</p>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:18%;">Control</th>
+              <th style="width:8%;">Findings</th>
+              <th>Top examples</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">3.10 </td>
+              <td>6</td>
+              <td>&bull; SSL certificate expires in 37 days on 198.202.211.1:443<br/>&bull; SSL certificate on 198.202.211.1:443: ggginvestments.com (issued by Google Trust Services)<br/>&bull; SSL certificate hostname mismatch on 198.202.211.1:443<br/>&bull; SSL certificate on 162.159.135.42:443: greeneketchum.com (issued by Google Trust Services)<br/>&bull; SSL certificate expires in 72 days on 162.159.135.42:443<br/>&hellip; and 1 more</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">3.3 </td>
+              <td>4</td>
+              <td>&bull; OpenAPI specification publicly accessible on nexon.com.au<br/>&bull; phpinfo() page publicly accessible on nexon.com.au<br/>&bull; .env file publicly accessible on nexon.com.au<br/>&bull; .git repository exposed on nexon.com.au</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">3.6 </td>
+              <td>2</td>
+              <td>&bull; OpenAPI specification publicly accessible on nexon.com.au<br/>&bull; phpinfo() page publicly accessible on nexon.com.au</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">4.1 </td>
+              <td>20</td>
+              <td>&bull; HTTP Proxy/Alt exposed on 198.202.211.1:8080/tcp<br/>&bull; HTTP exposed on 198.202.211.1:80/tcp<br/>&bull; HTTPS exposed on 198.202.211.1:443/tcp<br/>&bull; Open port 2052/tcp on 198.202.211.1<br/>&bull; Open port 2053/tcp on 198.202.211.1<br/>&hellip; and 15 more</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">4.4 </td>
+              <td>18</td>
+              <td>&bull; HTTP Proxy/Alt exposed on 198.202.211.1:8080/tcp<br/>&bull; HTTP exposed on 198.202.211.1:80/tcp<br/>&bull; HTTPS exposed on 198.202.211.1:443/tcp<br/>&bull; Open port 2052/tcp on 198.202.211.1<br/>&bull; Open port 2053/tcp on 198.202.211.1<br/>&hellip; and 13 more</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">7.1 </td>
+              <td>111</td>
+              <td>&bull; Known vulnerability: CVE-2011-3981<br/>&bull; Known vulnerability: CVE-2011-1047<br/>&bull; Known vulnerability: CVE-2020-36326<br/>&bull; Known vulnerability: CVE-2010-4825<br/>&bull; Known vulnerability: CVE-2012-0898<br/>&hellip; and 106 more</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">7.4 </td>
+              <td>111</td>
+              <td>&bull; Known vulnerability: CVE-2011-3981<br/>&bull; Known vulnerability: CVE-2011-1047<br/>&bull; Known vulnerability: CVE-2020-36326<br/>&bull; Known vulnerability: CVE-2010-4825<br/>&bull; Known vulnerability: CVE-2012-0898<br/>&hellip; and 106 more</td>
+            </tr>
+            </tbody>
+        </table>
+        
+        <h2>NIST CSF v2.0</h2>
+        
+        <p>141 finding(s) mapped across 5 control(s).</p>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:18%;">Control</th>
+              <th style="width:8%;">Findings</th>
+              <th>Top examples</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">ID.RA-01 </td>
+              <td>111</td>
+              <td>&bull; Known vulnerability: CVE-2011-3981<br/>&bull; Known vulnerability: CVE-2011-1047<br/>&bull; Known vulnerability: CVE-2020-36326<br/>&bull; Known vulnerability: CVE-2010-4825<br/>&bull; Known vulnerability: CVE-2012-0898<br/>&hellip; and 106 more</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">PR.AA-03 </td>
+              <td>2</td>
+              <td>&bull; SPF uses softfail (~all) for nexon.com.au<br/>&bull; No IPv6 (AAAA) records for nexon.com.au</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">PR.DS-01 </td>
+              <td>4</td>
+              <td>&bull; OpenAPI specification publicly accessible on nexon.com.au<br/>&bull; phpinfo() page publicly accessible on nexon.com.au<br/>&bull; .env file publicly accessible on nexon.com.au<br/>&bull; .git repository exposed on nexon.com.au</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">PR.DS-02 </td>
+              <td>8</td>
+              <td>&bull; SSL certificate expires in 37 days on 198.202.211.1:443<br/>&bull; SSL certificate on 198.202.211.1:443: ggginvestments.com (issued by Google Trust Services)<br/>&bull; SSL certificate hostname mismatch on 198.202.211.1:443<br/>&bull; SSL certificate on 162.159.135.42:443: greeneketchum.com (issued by Google Trust Services)<br/>&bull; SSL certificate expires in 72 days on 162.159.135.42:443<br/>&hellip; and 3 more</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">PR.IR-01 </td>
+              <td>18</td>
+              <td>&bull; HTTP Proxy/Alt exposed on 198.202.211.1:8080/tcp<br/>&bull; HTTP exposed on 198.202.211.1:80/tcp<br/>&bull; HTTPS exposed on 198.202.211.1:443/tcp<br/>&bull; Open port 2052/tcp on 198.202.211.1<br/>&bull; Open port 2053/tcp on 198.202.211.1<br/>&hellip; and 13 more</td>
+            </tr>
+            </tbody>
+        </table>
+        
+        <h2>PCI-DSS 4.0</h2>
+        
+        <p>4 finding(s) mapped across 2 control(s).</p>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:18%;">Control</th>
+              <th style="width:8%;">Findings</th>
+              <th>Top examples</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">3.5.1 </td>
+              <td>2</td>
+              <td>&bull; OpenAPI specification publicly accessible on nexon.com.au<br/>&bull; phpinfo() page publicly accessible on nexon.com.au</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">4.2.1 </td>
+              <td>2</td>
+              <td>&bull; SSL certificate hostname mismatch on 198.202.211.1:443<br/>&bull; SSL certificate hostname mismatch on 162.159.135.42:443</td>
+            </tr>
+            </tbody>
+        </table>
+        
+        <h2>SOC 2 (TSC 2017)</h2>
+        <p style="color:#94a3b8;font-size:9pt;font-style:italic;margin-top:4px;">Mappings derived from NIST CSF cross-walk. Verify with your auditor before using as compliance evidence.</p>
+        <p>2 finding(s) mapped across 1 control(s).</p>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:18%;">Control</th>
+              <th style="width:8%;">Findings</th>
+              <th>Top examples</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">CC6.1 <span style='color:#94a3b8;font-style:italic;'>(supports)</span></td>
+              <td>2</td>
+              <td>&bull; OpenAPI specification publicly accessible on nexon.com.au<br/>&bull; phpinfo() page publicly accessible on nexon.com.au</td>
+            </tr>
+            </tbody>
+        </table>
+        
+        <h2>ISO/IEC 27001:2022</h2>
+        <p style="color:#94a3b8;font-size:9pt;font-style:italic;margin-top:4px;">Mappings derived from NIST CSF cross-walk. Verify with your auditor before using as compliance evidence.</p>
+        <p>141 finding(s) mapped across 8 control(s).</p>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:18%;">Control</th>
+              <th style="width:8%;">Findings</th>
+              <th>Top examples</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">A.5.10 <span style='color:#94a3b8;font-style:italic;'>(supports)</span></td>
+              <td>2</td>
+              <td>&bull; .env file publicly accessible on nexon.com.au<br/>&bull; .git repository exposed on nexon.com.au</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">A.5.34 <span style='color:#94a3b8;font-style:italic;'>(supports)</span></td>
+              <td>2</td>
+              <td>&bull; OpenAPI specification publicly accessible on nexon.com.au<br/>&bull; phpinfo() page publicly accessible on nexon.com.au</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">A.8.10 <span style='color:#94a3b8;font-style:italic;'>(supports)</span></td>
+              <td>4</td>
+              <td>&bull; OpenAPI specification publicly accessible on nexon.com.au<br/>&bull; phpinfo() page publicly accessible on nexon.com.au<br/>&bull; .env file publicly accessible on nexon.com.au<br/>&bull; .git repository exposed on nexon.com.au</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">A.8.20 <span style='color:#94a3b8;font-style:italic;'>(supports)</span></td>
+              <td>18</td>
+              <td>&bull; HTTP Proxy/Alt exposed on 198.202.211.1:8080/tcp<br/>&bull; HTTP exposed on 198.202.211.1:80/tcp<br/>&bull; HTTPS exposed on 198.202.211.1:443/tcp<br/>&bull; Open port 2052/tcp on 198.202.211.1<br/>&bull; Open port 2053/tcp on 198.202.211.1<br/>&hellip; and 13 more</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">A.8.24 <span style='color:#94a3b8;font-style:italic;'>(supports)</span></td>
+              <td>8</td>
+              <td>&bull; SSL certificate expires in 37 days on 198.202.211.1:443<br/>&bull; SSL certificate on 198.202.211.1:443: ggginvestments.com (issued by Google Trust Services)<br/>&bull; SSL certificate hostname mismatch on 198.202.211.1:443<br/>&bull; SSL certificate on 162.159.135.42:443: greeneketchum.com (issued by Google Trust Services)<br/>&bull; SSL certificate expires in 72 days on 162.159.135.42:443<br/>&hellip; and 3 more</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">A.8.5 <span style='color:#94a3b8;font-style:italic;'>(supports)</span></td>
+              <td>2</td>
+              <td>&bull; SPF uses softfail (~all) for nexon.com.au<br/>&bull; No IPv6 (AAAA) records for nexon.com.au</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">A.8.8 <span style='color:#94a3b8;font-style:italic;'>(supports)</span></td>
+              <td>111</td>
+              <td>&bull; Known vulnerability: CVE-2011-3981<br/>&bull; Known vulnerability: CVE-2011-1047<br/>&bull; Known vulnerability: CVE-2020-36326<br/>&bull; Known vulnerability: CVE-2010-4825<br/>&bull; Known vulnerability: CVE-2012-0898<br/>&hellip; and 106 more</td>
+            </tr>
+            
+            <tr>
+              <td style="white-space:nowrap;font-weight:bold;">A.8.9 <span style='color:#94a3b8;font-style:italic;'>(supports)</span></td>
+              <td>18</td>
+              <td>&bull; HTTP Proxy/Alt exposed on 198.202.211.1:8080/tcp<br/>&bull; HTTP exposed on 198.202.211.1:80/tcp<br/>&bull; HTTPS exposed on 198.202.211.1:443/tcp<br/>&bull; Open port 2052/tcp on 198.202.211.1<br/>&bull; Open port 2053/tcp on 198.202.211.1<br/>&hellip; and 13 more</td>
+            </tr>
+            </tbody>
+        </table>
+        
+        <h2>Findings without compliance mapping</h2>
+        <p>5 finding(s) didn't match any framework in our
+        cross-walk. These typically have no CWE or fall outside the
+        crypto / network / web-app scope of the curated mappings.</p>
+        
+
+<div class="footer">
+  Compliance cross-walk sourced from public framework references
+  (OWASP ASVS, CIS Controls v8, NIST CSF v2.0). Generated by Nano EASM.
+</div>
+</body></html>

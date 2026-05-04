@@ -393,13 +393,34 @@ def _get_engine_config(
     if engine_name == "nuclei":
         if not profile:
             return {}
-        is_deep = any(k in (profile.name or "").lower() for k in ("deep", "full"))
+        # Per-profile Nuclei budget. Quick has use_nuclei=False so this
+        # path doesn't fire for Quick. Standard and Deep get materially
+        # different budgets so the curated template library actually
+        # has time to run end-to-end on a complex asset.
+        name_lower = (profile.name or "").lower()
+        is_deep = any(k in name_lower for k in ("deep", "full"))
+
+        if is_deep:
+            # Deep / Full: full template library, all severities, up to
+            # 2 hours. The user explicitly opted in to a long-running
+            # scan when they picked this profile.
+            return {
+                "severity_filter": ["critical", "high", "medium", "low", "info"],
+                "rate_limit": 100,
+                "timeout": 10,
+                "max_duration": 7200,
+                "template_exclude": [],
+            }
+
+        # Standard (default): critical/high/medium only, 30 min cap,
+        # exclude intrusive/dos/fuzz tags so the scan doesn't accidentally
+        # cause harm to the asset.
         return {
-            "severity_filter": ["critical", "high", "medium"] if not is_deep else
-                               ["critical", "high", "medium", "low", "info"],
-            "rate_limit": 100 if is_deep else 150,
+            "severity_filter": ["critical", "high", "medium"],
+            "rate_limit": 150,
             "timeout": 10,
-            "max_duration": 600 if is_deep else 300,
+            "max_duration": 1800,
+            "template_exclude": ["intrusive", "dos", "fuzz"],
         }
 
     if engine_name == "db_probe":

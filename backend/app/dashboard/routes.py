@@ -74,20 +74,27 @@ def dashboard_summary():
         or 0
     )
 
+    # Group by both severity AND asset criticality so we can compute
+    # both the raw severity distribution (for trend / topline counts)
+    # and the criticality-weighted exposure score in one query.
     sev_rows = (
-        db.session.query(Finding.severity, func.count(Finding.id))
+        db.session.query(Asset.criticality, Finding.severity, func.count(Finding.id))
         .join(Asset, Finding.asset_id == Asset.id)
         .filter(Asset.organization_id == org_id, Asset.group_id.in_(active_group_ids))
         .filter(or_(Finding.ignored.is_(False), Finding.ignored.is_(None)))
-        .group_by(Finding.severity)
+        .group_by(Asset.criticality, Finding.severity)
         .all()
     )
     severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
-    for sev, cnt in sev_rows:
+    severity_by_tier: dict[str, dict[str, int]] = {}
+    for tier, sev, cnt in sev_rows:
         s = (sev or "info").lower()
         if s not in severity_counts:
             s = "info"
         severity_counts[s] += int(cnt)
+        t = tier or "tier_2"
+        severity_by_tier.setdefault(t, {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0})
+        severity_by_tier[t][s] += int(cnt)
     total_findings = int(sum(severity_counts.values()))
 
     total_all_findings = (
@@ -225,16 +232,10 @@ def dashboard_summary():
             }
         )
 
-# ── Exposure Score (centralized formula) ──
-    from app.utils.scoring import calc_exposure_score, exposure_label_and_color
+# ── Exposure Score (criticality-weighted; tier_1 findings count more) ──
+    from app.utils.scoring import calc_weighted_exposure_score, exposure_label_and_color
 
-    exposure_score = calc_exposure_score(
-        critical=severity_counts["critical"],
-        high=severity_counts["high"],
-        medium=severity_counts["medium"],
-        low=severity_counts["low"],
-        info=severity_counts["info"],
-    )
+    exposure_score = calc_weighted_exposure_score(severity_by_tier)
     exposure_label, exposure_color = exposure_label_and_color(exposure_score)
     # ── Monitoring stats ──
 

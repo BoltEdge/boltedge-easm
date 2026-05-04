@@ -27,6 +27,7 @@ PLAN_RANK = {
     "professional": 2,
     "enterprise_silver": 3,
     "enterprise_gold": 4,
+    "custom": 5,
 }
 
 
