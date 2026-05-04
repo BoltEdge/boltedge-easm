@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../ui/dialo
 import { useOrg } from "../contexts/OrgContext";
 import { usePlanLimit, PlanLimitDialog } from "../../ui/plan-limit-dialog";
 import { getScanJobs, deleteScanJob, cancelScanJob, isPlanError } from "../../lib/api";
+import { PageHint, PageHintToggle } from "../../ui/PageHint";
 
 function cn(...parts: Array<string | false | null | undefined>) { return parts.filter(Boolean).join(" "); }
 
@@ -116,9 +117,20 @@ export default function ScanJobsPage() {
     <main className="flex-1 overflow-y-auto bg-background">
       <div className="p-8 space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground flex items-center gap-3"><Activity className="w-7 h-7 text-primary" />Scan Jobs</h1>
-          <p className="text-muted-foreground mt-1">Track and manage your vulnerability scan jobs.</p>
+          <h1 className="text-2xl font-semibold text-foreground flex items-center gap-3">
+            <Activity className="w-7 h-7 text-primary" />
+            Scan Jobs
+            <PageHintToggle pageKey="scan-jobs" />
+          </h1>
+          <p className="text-muted-foreground mt-1">Track and manage your scan jobs.</p>
         </div>
+
+        <PageHint
+          pageKey="scan-jobs"
+          title="Scan jobs"
+          body="On-demand security scans — port scanning, exposure data, CVE enrichment, configuration and TLS checks. Pick a profile (Quick / Standard / Deep / Full), target an asset or group, then review the findings."
+          action={{ label: "Start a new scan", href: "/scan/initiate" }}
+        />
 
         {banner && (
           <div className={cn("rounded-xl border px-4 py-3 text-sm", banner.kind === "ok" ? "border-[#10b981]/30 bg-[#10b981]/10 text-[#b7f7d9]" : "border-red-500/30 bg-red-500/10 text-red-200")}>{banner.text}</div>

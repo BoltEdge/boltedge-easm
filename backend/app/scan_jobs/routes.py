@@ -425,11 +425,18 @@ def run_scan_job(job_id: str):
                     db.session.commit()
                     return
 
+                from app.scanner.errors import user_facing_error_message
+                friendly = user_facing_error_message(e)
+
                 bg_job.status = "failed"
-                bg_job.error_message = str(e)[:500]
+                bg_job.error_message = friendly
                 bg_job.finished_at = now_utc()
                 bg_asset.scan_status = "scan_failed"
 
+                # Audit description gets the friendly text too — admins
+                # who scan it shouldn't see Python tracebacks either; the
+                # full traceback is in the app log via logger.exception
+                # above.
                 log_audit(
                     organization_id=bg_asset.organization_id,
                     action="scan.failed",
@@ -437,7 +444,7 @@ def run_scan_job(job_id: str):
                     target_type="scan_job",
                     target_id=str(job_id_int),
                     target_label=bg_asset.value,
-                    description=f"Scan failed for {bg_asset.value}: {str(e)[:200]}",
+                    description=f"Scan failed for {bg_asset.value}: {friendly}",
                 )
 
             db.session.commit()

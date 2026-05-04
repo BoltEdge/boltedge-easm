@@ -20,6 +20,7 @@ import { Label } from "../../ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../ui/dropdown-menu";
 import { usePlanLimit, PlanLimitDialog } from "../../ui/plan-limit-dialog";
 import { AssetsPageSkeleton } from "../../ui/skeleton";
+import { PageHint, PageHintToggle } from "../../ui/PageHint";
 
 function cn(...classes: Array<string | undefined | null | false>) {
   return classes.filter(Boolean).join(" ");
@@ -249,7 +250,10 @@ export default function Page() {
         {/* Header */}
         <div className="flex justify-between items-start mb-8 gap-6">
           <div>
-            <h1 className="text-2xl font-semibold text-foreground mb-1">Asset Groups</h1>
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-2xl font-semibold text-foreground">Asset Groups</h1>
+              <PageHintToggle pageKey="assets" />
+            </div>
             <p className="text-muted-foreground">Organize and manage your monitored assets</p>
             {error && <p className="mt-2 text-sm text-red-300">{error}</p>}
           </div>
@@ -274,6 +278,13 @@ export default function Page() {
             )}
           </div>
         </div>
+
+        <PageHint
+          pageKey="assets"
+          title="Asset groups"
+          body="Organize what you monitor — domains, IPs, cloud accounts — into groups. Each group has its own scans, findings, and reports."
+          action={{ label: "View all assets at once", href: "/assets/all" }}
+        />
 
         {/* Search */}
         <div className="flex items-center justify-between gap-3 mb-6">

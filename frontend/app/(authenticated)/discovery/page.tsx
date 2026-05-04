@@ -13,6 +13,7 @@ import { ExportColumnPicker } from "../../ui/export-column-picker";
 import DiscoverySummaryCard from "./DiscoverySummaryCard";
 import { useOrg } from "../contexts/OrgContext";
 import { usePlanLimit, PlanLimitDialog } from "../../ui/plan-limit-dialog";
+import { PageHint, PageHintToggle } from "../../ui/PageHint";
 import {
   getGroups, getGroupAssets, isPlanError,
   getScanProfiles, createScanJob, runScanJob,
@@ -358,9 +359,16 @@ export default function DiscoveryPage() {
           <div className="flex items-center gap-3 mb-2">
             <Radar className="w-8 h-8 text-[#00b8d4]" />
             <h1 className="text-2xl font-semibold text-foreground">Asset Discovery</h1>
+            <PageHintToggle pageKey="discovery" />
           </div>
           <p className="text-muted-foreground">Discover new assets across your attack surface using multiple reconnaissance techniques.</p>
         </div>
+
+        <PageHint
+          pageKey="discovery"
+          title="Discovery"
+          body="Find subdomains, IPs and exposed services for a root domain you own. Newly found assets can be added straight into your inventory."
+        />
 
         {/* Tab bar */}
         <div className="flex items-center gap-1 mb-6 border-b border-border">

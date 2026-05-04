@@ -13,7 +13,10 @@ from flask import Blueprint, jsonify
 from sqlalchemy import func, distinct, desc, or_, case, select
 
 from app.extensions import db
-from app.models import AssetGroup, Asset, ScanJob, Finding
+from app.models import (
+    AssetGroup, Asset, ScanJob, Finding,
+    Monitor, OrganizationMember,
+)
 from app.auth.decorators import require_auth, current_user_id, current_organization_id
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
@@ -291,3 +294,81 @@ def dashboard_summary():
             "recentScanJobs": recent_jobs_ui,
         }
     ), 200
+
+
+# =========================================================
+# Onboarding progress
+# =========================================================
+# Drives the dashboard "Get started" checklist and dictates
+# whether per-page hint cards still feel useful. All 5 booleans
+# are derived from real org state so the checklist disappears
+# the moment the user actually does the thing — no completion
+# button, no manual checkoff.
+
+@dashboard_bp.get("/onboarding-progress")
+@require_auth
+def onboarding_progress():
+    org_id = current_organization_id()
+
+    # Has any active asset
+    has_assets = db.session.query(
+        db.session.query(Asset.id)
+        .filter(Asset.organization_id == org_id)
+        .exists()
+    ).scalar()
+
+    # Has run any scan
+    has_scans = db.session.query(
+        db.session.query(ScanJob.id)
+        .filter(ScanJob.organization_id == org_id)
+        .exists()
+    ).scalar()
+
+    # Has triaged any finding (anything past the default "open" state)
+    has_reviewed_finding = db.session.query(
+        db.session.query(Finding.id)
+        .filter(
+            Finding.organization_id == org_id,
+            Finding.status != "open",
+        )
+        .exists()
+    ).scalar()
+
+    # Has at least one enabled monitor
+    has_monitor = db.session.query(
+        db.session.query(Monitor.id)
+        .filter(
+            Monitor.organization_id == org_id,
+            Monitor.enabled.is_(True),
+        )
+        .exists()
+    ).scalar()
+
+    # More than one active member (the owner alone doesn't count)
+    member_count = (
+        db.session.query(func.count(OrganizationMember.id))
+        .filter(
+            OrganizationMember.organization_id == org_id,
+            OrganizationMember.is_active.is_(True),
+        )
+        .scalar()
+        or 0
+    )
+    has_team = member_count > 1
+
+    steps = {
+        "addAsset": bool(has_assets),
+        "runScan": bool(has_scans),
+        "reviewFinding": bool(has_reviewed_finding),
+        "enableMonitoring": bool(has_monitor),
+        "inviteTeammate": bool(has_team),
+    }
+    completed = sum(1 for v in steps.values() if v)
+    total = len(steps)
+
+    return jsonify({
+        "steps": steps,
+        "completed": completed,
+        "total": total,
+        "isComplete": completed == total,
+    }), 200

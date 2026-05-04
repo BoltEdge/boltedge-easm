@@ -15,7 +15,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
 } from "recharts";
 
-import { getDashboardSummary, apiFetch, isPlanError } from "../../lib/api";
+import { getDashboardSummary, apiFetch, isPlanError, getOnboardingProgress, type OnboardingProgress } from "../../lib/api";
 import { SeverityBadge } from "../../SeverityBadge";
 import { Button } from "../../ui/button";
 import { usePlanLimit, PlanLimitDialog } from "../../ui/plan-limit-dialog";
@@ -242,6 +242,7 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recentAlerts, setRecentAlerts] = useState<any[]>([]);
+  const [onboarding, setOnboarding] = useState<OnboardingProgress | null>(null);
   const planLimit = usePlanLimit();
 
   const loadDashboard = useCallback(async (isRefresh = false) => {
@@ -256,6 +257,14 @@ export default function DashboardPage() {
             const res: any = await apiFetch("/monitoring/alerts?limit=5&status=open");
             setRecentAlerts(res?.alerts || (Array.isArray(res) ? res : []));
           } catch {}
+        })(),
+        (async () => {
+          try {
+            const p = await getOnboardingProgress();
+            setOnboarding(p);
+          } catch {
+            // non-fatal — checklist just won't render
+          }
         })(),
       ]);
 
@@ -392,8 +401,8 @@ export default function DashboardPage() {
                   step: 3,
                   icon: <Zap className="w-5 h-5 text-primary" />,
                   bg: "bg-primary/10",
-                  title: "Scan for vulnerabilities",
-                  description: "Run a vulnerability scan to find misconfigurations and security issues.",
+                  title: "Run a security scan",
+                  description: "Scan an asset to surface open ports, exposed services, weak TLS, known CVEs and misconfigurations.",
                   href: "/scan/initiate",
                   cta: "Start scan",
                 },
@@ -454,6 +463,10 @@ export default function DashboardPage() {
             {refreshing ? "Refreshing…" : "Refresh"}
           </Button>
         </div>
+
+        {onboarding && !onboarding.isComplete && (
+          <OnboardingChecklist progress={onboarding} />
+        )}
 
         {/* ═══ Row 1: Exposure Score + Stats ═══ */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
@@ -787,6 +800,68 @@ export default function DashboardPage() {
       </div>
 
       <PlanLimitDialog {...planLimit} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Onboarding checklist — renders only while progress < 100%.
+// Driven entirely by real org state (assets / scans / findings /
+// monitor / team), so steps tick themselves off as the user uses
+// the product. There's no manual "mark complete" button.
+// ─────────────────────────────────────────────────────────────
+
+function OnboardingChecklist({ progress }: { progress: OnboardingProgress }) {
+  const items: { key: keyof OnboardingProgress["steps"]; label: string; href: string }[] = [
+    { key: "addAsset",        label: "Add your first asset",        href: "/assets" },
+    { key: "runScan",         label: "Run a scan",                  href: "/scan/initiate" },
+    { key: "reviewFinding",   label: "Triage a finding",            href: "/findings" },
+    { key: "enableMonitoring",label: "Enable continuous monitoring",href: "/monitoring" },
+    { key: "inviteTeammate",  label: "Invite a teammate",           href: "/settings/account" },
+  ];
+
+  const pct = Math.round((progress.completed / progress.total) * 100);
+
+  return (
+    <div className="mb-6 rounded-xl border border-border/60 bg-card/40 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Get started with Nano EASM</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {progress.completed} of {progress.total} done — this card disappears once you've finished.
+          </p>
+        </div>
+        <span className="text-xs text-muted-foreground tabular-nums">{pct}%</span>
+      </div>
+      <div className="h-1 w-full bg-card rounded-full overflow-hidden mb-4">
+        <div
+          className="h-full bg-primary transition-all"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <ul className="grid grid-cols-1 md:grid-cols-5 gap-2">
+        {items.map((item) => {
+          const done = progress.steps[item.key];
+          return (
+            <li key={item.key}>
+              {done ? (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card/30 text-xs text-muted-foreground line-through">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </div>
+              ) : (
+                <Link
+                  href={item.href}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card hover:bg-card/70 border border-border/40 text-xs text-foreground transition-colors"
+                >
+                  <span className="w-3.5 h-3.5 rounded-full border border-muted-foreground/40 shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </Link>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

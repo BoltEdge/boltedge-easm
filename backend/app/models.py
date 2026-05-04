@@ -111,6 +111,22 @@ class Organization(db.Model):
     # e.g. {"assets": 500, "scans_per_month": 10000}. NULL means use plan defaults.
     limit_overrides = db.Column(db.JSON, nullable=True)
 
+    # ── Audit-log webhook forwarding ────────────────────────────────
+    # Streams audit events to an external URL (typically a SIEM
+    # ingestion endpoint or a generic webhook). Plan-gated — only
+    # available on tiers where PLAN_CONFIG sets `audit_log: True`.
+    # Disabled by default; the kill-switch is `audit_webhook_enabled`
+    # rather than nulling the URL so config survives a temporary off.
+    audit_webhook_url = db.Column(db.String(500), nullable=True)
+    # Secret used to HMAC-SHA256 sign each delivery's body, sent in the
+    # `X-Nano-Signature: sha256=<hex>` header. Generated server-side
+    # on first config so it can't be a weak / customer-supplied value.
+    audit_webhook_secret = db.Column(db.String(100), nullable=True)
+    # Optional category allow-list. NULL = forward every category.
+    # Otherwise a JSON list like ["finding", "scan", "auth"].
+    audit_webhook_categories = db.Column(db.JSON, nullable=True)
+    audit_webhook_enabled = db.Column(db.Boolean, nullable=False, default=False)
+
     @property
     def is_trialing(self) -> bool:
         """Check if org is currently in a trial period."""
@@ -1540,6 +1556,46 @@ class AuditLog(db.Model):
 
     # When
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
+class AuditWebhookDelivery(db.Model):
+    """
+    Per-attempt log for audit-event webhook deliveries.
+
+    A delivery is created for every audit-log entry that's forwarded to
+    an external webhook (subject to the org's category filter). Drives
+    the "recent deliveries" panel in the settings UI and gives operators
+    a way to debug delivery failures without scraping app logs.
+
+    Records every attempt — success or failure — and is intentionally
+    bounded by a periodic cleanup task (last 7 days only) so the table
+    doesn't grow unbounded for a high-volume customer.
+    """
+    __tablename__ = "audit_webhook_delivery"
+
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(
+        db.Integer,
+        db.ForeignKey("organization.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    # The audit_log row this delivery was for. Nullable so the "Send
+    # test event" button can record a synthetic delivery.
+    audit_log_id = db.Column(db.Integer, nullable=True, index=True)
+    # UUID we send in `X-Nano-Event-Id` for idempotency on the receiver.
+    event_id = db.Column(db.String(50), nullable=False, unique=True, index=True)
+    # Snapshot of the URL at delivery time (the org URL can change later).
+    delivery_url = db.Column(db.String(500), nullable=False)
+    # "success" | "failed" | "pending"
+    status = db.Column(db.String(20), nullable=False, default="pending")
+    status_code = db.Column(db.Integer, nullable=True)
+    duration_ms = db.Column(db.Integer, nullable=True)
+    error_message = db.Column(db.String(1000), nullable=True)
+    attempted_at = db.Column(
+        db.DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        index=True,
+    )
 
 
 # =============================================================================

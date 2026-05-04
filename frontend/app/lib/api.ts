@@ -949,6 +949,27 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
 }
 
 // ────────────────────────────────────────────────────────────
+// Onboarding progress (drives dashboard checklist)
+// ────────────────────────────────────────────────────────────
+
+export type OnboardingProgress = {
+  steps: {
+    addAsset: boolean;
+    runScan: boolean;
+    reviewFinding: boolean;
+    enableMonitoring: boolean;
+    inviteTeammate: boolean;
+  };
+  completed: number;
+  total: number;
+  isComplete: boolean;
+};
+
+export async function getOnboardingProgress(): Promise<OnboardingProgress> {
+  return apiFetch<OnboardingProgress>("/dashboard/onboarding-progress");
+}
+
+// ────────────────────────────────────────────────────────────
 // Scan Profiles
 // ────────────────────────────────────────────────────────────
 
@@ -1294,6 +1315,72 @@ export async function getBilling(): Promise<any> {
 // Audit Log
 export async function getAuditLog(page: number = 1): Promise<any> {
   return apiFetch<any>(`/settings/audit-log?page=${page}`);
+}
+
+// ────────────────────────────────────────────────────────────
+// Audit-log webhook stream (Enterprise Gold + Custom)
+// ────────────────────────────────────────────────────────────
+
+export type AuditWebhookConfig = {
+  url: string | null;
+  secretMasked: string | null;
+  categories: string[] | null;
+  enabled: boolean;
+  configured: boolean;
+  /** Only present in the response from PUT on first save / rotation. */
+  secret?: string;
+};
+
+export type AuditWebhookDelivery = {
+  id: string;
+  eventId: string;
+  auditLogId: string | null;
+  url: string;
+  status: "success" | "failed" | "pending";
+  statusCode: number | null;
+  durationMs: number | null;
+  errorMessage: string | null;
+  attemptedAt: string | null;
+};
+
+export async function getAuditWebhook(): Promise<AuditWebhookConfig> {
+  return apiFetch<AuditWebhookConfig>("/settings/audit-webhook");
+}
+
+export async function saveAuditWebhook(payload: {
+  url: string;
+  enabled?: boolean;
+  categories?: string[] | null;
+  regenerateSecret?: boolean;
+}): Promise<AuditWebhookConfig> {
+  return apiFetch<AuditWebhookConfig>("/settings/audit-webhook", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteAuditWebhook(): Promise<AuditWebhookConfig> {
+  return apiFetch<AuditWebhookConfig>("/settings/audit-webhook", {
+    method: "DELETE",
+  });
+}
+
+export async function testAuditWebhook(): Promise<{
+  ok: boolean;
+  delivery: AuditWebhookDelivery;
+}> {
+  return apiFetch<{ ok: boolean; delivery: AuditWebhookDelivery }>(
+    "/settings/audit-webhook/test",
+    { method: "POST" },
+  );
+}
+
+export async function listAuditWebhookDeliveries(
+  limit: number = 50,
+): Promise<{ deliveries: AuditWebhookDelivery[] }> {
+  return apiFetch<{ deliveries: AuditWebhookDelivery[] }>(
+    `/settings/audit-webhook/deliveries?limit=${limit}`,
+  );
 }
 
 // Current user settings/role

@@ -132,9 +132,9 @@ PLAN_CONFIG = {
     "enterprise_silver": {
         "label": "Enterprise Silver",
         "currency": "AUD",
-        "price_monthly": 749,
-        "price_annual_monthly": 649,
-        "price_annual_total": 7788,
+        "price_monthly": 599,
+        "price_annual_monthly": 509,
+        "price_annual_total": 6108,
         "trial_days": 30,
         "limits": {
             "assets": 10000,
@@ -158,11 +158,11 @@ PLAN_CONFIG = {
     "enterprise_gold": {
         "label": "Enterprise Gold",
         "currency": "AUD",
-        # Self-serve top tier — A$1,349/mo, A$1,149/mo billed annually
+        # Self-serve top tier — A$999/mo, A$849/mo billed annually
         # (~15% saving). Beyond this, customers go to Custom (sales).
-        "price_monthly": 1349,
-        "price_annual_monthly": 1149,
-        "price_annual_total": 13788,
+        "price_monthly": 999,
+        "price_annual_monthly": 849,
+        "price_annual_total": 10188,
         "trial_days": 30,
         "limits": {
             "assets": 20000,
@@ -500,6 +500,20 @@ def start_trial():
     )
 
     db.session.commit()
+
+    # Acknowledgement email so the requester has a record of the
+    # request number alongside the in-app confirmation. Best-effort.
+    try:
+        from app.contact.emails import send_acknowledgement_email
+        send_acknowledgement_email(
+            to_email=cr.email,
+            to_name=cr.name,
+            request_id=cr.public_id,
+            request_type=cr.request_type,  # "trial"
+            subject=cr.subject,
+        )
+    except Exception:
+        logger.exception("Failed to send trial-request acknowledgement to %s", cr.email)
 
     return jsonify(
         message=(

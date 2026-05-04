@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../ui/dialo
 import { SeverityBadge } from "../../SeverityBadge";
 import { useOrg } from "../contexts/OrgContext";
 import { usePlanLimit, PlanLimitDialog } from "../../ui/plan-limit-dialog";
+import { PageHint, PageHintToggle } from "../../ui/PageHint";
 import { isPlanError } from "../../lib/api";
 import { friendlyScannerName } from "../../lib/scanner-labels";
 import { getAllAssets, explainAlert } from "../../lib/api";
@@ -66,14 +67,15 @@ function UpgradePrompt() {
   const { refresh } = useOrg();
   const [starting, setStarting] = useState<string | null>(null);
   const [trialBanner, setTrialBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [trialConfirm, setTrialConfirm] = useState<{ message: string; requestId?: string; planLabel: string } | null>(null);
 
   // Trials are request-based across all paid plans — clicking "Request trial"
   // creates a typed contact_request the admin reviews from /admin/contact-requests.
   const plans = [
     { key: "starter",           label: "Starter",            price: "A$29/mo",    freq: "Scans every 7 days",  trialDays: 14, color: "#00b8d4", tags: ["DNS", "SSL", "Ports", "Headers"] },
     { key: "professional",      label: "Professional",       price: "A$149/mo",   freq: "Scans every 3 days",  trialDays: 21, color: "#7c5cfc", tags: ["Everything", "Webhooks", "Deep Discovery"] },
-    { key: "enterprise_silver", label: "Enterprise Silver",  price: "A$749/mo",   freq: "Daily scans",         trialDays: 30, color: "#ff8800", tags: ["Everything", "Audit log option", "Priority"] },
-    { key: "enterprise_gold",   label: "Enterprise Gold",    price: "A$1,349/mo", freq: "Daily scans",         trialDays: 30, color: "#ffd700", tags: ["Audit log", "Priority support", "Full features"] },
+    { key: "enterprise_silver", label: "Enterprise Silver",  price: "A$599/mo",   freq: "Daily scans",         trialDays: 30, color: "#ff8800", tags: ["Everything", "Audit log option", "Priority"] },
+    { key: "enterprise_gold",   label: "Enterprise Gold",    price: "A$999/mo",   freq: "Daily scans",         trialDays: 30, color: "#ffd700", tags: ["Audit log", "Priority support", "Full features"] },
   ];
 
   async function handleStartTrial(planKey: string) {
@@ -84,11 +86,13 @@ function UpgradePrompt() {
         method: "POST",
         body: JSON.stringify({ plan: planKey }),
       });
-      // Trials are request-based now — no plan flip happens, the user just
-      // gets confirmation that their request is queued for review.
-      setTrialBanner({
-        kind: "ok",
-        text: res?.message || "Trial request submitted. We'll email you when it's approved.",
+      // Trials are request-based — show a clear confirmation modal so the
+      // user knows the request landed and an ack email is on its way.
+      const planLabel = plans.find((p) => p.key === planKey)?.label || planKey;
+      setTrialConfirm({
+        message: res?.message || "Trial request submitted. We'll email you when it's approved.",
+        requestId: res?.requestId,
+        planLabel,
       });
     } catch (e: any) {
       setTrialBanner({ kind: "err", text: e?.message || "Failed to submit trial request." });
@@ -171,6 +175,37 @@ function UpgradePrompt() {
           </div>
         ))}
       </div>
+
+      <Dialog
+        open={!!trialConfirm}
+        onOpenChange={(o) => { if (!o) setTrialConfirm(null); }}
+      >
+        <DialogContent className="bg-card border-border text-foreground sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-left">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              Trial request submitted
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-left">
+            <p className="text-muted-foreground">{trialConfirm?.message}</p>
+            {trialConfirm?.requestId && (
+              <div className="rounded-lg border border-border/60 bg-card/50 px-3 py-2 flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Reference number</span>
+                <code className="font-mono text-foreground">{trialConfirm.requestId}</code>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              We've also sent an acknowledgement email with this number. No further action is needed from you right now.
+            </p>
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button onClick={() => setTrialConfirm(null)} className="bg-primary hover:bg-primary/90">
+              Got it
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1318,11 +1353,18 @@ export default function MonitoringPage() {
           <div className="flex items-center gap-3 mb-2">
             <Eye className="w-8 h-8 text-primary" />
             <h1 className="text-2xl font-semibold text-foreground">Monitoring</h1>
+            <PageHintToggle pageKey="monitoring" />
           </div>
           <p className="text-muted-foreground">
             Continuous security monitoring with automated scans and real-time alerts.
           </p>
         </div>
+
+        <PageHint
+          pageKey="monitoring"
+          title="Continuous monitoring"
+          body="Re-scan assets on a schedule and alert on changes — new ports, expired certs, freshly opened services, or any new finding above a severity you choose."
+        />
 
         {!hasMonitoring ? <UpgradePrompt /> : (
           <>

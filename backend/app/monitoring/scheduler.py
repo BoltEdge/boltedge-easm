@@ -332,14 +332,10 @@ def _execute_scan_job(job, asset, profile) -> None:
     db.session.commit()
 
     try:
-        # Try to use the ScanOrchestrator
         from app.scanner.orchestrator import ScanOrchestrator
-        orchestrator = ScanOrchestrator(
-            job=job,
-            asset=asset,
-            profile=profile,
-        )
-        result = orchestrator.run()
+        # Orchestrator is stateless — no constructor args. Pass the job
+        # and profile to .execute(); the asset is read off job.asset.
+        result = ScanOrchestrator().execute(job, profile)
 
         job.result_json = result if isinstance(result, dict) else {"status": "completed"}
         job.status = "completed"
@@ -355,8 +351,9 @@ def _execute_scan_job(job, asset, profile) -> None:
 
     except Exception as e:
         logger.exception("Scan execution failed for job %s", job.id)
+        from app.scanner.errors import user_facing_error_message
         job.status = "failed"
-        job.error_message = str(e)[:500]
+        job.error_message = user_facing_error_message(e)
         job.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
         asset.scan_status = "scan_failed"
 

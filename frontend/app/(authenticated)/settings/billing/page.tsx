@@ -136,6 +136,7 @@ export default function BillingPage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [activatingSubscription, setActivatingSubscription] = useState(false);
   const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [trialConfirm, setTrialConfirm] = useState<{ message: string; requestId?: string; planLabel: string } | null>(null);
   const [showDeleteOrg, setShowDeleteOrg] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingOrg, setDeletingOrg] = useState(false);
@@ -252,11 +253,14 @@ export default function BillingPage() {
         method: "POST",
         body: JSON.stringify({ plan: planKey }),
       });
-      // Trials are request-based — no plan flip happens here. The user gets
-      // a confirmation banner; the admin reviews from /admin/contact-requests.
-      setBanner({
-        kind: "ok",
-        text: res?.message || "Trial request submitted. We'll email you when it's approved.",
+      // Trials are request-based — no plan flip happens here. The admin
+      // reviews from /admin/contact-requests. Surface a clear modal so
+      // the user knows the request landed (and an ack email is on its way).
+      const planLabel = plans.find((p: any) => p?.key === planKey)?.label || planKey;
+      setTrialConfirm({
+        message: res?.message || "Trial request submitted. We'll email you when it's approved.",
+        requestId: res?.requestId,
+        planLabel,
       });
     } catch (e: any) {
       if (isPlanError(e)) planLimit.handle(e.planError);
@@ -655,6 +659,40 @@ export default function BillingPage() {
                   {deletingOrg ? "Deleting..." : "Delete Forever"}
                 </Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Trial-request confirmation — pops after start-trial succeeds */}
+        <Dialog
+          open={!!trialConfirm}
+          onOpenChange={(o) => { if (!o) setTrialConfirm(null); }}
+        >
+          <DialogContent className="bg-card border-border text-foreground sm:max-w-[460px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Check className="w-5 h-5 text-emerald-400" />
+                Trial request submitted
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 text-sm">
+              <p className="text-muted-foreground">
+                {trialConfirm?.message}
+              </p>
+              {trialConfirm?.requestId && (
+                <div className="rounded-lg border border-border/60 bg-card/50 px-3 py-2 flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Reference number</span>
+                  <code className="font-mono text-foreground">{trialConfirm.requestId}</code>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                We've also sent an acknowledgement email with this number. No further action is needed from you right now.
+              </p>
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => setTrialConfirm(null)} className="bg-primary hover:bg-primary/90">
+                Got it
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

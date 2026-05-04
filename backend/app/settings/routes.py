@@ -42,7 +42,7 @@ from app.models import (
 )
 from app.auth.decorators import require_auth, current_user_id, current_organization_id
 from app.auth.permissions import (
-    require_role, require_permission, check_limit,
+    require_role, require_permission, require_feature, check_limit,
     get_user_role, get_permissions_for_role, ROLE_HIERARCHY,
 )
 from app.audit.routes import log_audit
@@ -1088,3 +1088,233 @@ def accept_invitation(token):
         organizationId=str(invite.organization_id),
         role=invite.role,
     ), 200
+
+
+# =========================================================
+# AUDIT-LOG WEBHOOK FORWARDING
+# =========================================================
+# Plan-gated to tiers where PLAN_CONFIG sets `audit_log: True`
+# (Enterprise Gold + Custom). Only owners can change config.
+# Generated secret is shown once on creation; thereafter the GET
+# endpoint returns only a masked preview so the secret can't be
+# exfiltrated via session theft.
+
+from app.models import AuditWebhookDelivery
+
+
+_VALID_AUDIT_CATEGORIES = {
+    "finding", "asset", "group", "scan",
+    "user", "settings", "auth", "export",
+}
+
+
+def _mask_secret(secret: str | None) -> str | None:
+    """Return a `whsec_…last4` preview for display only."""
+    if not secret:
+        return None
+    tail = secret[-4:] if len(secret) >= 4 else secret
+    return f"whsec_…{tail}"
+
+
+def _audit_webhook_to_ui(org: Organization) -> dict:
+    return {
+        "url": org.audit_webhook_url,
+        "secretMasked": _mask_secret(org.audit_webhook_secret),
+        "categories": org.audit_webhook_categories,  # null = all
+        "enabled": bool(org.audit_webhook_enabled),
+        "configured": bool(org.audit_webhook_url),
+    }
+
+
+def _delivery_to_ui(d: AuditWebhookDelivery) -> dict:
+    return {
+        "id": str(d.id),
+        "eventId": d.event_id,
+        "auditLogId": str(d.audit_log_id) if d.audit_log_id else None,
+        "url": d.delivery_url,
+        "status": d.status,
+        "statusCode": d.status_code,
+        "durationMs": d.duration_ms,
+        "errorMessage": d.error_message,
+        "attemptedAt": d.attempted_at.isoformat() if d.attempted_at else None,
+    }
+
+
+@settings_bp.get("/audit-webhook")
+@require_auth
+@require_role("admin")
+@require_feature("audit_log")
+def get_audit_webhook():
+    """Read current webhook configuration. Secret returned masked only."""
+    org = Organization.query.get(current_organization_id())
+    if not org:
+        return jsonify(error="Organization not found"), 404
+    return jsonify(_audit_webhook_to_ui(org)), 200
+
+
+@settings_bp.put("/audit-webhook")
+@require_auth
+@require_role("owner")
+@require_feature("audit_log")
+def put_audit_webhook():
+    """
+    Create or update the webhook config. Owner only.
+
+    Body:
+        url:        string, required (https:// recommended; http:// allowed
+                    so customers can point at internal collectors)
+        enabled:    bool, optional (default: true on first save, otherwise unchanged)
+        categories: list[str] | null, optional — null = forward all categories
+
+    First save generates a signing secret server-side and returns the
+    raw value once. Subsequent saves don't rotate the secret unless
+    `regenerateSecret: true` is set.
+    """
+    org = Organization.query.get(current_organization_id())
+    if not org:
+        return jsonify(error="Organization not found"), 404
+
+    data = request.get_json(silent=True) or {}
+
+    url = (data.get("url") or "").strip()
+    if not url:
+        return jsonify(error="url is required"), 400
+    if not (url.startswith("http://") or url.startswith("https://")):
+        return jsonify(error="url must start with http:// or https://"), 400
+    if len(url) > 500:
+        return jsonify(error="url is too long (max 500 chars)"), 400
+
+    categories = data.get("categories")
+    if categories is not None:
+        if not isinstance(categories, list) or not all(isinstance(c, str) for c in categories):
+            return jsonify(error="categories must be a list of strings, or null"), 400
+        unknown = [c for c in categories if c not in _VALID_AUDIT_CATEGORIES]
+        if unknown:
+            return jsonify(
+                error=f"Unknown categories: {', '.join(sorted(set(unknown)))}",
+                validCategories=sorted(_VALID_AUDIT_CATEGORIES),
+            ), 400
+        if not categories:  # empty list — treat as null (forward everything)
+            categories = None
+
+    is_first_save = not org.audit_webhook_url
+    regenerate = bool(data.get("regenerateSecret"))
+    new_secret_to_return: str | None = None
+
+    org.audit_webhook_url = url
+    org.audit_webhook_categories = categories
+    if "enabled" in data:
+        org.audit_webhook_enabled = bool(data["enabled"])
+    elif is_first_save:
+        org.audit_webhook_enabled = True
+
+    if is_first_save or regenerate or not org.audit_webhook_secret:
+        from app.audit.webhook import generate_secret
+        new_secret_to_return = generate_secret()
+        org.audit_webhook_secret = new_secret_to_return
+
+    log_audit(
+        organization_id=org.id,
+        user_id=current_user_id(),
+        action="settings.audit_webhook_updated",
+        category="settings",
+        target_type="settings",
+        target_id="audit_webhook",
+        target_label="Audit webhook",
+        description=(
+            "Configured audit-log webhook" if is_first_save
+            else "Updated audit-log webhook configuration"
+        ),
+        metadata={
+            "enabled": org.audit_webhook_enabled,
+            "categoriesCount": len(categories) if categories else 0,
+            "secretRotated": regenerate,
+        },
+    )
+    db.session.commit()
+
+    response = _audit_webhook_to_ui(org)
+    if new_secret_to_return:
+        # Only ever returned on creation / explicit rotation. Never
+        # surfaced again — operators must store it themselves.
+        response["secret"] = new_secret_to_return
+    return jsonify(response), 200
+
+
+@settings_bp.delete("/audit-webhook")
+@require_auth
+@require_role("owner")
+@require_feature("audit_log")
+def delete_audit_webhook():
+    """Clear the webhook configuration entirely (URL, secret, filter)."""
+    org = Organization.query.get(current_organization_id())
+    if not org:
+        return jsonify(error="Organization not found"), 404
+
+    org.audit_webhook_url = None
+    org.audit_webhook_secret = None
+    org.audit_webhook_categories = None
+    org.audit_webhook_enabled = False
+
+    log_audit(
+        organization_id=org.id,
+        user_id=current_user_id(),
+        action="settings.audit_webhook_deleted",
+        category="settings",
+        target_type="settings",
+        target_id="audit_webhook",
+        target_label="Audit webhook",
+        description="Removed audit-log webhook configuration",
+    )
+    db.session.commit()
+
+    return jsonify(_audit_webhook_to_ui(org)), 200
+
+
+@settings_bp.post("/audit-webhook/test")
+@require_auth
+@require_role("admin")
+@require_feature("audit_log")
+def test_audit_webhook():
+    """
+    Synchronously POST a synthetic audit event to the configured URL.
+
+    Used by the "Send test event" button so operators can confirm the
+    receiver sees the signature, headers, and shape they expect before
+    flipping the kill-switch on. Records the attempt in the deliveries
+    log alongside real events.
+    """
+    org = Organization.query.get(current_organization_id())
+    if not org:
+        return jsonify(error="Organization not found"), 404
+    if not org.audit_webhook_url:
+        return jsonify(error="Webhook is not configured"), 400
+
+    from app.audit.webhook import send_test_event
+    try:
+        delivery = send_test_event(org.id)
+    except Exception as e:
+        return jsonify(error=f"Test delivery failed: {str(e)[:200]}"), 500
+
+    return jsonify(
+        delivery=_delivery_to_ui(delivery),
+        ok=delivery.status == "success",
+    ), 200
+
+
+@settings_bp.get("/audit-webhook/deliveries")
+@require_auth
+@require_role("admin")
+@require_feature("audit_log")
+def list_audit_webhook_deliveries():
+    """Recent delivery attempts, newest first. Used by the debug panel."""
+    org_id = current_organization_id()
+    limit = min(request.args.get("limit", 50, type=int), 200)
+    rows = (
+        AuditWebhookDelivery.query
+        .filter_by(organization_id=org_id)
+        .order_by(AuditWebhookDelivery.attempted_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return jsonify(deliveries=[_delivery_to_ui(d) for d in rows]), 200

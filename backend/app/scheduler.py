@@ -224,9 +224,10 @@ def _run_job(job_id, db):
         logger.info(f"Job {job_id} completed for {asset.value}")
 
     except Exception as e:
-        logger.error(f"Job {job_id} failed: {e}")
+        logger.exception(f"Job {job_id} failed")
+        from app.scanner.errors import user_facing_error_message
         job.status = "failed"
-        job.error_message = str(e)[:500]
+        job.error_message = user_facing_error_message(e)
         job.finished_at = now_utc()
         db.session.commit()
 

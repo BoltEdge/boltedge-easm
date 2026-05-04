@@ -250,7 +250,7 @@ POST /billing/cancel      — cancel trial or subscription
 DELETE /billing/organization — delete org (owner only)
 ```
 
-### Plan tiers and limits *(updated May 2026 — repriced in AUD, Silver bumped to 10K assets, Gold bumped to 20K assets)*
+### Plan tiers and limits *(updated May 2026 — repriced in AUD, Silver bumped to 10K assets, Gold bumped to 20K assets; Silver/Gold monthly cut to A$599 / A$999 for community-preview launch positioning)*
 
 All prices are in **Australian dollars (AUD)**. Per-scan/per-discovery costs further down are in USD because Shodan and EC2 are USD-billed; AUD margin is computed at 1 USD ≈ 1.55 AUD.
 
@@ -259,8 +259,8 @@ All prices are in **Australian dollars (AUD)**. Per-scan/per-discovery costs fur
 | Free | A$0 | — | 2 | 0 | — | 5 | 2 | 1 | 1 | 1 | ✗ | ✗ | ✗ | ✗ |
 | Starter | A$29 | A$24 | 15 | 5 | every 7d | 100 | 10 | 3 | 5 | 1 | ✗ | ✗ | ✗ | ✗ |
 | Professional | A$149 | A$129 | 100 | 25 | every 3d | 1,000 | 50 | 10 | 25 | 5 | ✓ | ✓ | ✗ | ✗ |
-| Enterprise Silver | A$749 | A$649 | 10,000 | 100 | daily | 6,000 | 200 | 50 | 100 | 10 | ✓ | ✓ | ✗ | ✗ |
-| Enterprise Gold | A$1,349 | A$1,149 | 20,000 | 250 | daily | 12,000 | 400 | 100 | 200 | 20 | ✓ | ✓ | ✓ | ✓ |
+| Enterprise Silver | A$599 | A$509 | 10,000 | 100 | daily | 6,000 | 200 | 50 | 100 | 10 | ✓ | ✓ | ✗ | ✗ |
+| Enterprise Gold | A$999 | A$849 | 20,000 | 250 | daily | 12,000 | 400 | 100 | 200 | 20 | ✓ | ✓ | ✓ | ✓ |
 | Custom | Contact sales | — | ∞ | ∞ | hourly | ∞ | ∞ | ∞ | ∞ | ∞ | ✓ | ✓ | ✓ | ✓ |
 
 **Trials are request-only** for every paid tier — clicking "Request free trial" creates a typed `contact_request` that admins review and approve manually. Admin sets the trial duration when granting (no hard-coded `trialDays`). See `POST /billing/start-trial`.
@@ -284,13 +284,13 @@ The big lever is **monitored-assets × monitoring frequency**. A monitor is a re
 |---|---|---|---|---|---|---|---|
 | Starter | A$29 | A$3.10 | A$0.78 | A$0.77 | A$4.65 | A$24.35 | 84% |
 | Professional | A$149 | A$31.00 | A$3.88 | A$3.10 | A$37.98 | A$111.02 | 75% |
-| Enterprise Silver | A$749 | A$186.00 | A$15.50 | A$7.75 | A$209.25 | A$539.75 | 72% |
-| Enterprise Gold | A$1,349 | A$372.00 | A$31.00 | A$15.50 | A$418.50 | A$930.50 | 69% |
+| Enterprise Silver | A$599 | A$186.00 | A$15.50 | A$7.75 | A$209.25 | A$389.75 | 65% |
+| Enterprise Gold | A$999 | A$372.00 | A$31.00 | A$15.50 | A$418.50 | A$580.50 | 58% |
 | Custom | sales-priced (typical: A$3,000+/mo) | A$1,550 (capped) | — | A$46.50 | ~A$1,596.50 | sales decides | sales decides |
 
 **Hard rules — verify against these before changing any limit:**
 
-1. **Never give a self-serve tier `scans_per_month: -1` (unlimited).** Gold caps at 12,000 scans/mo to keep margins above 65%. Custom is sales-priced and only that tier gets unlimited — anything resembling "unlimited everything" needs a real contract with usage caps.
+1. **Never give a self-serve tier `scans_per_month: -1` (unlimited).** Gold caps at 12,000 scans/mo to keep margins comfortably positive (currently ~58% at full quota). Custom is sales-priced and only that tier gets unlimited — anything resembling "unlimited everything" needs a real contract with usage caps. If Gold price moves below A$899/mo, re-run the margin table before approving — at A$899 with full-quota usage Gold would drop below 55%.
 2. **Free tier never gets monitoring** — recurring scans on a $0 plan = unbounded loss.
 3. **Asset count and monitored_assets are independent dials.** Inventory is cheap (DB rows — 20K assets × 2KB ≈ 40MB per org). Monitored is what bleeds.
 4. **scans_per_month must mathematically cover monitoring + manual usage.** Formula: `monitored_assets × scans_per_month_per_monitored_asset_at_freq + manual_headroom`. Gold monitoring 250 assets daily = 7,500 scans/mo just for monitoring; the 12,000 cap leaves ~4,500 for manual scans.
@@ -376,6 +376,38 @@ Without pre-commit, devs are responsible for running the regen script manually a
 `backend/app/scanner/compliance_map.py` maps finding CWE IDs to controls in OWASP ASVS 4.0, CIS Controls v8, NIST CSF v2.0, PCI-DSS 4.0, SOC 2 Trust Services Criteria, and ISO/IEC 27001:2022 Annex A. Surfaced in the finding-details panel, the findings-page filter, and the Compliance PDF report preset.
 
 **Never claim "direct" mapping for SOC 2 or ISO 27001.** These frameworks have no machine-readable taxonomy and every claim must be derived via NIST CSF cross-walks. The code structurally enforces this — see invariants 2-4 in the test plan. Marketing copy should say *"surfaces findings that may inform your compliance evidence — verify with your auditor"*, never *"audit-ready for SOC 2"*.
+
+## Audit Log Webhook Stream
+
+Forwards every `audit_log` write to a customer-configured HTTP endpoint (typically a SIEM ingestion URL). Plan-gated to tiers where `PLAN_CONFIG.audit_log = True` (Enterprise Gold + Custom).
+
+### Wiring
+- Module: `backend/app/audit/webhook.py` — daemon-thread fire-and-forget POST.
+- Hook: `log_audit()` in `backend/app/audit/routes.py` calls `forward_audit_event(entry, organization_id)` after the savepoint commits. The entry is **snapshotted into a plain dict** before the thread spawns — the outer transaction hasn't committed yet, so a background session can't read the row, and SQLAlchemy instances can't cross thread boundaries.
+- Settings: `GET/PUT/DELETE /settings/audit-webhook`, `POST /settings/audit-webhook/test`, `GET /settings/audit-webhook/deliveries` in `backend/app/settings/routes.py`.
+- UI: third tab in `frontend/app/(authenticated)/settings/integrations/page.tsx` ("Audit Log Stream"). Lower-tier orgs see an upgrade-prompt empty state, not an error.
+
+### Delivery contract
+- `POST` with JSON body, `User-Agent: Nano-EASM-Audit-Webhook/1.0`, 10 s timeout.
+- `X-Nano-Signature: sha256=<hex>` — HMAC-SHA256 of the raw body using the org's secret.
+- `X-Nano-Event-Id: <uuid>` — receiver-side idempotency key.
+- `X-Nano-Event-Type: <category>` — convenience for routing rules.
+- Body shape (snake_case — diverges from camelCase UI contract intentionally for SIEM-friendliness): `{event_id, schema_version, event_type, timestamp, organization, actor, action, category, target, description, metadata, audit_log_id}`.
+
+### Secret handling
+- Generated server-side via `secrets.token_urlsafe(32)` on first save (`whsec_…`). Customer-supplied secrets are **not** allowed — prevents weak values.
+- Returned in plaintext **only once** (in the PUT response on creation or rotation). Subsequent GETs return `whsec_…last4` mask.
+- Rotate via `PUT { regenerateSecret: true }` — old secret immediately invalidated.
+
+### Per-attempt log
+- `audit_webhook_delivery` table records every POST, success or failed, with status code, duration, error message, and the snapshotted URL at delivery time.
+- Used for the "Recent deliveries" debug panel.
+- **No retries** today (retrying audit events with stale state has its own correctness issues) — the row simply records the failure.
+
+### Failure modes
+- Webhook off, plan downgraded, category filter mismatch, missing URL → silent no-op (no delivery row).
+- Network/timeout/non-2xx → row recorded as `failed` with error captured.
+- Forwarder crash → caught and logged; never breaks the audit-log write itself.
 
 ## Production Deployment (EC2)
 - **Server:** AWS EC2 t2.medium, Ubuntu 24.04, IP 34.232.100.29

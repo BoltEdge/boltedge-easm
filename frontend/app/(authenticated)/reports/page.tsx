@@ -19,6 +19,7 @@ import type {
   ReportItem, ReportScope, ReportTemplate, ReportListResponse,
 } from "../../lib/api";
 import type { AssetGroup } from "../../types";
+import { PageHint, PageHintToggle } from "../../ui/PageHint";
 
 // ════════════════════════════════════════════════════════════════
 // HELPERS
@@ -512,7 +513,10 @@ export default function ReportsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Reports</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-white">Reports</h1>
+            <PageHintToggle pageKey="reports" />
+          </div>
           <p className="text-sm text-white/50 mt-1">
             Generate and download security reports for your organization or individual groups.
           </p>
@@ -536,6 +540,12 @@ export default function ReportsPage() {
           )}
         </div>
       </div>
+
+      <PageHint
+        pageKey="reports"
+        title="Reports"
+        body="Generate executive, technical, or compliance PDFs scoped to your whole org or a single group. Reports include exposure scores, severity breakdowns, and remediation guidance."
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">

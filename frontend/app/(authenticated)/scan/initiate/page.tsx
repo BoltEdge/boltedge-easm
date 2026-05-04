@@ -30,7 +30,7 @@ function getProfileMeta(profile: ScanProfile) {
       accentBg: "bg-[#ff8800]/10 border-[#ff8800]/30",
       badge: "bg-[#ff8800]/10 text-[#ff8800]",
       duration: "30 min – 2 hr",
-      depth: "Full vulnerability sweep, all severities",
+      depth: "Full sweep — ports, services, CVEs, TLS, all severities",
     };
   }
   if (name.includes("standard")) {

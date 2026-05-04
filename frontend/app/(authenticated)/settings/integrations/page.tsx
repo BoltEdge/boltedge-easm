@@ -6,14 +6,19 @@ import {
   Plus, Trash2, TestTube, Plug, Bell, ToggleLeft, ToggleRight,
   Pencil, X, Check, AlertCircle, Loader2, ExternalLink,
   MessageSquare, Ticket, Webhook, Mail, Siren, ChevronDown, Lock,
+  Copy, RefreshCw, Send, FileText,
 } from "lucide-react";
 import {
   listIntegrations, createIntegration, updateIntegration, deleteIntegration, testIntegration,
   listNotificationRules, createNotificationRule, updateNotificationRule, deleteNotificationRule,
+  getAuditWebhook, saveAuditWebhook, deleteAuditWebhook, testAuditWebhook,
+  listAuditWebhookDeliveries,
   type Integration, type NotificationRule,
+  type AuditWebhookConfig, type AuditWebhookDelivery,
 } from "../../../lib/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../ui/dialog";
 import { useOrg } from "../../contexts/OrgContext";
+import { PageHint, PageHintToggle } from "../../../ui/PageHint";
 
 // ═══════════════════════════════════════════════════════════════
 // Constants
@@ -87,7 +92,7 @@ function timeAgo(iso: string | null): string {
 type Banner = { kind: "ok" | "err"; text: string } | null;
 
 export default function IntegrationsPage() {
-  const [tab, setTab] = useState<"connections" | "rules">("connections");
+  const [tab, setTab] = useState<"connections" | "rules" | "audit-stream">("connections");
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [rules, setRules] = useState<NotificationRule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,11 +131,18 @@ export default function IntegrationsPage() {
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
           <Plug className="w-7 h-7 text-primary" />
           Integrations
+          <PageHintToggle pageKey="integrations" />
         </h1>
         <p className="text-muted-foreground mt-1">
           Connect external services and configure notification rules for security events.
         </p>
       </div>
+
+      <PageHint
+        pageKey="integrations"
+        title="Integrations"
+        body="Send security events to Slack, Jira, PagerDuty, email or any webhook. Configure connections, then create notification rules for the events you care about. Audit-log streaming is also configured here."
+      />
 
       {/* Tabs */}
       <div className="flex items-center gap-1 mb-6 bg-card/50 rounded-xl p-1 w-fit border border-border/50">
@@ -162,6 +174,19 @@ export default function IntegrationsPage() {
             <span className="text-xs opacity-70">({rules.length})</span>
           </span>
         </button>
+        <button
+          onClick={() => setTab("audit-stream")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            tab === "audit-stream"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-card"
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            Audit Log Stream
+          </span>
+        </button>
       </div>
 
       {/* Banner */}
@@ -189,8 +214,10 @@ export default function IntegrationsPage() {
         </div>
       ) : tab === "connections" ? (
         <ConnectionsTab integrations={integrations} onRefresh={load} notify={notify} />
-      ) : (
+      ) : tab === "rules" ? (
         <RulesTab rules={rules} integrations={integrations} onRefresh={load} notify={notify} />
+      ) : (
+        <AuditStreamTab notify={notify} />
       )}
     </main>
   );
@@ -1044,6 +1071,511 @@ function RuleForm({ existing, integrations, onClose, onSaved, notify }: {
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Audit Log Stream Tab
+// ═══════════════════════════════════════════════════════════════
+//
+// Plan-gated to Enterprise Gold + Custom (PLAN_CONFIG.audit_log = True).
+// Backend returns 403 FEATURE_NOT_AVAILABLE on lower tiers — we
+// surface that as an upgrade prompt rather than an error toast.
+//
+// Critical UX: the signing secret is only ever shown once on
+// creation/rotation. Customers must save it externally. After that,
+// the GET endpoint only returns a masked preview (whsec_…last4).
+
+const AUDIT_CATEGORIES: { value: string; label: string }[] = [
+  { value: "finding", label: "Findings" },
+  { value: "asset", label: "Assets" },
+  { value: "group", label: "Groups" },
+  { value: "scan", label: "Scans" },
+  { value: "user", label: "Users" },
+  { value: "settings", label: "Settings" },
+  { value: "auth", label: "Authentication" },
+  { value: "export", label: "Exports" },
+];
+
+type AuditStreamFeatureState = "loading" | "available" | "locked" | "error";
+
+function AuditStreamTab({ notify }: { notify: (kind: "ok" | "err", text: string) => void }) {
+  const [state, setState] = useState<AuditStreamFeatureState>("loading");
+  const [config, setConfig] = useState<AuditWebhookConfig | null>(null);
+  const [deliveries, setDeliveries] = useState<AuditWebhookDelivery[]>([]);
+  const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const cfg = await getAuditWebhook();
+      setConfig(cfg);
+      setState("available");
+      try {
+        const { deliveries } = await listAuditWebhookDeliveries();
+        setDeliveries(deliveries);
+      } catch {
+        // non-fatal
+      }
+    } catch (e: any) {
+      const code = e?.code || e?.payload?.code;
+      if (code === "FEATURE_NOT_AVAILABLE" || /not available/i.test(e?.message || "")) {
+        setState("locked");
+      } else {
+        setErrorMsg(e?.message || "Failed to load audit webhook config");
+        setState("error");
+      }
+    }
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  if (state === "loading") {
+    return (
+      <div className="flex items-center justify-center py-20 text-muted-foreground">
+        <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading…
+      </div>
+    );
+  }
+
+  if (state === "locked") {
+    return (
+      <div className="rounded-xl border border-border/50 bg-card/50 p-8 text-center">
+        <Lock className="w-10 h-10 text-muted-foreground/50 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-foreground mb-2">Audit Log Stream</h3>
+        <p className="text-sm text-muted-foreground max-w-xl mx-auto mb-4">
+          Forward every audit-log event to your SIEM or generic webhook receiver in real time.
+          HMAC-SHA256 signed payloads, per-category filtering, and a delivery log for debugging.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Available on <span className="text-foreground font-medium">Enterprise Gold</span> and{" "}
+          <span className="text-foreground font-medium">Custom</span> plans.
+        </p>
+      </div>
+    );
+  }
+
+  if (state === "error") {
+    return (
+      <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-sm text-red-300">
+        {errorMsg}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-xl border border-border/50 bg-card/30 p-5">
+        <div className="flex items-start gap-3">
+          <FileText className="w-5 h-5 text-primary mt-0.5" />
+          <div className="text-sm text-muted-foreground">
+            <p className="text-foreground font-medium mb-1">Real-time audit-log forwarding</p>
+            <p>
+              Every audit event is POSTed to your endpoint as JSON, signed with{" "}
+              <code className="text-xs bg-card px-1 py-0.5 rounded">X-Nano-Signature: sha256=…</code>{" "}
+              over the raw body. Verify the signature on your side using the secret
+              shown when you save the webhook.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <AuditWebhookForm
+        config={config}
+        onSaved={(cfg, secret) => {
+          setConfig(cfg);
+          if (secret) setRevealedSecret(secret);
+          notify("ok", secret ? "Webhook saved — copy the secret now." : "Webhook updated.");
+          refresh();
+        }}
+        onDeleted={() => {
+          setConfig(null);
+          setRevealedSecret(null);
+          notify("ok", "Webhook configuration removed.");
+          refresh();
+        }}
+        onTestResult={(ok, msg) => notify(ok ? "ok" : "err", msg)}
+        notify={notify}
+      />
+
+      {revealedSecret && (
+        <SecretReveal secret={revealedSecret} onDismiss={() => setRevealedSecret(null)} />
+      )}
+
+      {config?.configured && <DeliveriesPanel deliveries={deliveries} onRefresh={refresh} />}
+    </div>
+  );
+}
+
+function AuditWebhookForm({
+  config, onSaved, onDeleted, onTestResult, notify,
+}: {
+  config: AuditWebhookConfig | null;
+  onSaved: (cfg: AuditWebhookConfig, newSecret?: string) => void;
+  onDeleted: () => void;
+  onTestResult: (ok: boolean, msg: string) => void;
+  notify: (kind: "ok" | "err", text: string) => void;
+}) {
+  const configured = !!config?.configured;
+  const [url, setUrl] = useState(config?.url || "");
+  const [enabled, setEnabled] = useState(config?.enabled ?? true);
+  const [allCategories, setAllCategories] = useState<boolean>(!config?.categories);
+  const [selectedCats, setSelectedCats] = useState<Set<string>>(
+    new Set(config?.categories || []),
+  );
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Re-sync local form state when the parent reloads config (e.g. after save).
+  useEffect(() => {
+    setUrl(config?.url || "");
+    setEnabled(config?.enabled ?? true);
+    setAllCategories(!config?.categories);
+    setSelectedCats(new Set(config?.categories || []));
+  }, [config]);
+
+  function toggleCat(cat: string) {
+    const next = new Set(selectedCats);
+    if (next.has(cat)) next.delete(cat); else next.add(cat);
+    setSelectedCats(next);
+  }
+
+  async function handleSave(opts: { regenerate?: boolean } = {}) {
+    if (!url.trim()) {
+      notify("err", "Webhook URL is required.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        url: url.trim(),
+        enabled,
+        categories: allCategories ? null : Array.from(selectedCats),
+        regenerateSecret: opts.regenerate,
+      };
+      const res = await saveAuditWebhook(payload);
+      onSaved(res, res.secret);
+    } catch (e: any) {
+      notify("err", e?.message || "Failed to save webhook configuration.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleTest() {
+    setTesting(true);
+    try {
+      const res = await testAuditWebhook();
+      const code = res.delivery.statusCode;
+      onTestResult(
+        res.ok,
+        res.ok
+          ? `Test event delivered (${code} in ${res.delivery.durationMs ?? "?"}ms).`
+          : `Test failed: ${res.delivery.errorMessage || `HTTP ${code ?? "?"}`}`,
+      );
+    } catch (e: any) {
+      onTestResult(false, e?.message || "Test delivery failed.");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  async function handleDelete() {
+    setSaving(true);
+    try {
+      await deleteAuditWebhook();
+      setConfirmDelete(false);
+      onDeleted();
+    } catch (e: any) {
+      notify("err", e?.message || "Failed to delete webhook.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-border/50 bg-card p-6 space-y-5">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-foreground">Webhook configuration</h3>
+        {configured && (
+          <span
+            className={`text-xs px-2 py-1 rounded-full border ${
+              config?.enabled
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                : "bg-amber-500/10 border-amber-500/30 text-amber-300"
+            }`}
+          >
+            {config?.enabled ? "Active" : "Disabled"}
+          </span>
+        )}
+      </div>
+
+      {/* URL */}
+      <label className="block">
+        <span className="text-sm font-medium text-foreground">Endpoint URL</span>
+        <input
+          type="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://siem.example.com/ingest"
+          className="mt-1 w-full px-3 py-2 rounded-lg bg-background border border-border/50 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+        <span className="text-xs text-muted-foreground mt-1 block">
+          Must be reachable from our network. HTTPS recommended.
+        </span>
+      </label>
+
+      {/* Enabled toggle */}
+      <div className="flex items-center justify-between rounded-lg border border-border/40 bg-card/50 px-4 py-3">
+        <div>
+          <p className="text-sm font-medium text-foreground">Forwarding enabled</p>
+          <p className="text-xs text-muted-foreground">
+            Master kill-switch. When off, events are not delivered but configuration is preserved.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setEnabled(!enabled)}
+          className="text-foreground"
+          aria-pressed={enabled}
+        >
+          {enabled ? <ToggleRight className="w-9 h-9 text-primary" /> : <ToggleLeft className="w-9 h-9 text-muted-foreground" />}
+        </button>
+      </div>
+
+      {/* Secret display */}
+      {configured && config?.secretMasked && (
+        <div className="rounded-lg border border-border/40 bg-card/50 px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">Signing secret</p>
+              <p className="text-xs text-muted-foreground font-mono mt-1">{config.secretMasked}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSave({ regenerate: true })}
+              disabled={saving}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/50 text-xs hover:bg-card transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Rotate
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            The full secret is only shown once when generated. Rotating immediately invalidates the old secret.
+          </p>
+        </div>
+      )}
+
+      {/* Categories */}
+      <div>
+        <p className="text-sm font-medium text-foreground mb-2">Event categories</p>
+        <label className="flex items-center gap-2 mb-3 text-sm">
+          <input
+            type="checkbox"
+            checked={allCategories}
+            onChange={(e) => setAllCategories(e.target.checked)}
+            className="rounded border-border bg-background"
+          />
+          Forward all categories
+        </label>
+        {!allCategories && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {AUDIT_CATEGORIES.map((c) => (
+              <label
+                key={c.value}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm cursor-pointer transition-colors ${
+                  selectedCats.has(c.value)
+                    ? "border-primary/50 bg-primary/5 text-foreground"
+                    : "border-border/40 text-muted-foreground hover:bg-card/50"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedCats.has(c.value)}
+                  onChange={() => toggleCat(c.value)}
+                  className="rounded border-border bg-background"
+                />
+                {c.label}
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex flex-wrap items-center gap-3 pt-2">
+        <button
+          type="button"
+          onClick={() => handleSave()}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+          {configured ? "Save changes" : "Save and generate secret"}
+        </button>
+
+        {configured && (
+          <button
+            type="button"
+            onClick={handleTest}
+            disabled={testing || !config?.enabled}
+            title={!config?.enabled ? "Enable the webhook to send a test event" : ""}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border/50 text-sm hover:bg-card transition-colors disabled:opacity-50"
+          >
+            {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            Send test event
+          </button>
+        )}
+
+        {configured && !confirmDelete && (
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-colors ml-auto"
+          >
+            <Trash2 className="w-4 h-4" />
+            Remove
+          </button>
+        )}
+        {confirmDelete && (
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-sm text-muted-foreground">Confirm removal?</span>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={saving}
+              className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-sm hover:bg-red-600 transition-colors disabled:opacity-50"
+            >
+              Yes, remove
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(false)}
+              className="px-3 py-1.5 rounded-lg border border-border/50 text-sm hover:bg-card transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SecretReveal({ secret, onDismiss }: { secret: string; onDismiss: () => void }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(secret);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard blocked — user can select manually */
+    }
+  }
+  return (
+    <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
+      <div className="flex items-start gap-3">
+        <AlertCircle className="w-5 h-5 text-amber-400 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground mb-1">
+            Save this secret now — it won't be shown again.
+          </p>
+          <p className="text-xs text-muted-foreground mb-3">
+            Use it to verify the <code className="bg-card px-1 rounded">X-Nano-Signature</code> header on
+            incoming deliveries. If lost, rotate to generate a new one.
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 px-3 py-2 rounded-lg bg-background border border-border/50 text-xs font-mono break-all">
+              {secret}
+            </code>
+            <button
+              type="button"
+              onClick={copy}
+              className="flex items-center gap-1 px-3 py-2 rounded-lg border border-border/50 text-xs hover:bg-card transition-colors"
+            >
+              {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+        </div>
+        <button onClick={onDismiss} className="text-muted-foreground hover:text-foreground">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DeliveriesPanel({
+  deliveries, onRefresh,
+}: {
+  deliveries: AuditWebhookDelivery[];
+  onRefresh: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-border/40">
+        <div>
+          <h3 className="font-semibold text-foreground text-sm">Recent deliveries</h3>
+          <p className="text-xs text-muted-foreground">Last {deliveries.length} attempts. Useful for debugging delivery failures.</p>
+        </div>
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/50 text-xs hover:bg-card/50 transition-colors"
+        >
+          <RefreshCw className="w-3 h-3" />
+          Refresh
+        </button>
+      </div>
+      {deliveries.length === 0 ? (
+        <div className="px-5 py-8 text-center text-sm text-muted-foreground">
+          No deliveries yet. Audit events will appear here as they're forwarded.
+        </div>
+      ) : (
+        <div className="divide-y divide-border/40">
+          {deliveries.map((d) => (
+            <div key={d.id} className="px-5 py-3 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                {d.status === "success" ? (
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                ) : d.status === "failed" ? (
+                  <X className="w-4 h-4 text-red-400 shrink-0" />
+                ) : (
+                  <Loader2 className="w-4 h-4 text-muted-foreground shrink-0 animate-spin" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-xs font-mono text-muted-foreground truncate">{d.eventId}</p>
+                  {d.errorMessage && (
+                    <p className="text-xs text-red-400 truncate" title={d.errorMessage}>
+                      {d.errorMessage}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
+                {d.statusCode != null && (
+                  <span
+                    className={`font-mono px-1.5 py-0.5 rounded ${
+                      d.statusCode >= 200 && d.statusCode < 300
+                        ? "bg-emerald-500/10 text-emerald-300"
+                        : "bg-red-500/10 text-red-300"
+                    }`}
+                  >
+                    {d.statusCode}
+                  </span>
+                )}
+                {d.durationMs != null && <span>{d.durationMs}ms</span>}
+                <span>{timeAgo(d.attemptedAt)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -22,6 +22,7 @@ import {
 import { SeverityBadge } from "../../SeverityBadge";
 import { FindingDetailsDialog } from "../../FindingDetailsDialog";
 import { FindingsPageSkeleton } from "../../ui/skeleton";
+import { PageHint, PageHintToggle } from "../../ui/PageHint";
 
 type SeverityKey = "critical" | "high" | "medium" | "low" | "info";
 type SeverityFilter = "all" | SeverityKey;
@@ -440,6 +441,7 @@ export default function FindingsPage() {
             <div className="flex items-center gap-2 mb-1">
               <AlertTriangle className="w-6 h-6 text-primary" />
               <h1 className="text-2xl font-semibold text-foreground">Exposure Findings</h1>
+              <PageHintToggle pageKey="findings" />
             </div>
             <p className="text-muted-foreground">
               {total} finding{total === 1 ? "" : "s"} detected
@@ -453,6 +455,12 @@ export default function FindingsPage() {
             )}
           </div>
         </div>
+
+        <PageHint
+          pageKey="findings"
+          title="Findings"
+          body="Vulnerabilities and misconfigurations across your assets. Triage by severity, filter by compliance framework, mark resolved or accepted."
+        />
 
         {/* ── Banner ── */}
         {banner && (

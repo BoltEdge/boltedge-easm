@@ -109,7 +109,18 @@ def log_audit(
         # transaction, leaving the caller's outer transaction intact.
         sp = db.session.begin_nested()
         db.session.add(entry)
+        db.session.flush()  # populate entry.id before we hand it to the forwarder
         sp.commit()
+
+        # Hand the entry off to the audit-webhook forwarder. Fire-and-
+        # forget — the caller's request never blocks on an external
+        # endpoint, and a forwarder failure never breaks the audit write.
+        if organization_id is not None and entry.id is not None:
+            try:
+                from app.audit.webhook import forward_audit_event
+                forward_audit_event(entry, organization_id)
+            except Exception as e:
+                logger.warning(f"Failed to dispatch audit webhook: {e}")
 
     except Exception as e:
         logger.warning(f"Failed to write audit log: {e}")

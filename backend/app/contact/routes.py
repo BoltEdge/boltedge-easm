@@ -142,6 +142,22 @@ def submit_contact_request():
 
     logger.info("Contact request received: %s from %s (%s)", cr.public_id, email, ip)
 
+    # Send the submitter an acknowledgement so they know the message
+    # actually landed. Best-effort — never breaks the response if the
+    # email layer is misconfigured.
+    try:
+        from app.contact.emails import send_acknowledgement_email
+        send_acknowledgement_email(
+            to_email=cr.email,
+            to_name=cr.name,
+            request_id=cr.public_id,
+            request_type=cr.request_type,
+            subject=cr.subject,
+            message_excerpt=(cr.message or "")[:600],
+        )
+    except Exception:
+        logger.exception("Failed to send contact-request acknowledgement to %s", cr.email)
+
     return jsonify(
         message="Thanks! We've received your message and will get back to you shortly.",
         requestId=cr.public_id,
