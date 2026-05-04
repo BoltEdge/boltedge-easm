@@ -282,10 +282,53 @@ def register():
 
     # Send verification email for non-invite signups before commit so the
     # email_verification_sent_at timestamp lands in the same transaction.
+    verification_email_sent = False
     if not is_invite_signup:
-        _send_verification_email(u)
+        verification_email_sent = bool(_send_verification_email(u))
 
     db.session.commit()
+
+    # ── Self-healing guard for the recurring "marked verified before
+    #    verifying" bug. The whole register() flow above goes to
+    #    great lengths to keep email_verified=False for
+    #    email/password sign-ups, but if something between flush and
+    #    commit ever flips it (a model event, a stale column
+    #    default, etc.), we want to (a) catch it loudly in logs and
+    #    (b) put it back. Re-fetch from the DB rather than reading
+    #    `u.email_verified` so we see the *committed* value, not the
+    #    in-memory state.
+    if not is_invite_signup:
+        try:
+            db.session.refresh(u)
+        except Exception:
+            pass
+        if u.email_verified:
+            current_app.logger.error(
+                "REGRESSION: user %s (id=%s) was marked email_verified=True "
+                "after non-invite registration. Forcing back to False. "
+                "is_invite_signup=%r, has_password=%r, oauth_provider=%r",
+                u.email, u.id, is_invite_signup,
+                bool(u.password_hash), u.oauth_provider,
+            )
+            u.email_verified = False
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                current_app.logger.exception(
+                    "Failed to undo erroneous email_verified=True for user %s", u.id,
+                )
+
+        # Also surface a server-side warning if the verification
+        # email never actually went out — common cause for the
+        # "email never arrives" complaint and almost always points
+        # to a missing/wrong RESEND_API_KEY or the address bouncing.
+        if not verification_email_sent:
+            current_app.logger.warning(
+                "Verification email NOT delivered for new signup %s "
+                "(id=%s). Check RESEND_API_KEY and Resend dashboard.",
+                u.email, u.id,
+            )
 
     log_audit(
         organization_id=org.id,
@@ -300,6 +343,7 @@ def register():
             "role": role,
             "via_invite": bool(invite),
             "email_verified": u.email_verified,
+            "verification_email_sent": verification_email_sent,
         },
     )
 

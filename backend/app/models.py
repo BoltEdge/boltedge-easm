@@ -40,7 +40,15 @@ class User(db.Model):
     # Email verification gate. New users registered via email/password start
     # at False and must click the link sent to their inbox. OAuth + invite
     # flows trust the IdP/inviter, so they're auto-set to True.
-    email_verified = db.Column(db.Boolean, nullable=False, default=False)
+    #
+    # `server_default` matches the existing migration explicitly so the
+    # DB column's default is bulletproof — a SQLAlchemy bug or a code
+    # path that misses setting `email_verified=False` will still get
+    # FALSE from PostgreSQL on INSERT, never TRUE.
+    email_verified = db.Column(
+        db.Boolean, nullable=False,
+        default=False, server_default=db.text("false"),
+    )
     email_verification_sent_at = db.Column(db.DateTime, nullable=True)
     # Stamped the first time we send the one-shot welcome email (after
     # verification + first login for email/password users; immediately
