@@ -704,6 +704,18 @@ def delete_organization():
     org_name = org.name
     org_id = org.id
 
+    # Capture the member user ids BEFORE the cascade deletes the
+    # OrganizationMember rows. We need this list so we can find any
+    # users who'd be left orphaned (no other org membership) and
+    # delete them too — otherwise the user row stays in the DB,
+    # blocks re-registration on the same email, and shows up in the
+    # admin user list as a ghost. Superadmins are never deleted no
+    # matter what.
+    from app.models import OrganizationMember, User
+    member_user_ids = [
+        m.user_id for m in OrganizationMember.query.filter_by(organization_id=org_id).all()
+    ]
+
     log_audit(
         organization_id=org_id,
         user_id=current_user_id(),
@@ -716,9 +728,36 @@ def delete_organization():
     )
 
     db.session.delete(org)
+    db.session.flush()  # Trigger the FK cascade so the membership-count
+                        # check below sees the post-delete state.
+
+    deleted_user_ids: list[int] = []
+    for uid in member_user_ids:
+        # Any other active membership? Then keep the user.
+        other = (
+            OrganizationMember.query
+            .filter_by(user_id=uid, is_active=True)
+            .filter(OrganizationMember.organization_id != org_id)
+            .first()
+        )
+        if other:
+            continue
+        user = User.query.get(uid)
+        if not user:
+            continue
+        if user.is_superadmin:
+            # Superadmin somehow ended up only on this org — leave the
+            # account in place and let an admin clean up manually.
+            continue
+        deleted_user_ids.append(uid)
+        db.session.delete(user)
+
     db.session.commit()
 
-    return jsonify(message="Organization deleted."), 200
+    return jsonify(
+        message="Organization deleted.",
+        deletedUserCount=len(deleted_user_ids),
+    ), 200
 
 
 # ════════════════════════════════════════════════════════════════

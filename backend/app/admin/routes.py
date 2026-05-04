@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 from flask import Blueprint, request, jsonify, g, current_app
 from sqlalchemy import text
 
@@ -297,11 +298,74 @@ def set_org_plan(org_id: int):
         metadata={"old_plan": old_plan, "new_plan": target_plan, "changed_by": g.current_user.email},
     )
 
+    # If this plan change resolves an open trial request from an
+    # active member of the org, mark the request closed and email
+    # the requester. Triggered automatically so admins don't have to
+    # remember a separate "approve trial" step — the implicit
+    # workflow is "upgrade their plan in the admin UI = approval".
+    trial_email_sent = False
+    notified_email: Optional[str] = None
+    try:
+        if target_plan != "free" and target_plan != old_plan:
+            from app.models import ContactRequest, OrganizationMember as _OM, User as _U
+            member_emails = [
+                u.email for u in (
+                    db.session.query(_U)
+                    .join(_OM, _OM.user_id == _U.id)
+                    .filter(_OM.organization_id == org.id, _OM.is_active.is_(True))
+                    .all()
+                )
+            ]
+            if member_emails:
+                trial_req = (
+                    ContactRequest.query
+                    .filter(ContactRequest.email.in_(member_emails))
+                    .filter(ContactRequest.request_type == "trial")
+                    .filter(ContactRequest.status.in_(("open", "in_progress")))
+                    .order_by(ContactRequest.created_at.desc())
+                    .first()
+                )
+                if trial_req is not None:
+                    from app.billing.emails import send_trial_approved_email
+                    sent = send_trial_approved_email(
+                        to_email=trial_req.email,
+                        user_name=trial_req.name,
+                        org=org,
+                        plan_label=config["label"],
+                        request_id=trial_req.public_id,
+                    )
+                    if sent:
+                        trial_req.status = "replied"
+                        trial_req.replied_at = now
+                        trial_req.replied_by = g.current_user.id
+                        trial_req.reply_subject = f"Your {config['label']} trial is active"
+                        trial_email_sent = True
+                        notified_email = trial_req.email
+                        log_audit(
+                            organization_id=org.id,
+                            user_id=g.current_user.id,
+                            action="admin.trial_approved_emailed",
+                            category="admin",
+                            target_type="contact_request",
+                            target_id=str(trial_req.id),
+                            target_label=trial_req.email,
+                            description=f"Trial-approval email sent to {trial_req.email} for {config['label']}",
+                            metadata={"plan": target_plan, "request_id": trial_req.public_id},
+                        )
+    except Exception:
+        # Email delivery failure must never roll back the plan change.
+        import logging
+        logging.getLogger(__name__).exception(
+            "Failed to send trial-approval email for org %s on plan %s", org.id, target_plan,
+        )
+
     db.session.commit()
 
     return jsonify(
         message=f"Plan updated to {config['label']}.",
         org=_org_row(org),
+        trialEmailSent=trial_email_sent,
+        notifiedEmail=notified_email,
     ), 200
 
 
@@ -519,6 +583,134 @@ def list_users():
         limit=limit,
         pages=(total + limit - 1) // limit,
     ), 200
+
+
+# ════════════════════════════════════════════════════════════════
+# SINGLE-USER DETAIL
+# ════════════════════════════════════════════════════════════════
+# Returns everything an admin needs to triage one user without
+# bouncing through the audit log + contact requests + scans pages.
+# All sub-lists are capped — anyone wanting the full history clicks
+# through to the dedicated page, prefiltered by the user's email.
+
+@admin_bp.get("/users/<int:user_id>")
+@require_superadmin
+def get_user_detail(user_id: int):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify(error="not found"), 404
+
+    # ── Memberships (active + inactive, all orgs the user has been in) ──
+    memberships = (
+        db.session.query(OrganizationMember, Organization)
+        .join(Organization, Organization.id == OrganizationMember.organization_id)
+        .filter(OrganizationMember.user_id == user.id)
+        .order_by(
+            OrganizationMember.is_active.desc(),
+            OrganizationMember.joined_at.desc(),
+        )
+        .all()
+    )
+    membership_rows = []
+    for m, org in memberships:
+        membership_rows.append({
+            "organizationId": org.id,
+            "organizationDisplayId": org.public_id,
+            "organizationName": org.name,
+            "plan": org.plan,
+            "role": m.role,
+            "isActive": bool(m.is_active),
+            "joinedAt": m.joined_at.isoformat() + "Z" if m.joined_at else None,
+            "invitedAt": m.invited_at.isoformat() + "Z" if m.invited_at else None,
+        })
+
+    # ── Recent audit log entries by this user (acting on anything) ──
+    recent_audit = (
+        AuditLog.query
+        .filter(AuditLog.user_id == user.id)
+        .order_by(AuditLog.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    audit_rows = [{
+        "id": e.id,
+        "displayId": e.public_id,
+        "action": e.action,
+        "category": e.category,
+        "targetType": e.target_type,
+        "targetId": e.target_id,
+        "targetLabel": e.target_label,
+        "description": e.description,
+        "ipAddress": e.ip_address,
+        "createdAt": e.created_at.isoformat() + "Z" if e.created_at else None,
+    } for e in recent_audit]
+
+    # ── Contact requests from this user (matched by email — captures
+    #    cases where the user submitted before the account existed) ──
+    contact_reqs = (
+        ContactRequest.query
+        .filter(ContactRequest.email == user.email)
+        .order_by(ContactRequest.created_at.desc())
+        .limit(15)
+        .all()
+    )
+    contact_rows = [{
+        "id": cr.id,
+        "displayId": cr.public_id,
+        "type": cr.request_type,
+        "status": cr.status,
+        "subject": cr.subject,
+        "createdAt": cr.created_at.isoformat() + "Z" if cr.created_at else None,
+        "repliedAt": cr.replied_at.isoformat() + "Z" if cr.replied_at else None,
+    } for cr in contact_reqs]
+
+    # NOTE: ScanJob doesn't track which user kicked it off — scans
+    # belong to assets, not users. The audit log captures
+    # `scan.started` / `scan.completed` / `scan.failed` rows that DO
+    # include user_id, so the recentAuditLog panel is the right
+    # place for "scans this user ran"; no separate scan list here.
+
+    # ── Counts (cheap context up front so the UI can show a
+    #    "3 requests · 41 audit events" header) ──
+    counts = {
+        "auditLogTotal": (
+            AuditLog.query.filter(AuditLog.user_id == user.id).count()
+        ),
+        "contactRequestsTotal": (
+            ContactRequest.query.filter(ContactRequest.email == user.email).count()
+        ),
+    }
+
+    return jsonify({
+        "id": user.id,
+        "displayId": user.public_id,
+        "email": user.email,
+        "name": user.name,
+        "firstName": user.first_name,
+        "lastName": user.last_name,
+        "jobTitle": user.job_title,
+        "company": user.company,
+        "country": user.country,
+        "avatarUrl": user.avatar_url,
+        "isSuperadmin": bool(user.is_superadmin),
+        "isSuspended": bool(user.is_suspended),
+        "emailVerified": bool(user.email_verified),
+        "emailVerificationSentAt": (
+            user.email_verification_sent_at.isoformat() + "Z"
+            if user.email_verification_sent_at else None
+        ),
+        "welcomeEmailSentAt": (
+            user.welcome_email_sent_at.isoformat() + "Z"
+            if user.welcome_email_sent_at else None
+        ),
+        "oauthProvider": user.oauth_provider,
+        "createdAt": user.created_at.isoformat() + "Z" if user.created_at else None,
+        "updatedAt": user.updated_at.isoformat() + "Z" if user.updated_at else None,
+        "memberships": membership_rows,
+        "recentAuditLog": audit_rows,
+        "contactRequests": contact_rows,
+        "counts": counts,
+    }), 200
 
 
 @admin_bp.post("/users/<int:user_id>/reset-password")
@@ -775,6 +967,357 @@ def delete_user(user_id: int):
     db.session.commit()
 
     return jsonify(message=f'User "{user_email}" permanently deleted.'), 200
+
+
+# ════════════════════════════════════════════════════════════════
+# ADMIN → USER COMMUNICATION
+# ════════════════════════════════════════════════════════════════
+# Two endpoints that let an admin reach a user from inside the
+# console rather than copy-pasting an address into Gmail. Both are
+# audit-logged with the body so there's a record of what was sent.
+
+# Hard caps so an admin can't accidentally (or maliciously) send
+# kilobytes of text to a customer or stuff a 100-line message into
+# the contact_request table.
+_ADMIN_EMAIL_SUBJECT_MAX = 200
+_ADMIN_EMAIL_BODY_MAX    = 8000
+_ADMIN_REQUEST_SUBJECT_MAX = 200
+_ADMIN_REQUEST_MESSAGE_MAX = 5000
+_ADMIN_REQUEST_NOTE_MAX    = 2000
+
+
+@admin_bp.post("/users/<int:user_id>/send-email")
+@require_superadmin
+def admin_send_user_email(user_id: int):
+    """
+    Send a one-off branded email to any user from the platform.
+
+    Body: { subject: str, body: str }
+        body is plain text (whitespace preserved). HTML is escaped
+        before rendering — admins shouldn't be writing markup in this
+        box, and we don't want to accept arbitrary HTML from anyone.
+    """
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify(error="not found"), 404
+    if not user.email:
+        return jsonify(error="User has no email on file."), 400
+
+    body = request.get_json(silent=True) or {}
+    subject = (body.get("subject") or "").strip()
+    msg = (body.get("body") or "").strip()
+
+    if not subject:
+        return jsonify(error="Subject is required."), 400
+    if len(subject) > _ADMIN_EMAIL_SUBJECT_MAX:
+        return jsonify(error=f"Subject must be at most {_ADMIN_EMAIL_SUBJECT_MAX} characters."), 400
+    if not msg:
+        return jsonify(error="Message body is required."), 400
+    if len(msg) > _ADMIN_EMAIL_BODY_MAX:
+        return jsonify(error=f"Message body must be at most {_ADMIN_EMAIL_BODY_MAX} characters."), 400
+
+    # Escape HTML in admin-supplied text and convert newlines to <br>
+    # so paragraph structure survives. The shell handles the brand
+    # chrome (logo, sign-off, footer).
+    import html as _html
+    escaped = _html.escape(msg).replace("\n", "<br>")
+    from app.utils.email_shell import shell, send_via_resend, BRAND_TEAL, TEXT_DARK, TEXT_MUTED
+    body_html = (
+        f"<p style=\"font-size:15px;line-height:1.6;color:{TEXT_DARK};margin:0 0 16px 0;\">"
+        f"{escaped}"
+        f"</p>"
+        f"<p style=\"font-size:12px;line-height:1.6;color:{TEXT_MUTED};margin:24px 0 0 0;\">"
+        f"This message was sent by a Nano EASM administrator. "
+        f"Reply to this email to reach support."
+        f"</p>"
+    )
+    sent = send_via_resend(
+        to=user.email,
+        subject=subject,
+        html=shell(title=subject, body_html=body_html),
+    )
+
+    membership = OrganizationMember.query.filter_by(user_id=user.id, is_active=True).first()
+    log_audit(
+        organization_id=membership.organization_id if membership else None,
+        user_id=g.current_user.id,
+        action="admin.user_email_sent",
+        category="admin",
+        target_type="user",
+        target_id=str(user.id),
+        target_label=user.email,
+        description=f"Admin emailed {user.email}: {subject}",
+        # Truncate the metadata copy so an absurdly long body doesn't
+        # bloat the audit_log row.
+        metadata={
+            "subject": subject[:200],
+            "body_excerpt": msg[:500],
+            "delivered": bool(sent),
+            "sent_by": g.current_user.email,
+        },
+    )
+    db.session.commit()
+
+    if not sent:
+        # Email layer can fail when RESEND_API_KEY is missing or the
+        # provider is throwing — still log, but tell the admin.
+        return jsonify(
+            error="Email could not be delivered. Check the Resend configuration.",
+            code="EMAIL_NOT_SENT",
+            audited=True,
+        ), 502
+
+    return jsonify(
+        message=f"Email sent to {user.email}.",
+        delivered=True,
+    ), 200
+
+
+@admin_bp.post("/users/<int:user_id>/create-request")
+@require_superadmin
+def admin_create_user_request(user_id: int):
+    """
+    Create a ContactRequest on behalf of a user. Useful when:
+      - The user reported something via phone/email outside the platform
+        and we want it tracked in the same triage queue.
+      - An admin wants to record an action item attached to a user.
+
+    Body:
+        requestType: "general" | "trial" | "demo"  (default "general")
+        subject:     str (optional)
+        message:     str — required, the request body
+        internalNote: str — optional, added to ContactRequest.admin_notes
+                      and never sent to the user
+    """
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify(error="not found"), 404
+
+    body = request.get_json(silent=True) or {}
+    request_type = (body.get("requestType") or "general").strip().lower()
+    if request_type not in ("general", "trial", "demo"):
+        return jsonify(error='requestType must be one of: "general", "trial", "demo".'), 400
+
+    subject = (body.get("subject") or "").strip()
+    message = (body.get("message") or "").strip()
+    internal_note = (body.get("internalNote") or "").strip()
+
+    if not message:
+        return jsonify(error="Message is required."), 400
+    if len(subject) > _ADMIN_REQUEST_SUBJECT_MAX:
+        return jsonify(error=f"Subject must be at most {_ADMIN_REQUEST_SUBJECT_MAX} characters."), 400
+    if len(message) > _ADMIN_REQUEST_MESSAGE_MAX:
+        return jsonify(error=f"Message must be at most {_ADMIN_REQUEST_MESSAGE_MAX} characters."), 400
+    if internal_note and len(internal_note) > _ADMIN_REQUEST_NOTE_MAX:
+        return jsonify(error=f"Internal note must be at most {_ADMIN_REQUEST_NOTE_MAX} characters."), 400
+
+    # Stamp the admin's identity inside admin_notes so future readers
+    # see "this wasn't a customer submission" without digging through
+    # audit log to figure out provenance.
+    provenance = (
+        f"[Created by admin {g.current_user.email} on behalf of "
+        f"{user.email} (user #{user.id}) at "
+        f"{_now_utc().isoformat()}Z]"
+    )
+    admin_notes = provenance + (("\n\n" + internal_note) if internal_note else "")
+
+    cr = ContactRequest(
+        name=user.name or user.email,
+        email=user.email,
+        subject=subject or None,
+        message=message,
+        request_type=request_type,
+        status="open",
+        admin_notes=admin_notes,
+        created_at=_now_utc(),
+        updated_at=_now_utc(),
+    )
+    db.session.add(cr)
+    db.session.flush()  # so we can audit-log with the public_id
+
+    membership = OrganizationMember.query.filter_by(user_id=user.id, is_active=True).first()
+    log_audit(
+        organization_id=membership.organization_id if membership else None,
+        user_id=g.current_user.id,
+        action="admin.user_request_created",
+        category="admin",
+        target_type="contact_request",
+        target_id=str(cr.id),
+        target_label=user.email,
+        description=f"Admin opened a {request_type} request for {user.email}",
+        metadata={
+            "request_id": cr.public_id,
+            "request_type": request_type,
+            "subject": subject[:200] or None,
+            "message_excerpt": message[:500],
+            "created_by": g.current_user.email,
+        },
+    )
+    db.session.commit()
+
+    return jsonify(
+        message=f"Request opened for {user.email}.",
+        request={
+            "id": cr.id,
+            "publicId": cr.public_id,
+            "type": cr.request_type,
+            "status": cr.status,
+        },
+    ), 201
+
+
+# ════════════════════════════════════════════════════════════════
+# BULK USER ACTIONS
+# ════════════════════════════════════════════════════════════════
+# One round-trip for "suspend/unsuspend/resend-verification/force-
+# verify/delete this set of users". The endpoint applies the action
+# per-id, never aborts on a single-row failure, and returns a
+# per-user verdict so the UI can render a "12 done, 2 skipped, 1
+# failed" summary instead of leaving the admin guessing.
+
+_BULK_ACTIONS = ("suspend", "unsuspend", "resend_verification", "force_verify", "delete")
+_BULK_USER_LIMIT = 200  # safety net — admin shouldn't pick 5000 accidentally
+
+
+@admin_bp.post("/users/bulk-action")
+@require_superadmin
+def admin_bulk_user_action():
+    body = request.get_json(silent=True) or {}
+    action = (body.get("action") or "").strip().lower()
+    raw_ids = body.get("userIds") or []
+
+    if action not in _BULK_ACTIONS:
+        return jsonify(
+            error=f"action must be one of: {', '.join(_BULK_ACTIONS)}",
+        ), 400
+    if not isinstance(raw_ids, list) or not raw_ids:
+        return jsonify(error="userIds must be a non-empty list."), 400
+    # Coerce + de-duplicate; ignore non-integer entries silently.
+    user_ids: list[int] = []
+    seen: set[int] = set()
+    for v in raw_ids:
+        try:
+            uid = int(v)
+        except (TypeError, ValueError):
+            continue
+        if uid in seen:
+            continue
+        seen.add(uid)
+        user_ids.append(uid)
+    if not user_ids:
+        return jsonify(error="No valid userIds supplied."), 400
+    if len(user_ids) > _BULK_USER_LIMIT:
+        return jsonify(
+            error=f"Too many users in one batch (max {_BULK_USER_LIMIT}).",
+        ), 400
+
+    actor_id = g.current_user.id
+    actor_email = g.current_user.email
+
+    processed: list[dict] = []
+    skipped: list[dict] = []
+    errors: list[dict] = []
+
+    for uid in user_ids:
+        if uid == actor_id:
+            skipped.append({"userId": uid, "reason": "cannot_target_self"})
+            continue
+        user = User.query.get(uid)
+        if not user:
+            skipped.append({"userId": uid, "reason": "not_found"})
+            continue
+        if user.is_superadmin:
+            # Block every action against another superadmin — even
+            # resend-verification — so a compromised superadmin can't
+            # weaponise this endpoint against peers.
+            skipped.append({"userId": uid, "reason": "superadmin_protected", "email": user.email})
+            continue
+
+        try:
+            if action == "suspend":
+                if user.is_suspended:
+                    skipped.append({"userId": uid, "reason": "already_suspended", "email": user.email})
+                    continue
+                user.is_suspended = True
+                processed.append({"userId": uid, "email": user.email, "result": "suspended"})
+
+            elif action == "unsuspend":
+                if not user.is_suspended:
+                    skipped.append({"userId": uid, "reason": "not_suspended", "email": user.email})
+                    continue
+                user.is_suspended = False
+                processed.append({"userId": uid, "email": user.email, "result": "unsuspended"})
+
+            elif action == "force_verify":
+                if user.email_verified:
+                    skipped.append({"userId": uid, "reason": "already_verified", "email": user.email})
+                    continue
+                user.email_verified = True
+                processed.append({"userId": uid, "email": user.email, "result": "verified"})
+
+            elif action == "resend_verification":
+                if user.email_verified:
+                    skipped.append({"userId": uid, "reason": "already_verified", "email": user.email})
+                    continue
+                from app.auth.routes import _send_verification_email
+                sent = _send_verification_email(user)
+                processed.append({
+                    "userId": uid, "email": user.email,
+                    "result": "verification_sent" if sent else "verification_send_failed",
+                })
+
+            elif action == "delete":
+                # Match the single-user delete path: hard delete via
+                # cascade. Audit log entries with target_id pointing
+                # at this user keep their target_id but the user_id
+                # column goes NULL via SET NULL.
+                user_email = user.email
+                db.session.execute(text('DELETE FROM "user" WHERE id = :uid'), {"uid": uid})
+                processed.append({"userId": uid, "email": user_email, "result": "deleted"})
+
+        except Exception as e:
+            db.session.rollback()
+            errors.append({"userId": uid, "error": str(e)[:200]})
+            continue
+
+    # One audit-log row for the batch — the per-user verdicts go in
+    # metadata so we don't spam the log with N entries for one click.
+    log_audit(
+        organization_id=None,
+        user_id=actor_id,
+        action=f"admin.bulk_user_{action}",
+        category="admin",
+        target_type="user_bulk",
+        target_id=None,
+        target_label=f"{len(processed)} users",
+        description=(
+            f"Admin bulk action: {action} — "
+            f"{len(processed)} processed, {len(skipped)} skipped, {len(errors)} errored"
+        ),
+        metadata={
+            "action": action,
+            "processed_count": len(processed),
+            "skipped_count": len(skipped),
+            "errors_count": len(errors),
+            "processed_user_ids": [p["userId"] for p in processed][:200],
+            "skipped": skipped[:50],
+            "errors": errors[:20],
+            "actor": actor_email,
+        },
+    )
+    db.session.commit()
+
+    return jsonify(
+        action=action,
+        processed=processed,
+        skipped=skipped,
+        errors=errors,
+        summary={
+            "processedCount": len(processed),
+            "skippedCount": len(skipped),
+            "errorsCount": len(errors),
+        },
+    ), 200
 
 
 # ════════════════════════════════════════════════════════════════

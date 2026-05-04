@@ -232,7 +232,7 @@ export default function Sidebar() {
           </li>
 
           {/* Assets */}
-          <li className="mb-1">
+          <li className="mb-1" data-tour-target="assets">
             <Link href="/assets" className={navCls(isActive("/assets"))} title={isCollapsed ? "Assets" : undefined}>
               <Layers className="w-5 h-5 shrink-0" />
               {!isCollapsed && <span className="truncate">Assets</span>}
@@ -240,7 +240,7 @@ export default function Sidebar() {
           </li>
 
           {/* Discovery */}
-          <li className="mb-1">
+          <li className="mb-1" data-tour-target="discovery">
             <Link href="/discovery" className={navCls(isActive("/discovery"))} title={isCollapsed ? "Discovery" : undefined}>
               <Globe className="w-5 h-5 shrink-0" />
               {!isCollapsed && <span className="truncate">Discovery</span>}
@@ -248,7 +248,7 @@ export default function Sidebar() {
           </li>
 
           {/* Scanning (dropdown) */}
-          <li className="mb-1">
+          <li className="mb-1" data-tour-target="scanning">
             <Section
               label="Scanning" icon={Activity}
               open={scanningOpen} toggle={() => setScanningOpen((v) => !v)}
@@ -258,7 +258,7 @@ export default function Sidebar() {
           </li>
 
           {/* Findings (dropdown) */}
-          <li className="mb-1">
+          <li className="mb-1" data-tour-target="findings">
             <Section
               label="Findings" icon={AlertCircle}
               open={findingsOpen} toggle={() => setFindingsOpen((v) => !v)}
@@ -268,7 +268,7 @@ export default function Sidebar() {
           </li>
 
           {/* Monitoring (dropdown) */}
-          <li className="mb-1">
+          <li className="mb-1" data-tour-target="monitoring">
             <Section
               label="Monitoring" icon={Bell}
               open={monitoringOpen} toggle={() => setMonitoringOpen((v) => !v)}

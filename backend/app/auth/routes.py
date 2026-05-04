@@ -141,7 +141,55 @@ def register():
 
     existing = User.query.filter(func.lower(User.email) == email.lower()).first()
     if existing:
-        return jsonify(error="email already registered"), 409
+        # If the existing record is verified or OAuth-linked, the email
+        # is genuinely taken — block re-registration.
+        if existing.email_verified or existing.oauth_provider:
+            return jsonify(error="email already registered"), 409
+
+        # Stale unverified account: if the verification token would
+        # have already expired (48 h, see VERIFY_TOKEN_MAX_AGE), or
+        # the row has no verification timestamp at all, allow the
+        # caller to take over by replacing the row entirely. The
+        # original sign-up never confirmed the email anyway, so
+        # nothing of value is being clobbered.
+        from datetime import timedelta
+        from app.auth.tokens import VERIFY_TOKEN_MAX_AGE
+        sent_at = existing.email_verification_sent_at
+        is_stale = (
+            sent_at is None
+            or (_now_utc() - sent_at) > timedelta(seconds=VERIFY_TOKEN_MAX_AGE)
+        )
+        if not is_stale:
+            # Sent recently and still unverified — point them at the
+            # resend / inbox flow instead of silently replacing the row.
+            return jsonify(
+                error=(
+                    "An unverified account with this email already exists. "
+                    "Check your inbox for the verification link, or request "
+                    "a new one from the sign-in page."
+                ),
+                code="UNVERIFIED_ACCOUNT_PENDING",
+            ), 409
+
+        # Wipe the stale row and any orphaned org/membership it was
+        # the only owner of. Cascade deletes via FK ondelete=CASCADE
+        # take care of memberships, audit log entries (where
+        # nullable), etc.
+        from app.models import OrganizationMember as _OM, Organization as _Org
+        stale_member_orgs: list[int] = [
+            m.organization_id for m in _OM.query.filter_by(user_id=existing.id).all()
+        ]
+        db.session.delete(existing)
+        db.session.flush()
+        # Drop any org that's now empty (typical case: the user's own
+        # personal workspace from their first sign-up attempt).
+        for stale_org_id in stale_member_orgs:
+            other_member = _OM.query.filter_by(organization_id=stale_org_id).first()
+            if other_member is None:
+                stale_org = _Org.query.get(stale_org_id)
+                if stale_org is not None:
+                    db.session.delete(stale_org)
+        db.session.flush()
 
     from app.models import Organization, OrganizationMember, PendingInvitation
 
@@ -172,6 +220,11 @@ def register():
         country=country,
         email_verified=is_invite_signup,
     )
+    # Belt-and-braces: re-assert verification state explicitly so a
+    # subtle bug in column defaults / constructor kwargs / model
+    # event hooks can't sneak in a True. Email/password sign-ups
+    # MUST verify; only invite acceptances are auto-verified.
+    u.email_verified = bool(is_invite_signup)
     db.session.add(u)
     db.session.flush()  # Get user ID
 

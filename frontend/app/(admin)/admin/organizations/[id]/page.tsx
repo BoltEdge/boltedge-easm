@@ -80,14 +80,33 @@ export default function OrgDetailPage() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    if (banner) { const t = setTimeout(() => setBanner(null), 4000); return () => clearTimeout(t); }
+    // Longer-form banners (the trial-approval one) get more time on
+    // screen so the admin can actually read who got emailed.
+    if (banner) {
+      const dwell = banner.text.length > 80 ? 8000 : 4000;
+      const t = setTimeout(() => setBanner(null), dwell);
+      return () => clearTimeout(t);
+    }
   }, [banner]);
 
   async function handlePlanChange(newPlan: string) {
     setActionBusy(true);
     try {
-      await setAdminOrgPlan(Number(id), newPlan);
-      setBanner({ kind: "ok", text: `Plan updated to ${PLAN_LABELS[newPlan]}.` });
+      // Backend auto-detects whether this plan change resolves an
+      // open trial-type ContactRequest from a member, and sends an
+      // approval email if so. We surface the outcome here so the
+      // admin doesn't have to dig through the audit log to confirm
+      // the email actually went.
+      const res = await setAdminOrgPlan(Number(id), newPlan);
+      const planLabel = PLAN_LABELS[newPlan] || newPlan;
+      if (res.trialEmailSent && res.notifiedEmail) {
+        setBanner({
+          kind: "ok",
+          text: `Plan updated to ${planLabel}. Trial-approval email sent to ${res.notifiedEmail}.`,
+        });
+      } else {
+        setBanner({ kind: "ok", text: `Plan updated to ${planLabel}.` });
+      }
       load();
     } catch (e: any) {
       setBanner({ kind: "err", text: e?.message || "Failed to update plan" });

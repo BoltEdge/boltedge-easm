@@ -1749,8 +1749,21 @@ export async function getAdminOrganization(id: number): Promise<any> {
   return apiFetch<any>(`/admin/organizations/${id}`);
 }
 
-export async function setAdminOrgPlan(orgId: number, plan: string): Promise<any> {
-  return apiFetch<any>(`/admin/organizations/${orgId}/plan`, {
+export type SetAdminOrgPlanResponse = {
+  message: string;
+  org: any;
+  /** True iff this plan change resolved an open trial-type
+   *  ContactRequest from a member of the org and an approval email
+   *  was successfully delivered. */
+  trialEmailSent: boolean;
+  /** Email address the trial-approval email was delivered to, if any. */
+  notifiedEmail: string | null;
+};
+
+export async function setAdminOrgPlan(
+  orgId: number, plan: string,
+): Promise<SetAdminOrgPlanResponse> {
+  return apiFetch<SetAdminOrgPlanResponse>(`/admin/organizations/${orgId}/plan`, {
     method: "POST",
     body: JSON.stringify({ plan }),
   });
@@ -2056,6 +2069,141 @@ export async function explainAlert(alertId: string | number): Promise<{
 
 export async function deleteAdminUser(userId: number): Promise<any> {
   return apiFetch<any>(`/admin/users/${userId}`, { method: "DELETE" });
+}
+
+export type AdminUserDetail = {
+  id: number;
+  displayId: string | null;
+  email: string;
+  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  jobTitle: string | null;
+  company: string | null;
+  country: string | null;
+  avatarUrl: string | null;
+  isSuperadmin: boolean;
+  isSuspended: boolean;
+  emailVerified: boolean;
+  emailVerificationSentAt: string | null;
+  welcomeEmailSentAt: string | null;
+  oauthProvider: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  memberships: Array<{
+    organizationId: number;
+    organizationDisplayId: string | null;
+    organizationName: string;
+    plan: string;
+    role: string;
+    isActive: boolean;
+    joinedAt: string | null;
+    invitedAt: string | null;
+  }>;
+  recentAuditLog: Array<{
+    id: number;
+    displayId: string | null;
+    action: string;
+    category: string | null;
+    targetType: string | null;
+    targetId: string | null;
+    targetLabel: string | null;
+    description: string | null;
+    ipAddress: string | null;
+    createdAt: string | null;
+  }>;
+  contactRequests: Array<{
+    id: number;
+    displayId: string | null;
+    type: string;
+    status: string;
+    subject: string | null;
+    createdAt: string | null;
+    repliedAt: string | null;
+  }>;
+  counts: {
+    auditLogTotal: number;
+    contactRequestsTotal: number;
+  };
+};
+
+export async function getAdminUserDetail(userId: number): Promise<AdminUserDetail> {
+  return apiFetch<AdminUserDetail>(`/admin/users/${userId}`);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Admin → user communication + bulk actions
+// ─────────────────────────────────────────────────────────────────
+
+export type SendUserEmailResponse = {
+  message: string;
+  delivered: boolean;
+};
+
+export async function sendAdminUserEmail(
+  userId: number,
+  payload: { subject: string; body: string },
+): Promise<SendUserEmailResponse> {
+  return apiFetch<SendUserEmailResponse>(`/admin/users/${userId}/send-email`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export type AdminUserRequestPayload = {
+  requestType?: "general" | "trial" | "demo";
+  subject?: string;
+  message: string;
+  internalNote?: string;
+};
+
+export type AdminUserRequestResponse = {
+  message: string;
+  request: {
+    id: number;
+    publicId: string | null;
+    type: string;
+    status: string;
+  };
+};
+
+export async function createAdminUserRequest(
+  userId: number,
+  payload: AdminUserRequestPayload,
+): Promise<AdminUserRequestResponse> {
+  return apiFetch<AdminUserRequestResponse>(`/admin/users/${userId}/create-request`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export type BulkUserAction =
+  | "suspend"
+  | "unsuspend"
+  | "resend_verification"
+  | "force_verify"
+  | "delete";
+
+export type BulkUserActionResponse = {
+  action: BulkUserAction;
+  processed: Array<{ userId: number; email?: string; result: string }>;
+  skipped: Array<{ userId: number; reason: string; email?: string }>;
+  errors: Array<{ userId: number; error: string }>;
+  summary: {
+    processedCount: number;
+    skippedCount: number;
+    errorsCount: number;
+  };
+};
+
+export async function bulkAdminUserAction(payload: {
+  action: BulkUserAction;
+  userIds: number[];
+}): Promise<BulkUserActionResponse> {
+  return apiFetch<BulkUserActionResponse>("/admin/users/bulk-action", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 

@@ -24,11 +24,51 @@ import re
 import socket
 from flask import Blueprint, request, jsonify
 
-from app.auth.decorators import require_auth
+from app.auth.decorators import require_auth, current_user_id, current_organization_id
 
 logger = logging.getLogger(__name__)
 
 tools_bp = Blueprint("tools", __name__, url_prefix="/tools")
+
+
+# ═══════════════════════════════════════════════════════════════
+# AUDIT LOGGING (#7)
+# ═══════════════════════════════════════════════════════════════
+# Every authenticated tool run gets an audit_log row so admins can
+# trace what targets a user ran which scanners against. Helps with
+# abuse review (e.g. someone repeatedly enumerating a competitor)
+# without forcing the platform admin to scrape application logs.
+#
+# Best-effort: never raises into the request path. If audit-log writes
+# fail, the tool still returns its result.
+
+def _log_tool_run(tool_id: str, target: str | None) -> None:
+    """Record an authenticated tool invocation in the audit log.
+
+    `target` is whatever string the user supplied (post-validation but
+    pre-execution). It's truncated to fit the audit_log column.
+    """
+    try:
+        org_id = current_organization_id()
+        user_id = current_user_id()
+        # Skip when there's no auth context (shouldn't happen on
+        # @require_auth routes, but be defensive).
+        if not org_id or not user_id:
+            return
+        from app.audit.routes import log_audit
+        log_audit(
+            organization_id=org_id,
+            user_id=user_id,
+            action=f"tool.{tool_id}",
+            category="tool",
+            target_type="external_target",
+            target_id=(target or "")[:255] or None,
+            target_label=(target or "")[:255] or None,
+            description=f"Ran {tool_id} against {target or '(no target)'}"[:500],
+            metadata={"tool": tool_id, "target": target},
+        )
+    except Exception:
+        logger.exception("Failed to record tool audit log for %s", tool_id)
 
 DOMAIN_RE = re.compile(r"^(?:\*\.)?([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}$", re.IGNORECASE)
 IP_RE = re.compile(r"^\d{1,3}(\.\d{1,3}){3}$")
@@ -248,6 +288,7 @@ def cert_lookup_auth():
     _, ssrf_err = _resolve_and_check_ssrf(domain)
     if ssrf_err:
         return ssrf_err
+    _log_tool_run("cert-lookup", domain)
     from app.tools.cert_lookup import run_cert_lookup
     return jsonify(run_cert_lookup(domain, full=True)), 200
 
@@ -279,6 +320,7 @@ def cert_hash_auth():
     cert_hash, err = _validate_hash(body.get("hash", ""))
     if err:
         return err
+    _log_tool_run("cert-hash", cert_hash)
     from app.tools.cert_lookup import run_cert_hash_lookup
     return jsonify(run_cert_hash_lookup(cert_hash, full=True)), 200
 
@@ -306,6 +348,7 @@ def dns_lookup_auth():
     domain, err = _validate_domain(body.get("domain", ""))
     if err:
         return err
+    _log_tool_run("dns-lookup", domain)
     from app.tools.dns_lookup import run_dns_lookup
     return jsonify(run_dns_lookup(domain, full=True)), 200
 
@@ -336,6 +379,7 @@ def reverse_dns_auth():
     # SSRF protection: block reverse DNS on private IPs
     if _is_private_ip(ip):
         return jsonify(error="Reverse DNS lookups on private or reserved IP addresses are not allowed."), 403
+    _log_tool_run("reverse-dns", ip)
     from app.tools.reverse_dns import run_reverse_dns
     return jsonify(run_reverse_dns(ip, full=True)), 200
 
@@ -369,6 +413,7 @@ def header_check_auth():
     _, ssrf_err = _resolve_and_check_ssrf(domain)
     if ssrf_err:
         return ssrf_err
+    _log_tool_run("header-check", domain)
     from app.tools.header_check import run_header_check
     return jsonify(run_header_check(domain, full=True)), 200
 
@@ -400,6 +445,7 @@ def whois_auth():
     query, err = _validate_whois_query(body)
     if err:
         return err
+    _log_tool_run("whois", query)
     from app.tools.whois_lookup import run_whois_lookup
     return jsonify(run_whois_lookup(query, full=True)), 200
 
@@ -431,6 +477,7 @@ def connectivity_check_auth():
     _, ssrf_err = _resolve_and_check_ssrf(host)
     if ssrf_err:
         return ssrf_err
+    _log_tool_run("connectivity-check", f"{host}:{port}" if port else host)
     from app.tools.connectivity_check import run_connectivity_check
     return jsonify(run_connectivity_check(host, port)), 200
 
@@ -447,6 +494,7 @@ def email_security_auth():
     domain, err = _validate_domain(body.get("domain", ""))
     if err:
         return err
+    _log_tool_run("email-security", domain)
     from app.tools.email_security import run_email_security_check
     return jsonify(run_email_security_check(domain, full=True)), 200
 
@@ -476,6 +524,7 @@ def sensitive_paths_auth():
     _, ssrf_err = _resolve_and_check_ssrf(domain)
     if ssrf_err:
         return ssrf_err
+    _log_tool_run("sensitive-paths", domain)
     from app.tools.sensitive_paths import run_sensitive_path_scan
     return jsonify(run_sensitive_path_scan(domain, full=True)), 200
 
@@ -506,6 +555,7 @@ def github_leaks_auth():
     domain, err = _validate_domain(body.get("domain", ""))
     if err:
         return err
+    _log_tool_run("github-leaks", domain)
     from app.tools.github_leaks import run_github_leak_scan
     return jsonify(run_github_leak_scan(domain, full=True)), 200
 

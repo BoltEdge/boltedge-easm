@@ -507,3 +507,63 @@ def send_refund_email(org: Organization, charge: dict) -> bool:
     subject = f"Refund issued — {_format_money(refund_amount, currency).split(' ')[0]}"
     html = shell(title="Refund issued", body_html=body, footer_html=_billing_footer())
     return send_via_resend(to=to, subject=subject, html=html)
+
+
+# ─────────────────────────────────────────────────────────────────
+# Trial approval — sent when an admin accepts a trial request and
+# upgrades the org's plan. Different shape from the payment-flow
+# emails because no money has changed hands; it's a "your trial is
+# now active" confirmation, not a receipt.
+# ─────────────────────────────────────────────────────────────────
+
+def send_trial_approved_email(
+    *,
+    to_email: str,
+    user_name: Optional[str],
+    org: Optional[Organization],
+    plan_label: str,
+    request_id: Optional[str] = None,
+) -> bool:
+    """
+    Tell a user their trial request has been approved and their
+    workspace is now on the requested plan. Best-effort — never raises.
+    """
+    if not to_email:
+        return False
+
+    from app.utils.email_shell import frontend_url as _fu
+    fe = _fu()
+    name = (user_name or "").strip() or "there"
+    org_line = (
+        f" on <strong>{org.name}</strong>" if org and getattr(org, "name", None) else ""
+    )
+
+    request_block = ""
+    if request_id:
+        request_block = f"""
+        <p style="margin:0 0 14px 0;font-size:13px;color:{_TEXT_MUTED};line-height:1.6;">
+          Reference: <span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:{_TEXT_DARK};font-weight:600;">{request_id}</span>
+        </p>
+        """
+
+    body = f"""
+    <p style="font-size:15px;line-height:1.6;color:{_TEXT_DARK};margin:0 0 14px 0;">
+      Hi {name},
+    </p>
+    <p style="font-size:15px;line-height:1.6;color:{_TEXT_DARK};margin:0 0 14px 0;">
+      Good news — we've activated your <strong>{plan_label}</strong> trial{org_line}.
+      You can sign in now and start using the upgraded features straight away.
+    </p>
+    {request_block}
+    <div style="margin:24px 0;">
+      <a href="{fe}/dashboard" style="display:inline-block;background:{_BRAND_TEAL};color:#fff;text-decoration:none;padding:11px 22px;border-radius:8px;font-weight:600;font-size:14px;">Open dashboard</a>
+    </div>
+    <p style="font-size:13px;line-height:1.6;color:{_TEXT_MUTED};margin:18px 0 0 0;">
+      If anything looks off or you've got questions about what's now included,
+      just reply to this email and we'll sort it out.
+    </p>
+    """
+
+    subject = f"Your {plan_label} trial is active — Nano EASM"
+    html = shell(title=f"Your {plan_label} trial is active", body_html=body)
+    return send_via_resend(to=to_email, subject=subject, html=html)

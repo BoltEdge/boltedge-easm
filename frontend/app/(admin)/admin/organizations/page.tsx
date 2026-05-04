@@ -41,14 +41,33 @@ export default function AdminOrganizations() {
   }, [page, search, planFilter, showArchived]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { if (banner) { const t = setTimeout(() => setBanner(null), 4000); return () => clearTimeout(t); } }, [banner]);
+  useEffect(() => {
+    if (banner) {
+      // Longer banners (trial-approval line) get extra dwell time so
+      // the admin can read who got emailed.
+      const dwell = banner.text.length > 80 ? 8000 : 4000;
+      const t = setTimeout(() => setBanner(null), dwell);
+      return () => clearTimeout(t);
+    }
+  }, [banner]);
   useEffect(() => { setPage(1); }, [search, planFilter, showArchived]);
 
   async function handlePlanChange(orgId: number, newPlan: string) {
     setActionOrgId(orgId);
     try {
-      await setAdminOrgPlan(orgId, newPlan);
-      setBanner({ kind: "ok", text: `Plan updated to ${PLAN_LABELS[newPlan]}.` });
+      // Plan-change response carries the trial-approval verdict —
+      // surface it inline so the admin sees the email went without
+      // bouncing to the audit log.
+      const res = await setAdminOrgPlan(orgId, newPlan);
+      const planLabel = PLAN_LABELS[newPlan] || newPlan;
+      if (res.trialEmailSent && res.notifiedEmail) {
+        setBanner({
+          kind: "ok",
+          text: `Plan updated to ${planLabel}. Trial-approval email sent to ${res.notifiedEmail}.`,
+        });
+      } else {
+        setBanner({ kind: "ok", text: `Plan updated to ${planLabel}.` });
+      }
       load();
     } catch (e: any) {
       setBanner({ kind: "err", text: e?.message || "Failed to update plan" });

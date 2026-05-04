@@ -1,9 +1,18 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { getAdminUsers, suspendAdminUser, deleteAdminUser, sendAdminPasswordReset, impersonateAdminUser, adminForceVerifyEmail, adminResendVerification } from "../../../lib/api";
+import {
+  getAdminUsers, suspendAdminUser, deleteAdminUser, sendAdminPasswordReset,
+  impersonateAdminUser, adminForceVerifyEmail, adminResendVerification,
+  sendAdminUserEmail, createAdminUserRequest, bulkAdminUserAction,
+  type BulkUserAction, type BulkUserActionResponse,
+} from "../../../lib/api";
 import { startImpersonation } from "../../../lib/auth";
-import { Search, ChevronLeft, ChevronRight, ShieldAlert, ShieldOff, ShieldCheck, Trash2, KeyRound, Copy, Check, X, UserCog, Mail, MailCheck, MailWarning, ExternalLink } from "lucide-react";
+import {
+  Search, ChevronLeft, ChevronRight, ShieldAlert, ShieldOff, ShieldCheck,
+  Trash2, KeyRound, Copy, Check, X, UserCog, Mail, MailCheck, MailWarning,
+  ExternalLink, Send, MessageSquarePlus, Loader2,
+} from "lucide-react";
 import Link from "next/link";
 
 const PLAN_COLORS: Record<string, string> = {
@@ -46,6 +55,30 @@ export default function AdminUsers() {
   const [impersonateBusy, setImpersonateBusy] = useState<number | null>(null);
   const [verifyBusy, setVerifyBusy] = useState<number | null>(null);
   const [resendBusy, setResendBusy] = useState<number | null>(null);
+
+  // Selection (for bulk actions). Keyed by user id; reset whenever
+  // the filtered/paginated list changes so we don't operate on
+  // stale ids the admin can no longer see.
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState<BulkUserAction | null>(null);
+  const [bulkConfirm, setBulkConfirm] = useState<{ action: BulkUserAction; ids: number[] } | null>(null);
+  const [bulkSummary, setBulkSummary] = useState<BulkUserActionResponse | null>(null);
+
+  // Compose modals — always operate on a single target user.
+  const [emailModal, setEmailModal] = useState<{
+    user: any;
+    subject: string;
+    body: string;
+    busy: boolean;
+  } | null>(null);
+  const [requestModal, setRequestModal] = useState<{
+    user: any;
+    requestType: "general" | "trial" | "demo";
+    subject: string;
+    message: string;
+    internalNote: string;
+    busy: boolean;
+  } | null>(null);
 
   const activeFilters = [roleFilter, suspendedFilter, superadminFilter, orgFilter, verifiedFilter].filter(Boolean).length;
 
@@ -173,6 +206,131 @@ export default function AdminUsers() {
     } finally { setConfirmBusy(false); }
   }
 
+  // Visible page contents — used to "select all on page" so the
+  // admin only operates on what they can actually see.
+  const visibleUsers: any[] = data?.users || [];
+  const selectableIds = useMemo(
+    () => visibleUsers.filter((u) => !u.isSuperadmin).map((u) => u.id as number),
+    [visibleUsers],
+  );
+  const allOnPageSelected =
+    selectableIds.length > 0 && selectableIds.every((id) => selectedIds.has(id));
+  const someOnPageSelected =
+    !allOnPageSelected && selectableIds.some((id) => selectedIds.has(id));
+
+  function toggleRow(uid: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid); else next.add(uid);
+      return next;
+    });
+  }
+  function toggleAllOnPage() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        for (const id of selectableIds) next.delete(id);
+      } else {
+        for (const id of selectableIds) next.add(id);
+      }
+      return next;
+    });
+  }
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  // Whether a bulk action is destructive enough to require explicit
+  // confirmation. Suspend/delete clearly are. Resend/force-verify
+  // aren't — they're recoverable / additive.
+  function isDestructive(action: BulkUserAction): boolean {
+    return action === "delete" || action === "suspend";
+  }
+
+  async function executeBulk(action: BulkUserAction) {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    if (isDestructive(action)) {
+      setBulkConfirm({ action, ids });
+      return;
+    }
+    await runBulk(action, ids);
+  }
+
+  async function runBulk(action: BulkUserAction, ids: number[]) {
+    setBulkBusy(action);
+    try {
+      const res = await bulkAdminUserAction({ action, userIds: ids });
+      setBulkSummary(res);
+      // Drop only the ids we actually operated on so a partial
+      // failure leaves the rest of the selection intact.
+      const handled = new Set([
+        ...res.processed.map((p) => p.userId),
+        ...res.skipped.map((s) => s.userId),
+      ]);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of handled) next.delete(id);
+        return next;
+      });
+      setBanner({
+        kind: res.summary.errorsCount > 0 ? "err" : "ok",
+        text: (
+          `Bulk ${action.replace("_", " ")}: `
+          + `${res.summary.processedCount} done`
+          + (res.summary.skippedCount ? `, ${res.summary.skippedCount} skipped` : "")
+          + (res.summary.errorsCount ? `, ${res.summary.errorsCount} errored` : "")
+          + "."
+        ),
+      });
+      load();
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || `Bulk ${action} failed.` });
+    } finally {
+      setBulkBusy(null);
+      setBulkConfirm(null);
+    }
+  }
+
+  async function handleSendEmail() {
+    if (!emailModal) return;
+    const subject = emailModal.subject.trim();
+    const body = emailModal.body.trim();
+    if (!subject || !body) return;
+    setEmailModal({ ...emailModal, busy: true });
+    try {
+      await sendAdminUserEmail(emailModal.user.id, { subject, body });
+      setBanner({ kind: "ok", text: `Email sent to ${emailModal.user.email}.` });
+      setEmailModal(null);
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || "Failed to send email" });
+      setEmailModal((m) => (m ? { ...m, busy: false } : null));
+    }
+  }
+
+  async function handleCreateRequest() {
+    if (!requestModal) return;
+    const message = requestModal.message.trim();
+    if (!message) return;
+    setRequestModal({ ...requestModal, busy: true });
+    try {
+      const res = await createAdminUserRequest(requestModal.user.id, {
+        requestType: requestModal.requestType,
+        subject: requestModal.subject.trim() || undefined,
+        message,
+        internalNote: requestModal.internalNote.trim() || undefined,
+      });
+      setBanner({
+        kind: "ok",
+        text: `Request ${res.request.publicId || `#${res.request.id}`} opened for ${requestModal.user.email}.`,
+      });
+      setRequestModal(null);
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || "Failed to create request" });
+      setRequestModal((m) => (m ? { ...m, busy: false } : null));
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -266,10 +424,80 @@ export default function AdminUsers() {
         )}
       </div>
 
+      {/* Bulk action bar — shown only when there's a selection. Sticks
+          to the top of the page so it's reachable even after scrolling
+          a long list. */}
+      {selectedIds.size > 0 && (
+        <div className="sticky top-0 z-30 -mx-6 px-6 py-2.5 bg-[#0d1424]/95 backdrop-blur border-b border-teal-500/30 flex items-center gap-3 flex-wrap">
+          <span className="text-sm text-white">
+            <span className="text-teal-400 font-semibold">{selectedIds.size}</span> selected
+          </span>
+          <span className="text-white/20">·</span>
+          <button
+            onClick={() => executeBulk("suspend")}
+            disabled={!!bulkBusy}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 disabled:opacity-40 transition-colors"
+          >
+            {bulkBusy === "suspend" ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShieldOff className="w-3 h-3" />}
+            Suspend
+          </button>
+          <button
+            onClick={() => executeBulk("unsuspend")}
+            disabled={!!bulkBusy}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 disabled:opacity-40 transition-colors"
+          >
+            {bulkBusy === "unsuspend" ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShieldCheck className="w-3 h-3" />}
+            Unsuspend
+          </button>
+          <button
+            onClick={() => executeBulk("resend_verification")}
+            disabled={!!bulkBusy}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 disabled:opacity-40 transition-colors"
+          >
+            {bulkBusy === "resend_verification" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
+            Resend verify
+          </button>
+          <button
+            onClick={() => executeBulk("force_verify")}
+            disabled={!!bulkBusy}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 disabled:opacity-40 transition-colors"
+          >
+            {bulkBusy === "force_verify" ? <Loader2 className="w-3 h-3 animate-spin" /> : <MailCheck className="w-3 h-3" />}
+            Force verify
+          </button>
+          <button
+            onClick={() => executeBulk("delete")}
+            disabled={!!bulkBusy}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs text-red-300 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 disabled:opacity-40 transition-colors"
+          >
+            {bulkBusy === "delete" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+            Delete
+          </button>
+          <button
+            onClick={clearSelection}
+            disabled={!!bulkBusy}
+            className="ml-auto text-xs text-white/40 hover:text-white transition-colors disabled:opacity-40"
+          >
+            Clear selection
+          </button>
+        </div>
+      )}
+
       <div className="rounded-xl border border-white/[0.06] overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/[0.06] bg-white/[0.02]">
+              <th className="px-3 py-3 w-8">
+                <input
+                  type="checkbox"
+                  aria-label="Select all on page"
+                  checked={allOnPageSelected}
+                  ref={(el) => { if (el) el.indeterminate = someOnPageSelected; }}
+                  onChange={toggleAllOnPage}
+                  disabled={selectableIds.length === 0}
+                  className="accent-teal-500 w-3.5 h-3.5 cursor-pointer disabled:opacity-30"
+                />
+              </th>
               <th className="text-left px-4 py-3 text-xs font-medium text-white/40">User</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Organization</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Role</th>
@@ -280,16 +508,32 @@ export default function AdminUsers() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-white/30 text-xs">Loading…</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-white/30 text-xs">Loading…</td></tr>
             ) : !data?.users?.length ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-white/30 text-xs">No users found.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-white/30 text-xs">No users found.</td></tr>
             ) : data.users.map((u: any) => {
               const planColor = PLAN_COLORS[u.organization?.plan] || "#6b7280";
               return (
-                <tr key={u.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                <tr key={u.id} className={`border-b border-white/[0.04] transition-colors ${selectedIds.has(u.id) ? "bg-teal-500/[0.04]" : "hover:bg-white/[0.02]"}`}>
+                  <td className="px-3 py-3 w-8">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${u.email}`}
+                      checked={selectedIds.has(u.id)}
+                      onChange={() => toggleRow(u.id)}
+                      disabled={u.isSuperadmin}
+                      title={u.isSuperadmin ? "Superadmin accounts can't be selected for bulk actions" : ""}
+                      className="accent-teal-500 w-3.5 h-3.5 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-white">{u.name || u.email}</span>
+                      <Link
+                        href={`/admin/users/${u.id}`}
+                        className="font-medium text-white hover:text-teal-300 hover:underline transition-colors"
+                      >
+                        {u.name || u.email}
+                      </Link>
                       {u.isSuperadmin && (
                         <span title="Superadmin"><ShieldAlert className="w-3.5 h-3.5 text-teal-400" /></span>
                       )}
@@ -346,6 +590,23 @@ export default function AdminUsers() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setEmailModal({ user: u, subject: "", body: "", busy: false })}
+                        title="Send email to user"
+                        className="p-1.5 rounded hover:bg-teal-500/10 text-white/30 hover:text-teal-400 transition-colors"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setRequestModal({
+                          user: u, requestType: "general",
+                          subject: "", message: "", internalNote: "", busy: false,
+                        })}
+                        title="Open a request on user's behalf"
+                        className="p-1.5 rounded hover:bg-blue-500/10 text-white/30 hover:text-blue-400 transition-colors"
+                      >
+                        <MessageSquarePlus className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         onClick={() => handleImpersonate(u)}
                         disabled={u.isSuperadmin || impersonateBusy === u.id}
@@ -467,6 +728,258 @@ export default function AdminUsers() {
             <div className="flex justify-end">
               <button onClick={() => { setResetModal(null); setCopied(false); }}
                 className="px-4 py-2 text-sm text-white/50 hover:text-white transition-colors">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Send-email modal */}
+      {emailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#0d1424] border border-white/[0.08] rounded-xl p-6 w-full max-w-lg shadow-2xl">
+            <div className="flex items-start gap-2 mb-1">
+              <Send className="w-4 h-4 text-teal-400 mt-1" />
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base font-semibold text-white">Send email</h2>
+                <p className="text-xs text-white/40 mt-0.5">
+                  To <span className="text-white/70">{emailModal.user.email}</span>
+                  {emailModal.user.name ? <> ({emailModal.user.name})</> : null}
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3 mt-4">
+              <label className="block">
+                <span className="text-xs font-medium text-white/60">Subject</span>
+                <input
+                  type="text"
+                  autoFocus
+                  value={emailModal.subject}
+                  onChange={(e) => setEmailModal({ ...emailModal, subject: e.target.value })}
+                  maxLength={200}
+                  disabled={emailModal.busy}
+                  placeholder="Quick check-in / Account update / …"
+                  className="mt-1 w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-teal-500/40 disabled:opacity-50"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-white/60">Message</span>
+                <textarea
+                  value={emailModal.body}
+                  onChange={(e) => setEmailModal({ ...emailModal, body: e.target.value })}
+                  maxLength={8000}
+                  rows={8}
+                  disabled={emailModal.busy}
+                  placeholder="Plain text. Newlines preserved. Sent from no-reply@nanoasm.com with the standard branded shell."
+                  className="mt-1 w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-teal-500/40 disabled:opacity-50 resize-y"
+                />
+                <span className="text-[10px] text-white/30 mt-1 block">
+                  {emailModal.body.length}/8000 characters · audit-logged
+                </span>
+              </label>
+            </div>
+            <div className="flex justify-end gap-3 mt-5">
+              <button
+                onClick={() => setEmailModal(null)}
+                disabled={emailModal.busy}
+                className="px-4 py-2 text-sm text-white/50 hover:text-white transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendEmail}
+                disabled={emailModal.busy || !emailModal.subject.trim() || !emailModal.body.trim()}
+                className="px-4 py-2 text-sm bg-teal-500/10 text-teal-300 border border-teal-500/30 rounded-lg hover:bg-teal-500/20 transition-colors disabled:opacity-40 flex items-center gap-2"
+              >
+                {emailModal.busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                {emailModal.busy ? "Sending…" : "Send email"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create-request modal */}
+      {requestModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#0d1424] border border-white/[0.08] rounded-xl p-6 w-full max-w-lg shadow-2xl">
+            <div className="flex items-start gap-2 mb-1">
+              <MessageSquarePlus className="w-4 h-4 text-blue-400 mt-1" />
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base font-semibold text-white">Open a request on behalf of user</h2>
+                <p className="text-xs text-white/40 mt-0.5">
+                  As <span className="text-white/70">{requestModal.user.email}</span> — appears in your contact-requests queue.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3 mt-4">
+              <label className="block">
+                <span className="text-xs font-medium text-white/60">Type</span>
+                <select
+                  value={requestModal.requestType}
+                  onChange={(e) => setRequestModal({
+                    ...requestModal,
+                    requestType: e.target.value as "general" | "trial" | "demo",
+                  })}
+                  disabled={requestModal.busy}
+                  className="mt-1 w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500/40 disabled:opacity-50"
+                >
+                  <option value="general">General</option>
+                  <option value="trial">Trial request</option>
+                  <option value="demo">Demo request</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-white/60">Subject (optional)</span>
+                <input
+                  type="text"
+                  value={requestModal.subject}
+                  onChange={(e) => setRequestModal({ ...requestModal, subject: e.target.value })}
+                  maxLength={200}
+                  disabled={requestModal.busy}
+                  placeholder="Trial of Enterprise Silver / Follow-up call / …"
+                  className="mt-1 w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-teal-500/40 disabled:opacity-50"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-white/60">Message</span>
+                <textarea
+                  value={requestModal.message}
+                  onChange={(e) => setRequestModal({ ...requestModal, message: e.target.value })}
+                  maxLength={5000}
+                  rows={4}
+                  disabled={requestModal.busy}
+                  placeholder="What did the user ask for? This becomes the body of the request."
+                  className="mt-1 w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-teal-500/40 disabled:opacity-50 resize-y"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-white/60">Internal note (optional, never shown to user)</span>
+                <textarea
+                  value={requestModal.internalNote}
+                  onChange={(e) => setRequestModal({ ...requestModal, internalNote: e.target.value })}
+                  maxLength={2000}
+                  rows={3}
+                  disabled={requestModal.busy}
+                  placeholder="Context for whoever picks this up. Phone call notes, billing context, …"
+                  className="mt-1 w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-teal-500/40 disabled:opacity-50 resize-y"
+                />
+              </label>
+            </div>
+            <div className="flex justify-end gap-3 mt-5">
+              <button
+                onClick={() => setRequestModal(null)}
+                disabled={requestModal.busy}
+                className="px-4 py-2 text-sm text-white/50 hover:text-white transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateRequest}
+                disabled={requestModal.busy || !requestModal.message.trim()}
+                className="px-4 py-2 text-sm bg-blue-500/10 text-blue-300 border border-blue-500/30 rounded-lg hover:bg-blue-500/20 transition-colors disabled:opacity-40 flex items-center gap-2"
+              >
+                {requestModal.busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquarePlus className="w-3.5 h-3.5" />}
+                {requestModal.busy ? "Creating…" : "Create request"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk action confirmation (only for destructive actions) */}
+      {bulkConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#0d1424] border border-white/[0.08] rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h2 className="text-base font-semibold text-white mb-2">
+              {bulkConfirm.action === "delete" ? "Delete users permanently?" : "Suspend users?"}
+            </h2>
+            <p className="text-sm text-white/50 mb-1">
+              You're about to <span className="text-white font-medium">{bulkConfirm.action.replace("_", " ")}</span>{" "}
+              <span className="text-white font-medium">{bulkConfirm.ids.length}</span> user{bulkConfirm.ids.length === 1 ? "" : "s"}.
+              {bulkConfirm.action === "delete" && (
+                <span className="block mt-1 text-red-400/80">All memberships, API keys, and scan history go with them. This cannot be undone.</span>
+              )}
+            </p>
+            <p className="text-xs text-white/40 mt-3">
+              Superadmin accounts in the selection are skipped automatically.
+            </p>
+            <div className="flex justify-end gap-3 mt-5">
+              <button
+                onClick={() => setBulkConfirm(null)}
+                disabled={!!bulkBusy}
+                className="px-4 py-2 text-sm text-white/50 hover:text-white transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => runBulk(bulkConfirm.action, bulkConfirm.ids)}
+                disabled={!!bulkBusy}
+                className={`px-4 py-2 text-sm rounded-lg transition-colors disabled:opacity-40 flex items-center gap-2 ${
+                  bulkConfirm.action === "delete"
+                    ? "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20"
+                    : "bg-amber-500/10 text-amber-300 border border-amber-500/20 hover:bg-amber-500/20"
+                }`}
+              >
+                {bulkBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                {bulkBusy
+                  ? "Working…"
+                  : bulkConfirm.action === "delete"
+                    ? `Delete ${bulkConfirm.ids.length}`
+                    : `Suspend ${bulkConfirm.ids.length}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk action result summary — shown after a partial failure
+          so the admin sees who was skipped/errored. Auto-closes when
+          dismissed; the inline banner already gives the headline. */}
+      {bulkSummary && (bulkSummary.summary.skippedCount > 0 || bulkSummary.summary.errorsCount > 0) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#0d1424] border border-white/[0.08] rounded-xl p-6 w-full max-w-lg shadow-2xl max-h-[80vh] overflow-y-auto">
+            <h2 className="text-base font-semibold text-white mb-1">
+              Bulk {bulkSummary.action.replace("_", " ")} — results
+            </h2>
+            <p className="text-xs text-white/40 mb-4">
+              {bulkSummary.summary.processedCount} processed ·
+              {" "}{bulkSummary.summary.skippedCount} skipped ·
+              {" "}{bulkSummary.summary.errorsCount} errored
+            </p>
+            {bulkSummary.skipped.length > 0 && (
+              <div className="mb-3">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-white/40 mb-1.5">Skipped</h3>
+                <div className="space-y-0.5 text-xs">
+                  {bulkSummary.skipped.map((s) => (
+                    <div key={`s-${s.userId}`} className="flex items-center gap-2 text-white/60">
+                      <span className="font-mono text-white/30">#{s.userId}</span>
+                      {s.email && <span>{s.email}</span>}
+                      <span className="text-white/40">— {s.reason.replace(/_/g, " ")}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {bulkSummary.errors.length > 0 && (
+              <div className="mb-3">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-red-400 mb-1.5">Errors</h3>
+                <div className="space-y-0.5 text-xs">
+                  {bulkSummary.errors.map((e) => (
+                    <div key={`e-${e.userId}`} className="flex items-center gap-2 text-red-300">
+                      <span className="font-mono text-red-300/50">#{e.userId}</span>
+                      <span>{e.error}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="flex justify-end mt-2">
+              <button
+                onClick={() => setBulkSummary(null)}
+                className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors"
+              >
                 Close
               </button>
             </div>

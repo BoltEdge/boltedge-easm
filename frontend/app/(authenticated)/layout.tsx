@@ -8,6 +8,7 @@ import { useSessionGuard } from "../lib/useSessionGuard";
 import { OrgProvider } from "./contexts/OrgContext";
 import Sidebar from "../Sidebar";
 import TopBar from "../TopBar";
+import { OnboardingTour } from "../ui/OnboardingTour";
 import { getAnnouncements, getSubscriptionStatus, createPortalSession, type SubscriptionStatus } from "../lib/api";
 import { BILLING_ENABLED } from "../lib/billing-config";
 import { Info, AlertTriangle, AlertOctagon, X, ExternalLink, CreditCard, Clock } from "lucide-react";
@@ -220,6 +221,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
           <AnnouncementBanners />
           {children}
         </div>
+        {/* First-sign-in opt-in walkthrough. Renders nothing for
+            returning users — the localStorage flag short-circuits
+            the entire component. */}
+        <OnboardingTour />
       </div>
     </OrgProvider>
   );
