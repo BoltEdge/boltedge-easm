@@ -297,7 +297,7 @@ const DEFAULT_TOOLS: ToolId[] = [];
 
 function ToolPanel({
   panel, tool, globalTarget, canvasWidth, canvasRef,
-  onRemove, onRun, onToggleExpand, onSetLocalTarget, onResize,
+  onRemove, onRun, onToggleExpand, onSetLocalTarget, onResize, onAutofit,
   hasMonitoring, onSavedAsAlert,
 }: {
   panel: PanelState; tool: ToolDef; globalTarget: string; canvasWidth: number;
@@ -305,6 +305,7 @@ function ToolPanel({
   onRemove: () => void; onRun: () => void;
   onToggleExpand: () => void; onSetLocalTarget: (v: string) => void;
   onResize: (w: number, h: number) => void;
+  onAutofit: () => void;
   hasMonitoring: boolean;
   onSavedAsAlert: (kind: "ok" | "err", text: string) => void;
 }) {
@@ -319,19 +320,77 @@ function ToolPanel({
   const isRunning = panel.status === "running";
   const certMode = tool.id === "cert-lookup" && effectiveTarget ? (isSha256Hash(effectiveTarget) ? "SHA-256" : "Domain") : null;
 
-  const handleResizeDown = (e: React.MouseEvent) => {
+  // Width values that two/three/four-up grids actually want to land on.
+  // When the user drags within SNAP_THRESHOLD of one of these the width
+  // pops to it — produces a clean grid feel without forcing it. Hold
+  // Shift while dragging to bypass.
+  const SNAP_WIDTHS = [25, 100 / 3, 50, 200 / 3, 75, 100];
+  const SNAP_THRESHOLD = 2;
+
+  // 8-direction resize. The two axis signs decide whether outward drag
+  // grows or shrinks each dimension — e.g. dragging the W (left) edge
+  // LEFT grows the panel, so xSign = -1 maps "left drag" to "+ width".
+  // In flow layout the panel's top-left stays where the flow placed
+  // it, so visually growth always happens on the right/bottom edge no
+  // matter which handle was grabbed. The handles are still useful as
+  // grab affordances on every side.
+  type ResizeDir = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
+  const CURSOR_BY_DIR: Record<ResizeDir, string> = {
+    n: "ns-resize", s: "ns-resize",
+    e: "ew-resize", w: "ew-resize",
+    ne: "nesw-resize", sw: "nesw-resize",
+    nw: "nwse-resize", se: "nwse-resize",
+  };
+
+  const startResize = (direction: ResizeDir) => (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
+    // Ignore drags initiated as the second click of a dblclick — the
+    // dblclick handler runs the autofit instead.
+    if (e.detail >= 2) return;
     resizeRef.current = { sx: e.clientX, sy: e.clientY, ow: panel.widthPct, oh: panel.heightPx };
+
+    const xSign = direction.includes("e") ? 1 : direction.includes("w") ? -1 : 0;
+    const ySign = direction.includes("s") ? 1 : direction.includes("n") ? -1 : 0;
+
     const onMove = (ev: MouseEvent) => {
       if (!resizeRef.current) return;
       const currentWidth = canvasRef.current?.clientWidth || canvasWidth || 800;
-      const dxPct = ((ev.clientX - resizeRef.current.sx) / currentWidth) * 100;
-      const dy = ev.clientY - resizeRef.current.sy;
-      onResize(Math.min(MAX_W, Math.max(MIN_W, resizeRef.current.ow + dxPct)), Math.max(MIN_H, resizeRef.current.oh + dy));
+      let newW = resizeRef.current.ow;
+      let newH = resizeRef.current.oh;
+
+      if (xSign !== 0) {
+        const dxPct = ((ev.clientX - resizeRef.current.sx) / currentWidth) * 100 * xSign;
+        newW = resizeRef.current.ow + dxPct;
+        if (!ev.shiftKey) {
+          const snap = SNAP_WIDTHS.find((p) => Math.abs(p - newW) < SNAP_THRESHOLD);
+          if (snap !== undefined) newW = snap;
+        }
+        newW = Math.min(MAX_W, Math.max(MIN_W, newW));
+      }
+
+      if (ySign !== 0) {
+        const dy = (ev.clientY - resizeRef.current.sy) * ySign;
+        // Cap height to a bit less than the viewport so users can't
+        // drag a panel into a region they can't scroll back to.
+        const maxH = Math.max(MIN_H, (typeof window !== "undefined" ? window.innerHeight : 1080) - 200);
+        newH = Math.min(maxH, Math.max(MIN_H, resizeRef.current.oh + dy));
+      }
+
+      onResize(newW, newH);
     };
-    const onUp = () => { resizeRef.current = null; document.body.style.cursor = ""; document.body.style.userSelect = ""; window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
-    document.body.style.cursor = "se-resize"; document.body.style.userSelect = "none";
-    window.addEventListener("mousemove", onMove); window.addEventListener("mouseup", onUp);
+
+    const onUp = () => {
+      resizeRef.current = null;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+
+    document.body.style.cursor = CURSOR_BY_DIR[direction];
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   };
 
   const handleCopyJson = () => { if (panel.result) navigator.clipboard.writeText(JSON.stringify(panel.result, null, 2)); };
@@ -559,9 +618,99 @@ function ToolPanel({
     <div className="rounded-xl border border-white/[0.08] bg-[#0c1222]/95 backdrop-blur-xl shadow-lg flex flex-col overflow-hidden relative group/panel"
       style={{ width: `calc(${panel.widthPct}% - ${GAP * (1 - panel.widthPct / 100)}px)`, height: panel.heightPx, flexShrink: 0, flexGrow: 0 }}>
       {renderTitleBar()}{renderInputBar()}{renderBody()}
-      <div onMouseDown={handleResizeDown} className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize z-10 opacity-0 group-hover/panel:opacity-100 transition-opacity" title="Drag to resize">
-        <svg viewBox="0 0 20 20" className="w-full h-full"><path d="M18 18L10 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.3" className="text-primary" /><path d="M18 18L18 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.3" className="text-primary" /><path d="M18 18L14 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.7" className="text-primary" /><path d="M18 18L18 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.7" className="text-primary" /></svg>
+
+      {/*
+        Eight resize handles — one per edge, one per corner.
+        - Edges show a subtle indicator bar that's always visible (so
+          users discover them) and brightens on hover.
+        - Corners are silent drag zones except the SE corner, which
+          shows the chevron icon as the primary "this thing resizes"
+          affordance.
+        - Double-click any handle to autofit (distribute panel widths
+          evenly across the workspace).
+        - Hold Shift while dragging to disable snap-to-grid.
+        Note: in the flow layout, dragging any handle visually grows
+        the panel on its right/bottom edges since the top-left is
+        anchored by the row.
+      */}
+
+      {/* Top edge */}
+      <div
+        onMouseDown={startResize("n")}
+        onDoubleClick={onAutofit}
+        className="absolute -top-0.5 left-3 right-3 h-1.5 cursor-ns-resize z-10 group/handle-n"
+        title="Drag to resize · double-click to autofit"
+      >
+        <div className="absolute top-0.5 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-muted-foreground/15 group-hover/handle-n:bg-primary/60 group-hover/handle-n:w-12 transition-all" />
       </div>
+
+      {/* Bottom edge */}
+      <div
+        onMouseDown={startResize("s")}
+        onDoubleClick={onAutofit}
+        className="absolute -bottom-0.5 left-3 right-3 h-1.5 cursor-ns-resize z-10 group/handle-s"
+        title="Drag to resize · double-click to autofit"
+      >
+        <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-muted-foreground/15 group-hover/handle-s:bg-primary/60 group-hover/handle-s:w-12 transition-all" />
+      </div>
+
+      {/* Left edge */}
+      <div
+        onMouseDown={startResize("w")}
+        onDoubleClick={onAutofit}
+        className="absolute -left-0.5 top-3 bottom-3 w-1.5 cursor-ew-resize z-10 group/handle-w"
+        title="Drag to resize · double-click to autofit"
+      >
+        <div className="absolute left-0.5 top-1/2 -translate-y-1/2 w-0.5 h-8 rounded-full bg-muted-foreground/15 group-hover/handle-w:bg-primary/60 group-hover/handle-w:h-12 transition-all" />
+      </div>
+
+      {/* Right edge */}
+      <div
+        onMouseDown={startResize("e")}
+        onDoubleClick={onAutofit}
+        className="absolute -right-0.5 top-3 bottom-3 w-1.5 cursor-ew-resize z-10 group/handle-e"
+        title="Drag to resize · double-click to autofit · Shift to disable snap"
+      >
+        <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-8 rounded-full bg-muted-foreground/15 group-hover/handle-e:bg-primary/60 group-hover/handle-e:h-12 transition-all" />
+      </div>
+
+      {/* NW corner */}
+      <div
+        onMouseDown={startResize("nw")}
+        onDoubleClick={onAutofit}
+        className="absolute top-0 left-0 w-3 h-3 cursor-nwse-resize z-20"
+        title="Drag to resize · double-click to autofit"
+      />
+
+      {/* NE corner */}
+      <div
+        onMouseDown={startResize("ne")}
+        onDoubleClick={onAutofit}
+        className="absolute top-0 right-0 w-3 h-3 cursor-nesw-resize z-20"
+        title="Drag to resize · double-click to autofit"
+      />
+
+      {/* SW corner */}
+      <div
+        onMouseDown={startResize("sw")}
+        onDoubleClick={onAutofit}
+        className="absolute bottom-0 left-0 w-3 h-3 cursor-nesw-resize z-20"
+        title="Drag to resize · double-click to autofit"
+      />
+
+      {/* SE corner — the primary "this resizes" affordance, with chevron */}
+      <div
+        onMouseDown={startResize("se")}
+        onDoubleClick={onAutofit}
+        className="absolute bottom-0 right-0 w-3.5 h-3.5 cursor-nwse-resize z-20 group/handle-se"
+        title="Drag to resize · double-click to autofit"
+      >
+        <svg viewBox="0 0 14 14" className="w-full h-full text-muted-foreground/30 group-hover/handle-se:text-primary transition-colors">
+          <path d="M13 13L8 13M13 13L13 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          <path d="M13 13L4 13M13 13L13 4" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.5" />
+        </svg>
+      </div>
+
       {renderAlertDialog()}
     </div>
   );
@@ -618,13 +767,49 @@ function AddToolDropdown({ onAdd, disabled }: { onAdd: (toolId: ToolId) => void;
    MAIN PAGE — INVESTIGATION WORKSPACE
    ═══════════════════════════════════════════════════════════════ */
 
+// Bumping this version key invalidates any stored layout the next time
+// users open the page — use it when the saved shape changes in a way
+// that wouldn't load cleanly.
+const LAYOUT_STORAGE_KEY = "asm_lookup_layout_v1";
+
+type StoredPanel = { toolId: ToolId; widthPct: number; heightPx: number };
+
+function loadStoredLayout(): StoredPanel[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(LAYOUT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    // Drop anything that looks malformed or references a tool that no
+    // longer exists — protects against stale layouts after a tool is
+    // renamed or removed.
+    return parsed
+      .filter((p): p is StoredPanel =>
+        p && typeof p.toolId === "string"
+        && typeof p.widthPct === "number"
+        && typeof p.heightPx === "number"
+        && !!TOOL_MAP[p.toolId as ToolId])
+      .slice(0, MAX_PANELS);
+  } catch {
+    return null;
+  }
+}
+
 export default function ToolsPage() {
-  const nextUid = useRef(DEFAULT_TOOLS.length + 1);
   const canvasRef = useRef<HTMLDivElement>(null);
   const { hasFeature } = useOrg();
   const hasMonitoring = hasFeature("monitoring");
 
   const [panels, setPanels] = useState<PanelState[]>(() => {
+    const stored = loadStoredLayout();
+    if (stored && stored.length > 0) {
+      return stored.map((s, i) => ({
+        uid: i + 1, toolId: s.toolId, localTarget: "", status: "idle" as const,
+        result: null, error: null, execMs: null, expanded: false,
+        widthPct: s.widthPct, heightPx: s.heightPx,
+      }));
+    }
     const cols = Math.min(DEFAULT_TOOLS.length, 3);
     return DEFAULT_TOOLS.map((toolId, i) => ({
       uid: i + 1, toolId, localTarget: "", status: "idle" as const,
@@ -632,6 +817,29 @@ export default function ToolsPage() {
       widthPct: 100 / cols, heightPx: 380,
     }));
   });
+
+  // Reset uid counter so the first added panel gets a fresh id past
+  // anything we restored from localStorage.
+  const nextUid = useRef(0);
+  if (nextUid.current === 0) {
+    nextUid.current = (panels.reduce((m, p) => Math.max(m, p.uid), 0) || 0) + 1;
+  }
+
+  // Persist layout (just the things that affect what the workspace
+  // looks like) on every change. Doesn't capture results, status, or
+  // local targets — those are session-level and shouldn't survive
+  // a refresh.
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const slim: StoredPanel[] = panels.map((p) => ({
+        toolId: p.toolId, widthPct: p.widthPct, heightPx: p.heightPx,
+      }));
+      window.localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(slim));
+    } catch {
+      // localStorage can fail (quota, private browsing) — non-fatal.
+    }
+  }, [panels]);
   const [globalTarget, setGlobalTarget] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(220);
@@ -681,6 +889,18 @@ export default function ToolsPage() {
   const setLocalTarget = useCallback((uid: number, val: string) => setPanels((p) => p.map((x) => x.uid === uid ? { ...x, localTarget: val } : x)), []);
   const resizePanel = useCallback((uid: number, w: number, h: number) => setPanels((p) => p.map((x) => x.uid === uid ? { ...x, widthPct: w, heightPx: h } : x)), []);
   const updatePanel = useCallback((uid: number, patch: Partial<PanelState>) => setPanels((p) => p.map((x) => x.uid === uid ? { ...x, ...patch } : x)), []);
+
+  // Double-click a resize handle → distribute panel widths evenly so
+  // the workspace settles into a clean grid. Heights are intentionally
+  // left alone; the user usually wants to keep whatever heights they
+  // set per-tool.
+  const autofitRow = useCallback(() => {
+    setPanels((p) => {
+      if (p.length === 0) return p;
+      const w = 100 / p.length;
+      return p.map((x) => ({ ...x, widthPct: w }));
+    });
+  }, []);
 
   const runTool = useCallback(async (uid: number) => {
     const panel = panels.find((p) => p.uid === uid);
@@ -890,6 +1110,7 @@ export default function ToolsPage() {
                     onRemove={() => removePanel(panel.uid)} onRun={() => runTool(panel.uid)}
                     onToggleExpand={() => toggleExpand(panel.uid)} onSetLocalTarget={(v) => setLocalTarget(panel.uid, v)}
                     onResize={(w, h) => resizePanel(panel.uid, w, h)}
+                    onAutofit={autofitRow}
                     hasMonitoring={hasMonitoring}
                     onSavedAsAlert={(kind, text) => setAlertBanner({ kind, text })} />
                 );
