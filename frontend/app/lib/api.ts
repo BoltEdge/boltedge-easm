@@ -421,13 +421,13 @@ export type MfaEnrollResponse = {
   secret: string;
   provisioningUri: string;
   qrCodeDataUrl: string;
-  recoveryCodes: string[];
+  recoveryKey: string;
 };
 
 export type MfaStatusResponse = {
   mfaEnabled: boolean;
   enrolledAt: string | null;
-  recoveryCodesRemaining: number;
+  recoveryKeyAvailable: boolean;
   hasPassword: boolean;
 };
 
@@ -452,7 +452,7 @@ export async function confirmMfaEnroll(code: string): Promise<{ mfaEnabled: true
 export async function verifyMfa(payload: {
   mfaToken: string;
   code: string;
-}): Promise<AuthResponse & { viaRecoveryCode?: boolean }> {
+}): Promise<AuthResponse & { viaRecoveryKey?: boolean }> {
   return apiFetch("/auth/mfa/verify", {
     method: "POST",
     body: JSON.stringify(payload),
@@ -491,11 +491,11 @@ export async function disableMfa(payload: {
   });
 }
 
-export async function regenerateMfaRecoveryCodes(payload: {
+export async function regenerateMfaRecoveryKey(payload: {
   password?: string;
   code?: string;
-}): Promise<{ recoveryCodes: string[] }> {
-  return apiFetch("/auth/mfa/recovery-codes/regenerate", {
+}): Promise<{ recoveryKey: string }> {
+  return apiFetch("/auth/mfa/recovery-key/regenerate", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -2025,6 +2025,13 @@ export async function sendAdminPasswordReset(userId: number): Promise<any> {
   return apiFetch<any>(`/admin/users/${userId}/reset-password`, { method: "POST" });
 }
 
+export async function resetAdminUserMfa(userId: number): Promise<{
+  message: string;
+  mfaEnabled: false;
+}> {
+  return apiFetch(`/admin/users/${userId}/reset-mfa`, { method: "POST" });
+}
+
 export async function updateProfile(fields: {
   name?: string;
   jobTitle?: string;
@@ -2196,6 +2203,8 @@ export type AdminUserDetail = {
   emailVerified: boolean;
   emailVerificationSentAt: string | null;
   welcomeEmailSentAt: string | null;
+  mfaEnabled: boolean;
+  mfaEnrolledAt: string | null;
   oauthProvider: string | null;
   createdAt: string | null;
   updatedAt: string | null;

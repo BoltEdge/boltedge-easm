@@ -31,7 +31,7 @@ function MfaVerifyInner() {
   }, [searchParams]);
 
   const [code, setCode] = useState("");
-  const [useRecovery, setUseRecovery] = useState(false);
+  const [useRecoveryKey, setUseRecoveryKey] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,18 +106,20 @@ function MfaVerifyInner() {
         <form className="mt-8 space-y-4" onSubmit={onSubmit}>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-white/50 block">
-              {useRecovery ? "Recovery code" : "6-digit authenticator code"}
+              {useRecoveryKey ? "Recovery key" : "6-digit authenticator code"}
             </label>
             <input
               type="text"
-              inputMode={useRecovery ? "text" : "numeric"}
+              inputMode={useRecoveryKey ? "text" : "numeric"}
               autoFocus
-              autoComplete={useRecovery ? "off" : "one-time-code"}
+              autoComplete={useRecoveryKey ? "off" : "one-time-code"}
               className="w-full h-11 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3.5 text-sm text-white placeholder:text-white/20 outline-none focus:border-teal-500/40 focus:ring-2 focus:ring-teal-500/20 transition-all tracking-widest text-center font-mono"
-              placeholder={useRecovery ? "abcdef0123456789" : "123456"}
+              placeholder={
+                useRecoveryKey ? "abcd-efgh-ijkl-mnop-qrst-uvwx-yz12-3456" : "123456"
+              }
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              maxLength={useRecovery ? 32 : 6}
+              maxLength={useRecoveryKey ? 40 : 6}
             />
           </div>
 
@@ -148,26 +150,26 @@ function MfaVerifyInner() {
           <button
             type="button"
             onClick={() => {
-              setUseRecovery((v) => !v);
+              setUseRecoveryKey((v) => !v);
               setCode("");
               setError(null);
             }}
             className="w-full text-xs text-white/40 hover:text-white/60 transition-colors flex items-center justify-center gap-1.5"
           >
             <Key className="w-3 h-3" />
-            {useRecovery
+            {useRecoveryKey
               ? "Use authenticator app instead"
-              : "Use a recovery code instead"}
+              : "Use your recovery key instead"}
           </button>
         </form>
 
         <p className="mt-6 text-xs text-white/30 text-center">
-          Lost your phone and your recovery codes?{" "}
+          Lost your phone and your recovery key?{" "}
           <Link
             href="/contact"
             className="text-teal-400 hover:text-teal-300 transition-colors"
           >
-            Contact support
+            Contact your platform admin
           </Link>
         </p>
       </div>

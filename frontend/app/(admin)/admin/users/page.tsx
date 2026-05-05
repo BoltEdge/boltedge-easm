@@ -5,13 +5,14 @@ import {
   getAdminUsers, suspendAdminUser, deleteAdminUser, sendAdminPasswordReset,
   impersonateAdminUser, adminForceVerifyEmail, adminResendVerification,
   sendAdminUserEmail, createAdminUserRequest, bulkAdminUserAction,
+  resetAdminUserMfa,
   type BulkUserAction, type BulkUserActionResponse,
 } from "../../../lib/api";
 import { startImpersonation } from "../../../lib/auth";
 import {
   Search, ChevronLeft, ChevronRight, ShieldAlert, ShieldOff, ShieldCheck,
   Trash2, KeyRound, Copy, Check, X, UserCog, Mail, MailCheck, MailWarning,
-  ExternalLink, Send, MessageSquarePlus, Loader2,
+  ExternalLink, Send, MessageSquarePlus, Loader2, Lock, Unlock,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -55,6 +56,8 @@ export default function AdminUsers() {
   const [impersonateBusy, setImpersonateBusy] = useState<number | null>(null);
   const [verifyBusy, setVerifyBusy] = useState<number | null>(null);
   const [resendBusy, setResendBusy] = useState<number | null>(null);
+  const [mfaResetBusy, setMfaResetBusy] = useState<number | null>(null);
+  const [mfaResetConfirm, setMfaResetConfirm] = useState<any | null>(null);
 
   // Selection (for bulk actions). Keyed by user id; reset whenever
   // the filtered/paginated list changes so we don't operate on
@@ -178,6 +181,26 @@ export default function AdminUsers() {
     navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleResetMfa() {
+    if (!mfaResetConfirm) return;
+    const u = mfaResetConfirm;
+    setMfaResetBusy(u.id);
+    try {
+      const res = await resetAdminUserMfa(u.id);
+      setBanner({
+        kind: "ok",
+        text: res.message || `MFA reset for ${u.email}.`,
+      });
+      setMfaResetConfirm(null);
+      load();
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || "Failed to reset MFA" });
+      setMfaResetConfirm(null);
+    } finally {
+      setMfaResetBusy(null);
+    }
   }
 
   async function handleSuspend(u: any) {
@@ -537,6 +560,11 @@ export default function AdminUsers() {
                       {u.isSuperadmin && (
                         <span title="Superadmin"><ShieldAlert className="w-3.5 h-3.5 text-teal-400" /></span>
                       )}
+                      {u.mfaEnabled && (
+                        <span title={`MFA enabled${u.mfaEnrolledAt ? ` since ${new Date(u.mfaEnrolledAt).toLocaleDateString()}` : ""}`}>
+                          <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                        </span>
+                      )}
                       {u.isSuspended && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">suspended</span>
                       )}
@@ -622,6 +650,16 @@ export default function AdminUsers() {
                       >
                         <KeyRound className="w-3.5 h-3.5" />
                       </button>
+                      {u.mfaEnabled && (
+                        <button
+                          onClick={() => setMfaResetConfirm(u)}
+                          disabled={mfaResetBusy === u.id}
+                          title="Reset MFA — user will re-enrol on next login"
+                          className="p-1.5 rounded hover:bg-amber-500/10 text-white/30 hover:text-amber-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <Unlock className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       {!u.emailVerified && (
                         <>
                           <button
@@ -981,6 +1019,38 @@ export default function AdminUsers() {
                 className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset MFA confirmation modal */}
+      {mfaResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#0d1424] border border-white/[0.08] rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <h2 className="text-base font-semibold text-white mb-2">Reset MFA for this user?</h2>
+            <p className="text-sm text-white/50 mb-1">
+              <span className="text-white font-medium">{mfaResetConfirm.email}</span> will lose
+              their authenticator and recovery key. They will need to re-enrol on next login.
+            </p>
+            <p className="text-xs text-amber-400/80 mb-5">
+              Confirm the user&apos;s identity through a separate channel before doing this.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setMfaResetConfirm(null)}
+                disabled={mfaResetBusy === mfaResetConfirm.id}
+                className="px-4 py-2 text-sm text-white/50 hover:text-white transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetMfa}
+                disabled={mfaResetBusy === mfaResetConfirm.id}
+                className="px-4 py-2 text-sm bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-lg hover:bg-amber-500/20 transition-colors disabled:opacity-40"
+              >
+                {mfaResetBusy === mfaResetConfirm.id ? "Resetting…" : "Reset MFA"}
               </button>
             </div>
           </div>

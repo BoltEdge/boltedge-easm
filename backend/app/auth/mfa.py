@@ -7,7 +7,7 @@ Endpoints (mounted on the existing auth blueprint):
   POST /auth/mfa/enroll/confirm      — verify first code, flip mfa_enabled=true
   POST /auth/mfa/verify              — second-factor at login (TOTP or recovery code)
   POST /auth/mfa/disable             — disable MFA (requires password reverify)
-  POST /auth/mfa/recovery-codes/regenerate — invalidate old codes, return new set
+  POST /auth/mfa/recovery-key/regenerate — invalidate old key, return a new one
   GET  /auth/mfa/status              — for the Settings UI: enrolled? enrolled_at? codes_remaining?
 
 Login-flow integration is in routes.py (the /auth/login endpoint
@@ -47,8 +47,7 @@ from app.models import OrganizationMember, User, UserRecoveryCode
 
 MFA_TOKEN_MAX_AGE = 60 * 5  # 5 minutes — plenty of time to type a 6-digit code
 MFA_TOKEN_SALT = "nanoasm-mfa-challenge"
-RECOVERY_CODE_COUNT = 10
-RECOVERY_CODE_BYTES = 8  # 8 bytes → 16 hex chars
+RECOVERY_KEY_BYTES = 16  # 16 bytes → 32 hex chars → 128 bits of entropy
 TOTP_ISSUER = "Nano EASM"
 
 
@@ -86,32 +85,38 @@ def verify_mfa_challenge_token(*, secret_key: str, token: str) -> Optional[int]:
         return None
 
 
-def _generate_recovery_codes(user: User) -> list[str]:
+def _format_recovery_key(raw_hex: str) -> str:
     """
-    Replace any existing UserRecoveryCode rows with a fresh set of 10.
-    Returns the plaintext codes (caller surfaces them ONCE in the response).
+    Format a 32-char hex string as 8 dash-separated 4-char groups for
+    readability (e.g., "a3f2-e1c4-b7d8-e9f0-1a2b-3c4d-5e6f-7a8b").
+    Verification strips dashes/whitespace before comparing — see
+    `_consume_recovery_key`.
+    """
+    return "-".join(raw_hex[i : i + 4] for i in range(0, len(raw_hex), 4))
+
+
+def _generate_recovery_key(user: User) -> str:
+    """
+    Replace any existing UserRecoveryCode row(s) with a single fresh
+    recovery key. Returns the plaintext, dash-formatted key (caller
+    surfaces it ONCE in the response).
     """
     UserRecoveryCode.query.filter_by(user_id=user.id).delete()
-    plaintexts: list[str] = []
-    for _ in range(RECOVERY_CODE_COUNT):
-        # token_hex(8) → 16 hex chars. Easy to type, hard to guess.
-        plain = _secrets.token_hex(RECOVERY_CODE_BYTES)
-        plaintexts.append(plain)
-        db.session.add(
-            UserRecoveryCode(
-                user_id=user.id,
-                code_hash=generate_password_hash(plain),
-            )
+    raw = _secrets.token_hex(RECOVERY_KEY_BYTES)  # 32 hex chars
+    db.session.add(
+        UserRecoveryCode(
+            user_id=user.id,
+            code_hash=generate_password_hash(raw),
         )
-    return plaintexts
+    )
+    return _format_recovery_key(raw)
 
 
-def _consume_recovery_code(user: User, candidate: str) -> bool:
+def _consume_recovery_key(user: User, candidate: str) -> bool:
     """
-    Try to consume `candidate` as a single-use recovery code. Returns True
-    on success (and stamps used_at). Constant-time-ish via werkzeug's
-    check_password_hash. Whitespace is stripped, case is normalised to
-    lower (the codes are hex).
+    Try to consume `candidate` as the single-use recovery key. Returns
+    True on success (and stamps used_at). Whitespace and dashes are
+    stripped; case is normalised to lower (the key is hex).
     """
     norm = (candidate or "").strip().lower().replace("-", "").replace(" ", "")
     if not norm:
@@ -193,8 +198,8 @@ def enroll():
     user.mfa_secret_ciphertext = encrypt_secret(secret)
     user.mfa_enrolled_at = None  # not enrolled until confirm
 
-    # Issue fresh recovery codes
-    recovery_codes = _generate_recovery_codes(user)
+    # Issue a fresh single-use recovery key
+    recovery_key = _generate_recovery_key(user)
 
     db.session.commit()
 
@@ -219,7 +224,7 @@ def enroll():
         secret=secret,                   # shown ONCE so user can manually enter if QR fails
         provisioningUri=provisioning_uri,  # otpauth:// — kept for clients that prefer to render QR themselves
         qrCodeDataUrl=_qr_data_url(provisioning_uri),  # ready-to-render PNG; secret never leaves our server
-        recoveryCodes=recovery_codes,    # shown ONCE
+        recoveryKey=recovery_key,        # shown ONCE — single-use; if lost the user contacts support
     ), 200
 
 
@@ -297,7 +302,7 @@ def verify():
 
     # Try TOTP first, then recovery code
     is_totp = _verify_totp(user, code)
-    is_recovery = False if is_totp else _consume_recovery_code(user, code)
+    is_recovery = False if is_totp else _consume_recovery_key(user, code)
 
     if not (is_totp or is_recovery):
         log_audit(
@@ -319,14 +324,14 @@ def verify():
         organization_id=_audit_org_id_for(user),
         user_id=user.id,
         action=(
-            "auth.mfa_recovery_code_used" if is_recovery else "auth.mfa_verify_success"
+            "auth.mfa_recovery_key_used" if is_recovery else "auth.mfa_verify_success"
         ),
         category="auth",
         target_type="user",
         target_id=str(user.id),
         target_label=user.email,
         description=(
-            f"MFA recovery code used by {user.email}"
+            f"MFA recovery key used by {user.email}"
             if is_recovery
             else f"MFA verified for {user.email}"
         ),
@@ -360,7 +365,7 @@ def verify():
             "name": user.name,
             "isSuperadmin": bool(user.is_superadmin),
         },
-        "viaRecoveryCode": is_recovery,
+        "viaRecoveryKey": is_recovery,
     }
     if membership:
         response["organization"] = _build_org_payload(membership.organization)
@@ -414,11 +419,11 @@ def disable():
     return jsonify(message="MFA disabled.", mfaEnabled=False), 200
 
 
-@mfa_bp.post("/recovery-codes/regenerate")
+@mfa_bp.post("/recovery-key/regenerate")
 @require_auth
-def regenerate_recovery_codes():
+def regenerate_recovery_key():
     """
-    Generate a fresh set of 10 recovery codes. Old codes are invalidated.
+    Generate a fresh recovery key. The previous key is invalidated.
     Requires password reverify (same reasoning as /disable).
     """
     user: User = g.current_user
@@ -436,21 +441,21 @@ def regenerate_recovery_codes():
         if not _verify_totp(user, code):
             return jsonify(error="Invalid code.", code="MFA_REAUTH_FAILED"), 401
 
-    plaintexts = _generate_recovery_codes(user)
+    new_key = _generate_recovery_key(user)
     db.session.commit()
 
     log_audit(
         organization_id=_audit_org_id_for(user),
         user_id=user.id,
-        action="auth.mfa_recovery_codes_regenerated",
+        action="auth.mfa_recovery_key_regenerated",
         category="auth",
         target_type="user",
         target_id=str(user.id),
         target_label=user.email,
-        description=f"Recovery codes regenerated for {user.email}",
+        description=f"Recovery key regenerated for {user.email}",
     )
 
-    return jsonify(recoveryCodes=plaintexts), 200
+    return jsonify(recoveryKey=new_key), 200
 
 
 @mfa_bp.post("/forced-enroll")
@@ -462,7 +467,7 @@ def forced_enroll():
 
     Body: { mfaToken }
     Returns the same shape as /auth/mfa/enroll: secret + provisioningUri
-    + recoveryCodes. The mfaToken stays valid for /forced-enroll/confirm.
+    + recoveryKey. The mfaToken stays valid for /forced-enroll/confirm.
     """
     body = request.get_json(silent=True) or {}
     mfa_token = (body.get("mfaToken") or "").strip()
@@ -492,7 +497,7 @@ def forced_enroll():
     secret = pyotp.random_base32()
     user.mfa_secret_ciphertext = encrypt_secret(secret)
     user.mfa_enrolled_at = None
-    recovery_codes = _generate_recovery_codes(user)
+    recovery_key = _generate_recovery_key(user)
     db.session.commit()
 
     provisioning_uri = pyotp.TOTP(secret).provisioning_uri(
@@ -514,7 +519,7 @@ def forced_enroll():
         secret=secret,
         provisioningUri=provisioning_uri,
         qrCodeDataUrl=_qr_data_url(provisioning_uri),
-        recoveryCodes=recovery_codes,
+        recoveryKey=recovery_key,
     ), 200
 
 
@@ -608,14 +613,15 @@ def status():
     the secret.
     """
     user: User = g.current_user
-    codes_remaining = (
-        UserRecoveryCode.query.filter_by(user_id=user.id, used_at=None).count()
-        if user.mfa_enabled
-        else 0
+    has_recovery_key = (
+        user.mfa_enabled
+        and UserRecoveryCode.query.filter_by(
+            user_id=user.id, used_at=None
+        ).count() > 0
     )
     return jsonify(
         mfaEnabled=bool(user.mfa_enabled),
         enrolledAt=(user.mfa_enrolled_at.isoformat() + "Z") if user.mfa_enrolled_at else None,
-        recoveryCodesRemaining=codes_remaining,
+        recoveryKeyAvailable=bool(has_recovery_key),
         hasPassword=bool(user.password_hash),
     ), 200

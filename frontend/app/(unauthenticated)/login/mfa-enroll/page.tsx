@@ -112,10 +112,10 @@ function ForcedEnrollInner() {
     }
   }
 
-  async function copyCodes() {
+  async function copyKey() {
     if (!enrolment) return;
     try {
-      await navigator.clipboard.writeText(enrolment.recoveryCodes.join("\n"));
+      await navigator.clipboard.writeText(enrolment.recoveryKey);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -123,21 +123,22 @@ function ForcedEnrollInner() {
     }
   }
 
-  function downloadCodes() {
+  function downloadKey() {
     if (!enrolment) return;
     const blob = new Blob(
       [
-        `Nano EASM — recovery codes for ${email}\n` +
+        `Nano EASM — recovery key for ${email}\n` +
           `Generated ${new Date().toISOString()}\n\n` +
-          enrolment.recoveryCodes.join("\n") +
-          `\n\nKeep these somewhere safe. Each one works once.\n`,
+          enrolment.recoveryKey +
+          `\n\nKeep this somewhere safe. It is single-use.\n` +
+          `If you lose it, contact your platform admin to reset MFA.\n`,
       ],
       { type: "text/plain" }
     );
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `nano-easm-recovery-codes.txt`;
+    a.download = `nano-easm-recovery-key.txt`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -206,26 +207,20 @@ function ForcedEnrollInner() {
 
               <div className="border-t border-white/[0.06] pt-5">
                 <h2 className="text-sm font-semibold mb-2">
-                  2 · Save your recovery codes
+                  2 · Save your recovery key
                 </h2>
                 <p className="text-xs text-amber-300 mb-3">
-                  These are shown <strong>once</strong>. If you lose your
-                  authenticator, they&apos;re the only way to sign in.
+                  Shown <strong>once</strong>. Single-use. If you lose this
+                  AND your authenticator, contact your platform admin to
+                  reset MFA — there is no other recovery path.
                 </p>
-                <div className="grid grid-cols-2 gap-2 font-mono text-xs">
-                  {enrolment.recoveryCodes.map((c) => (
-                    <div
-                      key={c}
-                      className="px-2.5 py-1.5 rounded bg-white/[0.04] border border-white/[0.08] text-white/70 select-all text-center"
-                    >
-                      {c}
-                    </div>
-                  ))}
+                <div className="px-3 py-2.5 rounded bg-white/[0.04] border border-white/[0.08] font-mono text-sm text-white/80 select-all text-center break-all">
+                  {enrolment.recoveryKey}
                 </div>
                 <div className="mt-3 flex gap-2">
                   <button
                     type="button"
-                    onClick={copyCodes}
+                    onClick={copyKey}
                     className="flex-1 h-9 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-xs text-white/70 transition-all flex items-center justify-center gap-1.5"
                   >
                     {copied ? (
@@ -234,13 +229,13 @@ function ForcedEnrollInner() {
                       </>
                     ) : (
                       <>
-                        <Copy className="w-3 h-3" /> Copy codes
+                        <Copy className="w-3 h-3" /> Copy key
                       </>
                     )}
                   </button>
                   <button
                     type="button"
-                    onClick={downloadCodes}
+                    onClick={downloadKey}
                     className="flex-1 h-9 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-xs text-white/70 transition-all flex items-center justify-center gap-1.5"
                   >
                     <Download className="w-3 h-3" /> Download
@@ -254,7 +249,7 @@ function ForcedEnrollInner() {
                     onChange={(e) => setAcknowledgedCodes(e.target.checked)}
                   />
                   <span>
-                    I&apos;ve saved my recovery codes somewhere safe.
+                    I&apos;ve saved my recovery key somewhere safe.
                   </span>
                 </label>
               </div>

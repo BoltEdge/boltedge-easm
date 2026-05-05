@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   getAdminUserDetail, suspendAdminUser, deleteAdminUser, sendAdminPasswordReset,
   impersonateAdminUser, adminForceVerifyEmail, adminResendVerification,
-  sendAdminUserEmail, createAdminUserRequest,
+  sendAdminUserEmail, createAdminUserRequest, resetAdminUserMfa,
   type AdminUserDetail,
 } from "../../../../lib/api";
 import { startImpersonation } from "../../../../lib/auth";
@@ -13,7 +13,7 @@ import {
   ArrowLeft, ShieldAlert, ShieldOff, ShieldCheck, Trash2, KeyRound,
   Copy, Check, X, UserCog, Mail, MailCheck, MailWarning, ExternalLink,
   Send, MessageSquarePlus, Loader2, Building2, Calendar, Globe,
-  Briefcase, Clock, AlertCircle, ScrollText, MessageSquare,
+  Briefcase, Clock, AlertCircle, ScrollText, MessageSquare, Lock, Unlock,
 } from "lucide-react";
 
 const PLAN_COLORS: Record<string, string> = {
@@ -77,6 +77,7 @@ export default function AdminUserDetailPage() {
   const [resetModal, setResetModal] = useState<{ link?: string; emailSent?: boolean; busy: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
   const [emailModal, setEmailModal] = useState<{ subject: string; body: string; busy: boolean } | null>(null);
+  const [mfaResetConfirmOpen, setMfaResetConfirmOpen] = useState(false);
   const [requestModal, setRequestModal] = useState<{
     requestType: "general" | "trial" | "demo";
     subject: string;
@@ -167,6 +168,25 @@ export default function AdminUserDetailPage() {
     } catch (e: any) {
       setBanner({ kind: "err", text: e?.message || "Failed to generate reset link" });
       setResetModal(null);
+    }
+  }
+
+  async function handleResetMfa() {
+    if (!user) return;
+    setActionBusy("reset_mfa");
+    try {
+      const res = await resetAdminUserMfa(user.id);
+      setBanner({
+        kind: "ok",
+        text: res.message || `MFA reset for ${user.email}.`,
+      });
+      setMfaResetConfirmOpen(false);
+      load();
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || "Failed to reset MFA" });
+      setMfaResetConfirmOpen(false);
+    } finally {
+      setActionBusy(null);
     }
   }
 
@@ -293,6 +313,11 @@ export default function AdminUserDetailPage() {
                   <ShieldAlert className="w-3 h-3" /> Superadmin
                 </span>
               )}
+              {user.mfaEnabled && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded px-1.5 py-0.5">
+                  <Lock className="w-3 h-3" /> MFA
+                </span>
+              )}
               {user.isSuspended && (
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-red-400 bg-red-500/10 border border-red-500/20 rounded px-1.5 py-0.5">
                   Suspended
@@ -400,7 +425,44 @@ export default function AdminUserDetailPage() {
                 value={user.welcomeEmailSentAt ? "Sent" : "Not yet sent"}
                 hint={user.welcomeEmailSentAt ? relativeTime(user.welcomeEmailSentAt) : undefined}
               />
+
+              <div className="flex items-start gap-2">
+                {user.mfaEnabled ? (
+                  <Lock className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
+                ) : (
+                  <Unlock className="w-3.5 h-3.5 text-white/30 mt-0.5 shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className={user.mfaEnabled ? "text-emerald-300" : "text-white/50"}>
+                    {user.mfaEnabled ? "MFA enabled" : "MFA not enabled"}
+                  </div>
+                  <div className="text-[11px] text-white/40">
+                    {user.mfaEnabled && user.mfaEnrolledAt
+                      ? `Enrolled ${relativeTime(user.mfaEnrolledAt)}`
+                      : user.mfaEnabled
+                      ? "Enrolled — date unknown"
+                      : "User has not set up two-factor authentication"}
+                  </div>
+                </div>
+              </div>
             </div>
+
+            {user.mfaEnabled && (
+              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/[0.06]">
+                <button
+                  onClick={() => setMfaResetConfirmOpen(true)}
+                  disabled={actionBusy === "reset_mfa"}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-colors disabled:opacity-40"
+                >
+                  {actionBusy === "reset_mfa" ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Unlock className="w-3 h-3" />
+                  )}
+                  Reset MFA
+                </button>
+              </div>
+            )}
 
             {!user.emailVerified && (
               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/[0.06]">
@@ -591,6 +653,39 @@ export default function AdminUserDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Reset MFA confirm */}
+      {mfaResetConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#0d1424] border border-white/[0.08] rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h2 className="text-base font-semibold text-white mb-2">Reset MFA for this user?</h2>
+            <p className="text-sm text-white/50 mb-1">
+              <span className="text-white font-medium">{user.email}</span> will lose
+              their authenticator and recovery key. They will need to re-enrol on next login.
+            </p>
+            <p className="text-xs text-amber-400/80 mb-5">
+              Confirm the user&apos;s identity through a separate channel before doing this.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setMfaResetConfirmOpen(false)}
+                disabled={actionBusy === "reset_mfa"}
+                className="px-4 py-2 text-sm text-white/50 hover:text-white transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetMfa}
+                disabled={actionBusy === "reset_mfa"}
+                className="px-4 py-2 text-sm bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-lg hover:bg-amber-500/20 transition-colors disabled:opacity-40 flex items-center gap-2"
+              >
+                {actionBusy === "reset_mfa" && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {actionBusy === "reset_mfa" ? "Resetting…" : "Reset MFA"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete confirm */}
       {confirmDelete && (

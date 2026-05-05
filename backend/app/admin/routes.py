@@ -565,6 +565,11 @@ def list_users():
                 u.email_verification_sent_at.isoformat() + "Z"
                 if u.email_verification_sent_at else None
             ),
+            "mfaEnabled": bool(u.mfa_enabled),
+            "mfaEnrolledAt": (
+                u.mfa_enrolled_at.isoformat() + "Z"
+                if u.mfa_enrolled_at else None
+            ),
             "oauthProvider": u.oauth_provider,
             "createdAt": u.created_at.isoformat() + "Z" if u.created_at else None,
             "organization": {
@@ -703,6 +708,11 @@ def get_user_detail(user_id: int):
             user.welcome_email_sent_at.isoformat() + "Z"
             if user.welcome_email_sent_at else None
         ),
+        "mfaEnabled": bool(user.mfa_enabled),
+        "mfaEnrolledAt": (
+            user.mfa_enrolled_at.isoformat() + "Z"
+            if user.mfa_enrolled_at else None
+        ),
         "oauthProvider": user.oauth_provider,
         "createdAt": user.created_at.isoformat() + "Z" if user.created_at else None,
         "updatedAt": user.updated_at.isoformat() + "Z" if user.updated_at else None,
@@ -773,6 +783,54 @@ def send_password_reset(user_id: int):
         link=reset_link,
         emailSent=email_sent,
         message=f"Reset link generated{'and emailed' if email_sent else ''}.",
+    ), 200
+
+
+@admin_bp.post("/users/<int:user_id>/reset-mfa")
+@require_superadmin
+def admin_reset_mfa(user_id: int):
+    """
+    Disable MFA for a user. Used when the user has lost both their
+    authenticator app and their recovery key — the only escape hatch.
+
+    Clears mfa_enabled, the encrypted secret, and any UserRecoveryCode
+    rows. The user is treated as never-enrolled afterwards. If their
+    role still requires MFA (Owner/Admin/superadmin), they will be
+    routed through the forced-enrolment flow on next login.
+    """
+    from app.models import UserRecoveryCode
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify(error="not found"), 404
+
+    if not user.mfa_enabled and not user.mfa_secret_ciphertext:
+        return jsonify(
+            message="MFA is not enabled for this user.",
+            mfaEnabled=False,
+        ), 200
+
+    user.mfa_enabled = False
+    user.mfa_secret_ciphertext = None
+    user.mfa_enrolled_at = None
+    UserRecoveryCode.query.filter_by(user_id=user.id).delete()
+
+    log_audit(
+        organization_id=None,
+        user_id=g.current_user.id,
+        action="admin.mfa_reset",
+        category="admin",
+        target_type="user",
+        target_id=str(user.id),
+        target_label=user.email,
+        description=f"Admin reset MFA for {user.email}",
+        metadata={"changed_by": g.current_user.email},
+    )
+    db.session.commit()
+
+    return jsonify(
+        message=f"MFA reset for {user.email}. The user can re-enrol on next login.",
+        mfaEnabled=False,
     ), 200
 
 

@@ -20,7 +20,7 @@ import {
   confirmMfaEnroll,
   disableMfa,
   getMfaStatus,
-  regenerateMfaRecoveryCodes,
+  regenerateMfaRecoveryKey,
   startMfaEnroll,
   type MfaEnrollResponse,
   type MfaStatusResponse,
@@ -61,7 +61,7 @@ export default function SecurityPage() {
   const [regenPassword, setRegenPassword] = useState("");
   const [regenCode, setRegenCode] = useState("");
   const [regenerating, setRegenerating] = useState(false);
-  const [regenCodes, setRegenCodes] = useState<string[] | null>(null);
+  const [regenKey, setRegenKey] = useState<string | null>(null);
   const [showRegen, setShowRegen] = useState(false);
 
   const [copied, setCopied] = useState(false);
@@ -145,17 +145,17 @@ export default function SecurityPage() {
     try {
       setRegenerating(true);
       setError(null);
-      const res = await regenerateMfaRecoveryCodes({
+      const res = await regenerateMfaRecoveryKey({
         password: regenPassword || undefined,
         code: regenCode || undefined,
       });
-      setRegenCodes(res.recoveryCodes);
+      setRegenKey(res.recoveryKey);
       setRegenPassword("");
       setRegenCode("");
       setShowRegen(false);
       await refresh();
     } catch (e: any) {
-      setError(e?.message || "Could not regenerate codes");
+      setError(e?.message || "Could not regenerate recovery key");
     } finally {
       setRegenerating(false);
     }
@@ -172,20 +172,21 @@ export default function SecurityPage() {
   }
 
   function downloadRegen() {
-    if (!regenCodes) return;
+    if (!regenKey) return;
     const blob = new Blob(
       [
-        `Nano EASM — recovery codes\n` +
+        `Nano EASM — recovery key\n` +
           `Generated ${new Date().toISOString()}\n\n` +
-          regenCodes.join("\n") +
-          `\n\nKeep these somewhere safe. Each one works once.\n`,
+          regenKey +
+          `\n\nKeep this somewhere safe. It is single-use.\n` +
+          `If you lose it, contact your platform admin to reset MFA.\n`,
       ],
       { type: "text/plain" }
     );
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `nano-easm-recovery-codes.txt`;
+    a.download = `nano-easm-recovery-key.txt`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -241,10 +242,10 @@ export default function SecurityPage() {
             <p className="mt-1 text-sm text-white/50">
               {status?.mfaEnabled
                 ? `Enabled since ${formatDate(status.enrolledAt)} · ${
-                    status.recoveryCodesRemaining
-                  } recovery code${
-                    status.recoveryCodesRemaining === 1 ? "" : "s"
-                  } remaining`
+                    status.recoveryKeyAvailable
+                      ? "recovery key set"
+                      : "no recovery key — regenerate one"
+                  }`
                 : "Add a second step to your sign-in using an authenticator app."}
             </p>
           </div>
@@ -307,25 +308,20 @@ export default function SecurityPage() {
 
           <div className="border-t border-white/[0.06] pt-5">
             <h3 className="text-sm font-semibold mb-2">
-              2 · Save your recovery codes
+              2 · Save your recovery key
             </h3>
             <p className="text-xs text-amber-300 mb-3">
-              These are shown <strong>once</strong>. Save them somewhere safe.
+              Shown <strong>once</strong>. It is single-use — if you lose it
+              and your authenticator, contact your platform admin to reset
+              MFA.
             </p>
-            <div className="grid grid-cols-2 gap-2 font-mono text-xs">
-              {enrolment.recoveryCodes.map((c) => (
-                <div
-                  key={c}
-                  className="px-2.5 py-1.5 rounded bg-white/[0.04] border border-white/[0.08] text-white/70 select-all text-center"
-                >
-                  {c}
-                </div>
-              ))}
+            <div className="px-3 py-2.5 rounded bg-white/[0.04] border border-white/[0.08] font-mono text-sm text-white/80 select-all text-center break-all">
+              {enrolment.recoveryKey}
             </div>
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
-                onClick={() => copy(enrolment.recoveryCodes.join("\n"))}
+                onClick={() => copy(enrolment.recoveryKey)}
                 className="flex-1 h-9 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-xs text-white/70 transition-all flex items-center justify-center gap-1.5"
               >
                 {copied ? (
@@ -334,7 +330,7 @@ export default function SecurityPage() {
                   </>
                 ) : (
                   <>
-                    <Copy className="w-3 h-3" /> Copy codes
+                    <Copy className="w-3 h-3" /> Copy key
                   </>
                 )}
               </button>
@@ -346,7 +342,7 @@ export default function SecurityPage() {
                 checked={acknowledged}
                 onChange={(e) => setAcknowledged(e.target.checked)}
               />
-              <span>I&apos;ve saved my recovery codes somewhere safe.</span>
+              <span>I&apos;ve saved my recovery key somewhere safe.</span>
             </label>
           </div>
 
@@ -397,17 +393,17 @@ export default function SecurityPage() {
               <div>
                 <h3 className="text-sm font-semibold flex items-center gap-2">
                   <RefreshCcw className="w-4 h-4 text-white/60" />
-                  Regenerate recovery codes
+                  Regenerate recovery key
                 </h3>
                 <p className="mt-1 text-xs text-white/50">
-                  Invalidates your current codes and creates 10 new ones.
+                  Invalidates your current key and creates a new one.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => {
                   setShowRegen((v) => !v);
-                  setRegenCodes(null);
+                  setRegenKey(null);
                 }}
                 className="h-9 px-3 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-xs font-medium text-white/70 transition-all shrink-0"
               >
@@ -457,31 +453,24 @@ export default function SecurityPage() {
                       Generating…
                     </>
                   ) : (
-                    "Generate new codes"
+                    "Generate new key"
                   )}
                 </button>
               </form>
             )}
 
-            {regenCodes && (
+            {regenKey && (
               <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-4">
                 <p className="text-xs text-amber-300 mb-3 font-semibold">
-                  New recovery codes — shown once. Save them now.
+                  New recovery key — shown once. Save it now.
                 </p>
-                <div className="grid grid-cols-2 gap-2 font-mono text-xs">
-                  {regenCodes.map((c) => (
-                    <div
-                      key={c}
-                      className="px-2.5 py-1.5 rounded bg-white/[0.04] border border-white/[0.08] text-white/70 select-all text-center"
-                    >
-                      {c}
-                    </div>
-                  ))}
+                <div className="px-3 py-2.5 rounded bg-white/[0.04] border border-white/[0.08] font-mono text-sm text-white/80 select-all text-center break-all">
+                  {regenKey}
                 </div>
                 <div className="mt-3 flex gap-2">
                   <button
                     type="button"
-                    onClick={() => copy(regenCodes.join("\n"))}
+                    onClick={() => copy(regenKey)}
                     className="flex-1 h-9 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] text-xs text-white/70 transition-all flex items-center justify-center gap-1.5"
                   >
                     {copied ? (
