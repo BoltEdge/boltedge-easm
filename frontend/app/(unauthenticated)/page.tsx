@@ -259,7 +259,7 @@ export default function UnauthenticatedHomePage() {
             <FadeInOnScroll>
               <div className="text-center mb-10">
                 <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">How it works</span>
-                <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">Four steps to full visibility</h2>
+                <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">Four steps to better external visibility</h2>
               </div>
             </FadeInOnScroll>
 
@@ -306,7 +306,7 @@ export default function UnauthenticatedHomePage() {
                       Start free,<br /><span className="text-white/50">scale when ready</span>
                     </h2>
                     <p className="mt-4 text-base text-white/40 max-w-lg">
-                      Nano EASM is open source. All plan tiers are available at no cost today — upgrade for higher limits as your environment grows.
+                      Start on the Free plan with no payment details required. Upgrade for higher limits as your environment grows.
                     </p>
                     <div className="mt-8 flex flex-col sm:flex-row items-center lg:items-start gap-3">
                       <Link href="/register" className="group inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/30 hover:bg-teal-500 transition-all">
@@ -468,7 +468,15 @@ export default function UnauthenticatedHomePage() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div>
               <Link href="/" className="flex items-center gap-2.5">
-                <svg width="22" height="22" viewBox="0 0 32 32" fill="none" className="shrink-0">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 32 32"
+                  fill="none"
+                  className="shrink-0"
+                  aria-hidden="true"
+                  focusable="false"
+                >
                   <rect width="32" height="32" rx="7" fill="#0a0f1e"/>
                   <path d="M17.5 4L9.5 17H14.5L13 28L21.5 14.5H16L17.5 4Z" fill="#14b8a6"/>
                 </svg>

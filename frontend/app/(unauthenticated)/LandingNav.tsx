@@ -32,7 +32,15 @@ export default function LandingNav() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <svg width="28" height="28" viewBox="0 0 32 32" fill="none" className="shrink-0">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 32 32"
+            fill="none"
+            className="shrink-0"
+            aria-hidden="true"
+            focusable="false"
+          >
             <rect width="32" height="32" rx="7" fill="#0a0f1e" />
             <path d="M17.5 4L9.5 17H14.5L13 28L21.5 14.5H16L17.5 4Z" fill="#14b8a6" />
           </svg>
