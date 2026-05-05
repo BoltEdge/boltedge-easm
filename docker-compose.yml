@@ -37,6 +37,7 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-https://nanoasm.com}
       SHODAN_API_KEY: ${SHODAN_API_KEY}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
+      MFA_SECRET_KEY: ${MFA_SECRET_KEY}
       EMAIL_FROM: ${EMAIL_FROM:-Nano EASM <no-reply@nanoasm.com>}
       MONITOR_EMAIL_FROM: ${MONITOR_EMAIL_FROM:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
