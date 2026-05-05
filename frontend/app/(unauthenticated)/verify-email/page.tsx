@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle2, AlertTriangle, Loader2, ArrowRight } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Loader2, ArrowRight, MailCheck } from "lucide-react";
 
 import { verifyEmail } from "../../lib/api";
 
@@ -16,35 +16,41 @@ function BoltIcon({ size = 28 }: { size?: number }) {
   );
 }
 
+// IMPORTANT: do NOT call verifyEmail() automatically on page load.
+// Corporate email security gateways (Microsoft Safe Links,
+// Mimecast, Proofpoint, Gmail safe-browsing) pre-fetch every link
+// in inbound mail to scan it. If we auto-verified on mount, those
+// crawler GETs would consume the token and mark the user verified
+// before they actually click anything.
+//
+// Requiring an explicit click on the page closes that hole — bots
+// can fetch the HTML all they want, but they can't trigger the
+// POST that does the actual verification.
+
 function VerifyEmailInner() {
   const searchParams = useSearchParams();
   const token = searchParams?.get("token") || "";
 
-  const [state, setState] = useState<"loading" | "ok" | "already" | "error">("loading");
+  const [state, setState] = useState<"idle" | "verifying" | "ok" | "already" | "error">(
+    token ? "idle" : "error",
+  );
   const [email, setEmail] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string>(
+    token ? "" : "This verification link is missing its token.",
+  );
 
-  useEffect(() => {
-    if (!token) {
+  async function handleConfirm() {
+    if (!token || state === "verifying") return;
+    setState("verifying");
+    try {
+      const res = await verifyEmail(token);
+      setEmail(res.email || null);
+      setState(res.alreadyVerified ? "already" : "ok");
+    } catch (err: any) {
+      setErrorMessage(err?.message || "This verification link is invalid or has expired.");
       setState("error");
-      setErrorMessage("This verification link is missing its token.");
-      return;
     }
-
-    let cancelled = false;
-    verifyEmail(token)
-      .then((res) => {
-        if (cancelled) return;
-        setEmail(res.email || null);
-        setState(res.alreadyVerified ? "already" : "ok");
-      })
-      .catch((err: any) => {
-        if (cancelled) return;
-        setErrorMessage(err?.message || "This verification link is invalid or has expired.");
-        setState("error");
-      });
-    return () => { cancelled = true; };
-  }, [token]);
+  }
 
   return (
     <div className="min-h-screen bg-[#060b18] text-white flex items-center justify-center p-6">
@@ -56,7 +62,34 @@ function VerifyEmailInner() {
           </span>
         </Link>
 
-        {state === "loading" && (
+        {state === "idle" && (
+          <div className="space-y-5">
+            <div className="w-12 h-12 rounded-xl bg-teal-500/15 flex items-center justify-center">
+              <MailCheck className="w-7 h-7 text-teal-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Confirm your email</h1>
+              <p className="mt-2 text-sm text-white/50 leading-relaxed">
+                Click the button below to verify this is your email address.
+                {/* The explicit-click step guards against automated link
+                    scanners (Microsoft Safe Links, Mimecast, etc.) that
+                    pre-fetch every URL in inbound mail. */}
+              </p>
+            </div>
+            <button
+              onClick={handleConfirm}
+              className="inline-flex items-center justify-center gap-2 w-full h-11 rounded-lg bg-gradient-to-r from-teal-500 to-cyan-500 text-sm font-semibold text-white shadow-lg shadow-teal-500/20 hover:brightness-110 transition-all"
+            >
+              Verify my email
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <p className="text-xs text-white/30">
+              Didn&apos;t request this? You can safely close this tab — nothing changes until you click above.
+            </p>
+          </div>
+        )}
+
+        {state === "verifying" && (
           <div className="space-y-4">
             <Loader2 className="w-6 h-6 text-teal-400 animate-spin" />
             <h1 className="text-2xl font-bold tracking-tight">Verifying your email…</h1>
