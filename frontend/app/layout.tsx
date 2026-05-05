@@ -1,11 +1,42 @@
 // app/layout.tsx
 import "./globals.css";
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 
-export const metadata = {
-  title: "Nano EASM",
+const SITE_URL = "https://nanoasm.com";
+
+// Root metadata — sets defaults that per-page metadata extends/overrides.
+// metadataBase ensures all relative URLs in metadata (og.url, og.image,
+// canonical, etc.) resolve against the production domain even when
+// rendered via SSR or Edge.
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Nano EASM — External Attack Surface Management",
+    template: "%s | Nano EASM",
+  },
   description:
-    "External Attack Surface Management by Nano EASM. Discover assets, scan for vulnerabilities, and monitor your exposure.",
+    "Discover external assets, scan for risk, monitor exposure changes, and turn findings into clear remediation steps with Nano EASM.",
+  applicationName: "Nano EASM",
+  generator: "Next.js",
+  keywords: [
+    "external attack surface management",
+    "EASM",
+    "attack surface management",
+    "asset discovery",
+    "vulnerability scanning",
+    "exposure management",
+    "subdomain enumeration",
+    "shadow IT",
+    "MSSP",
+    "Nano EASM",
+  ],
+  authors: [{ name: "Nano EASM" }],
+  creator: "Nano EASM",
+  publisher: "Nano EASM",
+  alternates: {
+    canonical: "/",
+  },
   icons: {
     icon: [
       { url: "/favicon.png", sizes: "32x32", type: "image/png" },
@@ -13,18 +44,38 @@ export const metadata = {
     ],
     apple: "/favicon-64.png",
   },
+  // OG / Twitter images are auto-injected from app/opengraph-image.tsx
   openGraph: {
-    title: "Nano EASM",
-    description:
-      "External Attack Surface Management — discover, scan, and continuously monitor your attack surface.",
-    siteName: "Nano EASM",
     type: "website",
+    siteName: "Nano EASM",
+    title: "Nano EASM — External Attack Surface Management",
+    description:
+      "Discover external assets, scan for risk, monitor exposure changes, and turn findings into clear remediation steps.",
+    url: SITE_URL,
+    locale: "en_AU",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Nano EASM — External Attack Surface Management",
+    description:
+      "Discover external assets, scan for risk, monitor exposure changes, and turn findings into clear remediation steps.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en-AU">
       <body className="bg-background text-foreground antialiased">
         {children}
       </body>

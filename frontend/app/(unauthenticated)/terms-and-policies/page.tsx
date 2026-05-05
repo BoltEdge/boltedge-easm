@@ -1,15 +1,35 @@
 // FILE: app/(unauthenticated)/terms-and-policies/page.tsx
 // Index page listing all eight legal documents.
 
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, FileText, ShieldAlert, Lock, RefreshCcw, ScanLine, Scale, CreditCard, Database } from "lucide-react";
 import LandingNav from "../LandingNav";
 
+const SITE_URL = "https://nanoasm.com";
+
 export const dynamic = "force-static";
 
-export const metadata = {
-  title: "Terms & Policies — Nano EASM",
-  description: "Terms, policies, and agreements that govern your use of Nano EASM.",
+export const metadata: Metadata = {
+  title: "Terms and Policies",
+  description:
+    "Review Nano EASM terms, privacy, acceptable use, authorised scanning, subscription, refund, liability, and data handling policies.",
+  alternates: { canonical: "/terms-and-policies" },
+  openGraph: {
+    title: "Nano EASM Terms and Policies",
+    description:
+      "Review Nano EASM terms, privacy, acceptable use, authorised scanning, subscription, refund, liability, and data handling policies.",
+    url: `${SITE_URL}/terms-and-policies`,
+    type: "article",
+    siteName: "Nano EASM",
+    locale: "en_AU",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Nano EASM Terms and Policies",
+    description:
+      "Terms, privacy, acceptable use, authorised scanning, subscription, refund, liability, and data handling.",
+  },
 };
 
 const DOCS = [

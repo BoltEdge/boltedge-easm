@@ -1,15 +1,34 @@
 // FILE: app/(unauthenticated)/api-docs/page.tsx
 // Public API reference for Nano EASM. Linked from sidebar (authenticated)
 // and reachable directly at /api-docs.
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Key, ArrowUpRight } from "lucide-react";
 import LandingNav from "../LandingNav";
 import { CodeBlock } from "./CodeBlock";
 
-export const metadata = {
-  title: "API Reference — Nano EASM",
+const SITE_URL = "https://nanoasm.com";
+
+export const metadata: Metadata = {
+  title: "API Docs — Automate Asset Discovery, Scans, and Findings",
   description:
-    "REST API reference for Nano EASM. Authenticate with an API key and integrate assets, scans, findings, discovery, monitoring, and reports.",
+    "Use the Nano EASM REST API to manage assets, run scans, retrieve findings, monitor exposure, and integrate with security workflows.",
+  alternates: { canonical: "/api-docs" },
+  openGraph: {
+    title: "Nano EASM API Docs — Automate Asset Discovery, Scans, and Findings",
+    description:
+      "Use the Nano EASM REST API to manage assets, run scans, retrieve findings, monitor exposure, and integrate with security workflows.",
+    url: `${SITE_URL}/api-docs`,
+    type: "article",
+    siteName: "Nano EASM",
+    locale: "en_AU",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Nano EASM API Docs",
+    description:
+      "REST API reference: assets, scans, findings, discovery, monitoring, and reports.",
+  },
 };
 
 // ────────────────────────────────────────────────────────────

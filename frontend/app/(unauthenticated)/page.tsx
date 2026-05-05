@@ -1,8 +1,34 @@
 // app/(unauthenticated)/page.tsx
 // F4: Landing page — animated, accurate pricing & features
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { BILLING_ENABLED } from "../lib/billing-config";
+import JsonLd from "./JsonLd";
+
+const SITE_URL = "https://nanoasm.com";
+
+export const metadata: Metadata = {
+  title: "External Attack Surface Management",
+  description:
+    "Discover external assets, scan for risk, monitor exposure changes, and turn findings into clear remediation steps with Nano EASM.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "Nano EASM — External Attack Surface Management",
+    description:
+      "Discover external assets, scan for risk, monitor exposure changes, and turn findings into clear remediation steps with Nano EASM.",
+    url: SITE_URL,
+    type: "website",
+    siteName: "Nano EASM",
+    locale: "en_AU",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Nano EASM — External Attack Surface Management",
+    description:
+      "Discover external assets, scan for risk, monitor exposure changes, and prioritise what matters.",
+  },
+};
 import {
   BarChart3, Zap, Globe2, Bell,
   TrendingUp, FileText, ArrowRight,
@@ -21,9 +47,53 @@ import {
   HeroStagger, HeroItem, HeroDashboard, HeroFadeIn,
 } from "./Animatedhero";
 
+const ORGANIZATION_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Nano EASM",
+  url: SITE_URL,
+  logo: `${SITE_URL}/logo-on-dark.svg`,
+  description:
+    "Nano EASM is an External Attack Surface Management platform that helps IT teams and MSSPs uncover exposed assets, monitor exposure changes, and prioritise remediation.",
+  sameAs: [],
+  contactPoint: [
+    {
+      "@type": "ContactPoint",
+      email: "support@nanoasm.com",
+      contactType: "customer support",
+      availableLanguage: ["English"],
+    },
+  ],
+};
+
+const SOFTWARE_APPLICATION_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Nano EASM",
+  applicationCategory: "SecurityApplication",
+  operatingSystem: "Web",
+  url: SITE_URL,
+  description:
+    "External Attack Surface Management — discover external assets, scan for risk, monitor exposure changes, and turn findings into clear remediation steps.",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "AUD",
+    availability: "https://schema.org/InStock",
+    url: `${SITE_URL}/register`,
+    description: "Free plan available; paid tiers from A$29/month.",
+  },
+  publisher: {
+    "@type": "Organization",
+    name: "Nano EASM",
+    url: SITE_URL,
+  },
+};
+
 export default function UnauthenticatedHomePage() {
   return (
     <div className="min-h-screen bg-[#060b18] text-white overflow-x-hidden">
+      <JsonLd data={[ORGANIZATION_JSONLD, SOFTWARE_APPLICATION_JSONLD]} />
 
       {/* ================= TOP NAV ================= */}
       <LandingNav />

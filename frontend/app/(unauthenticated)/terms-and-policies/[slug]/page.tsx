@@ -8,6 +8,7 @@
 // duplicated into frontend/content/legal/ so it's inside the Docker
 // build context.
 
+import type { Metadata } from "next";
 import fs from "fs";
 import path from "path";
 import Link from "next/link";
@@ -16,6 +17,9 @@ import { ArrowLeft } from "lucide-react";
 import { marked } from "marked";
 
 import LandingNav from "../../LandingNav";
+import JsonLd from "../../JsonLd";
+
+const SITE_URL = "https://nanoasm.com";
 
 export const dynamic = "force-static";
 
@@ -34,13 +38,30 @@ export function generateStaticParams() {
   return Object.keys(DOCS).map((slug) => ({ slug }));
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+export async function generateMetadata(
+  { params }: { params: Promise<{ slug: string }> },
+): Promise<Metadata> {
   const { slug } = await params;
   const meta = DOCS[slug];
   if (!meta) return {};
+  const url = `${SITE_URL}/terms-and-policies/${slug}`;
   return {
-    title: `${meta.title} — Nano EASM`,
-    description: `${meta.title} for the Nano EASM platform.`,
+    title: meta.title,
+    description: `${meta.title} — part of the Nano EASM Terms and Policies. Review your rights, obligations, and how Nano EASM handles your data and your scans.`,
+    alternates: { canonical: `/terms-and-policies/${slug}` },
+    openGraph: {
+      title: `${meta.title} | Nano EASM`,
+      description: `${meta.title} — part of the Nano EASM Terms and Policies.`,
+      url,
+      type: "article",
+      siteName: "Nano EASM",
+      locale: "en_AU",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${meta.title} | Nano EASM`,
+      description: `${meta.title} — part of the Nano EASM Terms and Policies.`,
+    },
   };
 }
 
@@ -76,8 +97,34 @@ export default async function LegalDocPage({ params }: { params: Promise<{ slug:
   marked.setOptions({ gfm: true, breaks: false });
   const html = await marked.parse(linksFixed);
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: `${SITE_URL}/`,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Terms and Policies",
+        item: `${SITE_URL}/terms-and-policies`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: meta.title,
+        item: `${SITE_URL}/terms-and-policies/${slug}`,
+      },
+    ],
+  };
+
   return (
     <>
+      <JsonLd data={breadcrumbJsonLd} />
       <LandingNav />
 
       <main className="pt-24 pb-20">
