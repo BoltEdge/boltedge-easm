@@ -35,6 +35,14 @@ class User(db.Model):
     country = db.Column(db.String(100), nullable=True)
 
     is_superadmin = db.Column(db.Boolean, nullable=False, default=False)
+    # Root admin is a tier above superadmin. Implies is_superadmin (every
+    # root admin is also a superadmin). Granted only via the Flask CLI
+    # — same security model as is_superadmin. Protected from being
+    # deleted, suspended, demoted, or impersonated by non-root users.
+    is_root_admin = db.Column(
+        db.Boolean, nullable=False,
+        default=False, server_default=db.text("false"),
+    )
     is_suspended = db.Column(db.Boolean, nullable=False, default=False)
 
     # Email verification gate. New users registered via email/password start

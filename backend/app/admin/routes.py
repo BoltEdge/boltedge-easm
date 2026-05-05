@@ -46,6 +46,62 @@ def _now_utc() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+def _block_if_protected_root(target_user: User):
+    """
+    Return a (response, status) tuple if the action targets a root
+    admin. Returns None if the action is allowed.
+
+    Root admins are protected from ALL admin endpoints — no admin
+    (including other root admins) can act on them via the UI/API.
+    Demotion / suspension / deletion of a root admin requires SSH
+    access to the host and a CLI command. This is intentional: it
+    makes a compromised admin account unable to lock out the founding
+    operator.
+
+    Use at the top of every admin endpoint that mutates a user
+    (delete, suspend, impersonate, reset-password, reset-mfa, etc.).
+    """
+    if not target_user.is_root_admin:
+        return None
+    return jsonify(
+        error=(
+            "This account is a root admin and is protected from this action. "
+            "Use the Flask CLI (`flask revoke-root-admin <email>`) on the host "
+            "if demotion is required."
+        ),
+        code="ROOT_ADMIN_PROTECTED",
+    ), 403
+
+
+def _block_if_admin_target(target_user: User):
+    """
+    Return a (response, status) tuple if the actor cannot act on
+    `target_user` because the target is a superadmin. Root admins
+    bypass this check so they can demote / suspend / delete a regular
+    superadmin (the whole point of the two-tier model).
+
+    Combined with `_block_if_protected_root`, the matrix for who can
+    act on whom via UI is:
+
+        actor \\ target   regular   superadmin   root admin
+        regular admin     allowed   blocked      blocked
+        superadmin        allowed   blocked      blocked
+        root admin        allowed   allowed      blocked (CLI only)
+
+    Note that "regular admin" doesn't exist today — every admin is at
+    least a superadmin. The matrix shows the design intent.
+    """
+    if not target_user.is_superadmin:
+        return None
+    actor = g.current_user
+    if actor and actor.is_root_admin:
+        return None
+    return jsonify(
+        error="Only a root admin can perform this action on another admin account.",
+        code="ROOT_ADMIN_REQUIRED",
+    ), 403
+
+
 def _org_row(org: Organization, asset_count: int | None = None) -> dict:
     """Serialise an org to a lightweight row for the list view.
 
@@ -559,6 +615,7 @@ def list_users():
             "email": u.email,
             "name": u.name,
             "isSuperadmin": bool(u.is_superadmin),
+            "isRootAdmin": bool(u.is_root_admin),
             "isSuspended": bool(u.is_suspended),
             "emailVerified": bool(u.email_verified),
             "emailVerificationSentAt": (
@@ -698,6 +755,7 @@ def get_user_detail(user_id: int):
         "country": user.country,
         "avatarUrl": user.avatar_url,
         "isSuperadmin": bool(user.is_superadmin),
+        "isRootAdmin": bool(user.is_root_admin),
         "isSuspended": bool(user.is_suspended),
         "emailVerified": bool(user.email_verified),
         "emailVerificationSentAt": (
@@ -729,6 +787,9 @@ def send_password_reset(user_id: int):
     user = User.query.get(user_id)
     if not user:
         return jsonify(error="not found"), 404
+    blocked = _block_if_protected_root(user)
+    if blocked is not None:
+        return blocked
 
     from app.auth.tokens import create_password_reset_token
     import os
@@ -803,6 +864,9 @@ def admin_reset_mfa(user_id: int):
     user = User.query.get(user_id)
     if not user:
         return jsonify(error="not found"), 404
+    blocked = _block_if_protected_root(user)
+    if blocked is not None:
+        return blocked
 
     if not user.mfa_enabled and not user.mfa_secret_ciphertext:
         return jsonify(
@@ -934,8 +998,12 @@ def toggle_user_suspend(user_id: int):
     if not user:
         return jsonify(error="not found"), 404
 
-    if user.is_superadmin:
-        return jsonify(error="Cannot suspend another superadmin account."), 400
+    blocked = _block_if_protected_root(user)
+    if blocked is not None:
+        return blocked
+    blocked = _block_if_admin_target(user)
+    if blocked is not None:
+        return blocked
 
     user.is_suspended = not user.is_suspended
     action_label = "suspended" if user.is_suspended else "unsuspended"
@@ -970,8 +1038,14 @@ def impersonate_user(user_id: int):
     if not user:
         return jsonify(error="not found"), 404
 
+    # Impersonation is intentionally blocked on ALL admin accounts,
+    # including by root admins. Use reset-password / reset-mfa instead
+    # if you need to debug an admin's account.
     if user.is_superadmin:
-        return jsonify(error="Cannot impersonate another superadmin."), 400
+        return jsonify(
+            error="Cannot impersonate another admin account.",
+            code="ADMIN_IMPERSONATE_BLOCKED",
+        ), 400
 
     from app.auth.tokens import create_access_token
 
@@ -1024,8 +1098,12 @@ def delete_user(user_id: int):
     if not user:
         return jsonify(error="not found"), 404
 
-    if user.is_superadmin:
-        return jsonify(error="Cannot delete another superadmin account."), 400
+    blocked = _block_if_protected_root(user)
+    if blocked is not None:
+        return blocked
+    blocked = _block_if_admin_target(user)
+    if blocked is not None:
+        return blocked
 
     user_email = user.email
 

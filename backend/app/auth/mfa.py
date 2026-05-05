@@ -364,6 +364,7 @@ def verify():
             "email": user.email,
             "name": user.name,
             "isSuperadmin": bool(user.is_superadmin),
+            "isRootAdmin": bool(user.is_root_admin),
         },
         "viaRecoveryKey": is_recovery,
     }
@@ -605,6 +606,7 @@ def forced_enroll_confirm():
             "email": user.email,
             "name": user.name,
             "isSuperadmin": bool(user.is_superadmin),
+            "isRootAdmin": bool(user.is_root_admin),
         },
     }
     if membership:

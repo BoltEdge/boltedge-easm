@@ -8,12 +8,13 @@ import {
   sendAdminUserEmail, createAdminUserRequest, resetAdminUserMfa,
   type AdminUserDetail,
 } from "../../../../lib/api";
-import { startImpersonation } from "../../../../lib/auth";
+import { startImpersonation, getIsRootAdmin } from "../../../../lib/auth";
 import {
   ArrowLeft, ShieldAlert, ShieldOff, ShieldCheck, Trash2, KeyRound,
   Copy, Check, X, UserCog, Mail, MailCheck, MailWarning, ExternalLink,
   Send, MessageSquarePlus, Loader2, Building2, Calendar, Globe,
   Briefcase, Clock, AlertCircle, ScrollText, MessageSquare, Lock, Unlock,
+  Crown,
 } from "lucide-react";
 
 const PLAN_COLORS: Record<string, string> = {
@@ -308,7 +309,12 @@ export default function AdminUserDetailPage() {
               <h1 className="text-xl font-semibold text-white truncate">
                 {user.name || user.email}
               </h1>
-              {user.isSuperadmin && (
+              {user.isRootAdmin && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5">
+                  <Crown className="w-3 h-3" /> Root admin
+                </span>
+              )}
+              {user.isSuperadmin && !user.isRootAdmin && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-teal-400 bg-teal-500/10 border border-teal-500/20 rounded px-1.5 py-0.5">
                   <ShieldAlert className="w-3 h-3" /> Superadmin
                 </span>
@@ -346,7 +352,7 @@ export default function AdminUserDetailPage() {
             <button
               onClick={handleImpersonate}
               disabled={user.isSuperadmin || actionBusy === "impersonate"}
-              title={user.isSuperadmin ? "Cannot impersonate a superadmin" : "Impersonate user"}
+              title={user.isSuperadmin ? "Cannot impersonate an admin account" : "Impersonate user"}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-purple-300 bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {actionBusy === "impersonate" ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCog className="w-3 h-3" />}
@@ -354,7 +360,9 @@ export default function AdminUserDetailPage() {
             </button>
             <button
               onClick={handleResetPassword}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-white/60 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:text-white transition-colors"
+              disabled={user.isRootAdmin}
+              title={user.isRootAdmin ? "Root admins can only be modified via the CLI" : ""}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-white/60 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <KeyRound className="w-3 h-3" /> Reset password
             </button>
@@ -451,8 +459,9 @@ export default function AdminUserDetailPage() {
               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/[0.06]">
                 <button
                   onClick={() => setMfaResetConfirmOpen(true)}
-                  disabled={actionBusy === "reset_mfa"}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-colors disabled:opacity-40"
+                  disabled={user.isRootAdmin || actionBusy === "reset_mfa"}
+                  title={user.isRootAdmin ? "Root admins can only be modified via the CLI" : undefined}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {actionBusy === "reset_mfa" ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -492,8 +501,14 @@ export default function AdminUserDetailPage() {
             <div className="space-y-2">
               <button
                 onClick={handleSuspend}
-                disabled={user.isSuperadmin || actionBusy === "suspend"}
-                title={user.isSuperadmin ? "Cannot suspend a superadmin" : ""}
+                disabled={user.isRootAdmin || (user.isSuperadmin && !getIsRootAdmin()) || actionBusy === "suspend"}
+                title={
+                  user.isRootAdmin
+                    ? "Root admins can only be modified via the CLI"
+                    : user.isSuperadmin && !getIsRootAdmin()
+                    ? "Only a root admin can suspend an admin account"
+                    : ""
+                }
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
                   user.isSuspended
                     ? "text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20"
@@ -505,8 +520,14 @@ export default function AdminUserDetailPage() {
               </button>
               <button
                 onClick={() => setConfirmDelete(true)}
-                disabled={user.isSuperadmin}
-                title={user.isSuperadmin ? "Cannot delete a superadmin" : ""}
+                disabled={user.isRootAdmin || (user.isSuperadmin && !getIsRootAdmin())}
+                title={
+                  user.isRootAdmin
+                    ? "Root admins can only be modified via the CLI"
+                    : user.isSuperadmin && !getIsRootAdmin()
+                    ? "Only a root admin can delete an admin account"
+                    : ""
+                }
                 className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Delete user…

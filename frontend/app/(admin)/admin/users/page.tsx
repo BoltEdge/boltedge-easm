@@ -8,11 +8,11 @@ import {
   resetAdminUserMfa,
   type BulkUserAction, type BulkUserActionResponse,
 } from "../../../lib/api";
-import { startImpersonation } from "../../../lib/auth";
+import { startImpersonation, getIsRootAdmin } from "../../../lib/auth";
 import {
   Search, ChevronLeft, ChevronRight, ShieldAlert, ShieldOff, ShieldCheck,
   Trash2, KeyRound, Copy, Check, X, UserCog, Mail, MailCheck, MailWarning,
-  ExternalLink, Send, MessageSquarePlus, Loader2, Lock, Unlock,
+  ExternalLink, Send, MessageSquarePlus, Loader2, Lock, Unlock, Crown,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -33,6 +33,7 @@ export default function AdminUsers() {
   const searchParams = useSearchParams();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const isMeRoot = getIsRootAdmin();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [suspendedFilter, setSuspendedFilter] = useState<"" | "true" | "false">("");
@@ -557,7 +558,12 @@ export default function AdminUsers() {
                       >
                         {u.name || u.email}
                       </Link>
-                      {u.isSuperadmin && (
+                      {u.isRootAdmin && (
+                        <span title="Root admin (CLI-only modifications)">
+                          <Crown className="w-3.5 h-3.5 text-amber-400" />
+                        </span>
+                      )}
+                      {u.isSuperadmin && !u.isRootAdmin && (
                         <span title="Superadmin"><ShieldAlert className="w-3.5 h-3.5 text-teal-400" /></span>
                       )}
                       {u.mfaEnabled && (
@@ -638,23 +644,24 @@ export default function AdminUsers() {
                       <button
                         onClick={() => handleImpersonate(u)}
                         disabled={u.isSuperadmin || impersonateBusy === u.id}
-                        title={u.isSuperadmin ? "Cannot impersonate superadmin" : "Impersonate user"}
+                        title={u.isSuperadmin ? "Cannot impersonate an admin account" : "Impersonate user"}
                         className="p-1.5 rounded hover:bg-purple-500/10 text-white/30 hover:text-purple-400 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
                       >
                         <UserCog className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => handleResetPassword(u)}
-                        title="Send password reset link"
-                        className="p-1.5 rounded hover:bg-teal-500/10 text-white/30 hover:text-teal-400 transition-colors"
+                        disabled={u.isRootAdmin}
+                        title={u.isRootAdmin ? "Root admins can only be modified via the CLI" : "Send password reset link"}
+                        className="p-1.5 rounded hover:bg-teal-500/10 text-white/30 hover:text-teal-400 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
                       >
                         <KeyRound className="w-3.5 h-3.5" />
                       </button>
                       {u.mfaEnabled && (
                         <button
                           onClick={() => setMfaResetConfirm(u)}
-                          disabled={mfaResetBusy === u.id}
-                          title="Reset MFA — user will re-enrol on next login"
+                          disabled={u.isRootAdmin || mfaResetBusy === u.id}
+                          title={u.isRootAdmin ? "Root admins can only be modified via the CLI" : "Reset MFA — user will re-enrol on next login"}
                           className="p-1.5 rounded hover:bg-amber-500/10 text-white/30 hover:text-amber-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           <Unlock className="w-3.5 h-3.5" />
@@ -689,16 +696,28 @@ export default function AdminUsers() {
                       </Link>
                       <button
                         onClick={() => handleSuspend(u)}
-                        disabled={u.isSuperadmin || suspendBusy === u.id}
-                        title={u.isSuperadmin ? "Cannot suspend superadmin accounts" : u.isSuspended ? "Unsuspend user" : "Suspend user"}
+                        disabled={u.isRootAdmin || (u.isSuperadmin && !isMeRoot) || suspendBusy === u.id}
+                        title={
+                          u.isRootAdmin
+                            ? "Root admins can only be modified via the CLI"
+                            : u.isSuperadmin && !isMeRoot
+                            ? "Only a root admin can suspend an admin account"
+                            : u.isSuspended ? "Unsuspend user" : "Suspend user"
+                        }
                         className={`p-1.5 rounded transition-colors disabled:opacity-20 disabled:cursor-not-allowed ${u.isSuspended ? "text-red-400 hover:bg-red-500/10" : "text-white/30 hover:bg-red-500/10 hover:text-red-400"}`}
                       >
                         {u.isSuspended ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldOff className="w-3.5 h-3.5" />}
                       </button>
                       <button
                         onClick={() => setConfirmUser(u)}
-                        disabled={u.isSuperadmin}
-                        title={u.isSuperadmin ? "Cannot delete superadmin accounts" : "Delete user"}
+                        disabled={u.isRootAdmin || (u.isSuperadmin && !isMeRoot)}
+                        title={
+                          u.isRootAdmin
+                            ? "Root admins can only be modified via the CLI"
+                            : u.isSuperadmin && !isMeRoot
+                            ? "Only a root admin can delete an admin account"
+                            : "Delete user"
+                        }
                         className="p-1.5 rounded hover:bg-red-500/10 text-white/30 hover:text-red-400 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

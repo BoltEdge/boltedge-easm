@@ -365,6 +365,7 @@ export type AuthResponse = {
     email: string;
     name?: string;
     isSuperadmin?: boolean;
+    isRootAdmin?: boolean;
     job_title?: string;
     company?: string;
     country?: string;
@@ -2199,6 +2200,7 @@ export type AdminUserDetail = {
   country: string | null;
   avatarUrl: string | null;
   isSuperadmin: boolean;
+  isRootAdmin: boolean;
   isSuspended: boolean;
   emailVerified: boolean;
   emailVerificationSentAt: string | null;

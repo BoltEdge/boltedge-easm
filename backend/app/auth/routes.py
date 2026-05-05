@@ -527,6 +527,7 @@ def login():
             "email": u.email,
             "name": u.name,
             "isSuperadmin": bool(u.is_superadmin),
+            "isRootAdmin": bool(u.is_root_admin),
         },
     }
 
@@ -579,6 +580,7 @@ def me():
             "company": u.company,
             "country": u.country,
             "isSuperadmin": bool(u.is_superadmin),
+            "isRootAdmin": bool(u.is_root_admin),
             "oauthProvider": u.oauth_provider,
             "hasPassword": bool(u.password_hash),
         },

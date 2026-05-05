@@ -8,6 +8,7 @@ export type AuthUser = {
   company?: string;
   country?: string;
   isSuperadmin?: boolean;
+  isRootAdmin?: boolean;
   oauthProvider?: string | null;
   hasPassword?: boolean;
 };
@@ -205,6 +206,10 @@ export function isLoggedIn(): boolean {
 
 export function getIsSuperadmin(): boolean {
   return !!getUser()?.isSuperadmin;
+}
+
+export function getIsRootAdmin(): boolean {
+  return !!getUser()?.isRootAdmin;
 }
 
 export function hasSession(): boolean {

@@ -330,9 +330,56 @@ def create_app() -> Flask:
             if not u:
                 click.echo(f"ERROR: No user found with email '{email}'")
                 return
+            if u.is_root_admin:
+                click.echo(
+                    f"ERROR: {u.email} is a root admin. Revoke root admin first "
+                    "with `flask revoke-root-admin`."
+                )
+                return
             u.is_superadmin = False
             db.session.commit()
             click.echo(f"OK: superadmin revoked from {u.email}.")
+
+    @app.cli.command("grant-root-admin")
+    @click.argument("email")
+    def grant_root_admin(email: str):
+        """
+        Grant root-admin privileges to a user. Root admin implies
+        superadmin AND adds protection from being demoted, suspended,
+        deleted, or impersonated by non-root admins.
+        """
+        with app.app_context():
+            from app.models import User
+            from sqlalchemy import func
+            u = User.query.filter(func.lower(User.email) == email.strip().lower()).first()
+            if not u:
+                click.echo(f"ERROR: No user found with email '{email}'")
+                return
+            u.is_superadmin = True   # root implies superadmin
+            u.is_root_admin = True
+            db.session.commit()
+            click.echo(f"OK: {u.email} is now a root admin (and superadmin).")
+
+    @app.cli.command("revoke-root-admin")
+    @click.argument("email")
+    def revoke_root_admin(email: str):
+        """
+        Revoke root-admin privileges from a user. Leaves is_superadmin
+        intact — call `revoke-superadmin` afterwards to fully demote.
+        """
+        with app.app_context():
+            from app.models import User
+            from sqlalchemy import func
+            u = User.query.filter(func.lower(User.email) == email.strip().lower()).first()
+            if not u:
+                click.echo(f"ERROR: No user found with email '{email}'")
+                return
+            u.is_root_admin = False
+            db.session.commit()
+            click.echo(
+                f"OK: root admin revoked from {u.email}. "
+                f"They are still a superadmin — run `flask revoke-superadmin` to fully demote."
+            )
     # ─────────────────────────────────────────────────────────────────
 
     # ── Schema Management ────────────────────────────────────────────
