@@ -1038,14 +1038,15 @@ def impersonate_user(user_id: int):
     if not user:
         return jsonify(error="not found"), 404
 
-    # Impersonation is intentionally blocked on ALL admin accounts,
-    # including by root admins. Use reset-password / reset-mfa instead
-    # if you need to debug an admin's account.
-    if user.is_superadmin:
-        return jsonify(
-            error="Cannot impersonate another admin account.",
-            code="ADMIN_IMPERSONATE_BLOCKED",
-        ), 400
+    # Authority matrix matches suspend/delete:
+    # - root admin: can impersonate regular users + superadmins (CLI-only for other root admins)
+    # - regular superadmin: can impersonate regular users only
+    blocked = _block_if_protected_root(user)
+    if blocked is not None:
+        return blocked
+    blocked = _block_if_admin_target(user)
+    if blocked is not None:
+        return blocked
 
     from app.auth.tokens import create_access_token
 

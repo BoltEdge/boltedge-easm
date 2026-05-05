@@ -357,6 +357,16 @@ def verify():
             description=f"User logged in (MFA): {user.email}",
         )
 
+    # Welcome email — idempotent on welcome_email_sent_at, only fires
+    # on a user's very first successful session.
+    if user.welcome_email_sent_at is None:
+        try:
+            from app.auth.emails import send_welcome_email
+            org_for_welcome = membership.organization if membership else None
+            send_welcome_email(user, organization=org_for_welcome)
+        except Exception:
+            current_app.logger.exception("Welcome email send failed for user %s", user.id)
+
     response: dict = {
         "accessToken": token,
         "user": {
@@ -598,6 +608,18 @@ def forced_enroll_confirm():
             target_label=user.email,
             description=f"User logged in (post forced MFA enrolment): {user.email}",
         )
+
+    # First successful login → send the welcome email. Idempotent on
+    # welcome_email_sent_at, so subsequent logins are no-ops. Now that
+    # MFA is mandatory, this is the new "first login" hook for
+    # email/password and OAuth signups (used to live in /auth/login).
+    if user.welcome_email_sent_at is None:
+        try:
+            from app.auth.emails import send_welcome_email
+            org_for_welcome = membership.organization if membership else None
+            send_welcome_email(user, organization=org_for_welcome)
+        except Exception:
+            current_app.logger.exception("Welcome email send failed for user %s", user.id)
 
     response: dict = {
         "accessToken": token,

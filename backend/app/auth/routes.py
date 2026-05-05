@@ -452,92 +452,48 @@ def login():
         ), 200
 
     # ── Mandatory MFA enforcement ───────────────────────────────
-    # Phase 5: superadmin and Owner/Admin roles MUST enrol in MFA.
-    # If they haven't, block the login but issue a one-shot enrolment
-    # token so the frontend can route them through the enrol flow
-    # WITHOUT giving them a real session yet. The enrol flow itself
-    # validates the same token, accepts a TOTP confirm, then issues
-    # the real session.
-    requires_mfa = bool(u.is_superadmin) or (
-        membership and membership.role in ("owner", "admin")
+    # Every user — every role — must enrol in MFA before they get
+    # a session token. On first login (or any login while
+    # mfa_enabled=False), block the login and issue a one-shot
+    # enrolment token. The frontend routes them through
+    # /login/mfa-enroll which validates the same token, accepts a
+    # TOTP confirm, then issues the real session via
+    # /auth/mfa/forced-enroll/confirm.
+    #
+    # NOTE: code below this block is unreachable — every login path
+    # either prompts for MFA verification (above) or enrolment
+    # (here). Both happy-path session-issuance points (verify and
+    # forced-enroll-confirm) live in app/auth/mfa.py. The unreachable
+    # block is preserved (kept commented out) as a reference for the
+    # session-issuance shape if MFA is ever made optional again.
+    from app.auth.mfa import create_mfa_challenge_token
+    enrol_token = create_mfa_challenge_token(
+        secret_key=current_app.config["SECRET_KEY"],
+        user_id=u.id,
     )
-    if requires_mfa:
-        from app.auth.mfa import create_mfa_challenge_token
-        # Re-use the mfa challenge-token shape: 5-min, signed, single-purpose.
-        enrol_token = create_mfa_challenge_token(
-            secret_key=current_app.config["SECRET_KEY"],
-            user_id=u.id,
-        )
-        log_audit(
-            organization_id=membership.organization_id if membership else None,
-            user_id=u.id,
-            action="auth.mfa_enrolment_required",
-            category="auth",
-            target_type="user",
-            target_id=str(u.id),
-            target_label=u.email,
-            description=(
-                f"MFA enrolment required for {u.email} "
-                f"(role={membership.role if membership else 'n/a'}, "
-                f"superadmin={bool(u.is_superadmin)})"
-            ),
-        )
-        return jsonify(
-            mfaEnrolmentRequired=True,
-            mfaToken=enrol_token,
-            email=u.email,
-            reason=(
-                "Two-factor authentication is required for this account. "
-                "Please enrol an authenticator app to continue."
-            ),
-        ), 200
-
-    token = create_access_token(secret_key=current_app.config["SECRET_KEY"], user_id=u.id)
-
-    if membership:
-        log_audit(
-            organization_id=membership.organization_id,
-            user_id=u.id,
-            action="auth.login",
-            category="auth",
-            target_type="user",
-            target_id=str(u.id),
-            target_label=u.email,
-            description=f"User logged in: {u.email}",
-        )
-
-    # First successful login post-verification → fire the welcome
-    # email. send_welcome_email is idempotent (skips if
-    # welcome_email_sent_at is already set), so subsequent logins are
-    # no-ops. This deferral guarantees the verification email lands
-    # first — Resend can't reorder them when there's a real human-time
-    # gap between registration and login.
-    if u.welcome_email_sent_at is None:
-        try:
-            from app.auth.emails import send_welcome_email
-            org_for_welcome = membership.organization if membership else None
-            send_welcome_email(u, organization=org_for_welcome)
-        except Exception:
-            current_app.logger.exception("Welcome email send failed for user %s", u.id)
-
-    response = {
-        "accessToken": token,
-        "user": {
-            "id": str(u.id),
-            "email": u.email,
-            "name": u.name,
-            "isSuperadmin": bool(u.is_superadmin),
-            "isRootAdmin": bool(u.is_root_admin),
-        },
-    }
-
-    # Include org + plan info if user has an org
-    if membership:
-        org = membership.organization
-        response["organization"] = _build_org_payload(org)
-        response["role"] = membership.role
-
-    return jsonify(response), 200
+    log_audit(
+        organization_id=membership.organization_id if membership else None,
+        user_id=u.id,
+        action="auth.mfa_enrolment_required",
+        category="auth",
+        target_type="user",
+        target_id=str(u.id),
+        target_label=u.email,
+        description=(
+            f"MFA enrolment required for {u.email} "
+            f"(role={membership.role if membership else 'n/a'}, "
+            f"superadmin={bool(u.is_superadmin)})"
+        ),
+    )
+    return jsonify(
+        mfaEnrolmentRequired=True,
+        mfaToken=enrol_token,
+        email=u.email,
+        reason=(
+            "Two-factor authentication is required for this account. "
+            "Please enrol an authenticator app to continue."
+        ),
+    ), 200
 
 
 @auth_bp.get("/me")
@@ -877,39 +833,33 @@ def _oauth_mfa_redirect_or_none(user: User, frontend_url: str, next_url: str):
         })
         return flask_redirect(f"{frontend_url}/login/mfa?{params}")
 
-    # Mandatory MFA enrolment for elevated roles
+    # Mandatory MFA enrolment for ALL users — same policy as /auth/login
     membership = _OM.query.filter_by(user_id=user.id, is_active=True).first()
-    requires_mfa = bool(user.is_superadmin) or (
-        membership and membership.role in ("owner", "admin")
+    enrol_token = create_mfa_challenge_token(
+        secret_key=current_app.config["SECRET_KEY"],
+        user_id=user.id,
     )
-    if requires_mfa:
-        enrol_token = create_mfa_challenge_token(
-            secret_key=current_app.config["SECRET_KEY"],
-            user_id=user.id,
-        )
-        log_audit(
-            organization_id=membership.organization_id if membership else None,
-            user_id=user.id,
-            action="auth.mfa_enrolment_required",
-            category="auth",
-            target_type="user",
-            target_id=str(user.id),
-            target_label=user.email,
-            description=(
-                f"MFA enrolment required for {user.email} (OAuth, "
-                f"role={membership.role if membership else 'n/a'}, "
-                f"superadmin={bool(user.is_superadmin)})"
-            ),
-        )
-        params = urllib.parse.urlencode({
-            "mfaToken": enrol_token,
-            "email": user.email,
-            "next": next_url,
-            "reason": "Two-factor authentication is required for this account.",
-        })
-        return flask_redirect(f"{frontend_url}/login/mfa-enroll?{params}")
-
-    return None
+    log_audit(
+        organization_id=membership.organization_id if membership else None,
+        user_id=user.id,
+        action="auth.mfa_enrolment_required",
+        category="auth",
+        target_type="user",
+        target_id=str(user.id),
+        target_label=user.email,
+        description=(
+            f"MFA enrolment required for {user.email} (OAuth, "
+            f"role={membership.role if membership else 'n/a'}, "
+            f"superadmin={bool(user.is_superadmin)})"
+        ),
+    )
+    params = urllib.parse.urlencode({
+        "mfaToken": enrol_token,
+        "email": user.email,
+        "next": next_url,
+        "reason": "Two-factor authentication is required for this account.",
+    })
+    return flask_redirect(f"{frontend_url}/login/mfa-enroll?{params}")
 
 
 @auth_bp.get("/oauth/google")

@@ -1345,6 +1345,16 @@ export async function removeMember(memberId: string): Promise<any> {
   });
 }
 
+export async function resetMemberMfa(memberId: string): Promise<{
+  message: string;
+  mfaEnabled: false;
+  noticeSent?: boolean;
+}> {
+  return apiFetch(`/settings/members/${memberId}/reset-mfa`, {
+    method: "POST",
+  });
+}
+
 // API Keys
 export async function getApiKeys(): Promise<any[]> {
   return apiFetch<any[]>("/settings/api-keys");

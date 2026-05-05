@@ -176,6 +176,25 @@ def _find_org_for_event(obj: dict) -> Optional[Organization]:
     return _find_org_by_subscription(subscription_id)
 
 
+def _extract_period(sub: dict) -> tuple[Optional[int], Optional[int]]:
+    """
+    Read current_period_start / current_period_end from a Stripe
+    Subscription. In API versions 2025-08-27 and later these fields
+    moved off the top-level Subscription onto each subscription item;
+    older API versions had them at the top level. Try item-level first
+    so newer API versions (our default 2025-09-30.clover) work
+    correctly, then fall back to the legacy top-level keys.
+    """
+    items = (sub.get("items") or {}).get("data") or []
+    if items:
+        item = items[0]
+        start = item.get("current_period_start")
+        end = item.get("current_period_end")
+        if start is not None or end is not None:
+            return start, end
+    return sub.get("current_period_start"), sub.get("current_period_end")
+
+
 def _apply_subscription_state(org: Organization, sub: dict, *, default_cycle: Optional[str] = None) -> None:
     """
     Mirror a Stripe Subscription object onto Organization columns.
@@ -187,8 +206,9 @@ def _apply_subscription_state(org: Organization, sub: dict, *, default_cycle: Op
     org.stripe_subscription_id = sub.get("id") or org.stripe_subscription_id
     org.stripe_subscription_status = sub.get("status") or org.stripe_subscription_status
     org.cancel_at_period_end = bool(sub.get("cancel_at_period_end"))
-    org.current_period_start = _from_unix(sub.get("current_period_start")) or org.current_period_start
-    org.current_period_end = _from_unix(sub.get("current_period_end")) or org.current_period_end
+    period_start, period_end = _extract_period(sub)
+    org.current_period_start = _from_unix(period_start) or org.current_period_start
+    org.current_period_end = _from_unix(period_end) or org.current_period_end
 
     if sub.get("default_payment_method"):
         pm = sub["default_payment_method"]

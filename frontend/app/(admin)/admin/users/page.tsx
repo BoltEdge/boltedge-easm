@@ -643,8 +643,14 @@ export default function AdminUsers() {
                       </button>
                       <button
                         onClick={() => handleImpersonate(u)}
-                        disabled={u.isSuperadmin || impersonateBusy === u.id}
-                        title={u.isSuperadmin ? "Cannot impersonate an admin account" : "Impersonate user"}
+                        disabled={u.isRootAdmin || (u.isSuperadmin && !isMeRoot) || impersonateBusy === u.id}
+                        title={
+                          u.isRootAdmin
+                            ? "Root admins can only be modified via the CLI"
+                            : u.isSuperadmin && !isMeRoot
+                            ? "Only a root admin can impersonate an admin account"
+                            : "Impersonate user"
+                        }
                         className="p-1.5 rounded hover:bg-purple-500/10 text-white/30 hover:text-purple-400 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
                       >
                         <UserCog className="w-3.5 h-3.5" />

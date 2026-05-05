@@ -131,7 +131,7 @@ function ForcedEnrollInner() {
           `Generated ${new Date().toISOString()}\n\n` +
           enrolment.recoveryKey +
           `\n\nKeep this somewhere safe. It is single-use.\n` +
-          `If you lose it, contact your platform admin to reset MFA.\n`,
+          `If you lose it, contact your admin to reset MFA.\n`,
       ],
       { type: "text/plain" }
     );
@@ -185,8 +185,7 @@ function ForcedEnrollInner() {
                   1 · Scan with your authenticator app
                 </h2>
                 <p className="text-xs text-white/40 mb-3">
-                  Use Google Authenticator, 1Password, Authy, Bitwarden, or any
-                  TOTP app.
+                  Use any TOTP authenticator app.
                 </p>
                 <div className="flex justify-center">
                   <img
@@ -211,8 +210,8 @@ function ForcedEnrollInner() {
                 </h2>
                 <p className="text-xs text-amber-300 mb-3">
                   Shown <strong>once</strong>. Single-use. If you lose this
-                  AND your authenticator, contact your platform admin to
-                  reset MFA — there is no other recovery path.
+                  AND your authenticator, contact your admin to reset MFA —
+                  there is no other recovery path.
                 </p>
                 <div className="px-3 py-2.5 rounded bg-white/[0.04] border border-white/[0.08] font-mono text-sm text-white/80 select-all text-center break-all">
                   {enrolment.recoveryKey}

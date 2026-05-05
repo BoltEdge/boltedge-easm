@@ -179,7 +179,7 @@ export default function SecurityPage() {
           `Generated ${new Date().toISOString()}\n\n` +
           regenKey +
           `\n\nKeep this somewhere safe. It is single-use.\n` +
-          `If you lose it, contact your platform admin to reset MFA.\n`,
+          `If you lose it, contact your admin to reset MFA.\n`,
       ],
       { type: "text/plain" }
     );
@@ -259,8 +259,7 @@ export default function SecurityPage() {
             Set up an authenticator app
           </h3>
           <p className="text-xs text-white/50 mb-4">
-            Use Google Authenticator, 1Password, Authy, Bitwarden, or any TOTP
-            app.
+            Use any TOTP authenticator app.
           </p>
           <button
             type="button"
@@ -312,8 +311,7 @@ export default function SecurityPage() {
             </h3>
             <p className="text-xs text-amber-300 mb-3">
               Shown <strong>once</strong>. It is single-use — if you lose it
-              and your authenticator, contact your platform admin to reset
-              MFA.
+              and your authenticator, contact your admin to reset MFA.
             </p>
             <div className="px-3 py-2.5 rounded bg-white/[0.04] border border-white/[0.08] font-mono text-sm text-white/80 select-all text-center break-all">
               {enrolment.recoveryKey}

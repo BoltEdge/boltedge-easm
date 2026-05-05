@@ -125,9 +125,9 @@ export default function UnauthenticatedHomePage() {
                   Run a quick scan or discovery against any domain to see what Nano EASM can find.
                   Create a free account to save results and unlock full features.
                 </p>
-                <p className="mt-3 text-xs text-white/40 max-w-xl mx-auto">
-                  By using these tools you agree to our{" "}
-                  <Link href="/terms" className="underline hover:text-white/70">Terms of Use</Link>.
+                <p className="mt-4 text-xs max-w-xl mx-auto text-amber-300/80">
+                  By using Nano EASM you agree to our{" "}
+                  <Link href="/terms" className="underline text-amber-200 hover:text-amber-100">Terms of Use</Link>.
                 </p>
               </div>
             </FadeInOnScroll>

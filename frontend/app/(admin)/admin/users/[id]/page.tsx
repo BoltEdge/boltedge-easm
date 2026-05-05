@@ -351,8 +351,14 @@ export default function AdminUserDetailPage() {
             </button>
             <button
               onClick={handleImpersonate}
-              disabled={user.isSuperadmin || actionBusy === "impersonate"}
-              title={user.isSuperadmin ? "Cannot impersonate an admin account" : "Impersonate user"}
+              disabled={user.isRootAdmin || (user.isSuperadmin && !getIsRootAdmin()) || actionBusy === "impersonate"}
+              title={
+                user.isRootAdmin
+                  ? "Root admins can only be modified via the CLI"
+                  : user.isSuperadmin && !getIsRootAdmin()
+                  ? "Only a root admin can impersonate an admin account"
+                  : "Impersonate user"
+              }
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-purple-300 bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {actionBusy === "impersonate" ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCog className="w-3 h-3" />}

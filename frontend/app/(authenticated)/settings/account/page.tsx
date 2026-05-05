@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   User, Mail, Shield, Save, Crown, Eye, EyeOff,
   Users, UserPlus, Trash2, Copy, Check, Info, X, Lock,
-  RefreshCcw, Briefcase, Building2, Globe, Hash,
+  Unlock, RefreshCcw, Briefcase, Building2, Globe, Hash,
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Button } from "../../../ui/button";
@@ -14,7 +14,7 @@ import { Input } from "../../../ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../ui/dialog";
 import {
   getMembers, inviteMember, getInvitations, revokeInvitation,
-  updateMemberRole, removeMember, apiFetch, isPlanError,
+  updateMemberRole, removeMember, resetMemberMfa, apiFetch, isPlanError,
 } from "../../../lib/api";
 import { useOrg } from "../../contexts/OrgContext";
 import { usePlanLimit, PlanLimitDialog } from "../../../ui/plan-limit-dialog";
@@ -298,6 +298,31 @@ export default function AccountPage() {
       if (isPlanError(e)) { setDeleteTarget(null); planLimit.handle(e.planError); }
       else setBanner({ kind: "err", text: e?.message || "Failed" });
     } finally { setDeleting(false); }
+  }
+
+  const [mfaResetTarget, setMfaResetTarget] = useState<any>(null);
+  const [mfaResetBusy, setMfaResetBusy] = useState(false);
+  async function handleResetMemberMfa() {
+    if (!mfaResetTarget) return;
+    try {
+      setMfaResetBusy(true);
+      const res = await resetMemberMfa(mfaResetTarget.id);
+      setBanner({ kind: "ok", text: res.message || "MFA reset." });
+      setMfaResetTarget(null);
+      await loadTeam(true);
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || "Failed to reset MFA" });
+      setMfaResetTarget(null);
+    } finally { setMfaResetBusy(false); }
+  }
+  // Owner can reset MFA for any non-owner. Admin can only reset for
+  // analyst / viewer. Self never (use Settings → Security).
+  function canResetMfaFor(m: any): boolean {
+    if (!m?.mfaEnabled) return false;
+    if (m.role === "owner") return false;
+    if (role === "owner") return true;          // I'm owner
+    if (role === "admin" && m.role !== "admin") return true;
+    return false;
   }
 
   const RIcon = ROLE_ICONS[role || "viewer"] || User;
@@ -603,6 +628,7 @@ export default function AccountPage() {
                   <span className="text-xs font-semibold text-muted-foreground uppercase flex-1">Member</span>
                   <span className="text-xs font-semibold text-muted-foreground uppercase w-20 text-right">Role</span>
                   <span className="text-xs font-semibold text-muted-foreground uppercase w-20 text-right">Joined</span>
+                  <span className="w-8" />
                   {canRemove && <span className="w-8" />}
                 </div>
               )}
@@ -659,6 +685,25 @@ export default function AccountPage() {
                           )}
                         </div>
                         <span className="text-xs text-muted-foreground w-20 text-right shrink-0 whitespace-nowrap">{formatDate(m.joinedAt)}</span>
+                        <div className="w-8 flex justify-center shrink-0">
+                          {m.mfaEnabled ? (
+                            canResetMfaFor(m) ? (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setMfaResetTarget(m)}
+                                title="Reset MFA — member will re-enrol on next login"
+                                className="h-7 w-7 p-0 text-emerald-400 hover:text-amber-400 hover:bg-amber-500/10"
+                              >
+                                <Lock className="w-3.5 h-3.5" />
+                              </Button>
+                            ) : (
+                              <span title="MFA enabled" className="text-emerald-400">
+                                <Lock className="w-3.5 h-3.5" />
+                              </span>
+                            )
+                          ) : <span />}
+                        </div>
                         {canRemove && (
                           <div className="w-8 flex justify-center shrink-0">
                             {m.role !== "owner" ? (
@@ -798,6 +843,27 @@ export default function AccountPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset MFA Modal */}
+      <Dialog open={!!mfaResetTarget} onOpenChange={(o) => { if (!o) setMfaResetTarget(null); }}>
+        <DialogContent className="bg-card border-border text-foreground sm:max-w-[440px]">
+          <DialogHeader><DialogTitle>Reset MFA for this member?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            <span className="text-foreground font-semibold">{mfaResetTarget?.name || mfaResetTarget?.email}</span> will
+            lose their authenticator and recovery key. They will be asked to set up
+            two-factor authentication again on their next sign-in.
+          </p>
+          <p className="text-xs text-amber-400/80">
+            Confirm the member&apos;s identity through a separate channel before doing this.
+          </p>
+          <div className="flex gap-3 justify-end pt-4">
+            <Button variant="outline" onClick={() => setMfaResetTarget(null)} className="border-border text-foreground hover:bg-accent">Cancel</Button>
+            <Button onClick={handleResetMemberMfa} disabled={mfaResetBusy} className="bg-amber-500/10 text-amber-300 border border-amber-500/20 hover:bg-amber-500/20">
+              {mfaResetBusy ? "Resetting..." : "Reset MFA"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

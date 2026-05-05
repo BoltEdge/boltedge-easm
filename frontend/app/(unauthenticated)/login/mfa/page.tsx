@@ -169,7 +169,7 @@ function MfaVerifyInner() {
             href="/contact"
             className="text-teal-400 hover:text-teal-300 transition-colors"
           >
-            Contact your platform admin
+            Contact your admin
           </Link>
         </p>
       </div>

@@ -33,7 +33,7 @@ import io
 import secrets
 from datetime import datetime, timezone, timedelta, date
 
-from flask import Blueprint, request, jsonify, g, Response
+from flask import Blueprint, request, jsonify, g, Response, current_app
 from app.extensions import db
 from app.models import (
     Organization, OrganizationMember, User, ApiKey,
@@ -169,6 +169,7 @@ def list_members():
             "joinedAt": m.joined_at.isoformat() if m.joined_at else None,
             "invitedAt": m.invited_at.isoformat() if m.invited_at else None,
             "invitedBy": invited_by.name if invited_by else None,
+            "mfaEnabled": bool(user.mfa_enabled) if user else False,
         })
 
     return jsonify(result), 200
@@ -362,6 +363,106 @@ def update_member_role(member_id):
     db.session.commit()
 
     return jsonify(message=f"Role updated to {new_role}"), 200
+
+
+# POST /settings/members/<id>/reset-mfa — admin+
+# Allows org Owner/Admin to reset MFA for a member of their org when
+# the member has lost both their authenticator and recovery key.
+# Authority matrix:
+#   - Owner: can reset MFA for any non-Owner member
+#   - Admin: can reset MFA for any non-Owner, non-Admin member
+#     (i.e. Analyst / Viewer)
+#   - No one can reset MFA for a superadmin / root admin via this
+#     endpoint — that requires the platform admin console
+@settings_bp.post("/members/<int:member_id>/reset-mfa")
+@require_auth
+@require_role("admin")
+def reset_member_mfa(member_id):
+    from app.models import UserRecoveryCode
+
+    org_id = current_organization_id()
+    member = OrganizationMember.query.filter_by(
+        id=member_id, organization_id=org_id, is_active=True,
+    ).first()
+    if not member:
+        return jsonify(error="Member not found"), 404
+
+    target_user = member.user
+    if not target_user:
+        return jsonify(error="Member not found"), 404
+
+    # Block self — use Settings → Security to disable your own MFA
+    if member.user_id == current_user_id():
+        return jsonify(
+            error="To disable your own MFA, use Settings → Security.",
+            code="USE_SELF_DISABLE",
+        ), 400
+
+    # Block on platform admins — only the platform admin console can
+    # reset their MFA (defence-in-depth: even if a malicious org admin
+    # somehow has a superadmin in their org, they can't lock them out)
+    if target_user.is_superadmin or target_user.is_root_admin:
+        return jsonify(
+            error="This account is a platform administrator. Contact Nano EASM support.",
+            code="PLATFORM_ADMIN_PROTECTED",
+        ), 403
+
+    # Owner can reset MFA for non-Owner. Admin can only reset for
+    # below-Admin roles. This is the same role hierarchy as
+    # update_member_role, applied to the target.
+    actor_member = g.current_member
+    if not actor_member:
+        return jsonify(error="Membership not found"), 403
+    if member.role == "owner":
+        return jsonify(
+            error="Cannot reset MFA for an owner. Transfer ownership or contact support.",
+            code="OWNER_PROTECTED",
+        ), 403
+    if member.role == "admin" and actor_member.role != "owner":
+        return jsonify(
+            error="Only an owner can reset MFA for another admin.",
+            code="OWNER_REQUIRED",
+        ), 403
+
+    if not target_user.mfa_enabled and not target_user.mfa_secret_ciphertext:
+        return jsonify(
+            message="MFA is not enabled for this user.",
+            mfaEnabled=False,
+        ), 200
+
+    target_user.mfa_enabled = False
+    target_user.mfa_secret_ciphertext = None
+    target_user.mfa_enrolled_at = None
+    UserRecoveryCode.query.filter_by(user_id=target_user.id).delete()
+
+    log_audit(
+        organization_id=org_id,
+        user_id=current_user_id(),
+        action="user.mfa_reset",
+        category="user",
+        target_type="user",
+        target_id=str(target_user.id),
+        target_label=target_user.email,
+        description=f"Reset MFA for {target_user.email}",
+        metadata={"changed_by_role": actor_member.role, "target_role": member.role},
+    )
+    db.session.commit()
+
+    # Out-of-band notification — same pattern as platform admin reset.
+    notice_sent = False
+    try:
+        from app.auth.emails import send_mfa_reset_notice
+        notice_sent = bool(send_mfa_reset_notice(target_user, by_admin=True))
+    except Exception:
+        current_app.logger.exception(
+            "MFA-reset notice email failed for user %s", target_user.id
+        )
+
+    return jsonify(
+        message=f"MFA reset for {target_user.email}. They can re-enrol on next login.",
+        mfaEnabled=False,
+        noticeSent=notice_sent,
+    ), 200
 
 
 # DELETE /settings/members/<id> — admin+
