@@ -424,6 +424,74 @@ def login():
             code="ACCOUNT_SUSPENDED",
         ), 403
 
+    # ── MFA gate ────────────────────────────────────────────────
+    # If the user has MFA enrolled, do NOT issue a session token here.
+    # Issue a short-lived mfaToken instead; the frontend then prompts
+    # for the 6-digit code (or recovery code) and exchanges it via
+    # /auth/mfa/verify for the real access token.
+    if u.mfa_enabled:
+        from app.auth.mfa import create_mfa_challenge_token
+        mfa_token = create_mfa_challenge_token(
+            secret_key=current_app.config["SECRET_KEY"],
+            user_id=u.id,
+        )
+        log_audit(
+            organization_id=membership.organization_id if membership else None,
+            user_id=u.id,
+            action="auth.mfa_required",
+            category="auth",
+            target_type="user",
+            target_id=str(u.id),
+            target_label=u.email,
+            description=f"MFA challenge issued for {u.email}",
+        )
+        return jsonify(
+            mfaRequired=True,
+            mfaToken=mfa_token,
+            email=u.email,
+        ), 200
+
+    # ── Mandatory MFA enforcement ───────────────────────────────
+    # Phase 5: superadmin and Owner/Admin roles MUST enrol in MFA.
+    # If they haven't, block the login but issue a one-shot enrolment
+    # token so the frontend can route them through the enrol flow
+    # WITHOUT giving them a real session yet. The enrol flow itself
+    # validates the same token, accepts a TOTP confirm, then issues
+    # the real session.
+    requires_mfa = bool(u.is_superadmin) or (
+        membership and membership.role in ("owner", "admin")
+    )
+    if requires_mfa:
+        from app.auth.mfa import create_mfa_challenge_token
+        # Re-use the mfa challenge-token shape: 5-min, signed, single-purpose.
+        enrol_token = create_mfa_challenge_token(
+            secret_key=current_app.config["SECRET_KEY"],
+            user_id=u.id,
+        )
+        log_audit(
+            organization_id=membership.organization_id if membership else None,
+            user_id=u.id,
+            action="auth.mfa_enrolment_required",
+            category="auth",
+            target_type="user",
+            target_id=str(u.id),
+            target_label=u.email,
+            description=(
+                f"MFA enrolment required for {u.email} "
+                f"(role={membership.role if membership else 'n/a'}, "
+                f"superadmin={bool(u.is_superadmin)})"
+            ),
+        )
+        return jsonify(
+            mfaEnrolmentRequired=True,
+            mfaToken=enrol_token,
+            email=u.email,
+            reason=(
+                "Two-factor authentication is required for this account. "
+                "Please enrol an authenticator app to continue."
+            ),
+        ), 200
+
     token = create_access_token(secret_key=current_app.config["SECRET_KEY"], user_id=u.id)
 
     if membership:

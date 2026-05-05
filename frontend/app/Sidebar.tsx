@@ -9,7 +9,7 @@ import {
   Bell, Settings, SlidersHorizontal,
   ChevronLeft, ChevronRight, ChevronDown,
   UserCircle, Key, CreditCard, Zap, Calendar,
-  FileText, TrendingUp, Plug, LogOut, BookOpen,
+  FileText, TrendingUp, Plug, LogOut, BookOpen, Shield,
 } from "lucide-react";
 import { useOrg } from "./(authenticated)/contexts/OrgContext";
 import { logout } from "./lib/auth";
@@ -110,6 +110,7 @@ export default function Sidebar() {
 
   const settingsSubs = [
     { href: "/settings/account", label: "Account & Team", icon: UserCircle },
+    { href: "/settings/security", label: "Security", icon: Shield },
     { href: "/settings/integrations", label: "Integrations", icon: Plug },
     { href: "/settings/api-keys", label: "API Keys", icon: Key },
     { href: "/settings/billing", label: BILLING_ENABLED ? "Payment & Plans" : "Plans", icon: CreditCard },

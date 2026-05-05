@@ -381,15 +381,124 @@ export type AuthResponse = {
   };
 };
 
+// Login may return one of three shapes:
+//   - AuthResponse                                 (no MFA, no enrolment required)
+//   - { mfaRequired: true, mfaToken, email }       (MFA enrolled — verify next)
+//   - { mfaEnrolmentRequired: true, mfaToken, email, reason }
+//                                                  (role requires MFA, must enrol first)
+export type MfaRequiredResponse = {
+  mfaRequired: true;
+  mfaToken: string;
+  email: string;
+};
+
+export type MfaEnrolmentRequiredResponse = {
+  mfaEnrolmentRequired: true;
+  mfaToken: string;
+  email: string;
+  reason?: string;
+};
+
+export type LoginResponse =
+  | AuthResponse
+  | MfaRequiredResponse
+  | MfaEnrolmentRequiredResponse;
+
 export async function login(payload: {
   email: string;
   password: string;
-}): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>(API.auth.login, {
+}): Promise<LoginResponse> {
+  return apiFetch<LoginResponse>(API.auth.login, {
     method: "POST",
     body: JSON.stringify(payload),
     skipAuthRedirect: true,
   } as any);
+}
+
+// ── MFA ─────────────────────────────────────────────────────
+
+export type MfaEnrollResponse = {
+  secret: string;
+  provisioningUri: string;
+  qrCodeDataUrl: string;
+  recoveryCodes: string[];
+};
+
+export type MfaStatusResponse = {
+  mfaEnabled: boolean;
+  enrolledAt: string | null;
+  recoveryCodesRemaining: number;
+  hasPassword: boolean;
+};
+
+export async function getMfaStatus(): Promise<MfaStatusResponse> {
+  return apiFetch<MfaStatusResponse>("/auth/mfa/status");
+}
+
+export async function startMfaEnroll(): Promise<MfaEnrollResponse> {
+  return apiFetch<MfaEnrollResponse>("/auth/mfa/enroll", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export async function confirmMfaEnroll(code: string): Promise<{ mfaEnabled: true }> {
+  return apiFetch("/auth/mfa/enroll/confirm", {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+}
+
+export async function verifyMfa(payload: {
+  mfaToken: string;
+  code: string;
+}): Promise<AuthResponse & { viaRecoveryCode?: boolean }> {
+  return apiFetch("/auth/mfa/verify", {
+    method: "POST",
+    body: JSON.stringify(payload),
+    skipAuthRedirect: true,
+  } as any);
+}
+
+export async function startForcedMfaEnroll(payload: {
+  mfaToken: string;
+}): Promise<MfaEnrollResponse> {
+  return apiFetch("/auth/mfa/forced-enroll", {
+    method: "POST",
+    body: JSON.stringify(payload),
+    skipAuthRedirect: true,
+  } as any);
+}
+
+export async function confirmForcedMfaEnroll(payload: {
+  mfaToken: string;
+  code: string;
+}): Promise<AuthResponse> {
+  return apiFetch("/auth/mfa/forced-enroll/confirm", {
+    method: "POST",
+    body: JSON.stringify(payload),
+    skipAuthRedirect: true,
+  } as any);
+}
+
+export async function disableMfa(payload: {
+  password?: string;
+  code?: string;
+}): Promise<{ mfaEnabled: false }> {
+  return apiFetch("/auth/mfa/disable", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function regenerateMfaRecoveryCodes(payload: {
+  password?: string;
+  code?: string;
+}): Promise<{ recoveryCodes: string[] }> {
+  return apiFetch("/auth/mfa/recovery-codes/regenerate", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export type RegisterResponse =

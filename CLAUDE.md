@@ -318,6 +318,10 @@ ADMIN_EMAIL=admin@nanoasm.com
 ENABLE_BILLING=false
 SHODAN_API_KEY=<your key>
 RESEND_API_KEY=<your key>
+# MFA — generate once with:
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# Required for MFA enrolment. Rotating this key invalidates every enrolled MFA secret.
+MFA_SECRET_KEY=<fernet key>
 
 # Frontend (.env.local)
 NEXT_PUBLIC_API_BASE_URL=http://localhost:5000/api

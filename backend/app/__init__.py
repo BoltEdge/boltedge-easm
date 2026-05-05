@@ -21,7 +21,7 @@ import traceback
 from flask import Flask, jsonify
 from .extensions import init_extensions, db
 from . import models
-from .auth import auth_bp
+from .auth import auth_bp, mfa_bp
 from .groups import groups_bp
 from .assets import assets_bp
 from .scan_jobs import scan_jobs_bp
@@ -160,6 +160,7 @@ def create_app() -> Flask:
 
     # ── Blueprints ───────────────────────────────────────────────────
     app.register_blueprint(auth_bp)
+    app.register_blueprint(mfa_bp)
     app.register_blueprint(groups_bp)
     app.register_blueprint(assets_bp)
     app.register_blueprint(scan_jobs_bp)

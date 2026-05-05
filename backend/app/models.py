@@ -56,8 +56,51 @@ class User(db.Model):
     # send-once idempotency in app/auth/emails.py.
     welcome_email_sent_at = db.Column(db.DateTime, nullable=True)
 
+    # ── MFA / TOTP ──────────────────────────────────────────────────
+    # mfa_enabled is the only flag the rest of the app reads. It is
+    # only flipped True after a user has successfully entered a code
+    # at /auth/mfa/enroll/confirm — pre-confirm, the secret may exist
+    # but the column stays False so a half-enrolled user still logs in
+    # normally.
+    mfa_enabled = db.Column(
+        db.Boolean, nullable=False,
+        default=False, server_default=db.text("false"),
+    )
+    # Fernet-encrypted TOTP secret. NULL means never enrolled. Encrypted
+    # via app.auth.mfa_crypto. Plaintext (the base32 secret) never lives
+    # in the DB.
+    mfa_secret_ciphertext = db.Column(db.Text, nullable=True)
+    # Stamped at enrol-confirm. Used for audit / "MFA active since" UI.
+    mfa_enrolled_at = db.Column(db.DateTime, nullable=True)
+
     created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
     updated_at = db.Column(db.DateTime, nullable=False, default=now_utc, onupdate=now_utc)
+
+
+class UserRecoveryCode(db.Model):
+    """
+    Single-use MFA recovery codes. Generated at enrolment (and on
+    explicit regenerate) — 10 per user. Stored hashed (werkzeug's
+    pbkdf2 sha256, same family as password_hash). Plaintext is shown
+    to the user exactly once.
+
+    A code is consumed by stamping `used_at`. We don't delete used
+    rows so the audit trail can correlate "which recovery code was
+    used at which time".
+    """
+    __tablename__ = "user_recovery_code"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    code_hash = db.Column(db.String(255), nullable=False)
+    used_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+
 
 class Organization(db.Model):
     __tablename__ = "organization"

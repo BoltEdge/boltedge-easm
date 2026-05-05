@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, Loader2, Mail } from "lucide-react";
 
 import { login, startOAuth, resendVerification } from "../../lib/api";
-import { establishSession } from "../../lib/auth";
+import { establishSession, type AuthRole } from "../../lib/auth";
 
 const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true";
 const MICROSOFT_ENABLED = process.env.NEXT_PUBLIC_MICROSOFT_OAUTH_ENABLED === "true";
@@ -89,11 +89,43 @@ function LoginPageInner() {
         password,
       });
 
+      // ── MFA challenge: user has MFA enabled, hand off to /login/mfa ──
+      if ((res as any).mfaRequired) {
+        const r = res as { mfaRequired: true; mfaToken: string; email: string };
+        const params = new URLSearchParams({
+          mfaToken: r.mfaToken,
+          email: r.email,
+          next: nextPath,
+        });
+        router.replace(`/login/mfa?${params.toString()}`);
+        return;
+      }
+
+      // ── Forced enrolment: role requires MFA but user hasn't enrolled ──
+      if ((res as any).mfaEnrolmentRequired) {
+        const r = res as {
+          mfaEnrolmentRequired: true;
+          mfaToken: string;
+          email: string;
+          reason?: string;
+        };
+        const params = new URLSearchParams({
+          mfaToken: r.mfaToken,
+          email: r.email,
+          next: nextPath,
+        });
+        if (r.reason) params.set("reason", r.reason);
+        router.replace(`/login/mfa-enroll?${params.toString()}`);
+        return;
+      }
+
+      // ── Plain login (no MFA configured / not required) ──
+      const ok = res as Extract<typeof res, { accessToken: string }>;
       establishSession({
-        accessToken: res.accessToken,
-        user: res.user,
-        organization: res.organization,
-        role: res.role ?? "owner",
+        accessToken: ok.accessToken,
+        user: ok.user,
+        organization: ok.organization,
+        role: (ok.role ?? "owner") as AuthRole,
       });
 
       router.replace(nextPath);
