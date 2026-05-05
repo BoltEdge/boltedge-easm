@@ -223,7 +223,7 @@ For the unauthenticated quick-scan submit button:
 
 If you become aware that someone has used the Service to scan an
 asset you control without authorisation, contact us at
-**contact@nanoasm.com** with as much detail as you have (date, time,
+**support@nanoasm.com** with as much detail as you have (date, time,
 target asset, source IP if known). We investigate every credible
 report and will preserve relevant logs.
 
@@ -240,5 +240,5 @@ ongoing affirmation of the updated warranties.
 
 ## 11. Contact
 
-- Email: **contact@nanoasm.com**
+- Email: **support@nanoasm.com**
 - Web: https://nanoasm.com/#contact

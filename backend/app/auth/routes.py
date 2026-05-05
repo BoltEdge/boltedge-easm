@@ -664,6 +664,15 @@ def change_password():
     )
 
     db.session.commit()
+
+    # Out-of-band confirmation so a stolen-session attacker can't
+    # silently change the password without alerting the real user.
+    try:
+        from app.auth.emails import send_password_reset_notice
+        send_password_reset_notice(user, by_admin=False)
+    except Exception:
+        current_app.logger.exception("Password-change notice email failed for user %s", user.id)
+
     return jsonify(message="Password changed successfully"), 200
 
 
@@ -692,6 +701,15 @@ def reset_password():
 
     user.password_hash = generate_password_hash(new_password)
     db.session.commit()
+
+    # Out-of-band confirmation. The flow is unauthenticated (token-based)
+    # so a real user receiving this without recognising it is the only
+    # signal they have that the reset link was used.
+    try:
+        from app.auth.emails import send_password_reset_notice
+        send_password_reset_notice(user, by_admin=False)
+    except Exception:
+        current_app.logger.exception("Password-reset notice email failed for user %s", user.id)
 
     return jsonify(message="Password updated successfully. You can now log in."), 200
 
@@ -816,6 +834,80 @@ def resend_verification():
 def _oauth_state_serializer(secret_key: str):
     from itsdangerous import URLSafeTimedSerializer
     return URLSafeTimedSerializer(secret_key, salt="nanoasm-oauth-state")
+
+
+def _oauth_mfa_redirect_or_none(user: User, frontend_url: str, next_url: str):
+    """
+    If the user has MFA enrolled (or is required to enrol), return a Flask
+    redirect Response that sends them through the MFA verify / forced-enrol
+    flow instead of issuing a session token directly. Returns None if the
+    user can be logged in normally (no MFA).
+
+    Without this guard, the OAuth callback would hand out a JWT after just
+    the OAuth credential — bypassing MFA entirely for any user who clicks
+    "Continue with Google/Microsoft" instead of using email+password.
+    """
+    import urllib.parse
+    from flask import redirect as flask_redirect
+    from app.auth.mfa import create_mfa_challenge_token
+    from app.models import OrganizationMember as _OM
+
+    if user.mfa_enabled:
+        mfa_token = create_mfa_challenge_token(
+            secret_key=current_app.config["SECRET_KEY"],
+            user_id=user.id,
+        )
+        membership = _OM.query.filter_by(user_id=user.id, is_active=True).first()
+        log_audit(
+            organization_id=membership.organization_id if membership else None,
+            user_id=user.id,
+            action="auth.mfa_required",
+            category="auth",
+            target_type="user",
+            target_id=str(user.id),
+            target_label=user.email,
+            description=f"MFA challenge issued for {user.email} (OAuth)",
+        )
+        params = urllib.parse.urlencode({
+            "mfaToken": mfa_token,
+            "email": user.email,
+            "next": next_url,
+        })
+        return flask_redirect(f"{frontend_url}/login/mfa?{params}")
+
+    # Mandatory MFA enrolment for elevated roles
+    membership = _OM.query.filter_by(user_id=user.id, is_active=True).first()
+    requires_mfa = bool(user.is_superadmin) or (
+        membership and membership.role in ("owner", "admin")
+    )
+    if requires_mfa:
+        enrol_token = create_mfa_challenge_token(
+            secret_key=current_app.config["SECRET_KEY"],
+            user_id=user.id,
+        )
+        log_audit(
+            organization_id=membership.organization_id if membership else None,
+            user_id=user.id,
+            action="auth.mfa_enrolment_required",
+            category="auth",
+            target_type="user",
+            target_id=str(user.id),
+            target_label=user.email,
+            description=(
+                f"MFA enrolment required for {user.email} (OAuth, "
+                f"role={membership.role if membership else 'n/a'}, "
+                f"superadmin={bool(user.is_superadmin)})"
+            ),
+        )
+        params = urllib.parse.urlencode({
+            "mfaToken": enrol_token,
+            "email": user.email,
+            "next": next_url,
+            "reason": "Two-factor authentication is required for this account.",
+        })
+        return flask_redirect(f"{frontend_url}/login/mfa-enroll?{params}")
+
+    return None
 
 
 @auth_bp.get("/oauth/google")
@@ -982,6 +1074,13 @@ def oauth_google_callback():
         except Exception:
             current_app.logger.exception("Welcome email send failed for Google OAuth user %s", user.id)
 
+    # MFA gate — must run before issuing the session token. Without this
+    # the OAuth callback bypasses MFA for any user who clicks "Continue
+    # with Google" instead of email+password. Same logic as /auth/login.
+    mfa_redirect = _oauth_mfa_redirect_or_none(user, frontend_url, next_url)
+    if mfa_redirect is not None:
+        return mfa_redirect
+
     is_new = not user.job_title and not user.company and not user.country
     jwt = create_access_token(secret_key=current_app.config["SECRET_KEY"], user_id=user.id)
     import urllib.parse
@@ -1142,6 +1241,12 @@ def oauth_microsoft_callback():
             send_welcome_email(user, organization=org)
         except Exception:
             current_app.logger.exception("Welcome email send failed for Microsoft OAuth user %s", user.id)
+
+    # MFA gate — must run before issuing the session token. Same logic
+    # as /auth/login; without this the OAuth path bypasses MFA entirely.
+    mfa_redirect = _oauth_mfa_redirect_or_none(user, frontend_url, next_url)
+    if mfa_redirect is not None:
+        return mfa_redirect
 
     is_new = not user.job_title and not user.company and not user.country
     jwt = create_access_token(secret_key=current_app.config["SECRET_KEY"], user_id=user.id)

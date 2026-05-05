@@ -132,7 +132,7 @@ Update cadence during in-progress incidents:
 
 ### 5.3 Channels
 
-- Primary: `support@nanoasm.com` (planned; today `contact@nanoasm.com`).
+- Primary: `support@nanoasm.com`.
 - Enterprise customers: dedicated account-team contact at signup.
 - Security: `security@nanoasm.com` (planned) — see `05-security-policy.md` §10.
 

@@ -90,7 +90,7 @@ def shell(*, title: str, body_html: str, footer_html: str = "") -> str:
       [footer_html — optional, per-email legal/disclaimer text]
 
     `footer_html` is rendered in muted small text. Use it for things
-    like "manage billing · contact@nanoasm.com" lines specific to one
+    like "manage billing · support@nanoasm.com" lines specific to one
     email type. Leave empty if the sign-off is enough.
     """
     footer_block = ""

@@ -146,7 +146,7 @@ def send_welcome_email(user: User, organization: Optional[Organization] = None) 
         </p>
         <p style="font-size:13px;line-height:1.6;color:{TEXT_MUTED};margin:0;">
           Still stuck? Reply to this email &mdash; it goes straight to a real person at
-          <a href="mailto:contact@nanoasm.com" style="color:{BRAND_TEAL};text-decoration:none;">contact@nanoasm.com</a>.
+          <a href="mailto:support@nanoasm.com" style="color:{BRAND_TEAL};text-decoration:none;">support@nanoasm.com</a>.
         </p>
         """
     )
@@ -259,4 +259,120 @@ def send_password_reset_email(user: User, reset_link: str) -> bool:
         to=user.email,
         subject="Reset your Nano EASM password",
         html=shell(title="Reset your password", body_html=body),
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Admin-initiated security notifications
+# ─────────────────────────────────────────────────────────────────────
+
+def send_mfa_reset_notice(user: User, *, by_admin: bool = True) -> bool:
+    """
+    Notify the user that their two-factor authentication has been
+    disabled. Sent after an admin clicks "Reset MFA" on the user, or
+    after the user themselves disables MFA from Settings → Security
+    (with `by_admin=False`).
+
+    The email does not contain a recovery link — disabling MFA is its
+    own action; the user simply needs to know it happened so they can
+    flag it if they didn't authorise it.
+    """
+    if not user.email:
+        return False
+
+    name = _greeting_name(user)
+    fe = frontend_url()
+    actor_phrase = (
+        "a Nano EASM administrator" if by_admin
+        else "you (or someone signed in as you)"
+    )
+
+    body = f"""
+    <p style="font-size:15px;line-height:1.6;color:{TEXT_DARK};margin:0 0 16px 0;">
+      Hi {name},
+    </p>
+    <p style="font-size:15px;line-height:1.6;color:{TEXT_DARK};margin:0 0 16px 0;">
+      Two-factor authentication on your Nano EASM account was just <strong>disabled</strong> by {actor_phrase}.
+      Your authenticator app and recovery key have been unlinked.
+    </p>
+    <p style="font-size:15px;line-height:1.6;color:{TEXT_DARK};margin:0 0 16px 0;">
+      Next time you sign in, you&rsquo;ll be asked to set up two-factor authentication again
+      (if your role requires it).
+    </p>
+
+    <div style="margin:24px 0;padding:14px 16px;border-radius:8px;background:#fff7ed;border:1px solid #fed7aa;">
+      <p style="margin:0 0 8px 0;font-size:14px;font-weight:600;color:#9a3412;">
+        Didn&rsquo;t expect this?
+      </p>
+      <p style="margin:0;font-size:13px;line-height:1.55;color:#9a3412;">
+        If you didn&rsquo;t request this change and don&rsquo;t recognise the action, contact
+        <a href="mailto:support@nanoasm.com" style="color:#9a3412;text-decoration:underline;">support@nanoasm.com</a>
+        immediately and consider changing your password.
+      </p>
+    </div>
+
+    <p style="font-size:13px;line-height:1.6;color:{TEXT_MUTED};margin:20px 0 0 0;">
+      You can re-enable two-factor authentication at any time from
+      <a href="{fe}/settings/security" style="color:{BRAND_TEAL};">Settings &rarr; Security</a>.
+    </p>
+    """
+
+    return send_via_resend(
+        to=user.email,
+        subject="Your Nano EASM two-factor authentication was disabled",
+        html=shell(title="Two-factor authentication disabled", body_html=body),
+    )
+
+
+def send_password_reset_notice(user: User, *, by_admin: bool = True) -> bool:
+    """
+    Notify the user that someone initiated a password reset on their
+    account. The actual reset *link* is delivered separately by
+    `send_password_reset_email`; this function exists for the case
+    where an admin took action and the user should know.
+
+    Today, the admin password-reset endpoint already includes the
+    "an admin initiated this" line in the reset-link email, so this
+    helper is mostly a hook for future use (e.g. when password is
+    changed via admin without a self-service flow).
+    """
+    if not user.email:
+        return False
+
+    name = _greeting_name(user)
+    fe = frontend_url()
+    actor_phrase = (
+        "a Nano EASM administrator" if by_admin
+        else "you (or someone signed in as you)"
+    )
+
+    body = f"""
+    <p style="font-size:15px;line-height:1.6;color:{TEXT_DARK};margin:0 0 16px 0;">
+      Hi {name},
+    </p>
+    <p style="font-size:15px;line-height:1.6;color:{TEXT_DARK};margin:0 0 16px 0;">
+      The password on your Nano EASM account was just <strong>changed</strong> by {actor_phrase}.
+    </p>
+
+    <div style="margin:24px 0;padding:14px 16px;border-radius:8px;background:#fff7ed;border:1px solid #fed7aa;">
+      <p style="margin:0 0 8px 0;font-size:14px;font-weight:600;color:#9a3412;">
+        Didn&rsquo;t expect this?
+      </p>
+      <p style="margin:0;font-size:13px;line-height:1.55;color:#9a3412;">
+        If you didn&rsquo;t make this change, contact
+        <a href="mailto:support@nanoasm.com" style="color:#9a3412;text-decoration:underline;">support@nanoasm.com</a>
+        immediately.
+      </p>
+    </div>
+
+    <p style="font-size:13px;line-height:1.6;color:{TEXT_MUTED};margin:20px 0 0 0;">
+      You can sign in at
+      <a href="{fe}/login" style="color:{BRAND_TEAL};">{fe}/login</a>.
+    </p>
+    """
+
+    return send_via_resend(
+        to=user.email,
+        subject="Your Nano EASM password was changed",
+        html=shell(title="Password changed", body_html=body),
     )

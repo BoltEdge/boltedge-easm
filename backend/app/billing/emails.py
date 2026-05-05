@@ -84,7 +84,7 @@ def _billing_footer() -> str:
         f'This is an automated email from Nano EASM. You received it because you have an active subscription on this organisation.<br>'
         f'<a href="{fe}/settings/billing" style="color:{_BRAND_TEAL};text-decoration:none;">Manage billing</a>'
         f'&nbsp;·&nbsp;'
-        f'<a href="mailto:contact@nanoasm.com" style="color:{_BRAND_TEAL};text-decoration:none;">contact@nanoasm.com</a>'
+        f'<a href="mailto:support@nanoasm.com" style="color:{_BRAND_TEAL};text-decoration:none;">support@nanoasm.com</a>'
     )
 
 
@@ -499,7 +499,7 @@ def send_refund_email(org: Organization, charge: dict) -> bool:
 
     <p style="font-size:13px;line-height:1.6;color:{_TEXT_MUTED};margin:16px 0 0 0;">
       If you have questions about this refund, reply to this email or contact us at
-      <a href="mailto:contact@nanoasm.com" style="color:{_BRAND_TEAL};text-decoration:none;">contact@nanoasm.com</a>.
+      <a href="mailto:support@nanoasm.com" style="color:{_BRAND_TEAL};text-decoration:none;">support@nanoasm.com</a>.
       Your billing history is available in <a href="{fe}/settings/billing" style="color:{_BRAND_TEAL};text-decoration:none;">your account</a>.
     </p>
     """

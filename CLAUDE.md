@@ -223,7 +223,7 @@ ENABLE_BILLING = os.environ.get("ENABLE_BILLING", "false").lower() == "true"
 **Frontend:**
 - Landing page: pricing section hidden, "Pricing" nav link hidden, hero CTA says "Get started free"
 - Sidebar: "Payment & Plans" → "Plans"
-- Plans page (`/settings/billing`): no prices shown, no trial buttons, upgrade buttons say "Switch to this plan", Custom shows "Contact Us" (mailto:contact@nanoasm.com)
+- Plans page (`/settings/billing`): no prices shown, no trial buttons, upgrade buttons say "Switch to this plan", Custom shows "Contact Us" (mailto:support@nanoasm.com)
 - Monitoring upgrade prompt: no prices shown, "Switch to {plan}" instead of "Start Trial"
 - TopBar and Sidebar: trial countdown badge hidden
 - Register page: "No credit card required" → "Free to use"

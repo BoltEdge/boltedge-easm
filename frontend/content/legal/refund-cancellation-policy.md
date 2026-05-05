@@ -37,7 +37,7 @@ You can cancel your subscription at any time from the *Manage billing*
 button in Settings → Billing. This opens our hosted billing portal.
 Inside the portal, click **Cancel subscription** and confirm.
 
-You can also email **contact@nanoasm.com** and we will action the
+You can also email **support@nanoasm.com** and we will action the
 cancellation for you. Please email from the address on the Account.
 
 ### 1.2 What happens when you cancel
@@ -210,7 +210,7 @@ If the failure is **minor**, we may choose to refund, replace, or
 remedy the failure within a reasonable time.
 
 To make a claim under the ACL, contact us at
-**contact@nanoasm.com** with details of the issue.
+**support@nanoasm.com** with details of the issue.
 
 ### 7.2 Other jurisdictions
 
@@ -240,7 +240,7 @@ through your bank or card provider. Chargebacks:
   is open or after it concludes.
 
 We respond promptly to refund requests and will resolve genuine
-billing issues quickly. **Email contact@nanoasm.com first.**
+billing issues quickly. **Email support@nanoasm.com first.**
 
 If you initiate a chargeback for a charge we believe was valid, we
 may suspend your Account pending resolution and provide our records
@@ -254,7 +254,7 @@ Billing.
 For refund requests, billing questions, or anything not handled by
 self-service:
 
-- Email: **contact@nanoasm.com**
+- Email: **support@nanoasm.com**
 - Web: https://nanoasm.com/#contact
 
 Include your Organisation name and (if available) the invoice
@@ -270,5 +270,5 @@ Changes will not apply retroactively to charges already taken.
 
 ## 11. Contact
 
-- Email: **contact@nanoasm.com**
+- Email: **support@nanoasm.com**
 - Web: https://nanoasm.com/#contact

@@ -174,5 +174,5 @@ suspension, or cancellation of the Service or your Account.
 
 Questions about this document:
 
-- Email: **contact@nanoasm.com**
+- Email: **support@nanoasm.com**
 - Web: https://nanoasm.com/#contact

@@ -144,7 +144,7 @@ your limits than throttle you.
 
 If you believe someone is using the Service in violation of this
 AUP — including scanning assets they don't own — report it to
-**contact@nanoasm.com**. Where possible, include:
+**support@nanoasm.com**. Where possible, include:
 
 - the time and date of the activity,
 - the target asset (if known) or other identifying details,
@@ -155,7 +155,7 @@ We investigate all credible reports.
 ## 6. Reporting vulnerabilities in Nano EASM itself
 
 If you discover a security vulnerability in the Service, please
-disclose it responsibly via **contact@nanoasm.com**. We commit to:
+disclose it responsibly via **support@nanoasm.com**. We commit to:
 
 - acknowledging your report within a reasonable timeframe,
 - coordinating disclosure timelines with you,
@@ -188,6 +188,6 @@ Continued use after the effective date constitutes acceptance.
 
 ## 9. Contact
 
-- Report abuse: **contact@nanoasm.com**
-- Report vulnerabilities: **contact@nanoasm.com**
+- Report abuse: **support@nanoasm.com**
+- Report vulnerabilities: **support@nanoasm.com**
 - General contact: https://nanoasm.com/#contact

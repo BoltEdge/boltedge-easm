@@ -828,9 +828,19 @@ def admin_reset_mfa(user_id: int):
     )
     db.session.commit()
 
+    # Notify the user out-of-band so an unauthorised reset can be flagged.
+    # Best-effort — failing email send must not roll back the action.
+    notice_sent = False
+    try:
+        from app.auth.emails import send_mfa_reset_notice
+        notice_sent = bool(send_mfa_reset_notice(user, by_admin=True))
+    except Exception:
+        current_app.logger.exception("MFA-reset notice email failed for user %s", user.id)
+
     return jsonify(
         message=f"MFA reset for {user.email}. The user can re-enrol on next login.",
         mfaEnabled=False,
+        noticeSent=notice_sent,
     ), 200
 
 
@@ -2263,7 +2273,7 @@ def reply_contact_request(req_id: int):
                 "to": [cr.email],
                 "subject": reply_subject,
                 "html": html,
-                "reply_to": "contact@nanoasm.com",
+                "reply_to": "support@nanoasm.com",
             })
             email_sent = True
         except Exception:

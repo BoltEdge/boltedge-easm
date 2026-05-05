@@ -245,7 +245,7 @@ Notification content: what happened, when, what data was affected, what we have 
 
 | Reporter | Channel |
 |---|---|
-| Customer | `security@nanoasm.com` (planned — currently `contact@nanoasm.com`); any support channel |
+| Customer | `security@nanoasm.com` (planned — currently `support@nanoasm.com`); any support channel |
 | External researcher | `security@nanoasm.com`; vulnerability disclosure policy on `/security` (planned) |
 | Internal | Direct message to Security Lead; chat thread |
 

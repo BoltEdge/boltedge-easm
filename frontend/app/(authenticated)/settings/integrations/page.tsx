@@ -63,7 +63,7 @@ const CONFIG_FIELDS: Record<string, { key: string; label: string; type: string; 
   ],
   email: [
     { key: "recipients", label: "Recipients", type: "text", placeholder: "a@company.com, b@company.com", required: true },
-    { key: "from_email", label: "From Address (optional)", type: "email", placeholder: "contact@nanoasm.com" },
+    { key: "from_email", label: "From Address (optional)", type: "email", placeholder: "support@nanoasm.com" },
   ],
 };
 

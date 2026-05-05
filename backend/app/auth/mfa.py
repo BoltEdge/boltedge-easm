@@ -416,6 +416,14 @@ def disable():
         description=f"MFA disabled for {user.email}",
     )
 
+    # Out-of-band notification so a stolen-JWT / phished-password
+    # disable can be flagged by the legitimate account holder.
+    try:
+        from app.auth.emails import send_mfa_reset_notice
+        send_mfa_reset_notice(user, by_admin=False)
+    except Exception:
+        current_app.logger.exception("MFA-disabled notice email failed for user %s", user.id)
+
     return jsonify(message="MFA disabled.", mfaEnabled=False), 200
 
 

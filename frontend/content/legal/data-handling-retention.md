@@ -124,7 +124,7 @@ Settings → Billing → Danger Zone. The deletion:
 
 **Account deletion.** A User who is not a member of any
 Organisation can request account deletion via
-**contact@nanoasm.com**. The deletion follows the same backup
+**support@nanoasm.com**. The deletion follows the same backup
 window as Organisation deletion.
 
 **Customer-Portal-driven cancellation** (cancelling a paid
@@ -143,7 +143,7 @@ law:
 - We delete data from production immediately and from backups
   within the **30-day rolling backup window**.
 
-Requests are submitted to **contact@nanoasm.com** as set out in the
+Requests are submitted to **support@nanoasm.com** as set out in the
 [Privacy Policy](./privacy-policy.md) §9.
 
 ### 5.3 Automatic deletion (no request needed)
@@ -179,7 +179,7 @@ trade-off that GDPR Article 17 explicitly permits ("disproportionate
 effort" carve-out for backups).
 
 If you have a compliance requirement for immediate purge from
-backups, contact us at **contact@nanoasm.com** and we will discuss
+backups, contact us at **support@nanoasm.com** and we will discuss
 options under a custom contract.
 
 ## 7. Encryption
@@ -261,7 +261,7 @@ that affects your personal data or Customer Data, we will:
    own breach-notification obligations.
 
 Customers can report a suspected security incident to
-**contact@nanoasm.com**. For vulnerability reports against the
+**support@nanoasm.com**. For vulnerability reports against the
 Service itself, see the [Acceptable Use Policy](./acceptable-use-policy.md)
 §6.
 
@@ -283,7 +283,7 @@ Our standard DPA covers:
 - international transfer mechanisms,
 - termination and return/deletion of data.
 
-To request a DPA, email **contact@nanoasm.com**.
+To request a DPA, email **support@nanoasm.com**.
 
 ## 14. Customer responsibilities
 
@@ -316,5 +316,5 @@ to account holders.
 For questions about this policy, data subject rights, DPA requests,
 or security incidents:
 
-- Email: **contact@nanoasm.com**
+- Email: **support@nanoasm.com**
 - Web: https://nanoasm.com/#contact

@@ -17,7 +17,7 @@ controller** (or, under the **Australian Privacy Act 1988**, the
 **APP entity**) unless stated otherwise.
 
 - Operator: **Nano EASM** — based in Australia
-- Contact for privacy matters: **contact@nanoasm.com**
+- Contact for privacy matters: **support@nanoasm.com**
 
 We comply with the **Australian Privacy Principles (APPs)** under the
 Privacy Act 1988 (Cth). For users in the United Kingdom or European
@@ -230,7 +230,7 @@ of your personal data to the United States and the other
 sub-processor jurisdictions listed in §6.1.
 
 A copy of the safeguards we rely on for any specific transfer is
-available on request from **contact@nanoasm.com**.
+available on request from **support@nanoasm.com**.
 
 ## 8. How long we keep data
 
@@ -291,7 +291,7 @@ applies to you:
   personal information. We do not sell or share personal
   information for cross-context behavioural advertising.
 
-To exercise any of these rights, email **contact@nanoasm.com**. We
+To exercise any of these rights, email **support@nanoasm.com**. We
 may need to verify your identity before fulfilling the request and
 will respond within the timeframe required by applicable law
 (generally 30 days under the Privacy Act 1988, one month under
@@ -305,7 +305,7 @@ data.
 
 The Service is not directed at children. We do not knowingly collect
 personal data from anyone under 18. If you believe we have collected
-data from a minor, contact us at **contact@nanoasm.com** and we will
+data from a minor, contact us at **support@nanoasm.com** and we will
 delete it.
 
 ## 11. Security
@@ -323,7 +323,7 @@ protect personal data, including:
 
 No system is perfectly secure. If you discover a security
 vulnerability in the Service, please report it responsibly via
-**contact@nanoasm.com** — we appreciate coordinated disclosure.
+**support@nanoasm.com** — we appreciate coordinated disclosure.
 
 ## 12. Cookies and similar technologies
 
@@ -355,5 +355,5 @@ at the top reflects the most recent revision.
 For privacy questions, data subject requests, or to request a copy
 of safeguards for international transfers:
 
-- Email: **contact@nanoasm.com**
+- Email: **support@nanoasm.com**
 - Web: https://nanoasm.com/#contact

@@ -61,7 +61,7 @@ consumers or minors.
 
 - You are responsible for keeping your credentials confidential and
   for all activity that occurs under your Account.
-- You must notify us promptly at **contact@nanoasm.com** of any
+- You must notify us promptly at **support@nanoasm.com** of any
   unauthorised access to your Account.
 - We may require email verification before granting full access to
   the Service.
@@ -219,7 +219,7 @@ right you have in your country of residence.
   incorporated by reference in §1, constitute the entire agreement
   between you and Nano EASM regarding the Service and supersede any
   prior agreement on the subject matter.
-- **Notices.** Notices to us must be sent to **contact@nanoasm.com**.
+- **Notices.** Notices to us must be sent to **support@nanoasm.com**.
   Notices to you may be sent to the email address on file for your
   Account or via in-product banner.
 
@@ -227,5 +227,5 @@ right you have in your country of residence.
 
 Questions about these Terms can be sent to:
 
-- Email: **contact@nanoasm.com**
+- Email: **support@nanoasm.com**
 - Web: https://nanoasm.com/#contact

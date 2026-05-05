@@ -250,7 +250,7 @@ You can access past invoices and download PDFs at any time via
 
 ## 15. Chargebacks
 
-We strongly prefer that you contact us (**contact@nanoasm.com**) to
+We strongly prefer that you contact us (**support@nanoasm.com**) to
 resolve a billing concern before initiating a chargeback. The
 chargeback position is governed by the [Refund & Cancellation
 Policy](./refund-cancellation-policy.md) §8.
@@ -289,7 +289,7 @@ by email to the billing contact, with the notice period set out in
 Billing questions, invoice requests, payment-method issues, or
 anything else not handled by self-service:
 
-- Email: **contact@nanoasm.com**
+- Email: **support@nanoasm.com**
 - Web: https://nanoasm.com/#contact
 
 Include your Organisation name and (if available) the invoice

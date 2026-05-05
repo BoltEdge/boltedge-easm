@@ -81,8 +81,8 @@ export default function LegalIndexPage() {
           <p className="mt-3 text-white/50 text-base max-w-2xl">
             The terms and policies that govern your use of Nano EASM. We try to keep these
             short and readable. If anything is unclear, write to{" "}
-            <a href="mailto:contact@nanoasm.com" className="text-teal-400 hover:text-teal-300">
-              contact@nanoasm.com
+            <a href="mailto:support@nanoasm.com" className="text-teal-400 hover:text-teal-300">
+              support@nanoasm.com
             </a>.
           </p>
 
