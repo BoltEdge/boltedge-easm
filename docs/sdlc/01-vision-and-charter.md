@@ -8,8 +8,8 @@
 | Title | Nano EASM — Vision & Charter |
 | Version | 0.1 (Draft) |
 | Status | Draft — pending sign-off |
-| Owner | [TBD — founder name] |
-| Author | [TBD — founder name] |
+| Owner | [Desire Iradukunda |
+| Author | Desire Iradukunda |
 | Created | 2026-05-05 |
 | Last reviewed | 2026-05-05 |
 | Next review | +90 days |
