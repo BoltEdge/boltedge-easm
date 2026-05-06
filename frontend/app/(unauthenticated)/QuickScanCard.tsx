@@ -331,7 +331,9 @@ export default function QuickScanCard({ onActiveChange }: QuickScanCardProps = {
         >
           {loading ? "Scanning…" : "Scan now"}
         </button>
-        <p className="mt-2 text-[11px] text-muted-foreground/60 text-center">Results are not saved unless you sign in</p>
+        <p className="mt-2 text-[11px] text-muted-foreground/60 text-center">
+          <Link href="/register" className="underline hover:text-muted-foreground">Sign in</Link> for deeper scans and richer findings
+        </p>
       </div>
 
       {error && (
