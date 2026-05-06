@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Globe2 } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Globe2 } from "lucide-react";
 
 import { publicQuickDiscover, type QuickDiscoveryResponse } from "../lib/api";
 import { friendlyScannerName } from "../lib/scanner-labels";
@@ -27,7 +28,7 @@ export default function QuickDiscoveryCard({ onActiveChange }: QuickDiscoveryCar
   const [mode, setMode] = useState<"domain" | "org">("domain");
   const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; code?: string } | null>(null);
   const [result, setResult] = useState<DiscoveryNormalized | null>(null);
 
   useEffect(() => {
@@ -53,7 +54,12 @@ export default function QuickDiscoveryCard({ onActiveChange }: QuickDiscoveryCar
         resolved: res?.resolved && typeof res.resolved === "object" ? res.resolved as Record<string, string[]> : {},
         errors: Array.isArray(res?.errors) ? (res.errors as any[]).map((e) => ({ source: safeStr(e?.source, "unknown"), error: safeStr(e?.error, "error") })) : [],
       });
-    } catch (e: any) { setError(e?.message || "Quick discovery failed"); }
+    } catch (e: any) {
+      setError({
+        message: e?.message || "Quick discovery failed",
+        code: e?.payload?.code,
+      });
+    }
     finally { setLoading(false); }
   };
 
@@ -75,7 +81,23 @@ export default function QuickDiscoveryCard({ onActiveChange }: QuickDiscoveryCar
         <p className="mt-2 text-[11px] text-muted-foreground/60 text-center"><a href="/register" className="underline hover:text-muted-foreground">Sign in</a> to unlock deeper enumeration</p>
       </div>
       {mode === "org" && <div className="mx-6 mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">Organization discovery isn&apos;t wired yet. Use Domain for now.</div>}
-      {error && <div className="mx-6 mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</div>}
+      {error && (
+        <div className="mx-6 mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          {error.code === "RATE_LIMITED" ? (
+            <div>
+              <p>{error.message.replace(/\s*Sign up for free.*$/i, "").trim()}</p>
+              <Link
+                href="/register"
+                className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-teal-300 hover:text-teal-200 transition-colors"
+              >
+                Sign up free for more discoveries <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+          ) : (
+            error.message
+          )}
+        </div>
+      )}
       <div className="px-6 pb-6 flex-1">
         <div className="rounded-xl border border-border bg-background/30 p-4 h-full flex flex-col">
           <div className="flex items-center justify-between gap-3 mb-3">

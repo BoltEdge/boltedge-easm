@@ -135,11 +135,14 @@ def quick_scan():
         ), 403
 
     # ── Rate limit: max 5 scans per IP per hour ──────────────────
+    # Bucket is per-source (scan / discovery / explain) so hitting the
+    # cap on one tool doesn't lock out the others.
     RATE_LIMIT = 5
     from datetime import timedelta
     window_start = now - timedelta(hours=1)
     recent_count = QuickScanLog.query.filter(
         QuickScanLog.ip_address == ip,
+        QuickScanLog.source == "scan",
         QuickScanLog.created_at >= window_start,
         QuickScanLog.status.notin_(["blocked", "rate_limited"]),
     ).count()
@@ -147,7 +150,7 @@ def quick_scan():
     if recent_count >= RATE_LIMIT:
         _log_scan(ip=ip, user_agent=ua, target=value, asset_type=asset_type, status="rate_limited")
         return jsonify(
-            error=f"Too many requests. You can run up to {RATE_LIMIT} scans per hour. Please try again later. Sign up for free for more scans.",
+            error=f"Too many scans. You can run up to {RATE_LIMIT} scans per hour from this IP. Please try again later. Sign up for free for more scans.",
             code="RATE_LIMITED",
         ), 429
 
@@ -284,11 +287,13 @@ def quick_discovery():
             code="IP_BLOCKED",
         ), 403
 
-    # Combined rate limit: scan + discovery share the 5/hour budget
+    # Rate limit: 5 discoveries per IP per hour. Independent of /quick-scan
+    # — hitting the scan cap shouldn't lock the visitor out of discovery.
     RATE_LIMIT = 5
     window_start = now - timedelta(hours=1)
     recent_count = QuickScanLog.query.filter(
         QuickScanLog.ip_address == ip,
+        QuickScanLog.source == "discovery",
         QuickScanLog.created_at >= window_start,
         QuickScanLog.status.notin_(["blocked", "rate_limited"]),
     ).count()
@@ -297,7 +302,7 @@ def quick_discovery():
         _log_scan(ip=ip, user_agent=ua, target=domain_raw, asset_type="domain",
                   source="discovery", status="rate_limited")
         return jsonify(
-            error=f"Too many requests. You can run up to {RATE_LIMIT} scans per hour. Please try again later. Sign up for free for more scans.",
+            error=f"Too many discoveries. You can run up to {RATE_LIMIT} discoveries per hour from this IP. Please try again later. Sign up for free for more discoveries.",
             code="RATE_LIMITED",
         ), 429
 

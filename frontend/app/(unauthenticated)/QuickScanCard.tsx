@@ -166,7 +166,7 @@ export default function QuickScanCard({ onActiveChange }: QuickScanCardProps = {
   const [type, setType] = useState<"domain" | "ip">("domain");
   const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; code?: string } | null>(null);
   const [result, setResult] = useState<QuickScanNormalized | null>(null);
 
   // Nano EASM Assistant explanation for the top finding (user-initiated — fetched only on click)
@@ -225,7 +225,10 @@ export default function QuickScanCard({ onActiveChange }: QuickScanCardProps = {
       }
       setResult(normalized);
     } catch (e: any) {
-      setError(e?.message || "Quick scan failed");
+      setError({
+        message: e?.message || "Quick scan failed",
+        code: e?.payload?.code,
+      });
     } finally {
       setLoading(false);
     }
@@ -332,7 +335,21 @@ export default function QuickScanCard({ onActiveChange }: QuickScanCardProps = {
       </div>
 
       {error && (
-        <div className="mx-6 mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</div>
+        <div className="mx-6 mb-4 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          {error.code === "RATE_LIMITED" ? (
+            <div>
+              <p>{error.message.replace(/\s*Sign up for free.*$/i, "").trim()}</p>
+              <Link
+                href="/register"
+                className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-teal-300 hover:text-teal-200 transition-colors"
+              >
+                Sign up free for more scans <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+          ) : (
+            error.message
+          )}
+        </div>
       )}
 
       {/* Results panel */}

@@ -14,16 +14,19 @@ type ActiveCard = "scan" | "discovery" | "tools" | null;
  *
  * Default state: a 3-column grid (QuickScan / QuickDiscovery / QuickTools).
  *
- * When any card reports it has results, that card spans the full row and the
- * other two are unmounted. This keeps the visitor focused on the result they
- * just generated (especially the Nano EASM Assistant explanation, which is
- * text-heavy and needs the room) and removes competing CTAs at the moment of
- * highest engagement. A small reset link below brings the 3-column layout
- * back; clicking it bumps a `nonce` that remounts cards with cleared state.
+ * When any card reports it has results, that card spans the full row (via
+ * grid-column tricks below) and the other two are hidden via `display:none`.
+ * This keeps the visitor focused on the result they just generated and the
+ * Nano EASM Assistant explanation, which is text-heavy and needs the room.
  *
- * Mutual exclusion is automatic by construction: while one card is active,
- * the other two aren't mounted, so they can't fire onActiveChange. The
- * single ActiveCard slot can only be set by whichever card is rendered.
+ * IMPORTANT: all three cards stay mounted in the same JSX positions across
+ * layout transitions. We toggle Tailwind classes — never restructure the
+ * tree. If the tree shape changed, React would unmount the active card,
+ * lose its `result` state, and the just-fetched results would vanish before
+ * paint. We learned that the hard way.
+ *
+ * Reset bumps a `nonce` that re-keys all three cards, clearing their state
+ * cleanly when the visitor wants to return to the 3-col view.
  */
 export default function QuickToolsSection() {
   const [activeCard, setActiveCard] = useState<ActiveCard>(null);
@@ -32,13 +35,13 @@ export default function QuickToolsSection() {
   // Memoised handlers — passing inline arrows would make each child's
   // onActiveChange effect re-run every render and notify falsely.
   const handleScanActive = useCallback((active: boolean) => {
-    setActiveCard(active ? "scan" : null);
+    setActiveCard((prev) => (active ? "scan" : prev === "scan" ? null : prev));
   }, []);
   const handleDiscoveryActive = useCallback((active: boolean) => {
-    setActiveCard(active ? "discovery" : null);
+    setActiveCard((prev) => (active ? "discovery" : prev === "discovery" ? null : prev));
   }, []);
   const handleToolsActive = useCallback((active: boolean) => {
-    setActiveCard(active ? "tools" : null);
+    setActiveCard((prev) => (active ? "tools" : prev === "tools" ? null : prev));
   }, []);
 
   const handleReset = () => {
@@ -46,20 +49,39 @@ export default function QuickToolsSection() {
     setActiveCard(null);
   };
 
-  if (activeCard !== null) {
-    return (
-      <div className="max-w-5xl mx-auto">
-        <FadeInOnScroll delay={100}>
-          {activeCard === "scan" && (
+  const isActive = activeCard !== null;
+
+  // Slot class:
+  //   - inactive: take normal 1/3 grid column, full-height
+  //   - active + this is the active card: span all 3 columns
+  //   - active + this is NOT the active card: hidden
+  const slotClass = (slot: ActiveCard) =>
+    !isActive
+      ? "h-full"
+      : activeCard === slot
+        ? "sm:col-span-3"
+        : "hidden";
+
+  return (
+    <div className="max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 items-stretch">
+        <div className={slotClass("scan")}>
+          <FadeInOnScroll delay={100} className="h-full">
             <QuickScanCard key={`scan-${nonce}`} onActiveChange={handleScanActive} />
-          )}
-          {activeCard === "discovery" && (
+          </FadeInOnScroll>
+        </div>
+        <div className={slotClass("discovery")}>
+          <FadeInOnScroll delay={200} className="h-full">
             <QuickDiscoveryCard key={`discovery-${nonce}`} onActiveChange={handleDiscoveryActive} />
-          )}
-          {activeCard === "tools" && (
+          </FadeInOnScroll>
+        </div>
+        <div className={slotClass("tools")}>
+          <FadeInOnScroll delay={300} className="h-full">
             <QuickToolsCard key={`tools-${nonce}`} onActiveChange={handleToolsActive} />
-          )}
-        </FadeInOnScroll>
+          </FadeInOnScroll>
+        </div>
+      </div>
+      {isActive && (
         <div className="mt-4 text-center text-[11px] text-white/40">
           Looking for something else?{" "}
           <button
@@ -70,21 +92,7 @@ export default function QuickToolsSection() {
             See all quick tools
           </button>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 items-stretch max-w-5xl mx-auto">
-      <FadeInOnScroll delay={100} className="h-full">
-        <QuickScanCard key={`scan-${nonce}`} onActiveChange={handleScanActive} />
-      </FadeInOnScroll>
-      <FadeInOnScroll delay={200} className="h-full">
-        <QuickDiscoveryCard key={`discovery-${nonce}`} onActiveChange={handleDiscoveryActive} />
-      </FadeInOnScroll>
-      <FadeInOnScroll delay={300} className="h-full">
-        <QuickToolsCard key={`tools-${nonce}`} onActiveChange={handleToolsActive} />
-      </FadeInOnScroll>
+      )}
     </div>
   );
 }
