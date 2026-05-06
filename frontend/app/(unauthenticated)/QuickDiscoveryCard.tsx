@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Globe2 } from "lucide-react";
 
 import { publicQuickDiscover, type QuickDiscoveryResponse } from "../lib/api";
@@ -17,12 +17,22 @@ function Pill({ label, value }: { label: string; value: number | string }) {
 
 function normalizeDomainInput(v: string) { let d = (v || "").trim().toLowerCase(); d = d.replace(/^https?:\/\//, ""); d = d.split("/")[0] || d; d = d.split("?")[0] || d; d = d.replace(/^\*\./, ""); d = d.replace(/\.+$/, ""); return d; }
 
-export default function QuickDiscoveryCard() {
+type QuickDiscoveryCardProps = {
+  /** Notifies the parent when the card has results to show, so the page can
+   *  expand the card to full width and tuck away the sibling tool cards. */
+  onActiveChange?: (active: boolean) => void;
+};
+
+export default function QuickDiscoveryCard({ onActiveChange }: QuickDiscoveryCardProps = {}) {
   const [mode, setMode] = useState<"domain" | "org">("domain");
   const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DiscoveryNormalized | null>(null);
+
+  useEffect(() => {
+    onActiveChange?.(result !== null);
+  }, [result, onActiveChange]);
 
   const placeholder = useMemo(() => mode === "org" ? "e.g., Acme Corp (coming soon)" : "e.g., example.com", [mode]);
   const canRun = useMemo(() => !loading && mode !== "org" && normalizeDomainInput(value).length > 0, [loading, mode, value]);

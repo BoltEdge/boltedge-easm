@@ -147,7 +147,7 @@ def quick_scan():
     if recent_count >= RATE_LIMIT:
         _log_scan(ip=ip, user_agent=ua, target=value, asset_type=asset_type, status="rate_limited")
         return jsonify(
-            error=f"Too many requests. You can run up to {RATE_LIMIT} scans per hour. Please try again later.",
+            error=f"Too many requests. You can run up to {RATE_LIMIT} scans per hour. Please try again later. Sign up for free for more scans.",
             code="RATE_LIMITED",
         ), 429
 
@@ -297,7 +297,7 @@ def quick_discovery():
         _log_scan(ip=ip, user_agent=ua, target=domain_raw, asset_type="domain",
                   source="discovery", status="rate_limited")
         return jsonify(
-            error=f"Too many requests. You can run up to {RATE_LIMIT} scans per hour. Please try again later.",
+            error=f"Too many requests. You can run up to {RATE_LIMIT} scans per hour. Please try again later. Sign up for free for more scans.",
             code="RATE_LIMITED",
         ), 429
 

@@ -452,3 +452,153 @@ def explain_finding(finding) -> dict:
         "remediation": (remediation or "").strip(),
         "clientSummary": (client_summary or "").strip(),
     }
+
+
+# ---------------------------------------------------------------------------
+# Public (unauthenticated) explainer — used by /assistant/public-explain
+# ---------------------------------------------------------------------------
+#
+# The unauthenticated quick scan never persists findings to the database, so
+# the standard explain_finding() flow (which requires a Finding ORM row) can't
+# be used. This entrypoint accepts the raw shape that the unified quick-scan
+# engine emits and renders the same five-section payload by mapping the
+# coarse finding type to a curated template.
+#
+# Mapping is intentionally narrow — only types the public quick scan emits
+# are accepted, and the caller is responsible for filtering details_json
+# through _SAFE_EVIDENCE_KEYS before calling this.
+
+_PUBLIC_TYPE_TO_TEMPLATE = {
+    "service_exposure": "quick-scan-service-exposure",
+    "risky_port":       "quick-scan-risky-port",
+    "cve":              "quick-scan-cve",
+}
+
+
+def _evidence_lines_from_details(asset_value: str | None, details: dict) -> list[str]:
+    """Render a details dict into evidence lines without needing a Finding row.
+
+    Mirrors the structure of _evidence_lines() but skips fields that only
+    exist on persisted findings (first_seen_at / last_seen_at)."""
+    lines: list[str] = []
+
+    ip = details.get("ip")
+    port = details.get("port")
+    transport = (details.get("transport") or "tcp").lower()
+
+    if ip and port:
+        lines.append(f"Host: {ip}, port {port}/{transport}")
+    elif ip:
+        lines.append(f"Host: {ip}")
+    elif asset_value:
+        lines.append(f"Host: {asset_value}")
+
+    product = details.get("product")
+    version = details.get("version")
+    service = details.get("service") or details.get("service_label")
+    if service or product or version:
+        bits = []
+        if service:
+            bits.append(str(service))
+        if product:
+            bits.append(str(product))
+        if version:
+            bits.append(f"v{version}")
+        lines.append("Service: " + " · ".join(bits))
+
+    cve = details.get("cve")
+    if cve:
+        cvss = details.get("cvss")
+        lines.append(f"CVE: {cve}" + (f" (CVSS {cvss})" if cvss else ""))
+
+    tls_version = details.get("tls_version")
+    cipher = details.get("cipher")
+    if tls_version or cipher:
+        bits = []
+        if tls_version:
+            bits.append(str(tls_version))
+        if cipher:
+            bits.append(str(cipher))
+        lines.append("TLS: " + " · ".join(bits))
+
+    banner = details.get("banner")
+    if banner:
+        lines.append(f"Banner: {str(banner)[:160]}")
+
+    return lines
+
+
+def explain_unbound(
+    *,
+    finding_type: str,
+    asset_value: str | None,
+    details: dict | None,
+) -> dict:
+    """Generate a five-section explanation for a quick-scan-shaped finding
+    without a persisted Finding row.
+
+    Returns the same dict contract as explain_finding(); the caller routes it
+    to the public endpoint response."""
+    template_id = _PUBLIC_TYPE_TO_TEMPLATE.get(finding_type)
+    template = _TEMPLATES.get(template_id) if template_id else None
+
+    details = details if isinstance(details, dict) else {}
+    asset = asset_value or "this asset"
+
+    placeholders = {
+        "asset": asset,
+        "port": details.get("port"),
+        "value": details.get("value"),
+        "service": details.get("service") or details.get("service_label"),
+        "cve": details.get("cve"),
+        "url": details.get("url"),
+        "path": details.get("path"),
+        "header_name": details.get("header_name"),
+    }
+
+    # ── Summary + client summary ─────────────────────────────────────────
+    if template and template.summary:
+        summary = _render(template.summary, **placeholders) or ""
+        client_summary = summary
+    else:
+        # Fall back through the same category map the bound flow uses.
+        cat_key = "cve" if finding_type == "cve" else "ports"
+        fallback = _CATEGORY_FALLBACK.get(cat_key, _CATEGORY_FALLBACK["exposure"])
+        summary = fallback["summary"]
+        client_summary = fallback["client"]
+
+    # ── Technical explanation ────────────────────────────────────────────
+    if template and template.description:
+        technical = _render(template.description, **placeholders) or ""
+    else:
+        cat_key = "cve" if finding_type == "cve" else "ports"
+        technical = _CATEGORY_FALLBACK.get(cat_key, _CATEGORY_FALLBACK["exposure"])["technical"]
+
+    if template:
+        if template.cwe:
+            technical = f"{technical}\n\nClassification: {template.cwe}"
+        if template.references:
+            refs = "\n".join(f"  • {r}" for r in template.references[:5])
+            technical = f"{technical}\n\nReferences:\n{refs}"
+
+    # ── Evidence ─────────────────────────────────────────────────────────
+    evidence_lines = _evidence_lines_from_details(asset_value, details)
+    if evidence_lines:
+        evidence = "\n".join(f"• {line}" for line in evidence_lines)
+    else:
+        evidence = "No structured evidence was captured beyond the title and description."
+
+    # ── Remediation ──────────────────────────────────────────────────────
+    if template and template.remediation:
+        remediation = _render(template.remediation, **placeholders) or ""
+    else:
+        cat_key = "cve" if finding_type == "cve" else "ports"
+        remediation = _CATEGORY_FALLBACK.get(cat_key, _CATEGORY_FALLBACK["exposure"])["remediation"]
+
+    return {
+        "summary": (summary or "").strip(),
+        "technicalExplanation": (technical or "").strip(),
+        "evidence": evidence.strip(),
+        "remediation": (remediation or "").strip(),
+        "clientSummary": (client_summary or "").strip(),
+    }

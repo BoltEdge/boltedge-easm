@@ -80,7 +80,7 @@ frontend/app/
 - Plan-based limits enforced via decorators in `auth/permissions.py`
 - Discovery uses an orchestrator pattern: `discovery/orchestrator.py` coordinates 11 modules
 - Scanner uses an orchestrator pattern: `scanner/orchestrator.py` coordinates 9 engines → 13 analyzers
-- Finding templates defined in `scanner/templates.py` (75+ finding types)
+- Finding templates defined in `scanner/templates.py` (335 templates as of May 2026 — many registered via helper builders, not inline `FindingTemplate(...)` calls; count via `len(_TEMPLATES)` after import, not by grep)
 - `models.py` is the single source of truth for all database tables
 
 ### Frontend
@@ -345,7 +345,7 @@ npm run dev
 
 ## Finding Template Catalogue
 
-The finding-template registry (`backend/app/scanner/templates.py`) is documented in `docs/finding-templates.md` — a 400+ KB Markdown file containing every template's title, severity, CWE, description, remediation, references, and metadata. Used for review (with ChatGPT etc.) and as the customer-facing catalogue.
+The finding-template registry (`backend/app/scanner/templates.py`) currently holds **335** curated templates. Many are registered via helper builders (`_takeover_confirmed`, `_nuclei_default_creds`, etc.) rather than inline `FindingTemplate(...)` constructors, so the authoritative count is `len(_TEMPLATES)` after import — `grep` patterns will undercount. It is documented in `docs/finding-templates.md` — a 400+ KB Markdown file containing every template's title, severity, CWE, description, remediation, references, and metadata. Used for review (with ChatGPT etc.) and as the customer-facing catalogue.
 
 **The catalogue must stay in sync with the registry.** A regen script + pre-commit hook keep this enforced.
 

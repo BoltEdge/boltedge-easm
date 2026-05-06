@@ -37,9 +37,7 @@ import {
 } from "lucide-react";
 
 import LandingNav from "./LandingNav";
-import QuickScanCard from "./QuickScanCard";
-import QuickDiscoveryCard from "./QuickDiscoveryCard";
-import QuickToolsCard from "./QuickToolsCard";
+import QuickToolsSection from "./QuickToolsSection";
 import FadeInOnScroll from "./Fadeinonscroll";
 import AnimatedDashboard from "./AnimatedDashboard";
 import ContactForm from "./ContactForm";
@@ -239,12 +237,7 @@ export default function UnauthenticatedHomePage() {
               </div>
             </FadeInOnScroll>
 
-            {/* ── FIXED: items-stretch + h-full wrappers ── */}
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 items-stretch max-w-5xl mx-auto">
-              <FadeInOnScroll delay={100} className="h-full"><QuickScanCard /></FadeInOnScroll>
-              <FadeInOnScroll delay={200} className="h-full"><QuickDiscoveryCard /></FadeInOnScroll>
-              <FadeInOnScroll delay={300} className="h-full"><QuickToolsCard /></FadeInOnScroll>
-            </div>
+            <QuickToolsSection />
           </div>
         </section>
 

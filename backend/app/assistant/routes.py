@@ -20,7 +20,7 @@ from app.auth.decorators import (
 from app.audit.routes import log_audit
 from app.utils.display_id import resolve_id
 
-from .explainer import explain_finding
+from .explainer import explain_finding, explain_unbound, _SAFE_EVIDENCE_KEYS
 from .alert_explainer import explain_alert
 
 
@@ -181,5 +181,111 @@ def alert_explainer():
         # Tells the UI whether we delegated to the finding explainer — useful
         # if the panel ever wants to show a "Based on linked finding" hint.
         linkedFinding=bool(alert.finding_id),
+        source="nano-easm-knowledge-base",
+    ), 200
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# POST /assistant/public-explain
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Unauthenticated explainer for the public quick-scan card on the landing
+# page. The unified quick-scan engine emits a coarse finding taxonomy
+# (service_exposure / risky_port / cve) and never persists findings to the
+# database, so this route accepts the raw finding shape and renders an
+# explanation directly from the FindingTemplate registry.
+#
+# Threat model is identical to /quick-scan itself: rate-limited per IP via
+# QuickScanLog, block-list aware, no auth, no DB writes beyond the abuse
+# log. The details_json input is filtered through _SAFE_EVIDENCE_KEYS before
+# substitution to keep accidental internal fields out of the response.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_PUBLIC_EXPLAIN_RATE_LIMIT = 20  # per IP per hour
+_PUBLIC_EXPLAIN_ALLOWED_TYPES = {"service_exposure", "risky_port", "cve"}
+
+
+@assistant_bp.post("/public-explain")
+def public_explain():
+    from datetime import datetime, timezone, timedelta
+
+    from app.extensions import db
+    from app.models import BlockedIP, QuickScanLog
+    from app.quick_scan.routes import _get_ip, _log_scan
+
+    body = request.get_json(silent=True) or {}
+    finding_type = (body.get("finding_type") or "").strip().lower()
+    asset_value = (body.get("asset_value") or "").strip()
+    details = body.get("details_json") or {}
+
+    if finding_type not in _PUBLIC_EXPLAIN_ALLOWED_TYPES:
+        return jsonify(
+            error="finding_type must be one of: service_exposure, risky_port, cve",
+            code="INVALID_TYPE",
+        ), 400
+    if not isinstance(details, dict):
+        return jsonify(
+            error="details_json must be an object",
+            code="INVALID_DETAILS",
+        ), 400
+
+    ip = _get_ip()
+    ua = request.headers.get("User-Agent", "")
+    target = asset_value[:200] or "-"
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    # Block list check (mirrors /quick-scan)
+    block = BlockedIP.query.filter_by(ip_address=ip).first()
+    if block and (block.expires_at is None or block.expires_at > now):
+        _log_scan(ip=ip, user_agent=ua, target=target, asset_type="-",
+                  source="explain", status="blocked")
+        return jsonify(
+            error="Your IP address has been blocked from using this service.",
+            code="IP_BLOCKED",
+        ), 403
+
+    # Rate limit (separate bucket from /quick-scan via source="explain")
+    window_start = now - timedelta(hours=1)
+    recent = QuickScanLog.query.filter(
+        QuickScanLog.ip_address == ip,
+        QuickScanLog.source == "explain",
+        QuickScanLog.created_at >= window_start,
+        QuickScanLog.status.notin_(["blocked", "rate_limited"]),
+    ).count()
+    if recent >= _PUBLIC_EXPLAIN_RATE_LIMIT:
+        _log_scan(ip=ip, user_agent=ua, target=target, asset_type="-",
+                  source="explain", status="rate_limited")
+        return jsonify(
+            error=f"Too many explanation requests. You can run up to {_PUBLIC_EXPLAIN_RATE_LIMIT} per hour. Try again later.",
+            code="RATE_LIMITED",
+        ), 429
+
+    # Whitelist details_json keys before substitution. Anything outside
+    # _SAFE_EVIDENCE_KEYS is silently dropped — keeps accidental internal
+    # fields out of the user-facing response even if a future caller
+    # passes additional keys.
+    safe_details = {k: v for k, v in details.items() if k in _SAFE_EVIDENCE_KEYS}
+
+    try:
+        explanation = explain_unbound(
+            finding_type=finding_type,
+            asset_value=asset_value or None,
+            details=safe_details,
+        )
+    except Exception:
+        logger.exception("Public explainer failed for type %s", finding_type)
+        _log_scan(ip=ip, user_agent=ua, target=target, asset_type="-",
+                  source="explain", status="failed")
+        return jsonify(
+            error="Could not generate an explanation.",
+            code="EXPLAINER_ERROR",
+        ), 500
+
+    _log_scan(ip=ip, user_agent=ua, target=target, asset_type="-",
+              source="explain", status="completed")
+
+    return jsonify(
+        findingType=finding_type,
+        explanation=explanation,
         source="nano-easm-knowledge-base",
     ), 200

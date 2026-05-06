@@ -2194,6 +2194,30 @@ export async function explainAlert(alertId: string | number): Promise<{
   });
 }
 
+// Public, unauthenticated explainer used by the landing-page quick-scan
+// card. Backed by /assistant/public-explain — same threat model as
+// /quick-scan (rate-limited per IP, no DB writes beyond the abuse log).
+export type PublicFindingType = "service_exposure" | "risky_port" | "cve";
+
+export async function publicExplainFinding(payload: {
+  findingType: PublicFindingType;
+  assetValue?: string;
+  detailsJson?: Record<string, unknown>;
+}): Promise<{
+  findingType: string;
+  explanation: FindingExplanation;
+  source: string;
+}> {
+  return apiFetch<any>("/assistant/public-explain", {
+    method: "POST",
+    body: JSON.stringify({
+      finding_type: payload.findingType,
+      asset_value: payload.assetValue || "",
+      details_json: payload.detailsJson || {},
+    }),
+  });
+}
+
 export async function deleteAdminUser(userId: number): Promise<any> {
   return apiFetch<any>(`/admin/users/${userId}`, { method: "DELETE" });
 }

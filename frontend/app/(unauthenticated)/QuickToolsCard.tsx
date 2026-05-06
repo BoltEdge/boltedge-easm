@@ -1,7 +1,7 @@
 // app/(unauthenticated)/QuickToolsCard.tsx
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   Lock, Globe, Shield, FileText, RefreshCcw, Plug,
@@ -126,13 +126,23 @@ function AuthOnlyTeaser({ tool }: { tool: ToolDef }) {
   );
 }
 
-export default function QuickToolsCard() {
+type QuickToolsCardProps = {
+  /** Notifies the parent when the card has results to show, so the page can
+   *  expand the card to full width and tuck away the sibling tool cards. */
+  onActiveChange?: (active: boolean) => void;
+};
+
+export default function QuickToolsCard({ onActiveChange }: QuickToolsCardProps = {}) {
   const [activeTool, setActiveTool] = useState<ToolId>("cert-lookup");
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
 
   const tool = TOOLS.find((t) => t.id === activeTool)!;
+
+  useEffect(() => {
+    onActiveChange?.(result !== null);
+  }, [result, onActiveChange]);
 
   const handleToolSwitch = useCallback((id: ToolId) => { setActiveTool(id); setInputValue(""); setResult(null); }, []);
 

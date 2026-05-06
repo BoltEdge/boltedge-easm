@@ -9130,6 +9130,128 @@ _r(FindingTemplate(
 ))
 
 
+# ───────────────────────────────────────────────────────────────────────────
+# Public Quick-Scan Explainer
+# ───────────────────────────────────────────────────────────────────────────
+# These three templates back the unauthenticated /assistant/public-explain
+# endpoint. The unified quick-scan engine emits a coarse taxonomy
+# (service_exposure, risky_port, cve) rather than the granular template IDs
+# the authenticated scanner uses, so we keep one curated entry per type.
+# Improving the copy here automatically improves what unauth visitors see
+# on the landing page.
+
+_r(FindingTemplate(
+    template_id="quick-scan-service-exposure",
+    title="Open network service detected on {asset}",
+    description=(
+        "A network service was found reachable from the public internet on "
+        "{asset}. Every internet-exposed service is a potential entry point "
+        "— even a fully patched, legitimately public service still has to "
+        "defend itself against credential stuffing, denial of service, "
+        "scraping, and newly disclosed vulnerabilities. The fewer services "
+        "you expose, the smaller the surface attackers can probe."
+    ),
+    remediation=(
+        "First, decide whether this service is meant to be reachable from "
+        "the public internet at all. If the answer is no, restrict it: a "
+        "firewall or security-group rule, a VPN, or a Zero Trust access "
+        "proxy are all good options.\n\n"
+        "If the service does need to be public, harden it: keep it on a "
+        "supported and patched version, require strong authentication, "
+        "enable rate limiting, and forward access logs to a SIEM. Subscribe "
+        "to the vendor's advisories so you hear about new CVEs early.\n\n"
+        "Finally, monitor the host so a new service appearing here triggers "
+        "an alert rather than waiting for the next scan."
+    ),
+    severity="info",
+    category="ports",
+    cwe="CWE-200",
+    tags=["quick-scan", "public-explainer", "exposure"],
+    summary="A network service is publicly reachable. Confirm whether it should be, and either restrict it or make sure it's hardened.",
+    alert_name="Public Service Detected",
+    monitor_type="port_change",
+    references=[
+        "OWASP — Network Segmentation Cheat Sheet",
+        "CIS Critical Security Controls — Asset Inventory",
+        "NIST SP 800-41 — Guidelines on Firewalls and Firewall Policy",
+    ],
+))
+
+_r(FindingTemplate(
+    template_id="quick-scan-risky-port",
+    title="Risky service exposed on {asset} (port {port})",
+    description=(
+        "A service known to attract attackers is reachable from the public "
+        "internet on {asset}. Ports like RDP (3389), SMB (445), telnet (23), "
+        "Redis (6379), MongoDB (27017), and bare database ports are "
+        "constantly scanned for default credentials, known vulnerabilities, "
+        "and misconfigurations. Even when the service is fully patched, "
+        "exposing it directly to the internet is widely treated as a "
+        "security anti-pattern."
+    ),
+    remediation=(
+        "Move the service behind a network boundary so it isn't reachable "
+        "from the public internet. Standard options: a corporate VPN, a "
+        "bastion / jump host, a Zero Trust access proxy (Cloudflare Access, "
+        "Tailscale, Twingate, AWS Verified Access), or a tightly scoped "
+        "firewall rule limiting source IPs.\n\n"
+        "If the service genuinely has to be public, require multi-factor "
+        "authentication, disable any default accounts, rotate credentials, "
+        "and enable account lockout after repeated failed logins. Subscribe "
+        "to the vendor's security advisories so a new CVE on this service "
+        "doesn't surprise you."
+    ),
+    severity="medium",
+    category="ports",
+    cwe="CWE-284",
+    tags=["quick-scan", "public-explainer", "risky-port", "exposure"],
+    summary="A high-risk service like RDP, SMB, or a database is open to the internet. Move it behind a VPN or restrict source IPs.",
+    alert_name="Risky Port Exposed",
+    monitor_type="port_change",
+    references=[
+        "CISA — Guidance on Reducing the Significant Risk of Known Exploited Vulnerabilities",
+        "Microsoft — Best Practices for Securing RDP",
+        "NSA — Network Infrastructure Security Guide",
+    ],
+))
+
+_r(FindingTemplate(
+    template_id="quick-scan-cve",
+    title="Known vulnerability ({cve}) on {asset}",
+    description=(
+        "A software version detected on {asset} matches a published CVE "
+        "({cve}). Public CVEs are catalogued, indexed, and actively scanned "
+        "for by both researchers and attackers — often within hours of "
+        "disclosure. Depending on the vulnerability, an attacker may be "
+        "able to execute code, leak data, escalate privileges, or crash "
+        "the service. Exploit code for popular CVEs is frequently published "
+        "alongside the advisory."
+    ),
+    remediation=(
+        "Patch to a version of the software that includes the fix. The "
+        "CVE entry on NVD or the vendor's advisory lists the fixed "
+        "version.\n\n"
+        "If a patch isn't available yet, apply the vendor's mitigation: "
+        "disable the affected feature, restrict access via firewall rules, "
+        "deploy WAF signatures that detect exploitation attempts, or "
+        "isolate the host. Treat CVSS 9.0+ as same-day work, 7.0–8.9 "
+        "within the week, 4.0–6.9 within the month."
+    ),
+    severity="high",
+    category="cve",
+    cwe="CWE-1395",
+    tags=["quick-scan", "public-explainer", "cve", "vulnerability"],
+    summary="The host is running software with a known security flaw. Patch to the fixed version, or apply the vendor's mitigation if no patch is available.",
+    alert_name="Known Vulnerability Detected",
+    monitor_type="vuln_change",
+    references=[
+        "NIST National Vulnerability Database (NVD)",
+        "MITRE CVE List",
+        "FIRST.org — Common Vulnerability Scoring System v3.1",
+    ],
+))
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # PUBLIC API
 # ═══════════════════════════════════════════════════════════════════════════
