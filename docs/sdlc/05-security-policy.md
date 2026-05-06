@@ -245,8 +245,8 @@ Notification content: what happened, when, what data was affected, what we have 
 
 | Reporter | Channel |
 |---|---|
-| Customer | `security@nanoasm.com` (planned — currently `support@nanoasm.com`); any support channel |
-| External researcher | `security@nanoasm.com`; vulnerability disclosure policy on `/security` (planned) |
+| Customer | `security@nanoeasm.com` (planned — currently `support@nanoeasm.com`); any support channel |
+| External researcher | `security@nanoeasm.com`; vulnerability disclosure policy on `/security` (planned) |
 | Internal | Direct message to Security Lead; chat thread |
 
 We commit to acknowledging external security reports within **2 business days** and providing a substantive response within **10 business days**.
@@ -255,7 +255,7 @@ We commit to acknowledging external security reports within **2 business days** 
 
 ## 11. Vulnerability disclosure
 
-External researchers acting in good faith may submit findings to `security@nanoasm.com`. The policy:
+External researchers acting in good faith may submit findings to `security@nanoeasm.com`. The policy:
 
 - We will not pursue legal action against good-faith researchers who follow this policy.
 - Good faith means: do not access data beyond what is required to demonstrate the issue; do not disrupt service; do not exfiltrate or publicly disclose customer data; give us a reasonable period (generally 90 days) before public disclosure.

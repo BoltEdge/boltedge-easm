@@ -1,5 +1,5 @@
 // app/(unauthenticated)/login/page.tsx
-// F4: Redesigned login with split layout, Nano ASM branding
+// F4: Redesigned login with split layout, Nano EASM branding
 "use client";
 
 import React, { useMemo, useState, Suspense } from "react";
@@ -172,7 +172,7 @@ function LoginPageInner() {
           <Link href="/" className="flex items-center gap-2.5">
             <BoltIcon size={32} />
             <span className="text-lg font-semibold tracking-tight">
-              Nano<span className="text-teal-400">EASM</span>
+              Nano <span className="text-teal-400">EASM</span>
             </span>
           </Link>
 
@@ -214,7 +214,7 @@ function LoginPageInner() {
             <Link href="/" className="flex items-center gap-2.5">
               <BoltIcon size={28} />
               <span className="text-base font-semibold">
-                Nano<span className="text-teal-400">EASM</span>
+                Nano <span className="text-teal-400">EASM</span>
               </span>
             </Link>
           </div>

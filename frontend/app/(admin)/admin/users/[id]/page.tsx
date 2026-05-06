@@ -827,7 +827,7 @@ export default function AdminUserDetailPage() {
                   maxLength={8000}
                   rows={8}
                   disabled={emailModal.busy}
-                  placeholder="Plain text. Newlines preserved. Sent from no-reply@nanoasm.com with the standard branded shell."
+                  placeholder="Plain text. Newlines preserved. Sent from no-reply@nanoeasm.com with the standard branded shell."
                   className="mt-1 w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-teal-500/40 disabled:opacity-50 resize-y"
                 />
                 <span className="text-[10px] text-white/30 mt-1 block">

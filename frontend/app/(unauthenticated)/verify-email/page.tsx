@@ -58,7 +58,7 @@ function VerifyEmailInner() {
         <Link href="/" className="flex items-center gap-2.5 mb-10">
           <BoltIcon />
           <span className="text-base font-semibold">
-            Nano<span className="text-teal-400">EASM</span>
+            Nano <span className="text-teal-400">EASM</span>
           </span>
         </Link>
 

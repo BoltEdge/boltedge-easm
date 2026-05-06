@@ -14,7 +14,7 @@
 ## 1. Acceptance
 
 By creating an account, signing in, or using any feature of Nano EASM
-(the **"Service"**, operated at https://nanoasm.com) — including the
+(the **"Service"**, operated at https://nanoeasm.com) — including the
 unauthenticated quick-scan tools available without registration — you
 agree to be bound by these Terms of Use (these **"Terms"**) together
 with the following documents, each of which is incorporated by
@@ -38,7 +38,7 @@ represent that you have authority to bind that organisation, and
 ## 2. Definitions
 
 - **Service** — the Nano EASM platform (web, API, and tools), operated
-  at https://nanoasm.com.
+  at https://nanoeasm.com.
 - **Account** — your registered user account on the Service.
 - **Organisation** — the workspace or tenant that owns assets, scans,
   findings, and members created in the Service.
@@ -61,7 +61,7 @@ consumers or minors.
 
 - You are responsible for keeping your credentials confidential and
   for all activity that occurs under your Account.
-- You must notify us promptly at **support@nanoasm.com** of any
+- You must notify us promptly at **support@nanoeasm.com** of any
   unauthorised access to your Account.
 - We may require email verification before granting full access to
   the Service.
@@ -219,7 +219,7 @@ right you have in your country of residence.
   incorporated by reference in §1, constitute the entire agreement
   between you and Nano EASM regarding the Service and supersede any
   prior agreement on the subject matter.
-- **Notices.** Notices to us must be sent to **support@nanoasm.com**.
+- **Notices.** Notices to us must be sent to **support@nanoeasm.com**.
   Notices to you may be sent to the email address on file for your
   Account or via in-product banner.
 
@@ -227,5 +227,5 @@ right you have in your country of residence.
 
 Questions about these Terms can be sent to:
 
-- Email: **support@nanoasm.com**
-- Web: https://nanoasm.com/#contact
+- Email: **support@nanoeasm.com**
+- Web: https://nanoeasm.com/#contact

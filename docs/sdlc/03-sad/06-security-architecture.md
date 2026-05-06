@@ -199,7 +199,7 @@ The `.env` file lives on the EC2 host at `~/boltedge-easm/.env`, mode `600`, own
 
 ## 11. CORS and CSRF posture
 
-- CORS allows only the configured frontend origin(s) — `https://nanoasm.com`, plus `http://localhost:3000` in development. Wildcard origin is rejected (FR-API-009).
+- CORS allows only the configured frontend origin(s) — `https://nanoeasm.com`, plus `http://localhost:3000` in development. Wildcard origin is rejected (FR-API-009).
 - **No CSRF tokens needed** because JWT lives in `Authorization` header, not a cookie. There is no auto-attached credential a malicious site could leverage.
 - The few cookies we do set (`asm_*` localStorage shadows are *not* cookies; only Stripe Checkout sets cookies on its own domain) carry no auth state.
 
@@ -231,7 +231,7 @@ The optional **audit-webhook stream** (CLAUDE.md "Audit Log Webhook Stream") for
 
 ## 14. Email security
 
-- Outbound transactional email goes through Resend. SPF, DKIM, DMARC are configured on `nanoasm.com`.
+- Outbound transactional email goes through Resend. SPF, DKIM, DMARC are configured on `nanoeasm.com`.
 - Verification, password-reset, MFA-enrolment, and trial-approval emails carry signed tokens; the **link does not auto-fire any state change** — the landing page requires a user click before POSTing the token. This is the regression fix for the email-scanner pre-fetch issue and applies uniformly to every transactional email.
 - We do not put one-time passwords in email subject lines (display preview risk).
 

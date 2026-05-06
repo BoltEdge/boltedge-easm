@@ -17,13 +17,13 @@ Nano EASM sends transactional email for:
 - Trial-approved / trial-expiring / plan-changed.
 - Free-tier expiry warnings (day 80, 87, 113, 117).
 - Finding alerts (when configured by the customer).
-- Stripe receipt / payment failure / refund (we send these from `nanoasm.com` rather than Stripe defaults, so the from-address is consistent).
+- Stripe receipt / payment failure / refund (we send these from `nanoeasm.com` rather than Stripe defaults, so the from-address is consistent).
 
 Throughput is low (hundreds per day at current scale). Reliability and deliverability are critical — verification and password-reset are direct user paths.
 
 We need:
 - A simple Python SDK or HTTP API.
-- Domain-authentication (SPF, DKIM, DMARC) on `nanoasm.com`.
+- Domain-authentication (SPF, DKIM, DMARC) on `nanoeasm.com`.
 - Reasonable inbox-placement reputation.
 - Affordable at low volume.
 
@@ -33,7 +33,7 @@ We use **Resend** as the transactional email provider.
 
 - API key in env var `RESEND_API_KEY`.
 - All sending goes through `app/billing/emails.py`.
-- Domain is configured in Resend with DKIM keys; SPF and DMARC records on `nanoasm.com` are aligned.
+- Domain is configured in Resend with DKIM keys; SPF and DMARC records on `nanoeasm.com` are aligned.
 - We do not use Resend templates — bodies are built in Python (Jinja2) so they live in the repo.
 
 ## Considered alternatives
@@ -63,7 +63,7 @@ We use **Resend** as the transactional email provider.
 
 - **Pre-fetch resistance:** every email link points to a landing page that requires a user click before POSTing the token. This protects against email security scanners (Microsoft Safe Links, Mimecast, Proofpoint, Gmail safe-browsing) that pre-fetch URLs and consume single-use tokens. This is a code-level discipline, not a Resend feature; documented in §06 Security §14.
 - **Send model:** synchronous in the request handler with a 10s timeout. On failure, the email is enqueued in `outbound_email` for retry by a daily job. The user's action is **not** rolled back. (§07 Integrations §3.3)
-- **Receipts and refunds** go through Resend, **not** Stripe's default mailer. This keeps the from-address at `nanoasm.com` for every customer-facing email. (§07 Integrations §3.5)
+- **Receipts and refunds** go through Resend, **not** Stripe's default mailer. This keeps the from-address at `nanoeasm.com` for every customer-facing email. (§07 Integrations §3.5)
 
 ## References
 

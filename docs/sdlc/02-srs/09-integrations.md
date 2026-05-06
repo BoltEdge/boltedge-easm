@@ -147,7 +147,7 @@ Failed webhook deliveries should be retried with exponential backoff (1m, 5m, 30
 Email notifications shall:
 
 **Acceptance criteria:**
-- AC-1 Originate from `no-reply@nanoasm.com` (or the configured `EMAIL_FROM`).
+- AC-1 Originate from `no-reply@nanoeasm.com` (or the configured `EMAIL_FROM`).
 - AC-2 Use the standard branded shell.
 - AC-3 Carry a clear subject line including event type and asset / org name where relevant.
 - AC-4 Include unsubscribe-from-this-rule link [TBD — currently rule management is by admin only; per-recipient unsubscribe is not exposed].

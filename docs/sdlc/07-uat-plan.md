@@ -185,7 +185,7 @@ PASS if every limit is enforced and the messaging is clear about why and what to
 4.  Enter Stripe test card 4242 4242 4242 4242 + any future date + any CVC.
 5.  Submit. Confirm redirect back to the app.
 6.  Verify the org is on Professional with plan_expires_at ~30 days out.
-7.  Verify a receipt email arrives from Resend, sent from a nanoasm.com address.
+7.  Verify a receipt email arrives from Resend, sent from a nanoeasm.com address.
 8.  Navigate to Plans → "Manage subscription". Confirm Stripe Customer Portal opens.
 9.  Cancel the subscription via the portal. Return to the app.
 10. Confirm the org's plan reflects scheduled cancellation.
@@ -243,7 +243,7 @@ PASS if the scheduled run executes without manual trigger and counts correctly.
 ```
 1.  As an Admin, create an API key in Settings → API Keys. Copy the plaintext (shown once).
 2.  Run a curl command against an opted-in route, e.g.:
-       curl -H "Authorization: Bearer $KEY" https://nanoasm.com/api/assets
+       curl -H "Authorization: Bearer $KEY" https://nanoeasm.com/api/assets
     Verify a 200 with tenant-scoped assets.
 3.  Run against a non-opted-in route (e.g. /api/billing/upgrade). Verify 403 API_KEY_NOT_ALLOWED.
 4.  Revoke the key. Re-run step 2. Verify 401 immediately.

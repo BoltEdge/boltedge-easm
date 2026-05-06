@@ -216,7 +216,7 @@ sequenceDiagram
 **Architectural points illustrated:**
 - Signature verification is **non-negotiable** before parsing the body (§06 Security §10, §07 Integrations §2.3).
 - Idempotency is a **table** (`stripe_event`, §05 Data §8) keyed by Stripe's event id. Stripe retries → no-op.
-- Receipt email goes through **Resend** from `nanoasm.com`, not Stripe's default mailer (§07 Integrations §3.5).
+- Receipt email goes through **Resend** from `nanoeasm.com`, not Stripe's default mailer (§07 Integrations §3.5).
 - Audit log row is written within the same transaction as the plan change.
 
 ---

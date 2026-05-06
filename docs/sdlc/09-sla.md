@@ -32,7 +32,7 @@ The Custom tier overrides this document where the contract specifies otherwise.
 
 | Term | Meaning |
 |---|---|
-| **Service** | The Nano EASM platform at `https://nanoasm.com`, including the web app and the REST API |
+| **Service** | The Nano EASM platform at `https://nanoeasm.com`, including the web app and the REST API |
 | **Available** | The Service responds to `GET /api/health` with `200 OK` within 5 seconds, AND a representative authenticated request completes successfully |
 | **Downtime** | Continuous period during which the Service is not Available, as measured by external uptime monitoring |
 | **Excluded Downtime** | Downtime attributable to causes listed in §6 |
@@ -82,7 +82,7 @@ Credits are:
 
 ### 3.4 Status page
 
-A status page (`status.nanoasm.com`, planned) reflects current and historical incidents. Until the status page is live, incidents are communicated by email to affected customers and via the in-app announcement banner.
+A status page (`status.nanoeasm.com`, planned) reflects current and historical incidents. Until the status page is live, incidents are communicated by email to affected customers and via the in-app announcement banner.
 
 ---
 
@@ -132,9 +132,9 @@ Update cadence during in-progress incidents:
 
 ### 5.3 Channels
 
-- Primary: `support@nanoasm.com`.
+- Primary: `support@nanoeasm.com`.
 - Enterprise customers: dedicated account-team contact at signup.
-- Security: `security@nanoasm.com` (planned) — see `05-security-policy.md` §10.
+- Security: `security@nanoeasm.com` (planned) — see `05-security-policy.md` §10.
 
 ---
 
@@ -212,7 +212,7 @@ The following are explicitly **out of scope** of this SLA:
 
 To claim a service credit (Silver / Gold / Custom):
 
-1. Email `support@nanoasm.com` within **30 days** of the end of the affected calendar month.
+1. Email `support@nanoeasm.com` within **30 days** of the end of the affected calendar month.
 2. Include: the affected month, the customer's monitoring data showing the downtime (optional but accelerates), the credit amount being claimed.
 3. We respond within 10 business days with: confirmed credit amount, or a substantiated rebuttal with our records.
 4. Credits are applied to the next invoice, or as a refund for annually pre-paid customers.

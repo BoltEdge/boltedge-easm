@@ -34,11 +34,11 @@ services:
       SQLALCHEMY_DATABASE_URI: postgresql://${DB_USER:-easm_user}:${DB_PASSWORD}@easm-db:5432/${DB_NAME:-easm}
       SECRET_KEY: ${SECRET_KEY}
       CORS_ORIGINS: ${CORS_ORIGINS}
-      FRONTEND_URL: ${FRONTEND_URL:-https://nanoasm.com}
+      FRONTEND_URL: ${FRONTEND_URL:-https://nanoeasm.com}
       SHODAN_API_KEY: ${SHODAN_API_KEY}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       MFA_SECRET_KEY: ${MFA_SECRET_KEY}
-      EMAIL_FROM: ${EMAIL_FROM:-Nano EASM <no-reply@nanoasm.com>}
+      EMAIL_FROM: ${EMAIL_FROM:-Nano EASM <no-reply@nanoeasm.com>}
       MONITOR_EMAIL_FROM: ${MONITOR_EMAIL_FROM:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
@@ -57,9 +57,9 @@ services:
       STRIPE_PRICE_PRO_ANNUAL: ${STRIPE_PRICE_PRO_ANNUAL:-}
       STRIPE_PRICE_SILVER_MONTHLY: ${STRIPE_PRICE_SILVER_MONTHLY:-}
       STRIPE_PRICE_SILVER_ANNUAL: ${STRIPE_PRICE_SILVER_ANNUAL:-}
-      STRIPE_SUCCESS_URL: ${STRIPE_SUCCESS_URL:-https://nanoasm.com/settings/billing?checkout=success}
-      STRIPE_CANCEL_URL: ${STRIPE_CANCEL_URL:-https://nanoasm.com/settings/billing?checkout=cancel}
-      STRIPE_PORTAL_RETURN_URL: ${STRIPE_PORTAL_RETURN_URL:-https://nanoasm.com/settings/billing}
+      STRIPE_SUCCESS_URL: ${STRIPE_SUCCESS_URL:-https://nanoeasm.com/settings/billing?checkout=success}
+      STRIPE_CANCEL_URL: ${STRIPE_CANCEL_URL:-https://nanoeasm.com/settings/billing?checkout=cancel}
+      STRIPE_PORTAL_RETURN_URL: ${STRIPE_PORTAL_RETURN_URL:-https://nanoeasm.com/settings/billing}
     expose:
       - "5000"
     networks:

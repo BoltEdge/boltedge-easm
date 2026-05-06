@@ -307,7 +307,7 @@ def _build_test_payload(org: Organization) -> dict[str, Any]:
             "id": org.id,
             "name": org.name,
         },
-        "actor": {"user_id": None, "user_email": "test@nanoasm.com", "ip_address": None},
+        "actor": {"user_id": None, "user_email": "test@nanoeasm.com", "ip_address": None},
         "action": "settings.webhook_test",
         "category": "settings",
         "target": {"type": "settings", "id": "audit_webhook", "label": "Audit webhook"},

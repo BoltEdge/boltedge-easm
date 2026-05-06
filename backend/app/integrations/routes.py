@@ -768,7 +768,7 @@ def _send_email(config: dict, payload: dict) -> tuple[bool, str | None]:
     if not to_list:
         return False, "No valid recipients"
 
-    from_email = config.get("from_email") or "support@nanoasm.com"
+    from_email = config.get("from_email") or "support@nanoeasm.com"
 
     event = payload.get("event", "notification")
     severity = payload.get("severity", "info")

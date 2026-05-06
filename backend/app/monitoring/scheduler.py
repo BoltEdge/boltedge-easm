@@ -85,7 +85,7 @@ def _send_email_notification(alert, recipients: list[str]) -> None:
     title = alert.title or alert.alert_name or "Monitor Alert"
     subject = f"[{severity.upper()}] {title}"
 
-    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoasm.com").rstrip("/")
+    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoeasm.com").rstrip("/")
     alerts_link = f"{frontend_url}/monitoring?tab=alerts"
 
     asset_line = alert.asset_value or alert.group_name or "—"
@@ -132,7 +132,7 @@ def _send_email_notification(alert, recipients: list[str]) -> None:
     from_addr = (
         os.environ.get("MONITOR_EMAIL_FROM")
         or os.environ.get("EMAIL_FROM")
-        or "Nano EASM Alerts <alerts@nanoasm.com>"
+        or "Nano EASM Alerts <alerts@nanoeasm.com>"
     )
 
     try:

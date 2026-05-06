@@ -166,7 +166,7 @@ The trial is approved by a superadmin upgrading the org's plan via the admin con
 **Priority:** P0 — Must
 **Status:** [IMPLEMENTED]
 
-Receipt, payment-failed, and refund emails shall originate from `no-reply@nanoasm.com` via Resend, **not** from Stripe's default sender. Stripe's automatic customer emails shall be disabled in the Stripe dashboard.
+Receipt, payment-failed, and refund emails shall originate from `no-reply@nanoeasm.com` via Resend, **not** from Stripe's default sender. Stripe's automatic customer emails shall be disabled in the Stripe dashboard.
 
 ---
 

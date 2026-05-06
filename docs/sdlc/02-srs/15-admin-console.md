@@ -88,7 +88,7 @@ A superadmin shall be able to compose and send an ad-hoc branded email to any us
 **Acceptance criteria:**
 - AC-1 Subject (≤ 200 chars) + plain-text body (≤ 8000 chars).
 - AC-2 Body is HTML-escaped before insertion into the email shell — admin-supplied raw HTML is not honoured.
-- AC-3 Email originates from `no-reply@nanoasm.com` via Resend.
+- AC-3 Email originates from `no-reply@nanoeasm.com` via Resend.
 - AC-4 Audit-log `admin.user_email_sent` with subject + 500-char body excerpt + delivery status.
 - AC-5 Returns HTTP 502 with `EMAIL_NOT_SENT` if Resend is misconfigured / unavailable; the audit log still records the attempt.
 

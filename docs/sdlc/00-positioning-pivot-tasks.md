@@ -85,7 +85,7 @@ These are not new code, they're a verification pass on existing Stripe wiring be
 | 4.3 | Verify `/billing/portal` opens the Customer Portal and lets a test subscription be cancelled / updated | P0 | TODO | |
 | 4.4 | Verify the `/billing/stripe-webhook` endpoint is reachable from Stripe (test webhook from dashboard); confirm signature verification rejects spoofed calls | P0 | TODO | Webhook secret env var must be set |
 | 4.5 | Verify webhook idempotency by replaying the same event twice — should be a no-op the second time | P0 | TODO | Stripe events are stored with their `id` in the `stripe_event` table |
-| 4.6 | Verify receipt / payment-failed / refund emails come from `no-reply@nanoasm.com` via Resend (not Stripe's defaults). Disable Stripe's "automatic customer emails" in the dashboard | P0 | TODO | Otherwise customers get duplicate receipts |
+| 4.6 | Verify receipt / payment-failed / refund emails come from `no-reply@nanoeasm.com` via Resend (not Stripe's defaults). Disable Stripe's "automatic customer emails" in the dashboard | P0 | TODO | Otherwise customers get duplicate receipts |
 | 4.7 | Switch Stripe from test mode → live mode; rotate API keys; rotate webhook secret | P0 | TODO | **One-way switch** — do this last, after every other Stripe task verifies in test mode |
 | 4.8 | Sanity check: register a fresh test account, hit Free tier, upgrade to Starter via Checkout, verify plan flips and limits expand | P0 | TODO | End-to-end smoke test before announcing |
 

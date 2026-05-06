@@ -196,7 +196,7 @@ export default function AdminBroadcast() {
             type="url"
             value={linkUrl}
             onChange={(e) => setLinkUrl(e.target.value)}
-            placeholder="https://docs.nanoasm.com/maintenance — or /settings/billing"
+            placeholder="https://docs.nanoeasm.com/maintenance — or /settings/billing"
             className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-teal-500/40"
           />
           <p className="text-[11px] text-white/30">

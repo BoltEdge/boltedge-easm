@@ -1142,7 +1142,7 @@ class BlockedIP(db.Model):
 class ContactRequest(db.Model):
     """
     Public contact-form submission. Replaces the old
-    `mailto:contact@nanoasm.com` link so admins can triage requests
+    `mailto:contact@nanoeasm.com` link so admins can triage requests
     in-app and reply via Resend without leaving the dashboard.
 
     Status workflow: open -> in_progress -> replied -> closed

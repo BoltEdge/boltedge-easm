@@ -1,11 +1,11 @@
 # Nano EASM — Project Context for Claude Code
 
 ## What This Is
-Nano EASM (nanoasm.com) is an External Attack Surface Management platform. Users add root domains, the system discovers assets (subdomains, IPs, services), scans them for vulnerabilities, scores exposure risk, and provides continuous monitoring with alerting.
+Nano EASM (nanoeasm.com) is an External Attack Surface Management platform. Users add root domains, the system discovers assets (subdomains, IPs, services), scans them for vulnerabilities, scores exposure risk, and provides continuous monitoring with alerting.
 
 ## Domain & Branding
 - **Product name:** Nano EASM (was previously "BoltEdge EASM" — fully rebranded April 2026)
-- **Production URL:** https://nanoasm.com
+- **Production URL:** https://nanoeasm.com
 - **No references to "BoltEdge" should exist anywhere in the codebase**
 - **Brand colours:** Dark theme with teal (#14b8a6) accent
 
@@ -223,7 +223,7 @@ ENABLE_BILLING = os.environ.get("ENABLE_BILLING", "false").lower() == "true"
 **Frontend:**
 - Landing page: pricing section hidden, "Pricing" nav link hidden, hero CTA says "Get started free"
 - Sidebar: "Payment & Plans" → "Plans"
-- Plans page (`/settings/billing`): no prices shown, no trial buttons, upgrade buttons say "Switch to this plan", Custom shows "Contact Us" (mailto:support@nanoasm.com)
+- Plans page (`/settings/billing`): no prices shown, no trial buttons, upgrade buttons say "Switch to this plan", Custom shows "Contact Us" (mailto:support@nanoeasm.com)
 - Monitoring upgrade prompt: no prices shown, "Switch to {plan}" instead of "Start Trial"
 - TopBar and Sidebar: trial countdown badge hidden
 - Register page: "No credit card required" → "Free to use"
@@ -314,7 +314,7 @@ Stripe is **wired but currently gated off** by `ENABLE_BILLING=false`. When enab
 SQLALCHEMY_DATABASE_URI=postgresql://easm_user:localdevpassword@localhost:5432/easm
 SECRET_KEY=local-dev-secret-key
 CORS_ORIGINS=http://localhost:3000
-ADMIN_EMAIL=admin@nanoasm.com
+ADMIN_EMAIL=admin@nanoeasm.com
 ENABLE_BILLING=false
 SHODAN_API_KEY=<your key>
 RESEND_API_KEY=<your key>
@@ -417,7 +417,7 @@ Forwards every `audit_log` write to a customer-configured HTTP endpoint (typical
 - **Server:** AWS EC2 t2.medium, Ubuntu 24.04, IP 34.232.100.29
 - **Directory:** ~/boltedge-easm/ on EC2
 - **Containers:** easm-frontend, easm-backend, easm-db
-- **Proxy:** Shared Nginx at ~/boltedge/ routes nanoasm.com traffic
+- **Proxy:** Shared Nginx at ~/boltedge/ routes nanoeasm.com traffic
 - **Deploy:** `cd ~/boltedge-easm && git pull && docker compose up -d --build`
 - **Note:** `NEXT_PUBLIC_*` variables are baked in at build time — env changes require `--no-cache` rebuild
 

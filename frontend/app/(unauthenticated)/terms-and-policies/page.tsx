@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, FileText, ShieldAlert, Lock, RefreshCcw, ScanLine, Scale, CreditCard, Database } from "lucide-react";
 import LandingNav from "../LandingNav";
 
-const SITE_URL = "https://nanoasm.com";
+const SITE_URL = "https://nanoeasm.com";
 
 export const dynamic = "force-static";
 
@@ -101,8 +101,8 @@ export default function LegalIndexPage() {
           <p className="mt-3 text-white/50 text-base max-w-2xl">
             The terms and policies that govern your use of Nano EASM. We try to keep these
             short and readable. If anything is unclear, write to{" "}
-            <a href="mailto:support@nanoasm.com" className="text-teal-400 hover:text-teal-300">
-              support@nanoasm.com
+            <a href="mailto:support@nanoeasm.com" className="text-teal-400 hover:text-teal-300">
+              support@nanoeasm.com
             </a>.
           </p>
 

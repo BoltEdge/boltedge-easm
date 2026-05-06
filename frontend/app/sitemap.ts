@@ -8,7 +8,7 @@ import type { MetadataRoute } from "next";
 import fs from "node:fs";
 import path from "node:path";
 
-const SITE_URL = "https://nanoasm.com";
+const SITE_URL = "https://nanoeasm.com";
 
 // Slugs that exist as markdown files in /content/legal/. Listed
 // explicitly so we can attach lastmod from the file's mtime.
@@ -57,6 +57,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${SITE_URL}/api-docs`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/resources/what-is-nano-easm`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.8,

@@ -58,7 +58,7 @@ def _send_verification_email(user: User) -> bool:
         email=user.email,
     )
 
-    fe = os.environ.get("FRONTEND_URL", "https://nanoasm.com").rstrip("/")
+    fe = os.environ.get("FRONTEND_URL", "https://nanoeasm.com").rstrip("/")
     verify_link = f"{fe}/verify-email?token={token}"
 
     if not os.environ.get("RESEND_API_KEY", "").strip():
@@ -569,7 +569,7 @@ def forgot_password():
         email=user.email,
     )
 
-    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoasm.com").rstrip("/")
+    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoeasm.com").rstrip("/")
     reset_link = f"{frontend_url}/reset-password/{token}"
 
     # Use the branded shell. send_password_reset_email handles the
@@ -869,7 +869,7 @@ def oauth_google_start():
     if not client_id:
         return jsonify(error="Google OAuth is not configured"), 503
 
-    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoasm.com").rstrip("/")
+    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoeasm.com").rstrip("/")
     redirect_uri = f"{frontend_url}/api/auth/oauth/google/callback"
 
     next_url = request.args.get("next", "/dashboard")
@@ -894,7 +894,7 @@ def oauth_google_callback():
     import os, requests as http
     from flask import redirect as flask_redirect
 
-    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoasm.com").rstrip("/")
+    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoeasm.com").rstrip("/")
     error_base = f"{frontend_url}/login?oauth_error="
 
     # Verify state
@@ -1048,7 +1048,7 @@ def oauth_microsoft_start():
     if not client_id:
         return jsonify(error="Microsoft OAuth is not configured"), 503
 
-    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoasm.com").rstrip("/")
+    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoeasm.com").rstrip("/")
     redirect_uri = f"{frontend_url}/api/auth/oauth/microsoft/callback"
 
     next_url = request.args.get("next", "/dashboard")
@@ -1073,7 +1073,7 @@ def oauth_microsoft_callback():
     import os, requests as http
     from flask import redirect as flask_redirect
 
-    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoasm.com").rstrip("/")
+    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoeasm.com").rstrip("/")
     error_base = f"{frontend_url}/login?oauth_error="
 
     raw_state = request.args.get("state", "")

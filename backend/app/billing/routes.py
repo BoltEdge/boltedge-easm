@@ -825,14 +825,14 @@ def _billing_disabled_response():
 def _success_url() -> str:
     return os.environ.get(
         "STRIPE_SUCCESS_URL",
-        "https://nanoasm.com/settings/billing?checkout=success",
+        "https://nanoeasm.com/settings/billing?checkout=success",
     )
 
 
 def _cancel_url() -> str:
     return os.environ.get(
         "STRIPE_CANCEL_URL",
-        "https://nanoasm.com/settings/billing?checkout=cancel",
+        "https://nanoeasm.com/settings/billing?checkout=cancel",
     )
 
 
@@ -928,7 +928,7 @@ def create_portal():
 
     return_url = os.environ.get(
         "STRIPE_PORTAL_RETURN_URL",
-        "https://nanoasm.com/settings/billing",
+        "https://nanoeasm.com/settings/billing",
     )
 
     try:

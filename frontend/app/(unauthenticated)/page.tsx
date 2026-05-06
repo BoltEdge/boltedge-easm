@@ -6,17 +6,17 @@ import Link from "next/link";
 import { BILLING_ENABLED } from "../lib/billing-config";
 import JsonLd from "./JsonLd";
 
-const SITE_URL = "https://nanoasm.com";
+const SITE_URL = "https://nanoeasm.com";
 
 export const metadata: Metadata = {
-  title: "External Attack Surface Management",
+  title: "Nano EASM — External Attack Surface Management Platform",
   description:
-    "Discover external assets, scan for risk, monitor exposure changes, and turn findings into clear remediation steps with Nano EASM.",
+    "Nano EASM is a cybersecurity platform for external asset discovery, exposure monitoring, risk scanning, and plain-English remediation guidance.",
   alternates: { canonical: "/" },
   openGraph: {
-    title: "Nano EASM — External Attack Surface Management",
+    title: "Nano EASM — External Attack Surface Management Platform",
     description:
-      "Discover external assets, scan for risk, monitor exposure changes, and turn findings into clear remediation steps with Nano EASM.",
+      "Nano EASM is a cybersecurity platform for external asset discovery, exposure monitoring, risk scanning, and plain-English remediation guidance.",
     url: SITE_URL,
     type: "website",
     siteName: "Nano EASM",
@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Nano EASM — External Attack Surface Management",
+    title: "Nano EASM — External Attack Surface Management Platform",
     description:
-      "Discover external assets, scan for risk, monitor exposure changes, and prioritise what matters.",
+      "Cybersecurity platform for external asset discovery, exposure monitoring, risk scanning, and remediation guidance.",
   },
 };
 import {
@@ -47,19 +47,27 @@ import {
   HeroStagger, HeroItem, HeroDashboard, HeroFadeIn,
 } from "./Animatedhero";
 
+// Entity-disambiguation note: "Nano EASM" is intentionally always
+// rendered with a space, never as "NanoASM" or "NanoEASM". A
+// similarly-spelled open-source Verilog assembler ("nanoasm")
+// exists, and Google's entity graph initially confused the two. The
+// `name`, `alternateName`, `description`, `applicationCategory`, and
+// `keywords` fields below all reinforce the cybersecurity-SaaS
+// identity to help disambiguate.
 const ORGANIZATION_JSONLD = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "Nano EASM",
+  alternateName: ["Nano EASM Platform", "Nano External Attack Surface Management"],
   url: SITE_URL,
   logo: `${SITE_URL}/logo-on-dark.svg`,
   description:
-    "Nano EASM is an External Attack Surface Management platform that helps IT teams and MSSPs uncover exposed assets, monitor exposure changes, and prioritise remediation.",
+    "Nano EASM is a cybersecurity SaaS platform for External Attack Surface Management. It helps IT teams, security generalists, and small MSSPs uncover internet-facing assets, monitor exposure changes, and prioritise remediation.",
   sameAs: [],
   contactPoint: [
     {
       "@type": "ContactPoint",
-      email: "support@nanoasm.com",
+      email: "support@nanoeasm.com",
       contactType: "customer support",
       availableLanguage: ["English"],
     },
@@ -70,11 +78,37 @@ const SOFTWARE_APPLICATION_JSONLD = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   name: "Nano EASM",
+  alternateName: "Nano External Attack Surface Management",
   applicationCategory: "SecurityApplication",
+  applicationSubCategory: "External Attack Surface Management",
   operatingSystem: "Web",
   url: SITE_URL,
   description:
-    "External Attack Surface Management — discover external assets, scan for risk, monitor exposure changes, and turn findings into clear remediation steps.",
+    "Nano EASM is a cybersecurity platform for external asset discovery, exposure monitoring, risk scanning, and plain-English remediation guidance. Built for IT teams, security generalists, and small MSSPs.",
+  keywords: [
+    "external attack surface management",
+    "EASM",
+    "attack surface management",
+    "asset discovery",
+    "vulnerability scanning",
+    "exposure monitoring",
+    "shadow IT",
+    "MSSP",
+    "cybersecurity SaaS",
+  ].join(", "),
+  featureList: [
+    "External asset discovery (subdomains, IPs, services, certificates)",
+    "Vulnerability scanning with risk scoring",
+    "Continuous exposure monitoring with change detection",
+    "Plain-English remediation guidance",
+    "REST API for security workflow integration",
+    "Multi-tenant workspaces for MSSPs",
+  ],
+  audience: {
+    "@type": "Audience",
+    audienceType:
+      "IT teams, security generalists, MSSPs, security operations centres",
+  },
   offers: {
     "@type": "Offer",
     price: "0",
@@ -481,7 +515,7 @@ export default function UnauthenticatedHomePage() {
                   <path d="M17.5 4L9.5 17H14.5L13 28L21.5 14.5H16L17.5 4Z" fill="#14b8a6"/>
                 </svg>
                 <span className="text-sm font-semibold">
-                  Nano<span className="text-teal-400">EASM</span>
+                  Nano <span className="text-teal-400">EASM</span>
                 </span>
               </Link>
               <p className="mt-2 text-sm text-white/30">

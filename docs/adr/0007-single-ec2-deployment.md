@@ -19,7 +19,7 @@ The deployment-platform decision sets the cadence for everything operational: ho
 Production runs on **a single AWS EC2 t2.medium instance, Ubuntu 24.04, with Docker Compose** orchestrating the application containers. A shared Nginx (also via Docker Compose, in a separate project at `~/boltedge/`) terminates TLS and reverse-proxies traffic.
 
 - Region: `us-east-1`.
-- Static Elastic IP, Route 53 A record for `nanoasm.com`.
+- Static Elastic IP, Route 53 A record for `nanoeasm.com`.
 - TLS via Let's Encrypt with certbot on the host.
 - Application is `~/boltedge-easm/` with `docker-compose.yml`.
 - Deploy is `git pull && docker compose up -d --build` from the host.

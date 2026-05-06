@@ -40,7 +40,7 @@ The system shall allow an unauthenticated visitor to create an account by provid
 The verification email shall:
 
 **Acceptance criteria:**
-- AC-1 Originate from `no-reply@nanoasm.com` via Resend (or the configured outbound provider).
+- AC-1 Originate from `no-reply@nanoeasm.com` via Resend (or the configured outbound provider).
 - AC-2 Use the standard branded email shell.
 - AC-3 Contain a single primary CTA button linking to `/verify-email?token=<token>` on the canonical frontend URL.
 - AC-4 Include a fallback plain-text URL for clients that do not render HTML.

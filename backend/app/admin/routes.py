@@ -800,7 +800,7 @@ def send_password_reset(user_id: int):
         email=user.email,
     )
 
-    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoasm.com").rstrip("/")
+    frontend_url = os.environ.get("FRONTEND_URL", "https://nanoeasm.com").rstrip("/")
     reset_link = f"{frontend_url}/reset-password/{token}"
 
     # Try to send via Resend if key is configured — fail gracefully
@@ -811,7 +811,7 @@ def send_password_reset(user_id: int):
             import resend
             resend.api_key = resend_key
             resend.Emails.send({
-                "from": os.environ.get("EMAIL_FROM", "Nano EASM <no-reply@nanoasm.com>"),
+                "from": os.environ.get("EMAIL_FROM", "Nano EASM <no-reply@nanoeasm.com>"),
                 "to": [user.email],
                 "subject": "Reset your Nano EASM password",
                 "html": f"""
@@ -2348,11 +2348,11 @@ def reply_contact_request(req_id: int):
             """
 
             resend.Emails.send({
-                "from": os.environ.get("EMAIL_FROM", "Nano EASM <no-reply@nanoasm.com>"),
+                "from": os.environ.get("EMAIL_FROM", "Nano EASM <no-reply@nanoeasm.com>"),
                 "to": [cr.email],
                 "subject": reply_subject,
                 "html": html,
-                "reply_to": "support@nanoasm.com",
+                "reply_to": "support@nanoeasm.com",
             })
             email_sent = True
         except Exception:

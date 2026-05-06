@@ -133,7 +133,7 @@ Every transactional email contains a link to a landing page that **does not auto
 
 ### 3.5 Domain authentication
 
-`nanoasm.com` is configured in Resend with SPF, DKIM, DMARC. Outbound mail from any other origin (including Stripe defaults) is suppressed — receipt and refund emails are sent by us via Resend, not by Stripe directly, so the domain is consistent.
+`nanoeasm.com` is configured in Resend with SPF, DKIM, DMARC. Outbound mail from any other origin (including Stripe defaults) is suppressed — receipt and refund emails are sent by us via Resend, not by Stripe directly, so the domain is consistent.
 
 ---
 

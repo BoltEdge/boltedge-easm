@@ -64,7 +64,7 @@ function CompleteProfileInner() {
         <div className="flex items-center gap-2.5 mb-10 justify-center">
           <BoltIcon size={28} />
           <span className="text-base font-semibold text-white">
-            Nano<span className="text-teal-400">EASM</span>
+            Nano <span className="text-teal-400">EASM</span>
           </span>
         </div>
 

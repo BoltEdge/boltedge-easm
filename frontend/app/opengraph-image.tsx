@@ -108,7 +108,7 @@ export default function OpenGraphImage() {
             width: "fit-content",
           }}
         >
-          nanoasm.com
+          nanoeasm.com
         </div>
       </div>
     ),

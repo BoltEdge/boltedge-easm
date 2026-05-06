@@ -167,7 +167,7 @@ A request id is generated in a `before_request` hook and attached to `g.request_
 
 Almost nothing automatic.
 - The host has an **EC2 status check alarm** in CloudWatch — fires if the instance becomes unreachable.
-- An **external uptime monitor** (UptimeRobot) hits `https://nanoasm.com/api/health` every few minutes and alerts via email if down.
+- An **external uptime monitor** (UptimeRobot) hits `https://nanoeasm.com/api/health` every few minutes and alerts via email if down.
 - Stripe sends emails on payment failures.
 - Resend sends emails on DKIM / DMARC misconfiguration.
 

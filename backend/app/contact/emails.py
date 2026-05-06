@@ -132,7 +132,7 @@ def send_acknowledgement_email(
     html = shell(
         title=copy["title"],
         body_html=body_html,
-        footer_html=f'You\'re receiving this because someone submitted a request using this address at <a href="{frontend_url()}" style="color:{_BRAND_TEAL};text-decoration:none;">nanoasm.com</a>.',
+        footer_html=f'You\'re receiving this because someone submitted a request using this address at <a href="{frontend_url()}" style="color:{_BRAND_TEAL};text-decoration:none;">nanoeasm.com</a>.',
     )
 
     return send_via_resend(

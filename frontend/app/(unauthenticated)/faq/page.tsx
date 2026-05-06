@@ -10,7 +10,7 @@ import FAQContent from "./FAQContent";
 import JsonLd from "../JsonLd";
 import { faqsToJsonLd } from "./faq-data";
 
-const SITE_URL = "https://nanoasm.com";
+const SITE_URL = "https://nanoeasm.com";
 
 export const dynamic = "force-static";
 

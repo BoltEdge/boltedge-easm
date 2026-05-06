@@ -129,7 +129,7 @@ RESTORE
      docker compose start easm-backend
      docker compose exec easm-backend flask db upgrade
 9. Smoke-check:
-     curl https://nanoasm.com/api/health
+     curl https://nanoeasm.com/api/health
      # log in as a known user, view dashboard, verify data shape
 10. Bring the frontend up:
      docker compose start easm-frontend
@@ -272,7 +272,7 @@ Estimated wall-clock: 60–120 minutes if all artifacts are at hand.
 2. If it succeeds: reload Nginx (cd ~/boltedge && docker compose exec nginx nginx -s reload).
 3. If it fails:
    - Check for rate-limit (LE production rate-limits: 5 duplicate certs per week).
-   - Check DNS — is nanoasm.com resolving to our Elastic IP?
+   - Check DNS — is nanoeasm.com resolving to our Elastic IP?
    - Check port 80 — is it reachable for the LE challenge?
 4. If LE rate-limited, request a manual cert via the LE staging environment first to validate config,
    then production again after the rate window passes.
@@ -304,7 +304,7 @@ Estimated wall-clock: 60–120 minutes if all artifacts are at hand.
 2. **No documented multi-region DR plan today** — explicitly out of scope for current scale.
 3. Wait for region recovery, OR perform manual region-failover:
    - Restore latest pg_dump to a new EC2 in another region (`us-west-2` is closest).
-   - Update Route 53 to point `nanoasm.com` to the new instance.
+   - Update Route 53 to point `nanoeasm.com` to the new instance.
 4. Customer impact: all data later than the most recent S3-backed dump (when implemented) is lost.
 
 **This is an explicit risk we accept** at single-region scale. Documented for Enterprise customer review. Mitigated by:
@@ -343,7 +343,7 @@ The off-host backup gap (§4.3) is most acute here — until S3 dumps are in pla
 | Phase | Channel | Audience |
 |---|---|---|
 | Incident detected | Internal chat thread | Operator + (future) team |
-| Customer-affecting confirmed | Status channel (`status.nanoasm.com` — planned), customer email | Customers |
+| Customer-affecting confirmed | Status channel (`status.nanoeasm.com` — planned), customer email | Customers |
 | In-progress updates | Status channel, every 30 minutes for SEV-1 | Customers |
 | Resolved | Status channel + post-mortem follow-up | Customers |
 | Post-mortem | Email + customer-portal post within 5 business days | Customers (affected); internal record |

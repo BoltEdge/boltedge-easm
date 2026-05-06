@@ -103,7 +103,7 @@ def create_app() -> Flask:
     # ─────────────────────────────────────────────────────────────────
 
     # ── CORS ────────────────────────────────────────────────────────
-    # Production: set CORS_ORIGINS="https://easm.nanoasm.com" in .env
+    # Production: set CORS_ORIGINS="https://easm.nanoeasm.com" in .env
     # Dev: falls back to localhost origins if env var is not set
     cors_env = os.getenv("CORS_ORIGINS")
     if cors_env:
@@ -138,7 +138,7 @@ def create_app() -> Flask:
         app.config["SESSION_COOKIE_SECURE"] = True
         app.config["SESSION_COOKIE_HTTPONLY"] = True
         app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-        app.config["SESSION_COOKIE_DOMAIN"] = ".nanoasm.com"
+        app.config["SESSION_COOKIE_DOMAIN"] = ".nanoeasm.com"
 
     # ── Database ─────────────────────────────────────────────────────
     # PostgreSQL required. No SQLite fallback.

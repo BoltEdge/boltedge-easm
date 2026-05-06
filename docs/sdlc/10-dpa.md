@@ -314,8 +314,8 @@ Material amendments unfavourable to the Customer give the Customer a 30-day wind
 ## 18. Contact
 
 For matters relating to this DPA:
-- **Data Protection Contact:** founder@nanoasm.com (placeholder; canonical address via the main agreement)
-- **Security incidents:** `security@nanoasm.com` (planned; today via support channel)
+- **Data Protection Contact:** founder@nanoeasm.com (placeholder; canonical address via the main agreement)
+- **Security incidents:** `security@nanoeasm.com` (planned; today via support channel)
 - **Subject access requests on behalf of users:** the Customer's own admin tools, with assistance per §9
 
 ---

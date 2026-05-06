@@ -7,7 +7,7 @@ import { Key, ArrowUpRight } from "lucide-react";
 import LandingNav from "../LandingNav";
 import { CodeBlock } from "./CodeBlock";
 
-const SITE_URL = "https://nanoasm.com";
+const SITE_URL = "https://nanoeasm.com";
 
 export const metadata: Metadata = {
   title: "API Docs — Automate Asset Discovery, Scans, and Findings",
@@ -52,7 +52,7 @@ type Section = {
 
 // Production base URL shown in curl examples. Display-only — actual frontend
 // requests use NEXT_PUBLIC_API_BASE_URL.
-const BASE = "https://nanoasm.com/api";
+const BASE = "https://nanoeasm.com/api";
 const HDR = `-H "X-API-Key: ag_sk_..."`;
 
 const SECTIONS: Section[] = [

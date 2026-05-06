@@ -32,7 +32,7 @@ BG_LIGHT = "#f9fafb"
 
 def frontend_url() -> str:
     """Resolve the canonical app URL from env, with a sensible fallback."""
-    return os.environ.get("FRONTEND_URL", "https://nanoasm.com").rstrip("/")
+    return os.environ.get("FRONTEND_URL", "https://nanoeasm.com").rstrip("/")
 
 
 # ── Sign-off block (universal, appears at the bottom of every email) ─
@@ -49,7 +49,7 @@ def _signoff_html() -> str:
             </div>
           </td>
           <td style="vertical-align:middle;">
-            <a href="{frontend_url()}" style="color:{BRAND_TEAL};text-decoration:none;font-size:13px;font-weight:500;">nanoasm.com</a>
+            <a href="{frontend_url()}" style="color:{BRAND_TEAL};text-decoration:none;font-size:13px;font-weight:500;">nanoeasm.com</a>
           </td>
         </tr>
       </table>
@@ -90,7 +90,7 @@ def shell(*, title: str, body_html: str, footer_html: str = "") -> str:
       [footer_html — optional, per-email legal/disclaimer text]
 
     `footer_html` is rendered in muted small text. Use it for things
-    like "manage billing · support@nanoasm.com" lines specific to one
+    like "manage billing · support@nanoeasm.com" lines specific to one
     email type. Leave empty if the sign-off is enough.
     """
     footer_block = ""
@@ -131,7 +131,7 @@ def send_via_resend(*, to: str, subject: str, html: str, from_addr: Optional[str
         logger.warning("RESEND_API_KEY not set; skipping email to %s (subject: %s)", to, subject)
         return False
 
-    sender = from_addr or os.environ.get("EMAIL_FROM") or "Nano EASM <no-reply@nanoasm.com>"
+    sender = from_addr or os.environ.get("EMAIL_FROM") or "Nano EASM <no-reply@nanoeasm.com>"
 
     try:
         import resend

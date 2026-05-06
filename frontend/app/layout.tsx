@@ -3,7 +3,7 @@ import "./globals.css";
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 
-const SITE_URL = "https://nanoasm.com";
+const SITE_URL = "https://nanoeasm.com";
 
 // Root metadata — sets defaults that per-page metadata extends/overrides.
 // metadataBase ensures all relative URLs in metadata (og.url, og.image,

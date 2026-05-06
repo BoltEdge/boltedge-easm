@@ -140,11 +140,11 @@ Nano EASM is a **net-new, standalone, multi-tenant SaaS** product. It is not a m
 
 The product is reached by users via:
 
-- A **public marketing website** at `https://nanoasm.com`
+- A **public marketing website** at `https://nanoeasm.com`
 - A **web application** at the same origin under authenticated routes
 - A **public Quick Scan tool** under the same origin, no authentication required
 - A **REST API** under the same origin under `/api/...`, accessible via session token (web app) or API key (programmatic)
-- **Outbound email** delivered by Resend, originating from `no-reply@nanoasm.com`
+- **Outbound email** delivered by Resend, originating from `no-reply@nanoeasm.com`
 - **Outbound webhooks** delivered by the system to customer-configured endpoints
 - **Inbound webhooks** received from Stripe (payment events)
 

@@ -57,7 +57,7 @@ export default function ResetPasswordPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <span className="text-xl font-bold text-white">
-            Nano<span className="text-teal-400">EASM</span>
+            Nano <span className="text-teal-400">EASM</span>
           </span>
         </div>
 

@@ -116,7 +116,7 @@ export default function AnimatedDashboard() {
           <div className="h-6 rounded-md bg-white/[0.04] border border-white/[0.06] max-w-sm mx-auto flex items-center px-3">
             <Lock className="w-3 h-3 text-white/20 mr-2" />
             <span className="text-[11px] text-white/25 font-mono">
-              nanoasm.com/{activeView === "Dashboard" ? "dashboard" : activeView === "Scanning" ? "scan-jobs" : "findings"}
+              nanoeasm.com/{activeView === "Dashboard" ? "dashboard" : activeView === "Scanning" ? "scan-jobs" : "findings"}
             </span>
           </div>
         </div>

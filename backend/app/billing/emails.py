@@ -3,7 +3,7 @@ Transactional billing emails — sent via Resend in response to Stripe
 webhook events.
 
 Why we send our own emails instead of using Stripe's built-in receipts:
-  1. Comes from `no-reply@nanoasm.com` (our domain, our trust signal)
+  1. Comes from `no-reply@nanoeasm.com` (our domain, our trust signal)
      instead of `invoice+statements@stripe.com`.
   2. Branded layout matches the rest of the app's email design.
   3. We can fold in app-specific context (link to /settings/billing,
@@ -84,7 +84,7 @@ def _billing_footer() -> str:
         f'This is an automated email from Nano EASM. You received it because you have an active subscription on this organisation.<br>'
         f'<a href="{fe}/settings/billing" style="color:{_BRAND_TEAL};text-decoration:none;">Manage billing</a>'
         f'&nbsp;·&nbsp;'
-        f'<a href="mailto:support@nanoasm.com" style="color:{_BRAND_TEAL};text-decoration:none;">support@nanoasm.com</a>'
+        f'<a href="mailto:support@nanoeasm.com" style="color:{_BRAND_TEAL};text-decoration:none;">support@nanoeasm.com</a>'
     )
 
 
@@ -499,7 +499,7 @@ def send_refund_email(org: Organization, charge: dict) -> bool:
 
     <p style="font-size:13px;line-height:1.6;color:{_TEXT_MUTED};margin:16px 0 0 0;">
       If you have questions about this refund, reply to this email or contact us at
-      <a href="mailto:support@nanoasm.com" style="color:{_BRAND_TEAL};text-decoration:none;">support@nanoasm.com</a>.
+      <a href="mailto:support@nanoeasm.com" style="color:{_BRAND_TEAL};text-decoration:none;">support@nanoeasm.com</a>.
       Your billing history is available in <a href="{fe}/settings/billing" style="color:{_BRAND_TEAL};text-decoration:none;">your account</a>.
     </p>
     """

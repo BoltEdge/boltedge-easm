@@ -19,7 +19,7 @@
 
 ## 1. Project Name & History
 
-The product is **Nano EASM**, delivered through the domain **nanoasm.com**.
+The product is **Nano EASM**, delivered through the domain **nanoeasm.com**.
 
 The codebase originated under the working name *BoltEdge EASM* and was fully rebranded to *Nano EASM* in April 2026. All customer-facing surfaces, brand assets, and email infrastructure use *Nano EASM*. The legacy name should not appear in any documentation, code, or copy going forward; the *boltedge-easm* directory name on disk is preserved only to avoid breaking deployment paths and version control history.
 
@@ -221,7 +221,7 @@ Nano EASM operates on **founder time, fixed infrastructure cost, and the variabl
 | Item | Approximate monthly cost (AUD) | Notes |
 |---|---|---|
 | AWS EC2 t2.medium (production) | ~A$50 | Single instance hosting backend + frontend + Postgres |
-| Domain registration (nanoasm.com) | ~A$2 amortised | Annual renewal |
+| Domain registration (nanoeasm.com) | ~A$2 amortised | Annual renewal |
 | Resend (transactional email) | A$0–A$30 | Tier dependent on volume |
 | Shodan API (Corporate) | ~A$120 | USD-billed, AUD equivalent |
 | Stripe (payment processing) | 1.7% + A$0.30 per transaction | No fixed fee; scales with revenue |

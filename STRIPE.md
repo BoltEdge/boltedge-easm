@@ -109,7 +109,7 @@ These need configuring once per environment (test, then live).
 - [ ] Statement descriptor: `NANO EASM`
 
 ### 2. Customer emails (Settings → Customer emails)
-- [ ] **Successful payments — OFF** (we send our own from `no-reply@nanoasm.com`)
+- [ ] **Successful payments — OFF** (we send our own from `no-reply@nanoeasm.com`)
 - [ ] **Refunds — OFF** (we send our own)
 - [ ] Subscription email reminders — leave ON (we don't send these)
 
@@ -118,7 +118,7 @@ These need configuring once per environment (test, then live).
 - [ ] **Payment method updates — ON**
 - [ ] **Invoice history — ON**
 - [ ] **Cancel subscription — ON** (cancel at period end)
-- [ ] Return URL: `https://nanoasm.com/settings/billing`
+- [ ] Return URL: `https://nanoeasm.com/settings/billing`
 
 ### 4. Tax (Settings → Tax) — optional but recommended
 - [ ] Stripe Tax enabled if selling to EU/UK B2B (legally required for VAT)
@@ -138,7 +138,7 @@ Enterprise Gold is sales-priced — don't create a public Price for it.
 Copy the 6 `price_...` IDs into env vars (see below).
 
 ### 6. Webhook endpoint (Developers → Webhooks)
-- [ ] URL: `https://nanoasm.com/api/billing/stripe-webhook` (prod) or via `stripe listen` for local
+- [ ] URL: `https://nanoeasm.com/api/billing/stripe-webhook` (prod) or via `stripe listen` for local
 - [ ] Events subscribed:
   - [ ] `checkout.session.completed`
   - [ ] `customer.subscription.created`
@@ -174,13 +174,13 @@ STRIPE_PRICE_SILVER_MONTHLY=price_...
 STRIPE_PRICE_SILVER_ANNUAL=price_...
 
 # Redirect URLs
-STRIPE_SUCCESS_URL=https://nanoasm.com/settings/billing?checkout=success
-STRIPE_CANCEL_URL=https://nanoasm.com/settings/billing?checkout=cancel
-STRIPE_PORTAL_RETURN_URL=https://nanoasm.com/settings/billing
+STRIPE_SUCCESS_URL=https://nanoeasm.com/settings/billing?checkout=success
+STRIPE_CANCEL_URL=https://nanoeasm.com/settings/billing?checkout=cancel
+STRIPE_PORTAL_RETURN_URL=https://nanoeasm.com/settings/billing
 
 # Email — already set up for verification + monitoring
 RESEND_API_KEY=re_...
-EMAIL_FROM=Nano EASM <no-reply@nanoasm.com>
+EMAIL_FROM=Nano EASM <no-reply@nanoeasm.com>
 ```
 
 All passed through `docker-compose.yml`. `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` is build-time — frontend rebuild required when changed.
@@ -246,7 +246,7 @@ stripe events resend evt_...
 ### Customer-facing checklist
 1. Free → Starter via Checkout — banner appears, then plan flips
 2. Cancel during Checkout — friendly red banner
-3. Receipt email arrives from `no-reply@nanoasm.com` with line-items table
+3. Receipt email arrives from `no-reply@nanoeasm.com` with line-items table
 4. Switch plan in Portal — receipt explains proration with italic note
 5. Trigger payment_failed — red banner appears, "update card" email arrives
 6. Trigger charge.refunded — refund email arrives + admin events feed shows row

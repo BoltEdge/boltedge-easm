@@ -60,18 +60,18 @@ The `%s | Nano EASM` template is set on the root layout, so every per-page title
 Public URLs only. Authenticated routes are deliberately excluded.
 
 ```
-https://nanoasm.com/                                     priority 1.0  weekly
-https://nanoasm.com/faq                                  priority 0.8  monthly
-https://nanoasm.com/api-docs                             priority 0.8  monthly
-https://nanoasm.com/terms-and-policies                   priority 0.5  monthly
-https://nanoasm.com/terms-and-policies/terms-of-use      priority 0.3  yearly
-https://nanoasm.com/terms-and-policies/privacy-policy    priority 0.3  yearly
-https://nanoasm.com/terms-and-policies/acceptable-use-policy            priority 0.3  yearly
-https://nanoasm.com/terms-and-policies/security-scanning-authorisation  priority 0.3  yearly
-https://nanoasm.com/terms-and-policies/subscription-payment-terms       priority 0.3  yearly
-https://nanoasm.com/terms-and-policies/refund-cancellation-policy       priority 0.3  yearly
-https://nanoasm.com/terms-and-policies/liability-limitation             priority 0.3  yearly
-https://nanoasm.com/terms-and-policies/data-handling-retention          priority 0.3  yearly
+https://nanoeasm.com/                                     priority 1.0  weekly
+https://nanoeasm.com/faq                                  priority 0.8  monthly
+https://nanoeasm.com/api-docs                             priority 0.8  monthly
+https://nanoeasm.com/terms-and-policies                   priority 0.5  monthly
+https://nanoeasm.com/terms-and-policies/terms-of-use      priority 0.3  yearly
+https://nanoeasm.com/terms-and-policies/privacy-policy    priority 0.3  yearly
+https://nanoeasm.com/terms-and-policies/acceptable-use-policy            priority 0.3  yearly
+https://nanoeasm.com/terms-and-policies/security-scanning-authorisation  priority 0.3  yearly
+https://nanoeasm.com/terms-and-policies/subscription-payment-terms       priority 0.3  yearly
+https://nanoeasm.com/terms-and-policies/refund-cancellation-policy       priority 0.3  yearly
+https://nanoeasm.com/terms-and-policies/liability-limitation             priority 0.3  yearly
+https://nanoeasm.com/terms-and-policies/data-handling-retention          priority 0.3  yearly
 ```
 
 `lastmod` for legal pages reads the file mtime of the underlying markdown in `frontend/content/legal/`, so re-publishing a policy bumps the date automatically.
@@ -110,7 +110,7 @@ Disallow: /complete-profile
 Disallow: /invite
 Disallow: /quick-scan
 
-Sitemap: https://nanoasm.com/sitemap.xml
+Sitemap: https://nanoeasm.com/sitemap.xml
 ```
 
 Rationale per disallow:
@@ -137,7 +137,7 @@ To add a new FAQ entry, add it to `FAQS` in `frontend/app/(unauthenticated)/faq/
 
 ## 7. Open Graph image
 
-Generated dynamically by `frontend/app/opengraph-image.tsx` using Next.js `ImageResponse`. Output: 1200×630 PNG, dark teal gradient with the bolt logo, "External Attack Surface Management" headline, and `nanoasm.com` URL pill.
+Generated dynamically by `frontend/app/opengraph-image.tsx` using Next.js `ImageResponse`. Output: 1200×630 PNG, dark teal gradient with the bolt logo, "External Attack Surface Management" headline, and `nanoeasm.com` URL pill.
 
 Why dynamic instead of a checked-in PNG:
 - No binary in the repo; one file, one source of truth.
@@ -152,12 +152,12 @@ To preview locally: `npm run dev` then visit `http://localhost:3000/opengraph-im
 
 Run all four checks once the new build is live:
 
-1. **Sitemap** — `curl https://nanoasm.com/sitemap.xml` returns the 12-URL XML.
-2. **Robots** — `curl https://nanoasm.com/robots.txt` returns the rules above.
-3. **OG card** — paste `https://nanoasm.com` into [opengraph.xyz](https://www.opengraph.xyz/) and confirm the teal preview card renders.
-4. **Structured data** — submit `https://nanoasm.com` and `https://nanoasm.com/faq` to [Google's Rich Results Test](https://search.google.com/test/rich-results) and confirm `Organization`, `SoftwareApplication`, and `FAQPage` are detected without errors.
+1. **Sitemap** — `curl https://nanoeasm.com/sitemap.xml` returns the 12-URL XML.
+2. **Robots** — `curl https://nanoeasm.com/robots.txt` returns the rules above.
+3. **OG card** — paste `https://nanoeasm.com` into [opengraph.xyz](https://www.opengraph.xyz/) and confirm the teal preview card renders.
+4. **Structured data** — submit `https://nanoeasm.com` and `https://nanoeasm.com/faq` to [Google's Rich Results Test](https://search.google.com/test/rich-results) and confirm `Organization`, `SoftwareApplication`, and `FAQPage` are detected without errors.
 
-After verification, **submit the sitemap to Google Search Console** at https://search.google.com/search-console — paste `https://nanoasm.com/sitemap.xml`. Same for Bing Webmaster Tools if you're targeting Microsoft search traffic.
+After verification, **submit the sitemap to Google Search Console** at https://search.google.com/search-console — paste `https://nanoeasm.com/sitemap.xml`. Same for Bing Webmaster Tools if you're targeting Microsoft search traffic.
 
 ---
 

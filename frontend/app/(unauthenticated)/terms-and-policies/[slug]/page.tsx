@@ -19,7 +19,7 @@ import { marked } from "marked";
 import LandingNav from "../../LandingNav";
 import JsonLd from "../../JsonLd";
 
-const SITE_URL = "https://nanoasm.com";
+const SITE_URL = "https://nanoeasm.com";
 
 export const dynamic = "force-static";
 

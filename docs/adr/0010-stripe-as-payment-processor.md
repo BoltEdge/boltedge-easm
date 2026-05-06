@@ -56,13 +56,13 @@ We use **Stripe** as the sole payment processor.
 - **Vendor lock-in is real.** Migrating away from Stripe is a project: customer migration via Stripe's tooling, webhook re-wiring, possible price re-creation. The lock-in is the price of the convenience.
 - **Fee structure.** Stripe takes ~2.9% + 30¢ per transaction, plus international and dispute fees. Built into our margin model (CLAUDE.md hard rule #6 — re-run when fees or FX move >10%).
 - **Tax (GST in AU, VAT in EU) is our problem.** Stripe Tax helps but doesn't absolve us. We handle this with our accountant.
-- **Branding constraint.** Hosted Checkout is Stripe-branded; some enterprise prospects expect to see only us. Mitigated by Stripe's customisation knobs (logo, colours, primary domain set to `billing.nanoasm.com`).
+- **Branding constraint.** Hosted Checkout is Stripe-branded; some enterprise prospects expect to see only us. Mitigated by Stripe's customisation knobs (logo, colours, primary domain set to `billing.nanoeasm.com`).
 
 ## Implementation notes
 
 - **Idempotency:** every Stripe event id is inserted into `stripe_event` on first receipt. Duplicates are no-ops. This is the only guard against Stripe retries causing double-execution.
 - **Signature verification:** the webhook secret is in `STRIPE_WEBHOOK_SECRET`. A signature mismatch returns 400; the body is **not** logged (treated as adversarial).
-- **Receipts and refunds** go through Resend (ADR 0009), not Stripe-default email, so the from-address is `nanoasm.com`.
+- **Receipts and refunds** go through Resend (ADR 0009), not Stripe-default email, so the from-address is `nanoeasm.com`.
 - **Test mode vs live mode** is determined by the `STRIPE_API_KEY` value (`sk_test_` vs `sk_live_`). No mode toggle in code.
 - **Custom tier** is not Stripe-purchasable — `/billing/upgrade` to "Custom" returns 403 with copy directing to contact-sales.
 

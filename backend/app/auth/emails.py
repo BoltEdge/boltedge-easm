@@ -146,7 +146,7 @@ def send_welcome_email(user: User, organization: Optional[Organization] = None) 
         </p>
         <p style="font-size:13px;line-height:1.6;color:{TEXT_MUTED};margin:0;">
           Still stuck? Reply to this email &mdash; it goes straight to a real person at
-          <a href="mailto:support@nanoasm.com" style="color:{BRAND_TEAL};text-decoration:none;">support@nanoasm.com</a>.
+          <a href="mailto:support@nanoeasm.com" style="color:{BRAND_TEAL};text-decoration:none;">support@nanoeasm.com</a>.
         </p>
         """
     )
@@ -306,7 +306,7 @@ def send_mfa_reset_notice(user: User, *, by_admin: bool = True) -> bool:
       </p>
       <p style="margin:0;font-size:13px;line-height:1.55;color:#9a3412;">
         If you didn&rsquo;t request this change and don&rsquo;t recognise the action, contact
-        <a href="mailto:support@nanoasm.com" style="color:#9a3412;text-decoration:underline;">support@nanoasm.com</a>
+        <a href="mailto:support@nanoeasm.com" style="color:#9a3412;text-decoration:underline;">support@nanoeasm.com</a>
         immediately and consider changing your password.
       </p>
     </div>
@@ -360,7 +360,7 @@ def send_password_reset_notice(user: User, *, by_admin: bool = True) -> bool:
       </p>
       <p style="margin:0;font-size:13px;line-height:1.55;color:#9a3412;">
         If you didn&rsquo;t make this change, contact
-        <a href="mailto:support@nanoasm.com" style="color:#9a3412;text-decoration:underline;">support@nanoasm.com</a>
+        <a href="mailto:support@nanoeasm.com" style="color:#9a3412;text-decoration:underline;">support@nanoeasm.com</a>
         immediately.
       </p>
     </div>

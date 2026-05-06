@@ -17,11 +17,11 @@ The Service is offered on the following tiers:
 
 | Plan | How to start | Notes |
 |------|--------------|-------|
-| **Free** | Sign up at https://nanoasm.com | No payment method required. Capped resource limits. May be modified or withdrawn at any time. |
+| **Free** | Sign up at https://nanoeasm.com | No payment method required. Capped resource limits. May be modified or withdrawn at any time. |
 | **Starter** | Self-serve via Settings → Billing | Paid monthly or annually. |
 | **Professional** | Self-serve via Settings → Billing | Paid monthly or annually. |
 | **Enterprise Silver** | Self-serve via Settings → Billing | Paid monthly or annually. |
-| **Enterprise Gold** | Contact sales — https://nanoasm.com/#contact | Custom contract, custom pricing, no public self-serve checkout. |
+| **Enterprise Gold** | Contact sales — https://nanoeasm.com/#contact | Custom contract, custom pricing, no public self-serve checkout. |
 
 Plan limits (assets, scans/month, monitored assets, scheduled scans,
 team members, API keys, monitoring frequency, deep discovery,
@@ -30,7 +30,7 @@ reasonable notice as set out in §6.
 
 ## 2. Fees and currency
 
-- The fees for each paid plan are displayed on https://nanoasm.com
+- The fees for each paid plan are displayed on https://nanoeasm.com
   and inside the Service at the point of subscribing. The fees
   shown at the time you subscribe are the fees you agree to.
 - Fees are quoted and charged in **United States dollars (USD)**
@@ -74,7 +74,7 @@ Update it via *Manage billing* in Settings → Billing.
 
 ## 5. Taxes
 
-Prices displayed on https://nanoasm.com and inside the Service are
+Prices displayed on https://nanoeasm.com and inside the Service are
 **exclusive of any applicable tax** unless explicitly stated.
 
 Where required by law, the applicable tax will be added at checkout
@@ -143,7 +143,7 @@ We will:
 
 - charge the renewal fee on or shortly before the renewal date,
 - email you a receipt for each successful payment from
-  **no-reply@nanoasm.com**,
+  **no-reply@nanoeasm.com**,
 - show your current period end date and any pending cancellation in
   Settings → Billing.
 
@@ -236,7 +236,7 @@ Policy](./refund-cancellation-policy.md). In short:
 ## 14. Invoices and receipts
 
 For every successful subscription payment we email a branded receipt
-from **no-reply@nanoasm.com** to the billing contact on file. The
+from **no-reply@nanoeasm.com** to the billing contact on file. The
 receipt shows the line items (including any proration), subtotal,
 applicable tax, and total paid, and includes a link to the
 Stripe-hosted invoice PDF.
@@ -250,7 +250,7 @@ You can access past invoices and download PDFs at any time via
 
 ## 15. Chargebacks
 
-We strongly prefer that you contact us (**support@nanoasm.com**) to
+We strongly prefer that you contact us (**support@nanoeasm.com**) to
 resolve a billing concern before initiating a chargeback. The
 chargeback position is governed by the [Refund & Cancellation
 Policy](./refund-cancellation-policy.md) §8.
@@ -289,8 +289,8 @@ by email to the billing contact, with the notice period set out in
 Billing questions, invoice requests, payment-method issues, or
 anything else not handled by self-service:
 
-- Email: **support@nanoasm.com**
-- Web: https://nanoasm.com/#contact
+- Email: **support@nanoeasm.com**
+- Web: https://nanoeasm.com/#contact
 
 Include your Organisation name and (if available) the invoice
 number from your most recent receipt email.

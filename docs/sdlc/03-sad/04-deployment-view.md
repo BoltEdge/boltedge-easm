@@ -17,7 +17,7 @@ Nano EASM runs as a **single-host deployment** on AWS EC2.
 
 ```mermaid
 graph TB
-    INET[Internet] -->|443/TCP| R53[Route 53<br/>nanoasm.com]
+    INET[Internet] -->|443/TCP| R53[Route 53<br/>nanoeasm.com]
     R53 --> EIP[Elastic IP<br/>34.232.100.29]
     EIP --> EC2["EC2 t2.medium<br/>Ubuntu 24.04"]
 
@@ -48,7 +48,7 @@ graph TB
 |---|---|---|
 | Host | EC2 t2.medium, Ubuntu 24.04 | 2 vCPU, 4 GB RAM |
 | Public IP | Elastic IP `34.232.100.29` | Static, reserved |
-| DNS | Route 53 — `nanoasm.com` A record → Elastic IP | TTL 300 |
+| DNS | Route 53 — `nanoeasm.com` A record → Elastic IP | TTL 300 |
 | TLS | Let's Encrypt via certbot, renews on host | 90-day rotation |
 | Reverse proxy | Nginx on host, in compose project `~/boltedge/` | Owned separately so other apps can share it |
 | App containers | Docker Compose project `~/boltedge-easm/` | 3 containers: frontend, backend, db |
@@ -75,7 +75,7 @@ graph TB
 
 ## 3. Nginx (host) configuration
 
-Nginx lives in a separate compose project at `~/boltedge/` so it can front multiple apps on the same EC2 if needed. The `nanoasm.com` server block:
+Nginx lives in a separate compose project at `~/boltedge/` so it can front multiple apps on the same EC2 if needed. The `nanoeasm.com` server block:
 
 - Listens 80, redirects to 443.
 - Listens 443 with the Let's Encrypt cert.
@@ -178,7 +178,7 @@ The path to zero-downtime requires either (a) two backend containers behind Ngin
 
 When we add staging, the intended shape is:
 - Same EC2 architecture, smaller instance (t3.small).
-- Subdomain `staging.nanoasm.com`.
+- Subdomain `staging.nanoeasm.com`.
 - Auto-deploys from `master` after CI; manual promotion gate to production.
 
 ---

@@ -88,7 +88,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="h-14 flex items-center gap-2.5 px-4 border-b border-white/[0.06]">
           <ShieldAlert className="w-5 h-5 text-teal-400" />
           <span className="text-sm font-semibold">
-            Nano<span className="text-teal-400">EASM</span>
+            Nano <span className="text-teal-400">EASM</span>
             <span className="text-[10px] text-white/30 ml-1.5 font-normal">Admin</span>
           </span>
         </div>

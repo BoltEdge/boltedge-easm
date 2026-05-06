@@ -25,6 +25,20 @@ export const FAQS: Category[] = [
     icon: Rocket,
     items: [
       {
+        q: "What is Nano EASM?",
+        a: (
+          <p>
+            Nano EASM is an{" "}
+            <strong>External Attack Surface Management</strong> platform — a
+            cybersecurity SaaS product that helps IT teams, security generalists, and
+            small MSSPs discover internet-facing assets, scan for risk, monitor
+            exposure changes, and prioritise remediation. (Not to be confused with the
+            similarly-named open-source Verilog assembler — Nano EASM is a security
+            platform for the modern web, not a hardware tool.)
+          </p>
+        ),
+      },
+      {
         q: "What does Nano EASM do?",
         a: (
           <p>
@@ -289,7 +303,7 @@ export const FAQS: Category[] = [
             all linked records (assets, scans, findings, members, audit logs for the org).
             Production deletion is immediate. Backups roll over within 30 days. Individual
             data-subject deletion requests under privacy law are honoured within 30 days —
-            email <a href="mailto:support@nanoasm.com" className="text-teal-400 hover:text-teal-300">support@nanoasm.com</a>.
+            email <a href="mailto:support@nanoeasm.com" className="text-teal-400 hover:text-teal-300">support@nanoeasm.com</a>.
           </p>
         ),
       },
