@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<!--
+  Source for the static OG image at frontend/app/opengraph-image.png.
+  Regenerate with headless Chrome:
+
+    chrome --headless=new --disable-gpu --hide-scrollbars --window-size=1200,630 \
+      --screenshot=frontend/app/opengraph-image.png \
+      file:///<abs-path>/frontend/scripts/og-image.html
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nano EASM — OG Image</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    background: #020617;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+    color: #f8fafc;
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Subtle radial teal glow behind dashboard */
+  .glow {
+    position: absolute;
+    width: 900px;
+    height: 900px;
+    right: -260px;
+    top: -260px;
+    background: radial-gradient(circle, rgba(20,184,166,0.18) 0%, rgba(20,184,166,0.06) 35%, rgba(20,184,166,0) 65%);
+    pointer-events: none;
+  }
+  .glow-2 {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    left: -200px;
+    bottom: -250px;
+    background: radial-gradient(circle, rgba(20,184,166,0.10) 0%, rgba(20,184,166,0) 60%);
+    pointer-events: none;
+  }
+
+  /* Faint grid */
+  .grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(148,163,184,0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148,163,184,0.045) 1px, transparent 1px);
+    background-size: 48px 48px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 60% 50%, black 30%, transparent 85%);
+            mask-image: radial-gradient(ellipse 80% 60% at 60% 50%, black 30%, transparent 85%);
+  }
+
+  .frame {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 52px 72px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Logo lockup */
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .logo .icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 11px;
+    background: #0a0f1e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 1px rgba(20,184,166,0.18), 0 8px 24px rgba(20,184,166,0.15);
+  }
+  .logo .icon svg { width: 30px; height: 30px; display: block; }
+  .logo .word {
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.6px;
+    color: #f8fafc;
+  }
+  .logo .word .accent { color: #14b8a6; }
+
+  /* Main row */
+  .row {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 56px;
+    margin-top: 28px;
+  }
+
+  .copy {
+    width: 560px;
+    flex-shrink: 0;
+  }
+  .headline {
+    font-size: 58px;
+    font-weight: 800;
+    line-height: 1.04;
+    letter-spacing: -1.6px;
+    color: #f8fafc;
+    margin-bottom: 20px;
+  }
+  .headline .accent { color: #14b8a6; }
+  .sub {
+    font-size: 21px;
+    line-height: 1.45;
+    color: #94a3b8;
+    font-weight: 400;
+    max-width: 520px;
+  }
+  .url {
+    margin-top: 22px;
+    font-size: 17px;
+    color: #14b8a6;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  /* Dashboard mockup */
+  .dash {
+    flex: 1;
+    background: linear-gradient(180deg, rgba(15,23,42,0.92) 0%, rgba(2,6,23,0.92) 100%);
+    border: 1px solid rgba(148,163,184,0.12);
+    border-radius: 18px;
+    padding: 22px 22px 24px;
+    box-shadow:
+      0 30px 80px rgba(0,0,0,0.55),
+      0 0 100px rgba(20,184,166,0.10),
+      inset 0 1px 0 rgba(255,255,255,0.04);
+    position: relative;
+    overflow: hidden;
+  }
+  .dash::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(20,184,166,0.06) 0%, transparent 30%);
+    pointer-events: none;
+  }
+
+  .dash-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 22px;
+    position: relative;
+  }
+  .dash-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #cbd5e1;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .dash-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #5eead4;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .dash-status .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #14b8a6;
+    box-shadow: 0 0 8px #14b8a6;
+  }
+
+  /* Score block */
+  .score {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .score-left .label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    margin-bottom: 4px;
+  }
+  .score-left .num {
+    font-size: 56px;
+    font-weight: 800;
+    color: #14b8a6;
+    letter-spacing: -2px;
+    line-height: 1;
+  }
+  .score-left .num .max {
+    font-size: 22px;
+    color: #475569;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    margin-left: 2px;
+  }
+  .score-right {
+    text-align: right;
+    padding-bottom: 6px;
+  }
+  .score-right .delta {
+    font-size: 13px;
+    font-weight: 600;
+    color: #14b8a6;
+    background: rgba(20,184,166,0.10);
+    border: 1px solid rgba(20,184,166,0.25);
+    padding: 4px 8px;
+    border-radius: 6px;
+    display: inline-block;
+  }
+  .score-right .meta {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 6px;
+  }
+
+  .bar {
+    height: 6px;
+    background: rgba(148,163,184,0.12);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 22px;
+    position: relative;
+  }
+  .bar-fill {
+    width: 78%;
+    height: 100%;
+    background: linear-gradient(90deg, #0d9488 0%, #14b8a6 60%, #2dd4bf 100%);
+    border-radius: 3px;
+    box-shadow: 0 0 12px rgba(20,184,166,0.5);
+  }
+
+  /* Stat pair */
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .stat {
+    background: rgba(2,6,23,0.55);
+    border: 1px solid rgba(148,163,184,0.08);
+    border-radius: 10px;
+    padding: 13px 14px;
+  }
+  .stat .label {
+    font-size: 10px;
+    color: #94a3b8;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    margin-bottom: 6px;
+  }
+  .stat .value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #f8fafc;
+    line-height: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .stat .value .delta {
+    font-size: 12px;
+    color: #14b8a6;
+    font-weight: 600;
+  }
+  .stat .value .delta.warn { color: #f59e0b; }
+
+  /* Trend */
+  .trend-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .trend-head .label {
+    font-size: 10px;
+    color: #94a3b8;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+  }
+  .trend-head .range {
+    font-size: 10px;
+    color: #64748b;
+    font-weight: 500;
+  }
+  .trend-svg {
+    width: 100%;
+    height: 56px;
+    display: block;
+  }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="glow-2"></div>
+  <div class="grid"></div>
+
+  <div class="frame">
+    <div class="logo">
+      <div class="icon">
+        <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <path d="M17.5 4L9.5 17H14.5L13 28L21.5 14.5H16L17.5 4Z" fill="#14b8a6"/>
+        </svg>
+      </div>
+      <div class="word">Nano<span class="accent">EASM</span></div>
+    </div>
+
+    <div class="row">
+      <div class="copy">
+        <div class="headline">External <span class="accent">Attack&nbsp;Surface</span> Management</div>
+        <div class="sub">Discover exposed assets. Monitor changes. Prioritise what matters.</div>
+        <div class="url">nanoeasm.com</div>
+      </div>
+
+      <div class="dash">
+        <div class="dash-head">
+          <div class="dash-title">Exposure Overview</div>
+          <div class="dash-status"><span class="dot"></span>Live</div>
+        </div>
+
+        <div class="score">
+          <div class="score-left">
+            <div class="label">Exposure Score</div>
+            <div class="num">78<span class="max">/100</span></div>
+          </div>
+          <div class="score-right">
+            <div class="delta">&#8593; 6 pts</div>
+            <div class="meta">vs. last week</div>
+          </div>
+        </div>
+        <div class="bar"><div class="bar-fill"></div></div>
+
+        <div class="stats">
+          <div class="stat">
+            <div class="label">Assets discovered</div>
+            <div class="value">1,247<span class="delta">+12</span></div>
+          </div>
+          <div class="stat">
+            <div class="label">Open findings</div>
+            <div class="value">89<span class="delta warn">+4</span></div>
+          </div>
+        </div>
+
+        <div class="trend-head">
+          <div class="label">Risk trend</div>
+          <div class="range">Last 30 days</div>
+        </div>
+        <svg class="trend-svg" viewBox="0 0 320 56" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#14b8a6" stop-opacity="0.45"/>
+              <stop offset="100%" stop-color="#14b8a6" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path d="M0,40 L16,38 L32,42 L48,36 L64,32 L80,34 L96,28 L112,30 L128,24 L144,28 L160,22 L176,18 L192,21 L208,14 L224,17 L240,12 L256,15 L272,10 L288,12 L304,7 L320,8 L320,56 L0,56 Z" fill="url(#trendFill)"/>
+          <path d="M0,40 L16,38 L32,42 L48,36 L64,32 L80,34 L96,28 L112,30 L128,24 L144,28 L160,22 L176,18 L192,21 L208,14 L224,17 L240,12 L256,15 L272,10 L288,12 L304,7 L320,8" stroke="#14b8a6" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="320" cy="8" r="3" fill="#2dd4bf"/>
+          <circle cx="320" cy="8" r="6" fill="#14b8a6" opacity="0.25"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

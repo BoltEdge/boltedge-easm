@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     template: "%s | Nano EASM",
   },
   description:
-    "Discover external assets, scan for risk, monitor exposure changes, and turn findings into clear remediation steps with Nano EASM.",
+    "Nano EASM is an external attack surface management platform — discover external assets, monitor exposure changes, prioritise risk, and take a practical first step toward continuous threat exposure management.",
   applicationName: "Nano EASM",
   generator: "Next.js",
   keywords: [
@@ -44,13 +44,14 @@ export const metadata: Metadata = {
     ],
     apple: "/favicon-64.png",
   },
-  // OG / Twitter images are auto-injected from app/opengraph-image.tsx
+  // OG / Twitter images are auto-injected from app/opengraph-image.png
+  // (Next.js file convention). Regen the PNG via scripts/og-image.html.
   openGraph: {
     type: "website",
     siteName: "Nano EASM",
     title: "Nano EASM — External Attack Surface Management",
     description:
-      "Discover external assets, scan for risk, monitor exposure changes, and turn findings into clear remediation steps.",
+      "Discover external assets, monitor exposure changes, prioritise risk, and take a practical first step toward continuous threat exposure management.",
     url: SITE_URL,
     locale: "en_AU",
   },
@@ -58,7 +59,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Nano EASM — External Attack Surface Management",
     description:
-      "Discover external assets, scan for risk, monitor exposure changes, and turn findings into clear remediation steps.",
+      "Discover external assets, monitor exposure changes, prioritise risk, and take a practical first step toward continuous threat exposure management.",
   },
   robots: {
     index: true,

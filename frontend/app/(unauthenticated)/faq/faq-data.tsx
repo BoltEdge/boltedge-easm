@@ -39,6 +39,21 @@ export const FAQS: Category[] = [
         ),
       },
       {
+        q: "Is Nano EASM a CTEM platform?",
+        a: (
+          <p>
+            Nano EASM focuses on the <strong>external attack surface</strong> layer of
+            Continuous Threat Exposure Management. It helps teams discover
+            internet-facing assets, monitor exposure changes, prioritise findings, and
+            turn them into remediation actions. CTEM is broader than EASM and may
+            include internal vulnerabilities, identity exposure, cloud posture, attack
+            path validation, and control validation. Nano EASM is designed as a
+            practical starting point for teams building toward a CTEM program — not a
+            complete CTEM platform.
+          </p>
+        ),
+      },
+      {
         q: "What does Nano EASM do?",
         a: (
           <p>

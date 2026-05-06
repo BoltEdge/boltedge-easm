@@ -47,7 +47,7 @@ export default function QuickScanCard() {
     try {
       setLoading(true); setError(null); setResult(null);
       const res = (await quickScanAsset({ type, value: value.trim() })) as QuickScanRawResponse;
-      const rawCounts = (res?.risk?.counts as Record<string, number> | undefined) ?? { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+      const rawCounts = (res?.risk?.counts as Record<string, number> | undefined) ?? (res?.counts as Record<string, number> | undefined) ?? { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
       const normalized: QuickScanNormalized = {
         assetType: (((res?.assetType as any) ?? type) === "ip" ? "ip" : "domain"), assetValue: String(res?.assetValue ?? value.trim()),
         maxSeverity: toSeverity(res?.risk?.maxSeverity ?? res?.maxSeverity ?? "info"),

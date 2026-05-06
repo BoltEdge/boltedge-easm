@@ -11,12 +11,12 @@ const SITE_URL = "https://nanoeasm.com";
 export const metadata: Metadata = {
   title: "Nano EASM — External Attack Surface Management Platform",
   description:
-    "Nano EASM is a cybersecurity platform for external asset discovery, exposure monitoring, risk scanning, and plain-English remediation guidance.",
+    "Nano EASM helps teams discover external assets, monitor exposure changes, prioritise risk, and take a practical first step toward continuous threat exposure management (CTEM).",
   alternates: { canonical: "/" },
   openGraph: {
     title: "Nano EASM — External Attack Surface Management Platform",
     description:
-      "Nano EASM is a cybersecurity platform for external asset discovery, exposure monitoring, risk scanning, and plain-English remediation guidance.",
+      "Nano EASM helps teams discover external assets, monitor exposure changes, prioritise risk, and take a practical first step toward continuous threat exposure management (CTEM).",
     url: SITE_URL,
     type: "website",
     siteName: "Nano EASM",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Nano EASM — External Attack Surface Management Platform",
     description:
-      "Cybersecurity platform for external asset discovery, exposure monitoring, risk scanning, and remediation guidance.",
+      "Discover external assets, monitor exposure changes, prioritise risk, and take a practical first step toward continuous threat exposure management (CTEM).",
   },
 };
 import {
@@ -62,7 +62,7 @@ const ORGANIZATION_JSONLD = {
   url: SITE_URL,
   logo: `${SITE_URL}/logo-on-dark.svg`,
   description:
-    "Nano EASM is a cybersecurity SaaS platform for External Attack Surface Management. It helps IT teams, security generalists, and small MSSPs uncover internet-facing assets, monitor exposure changes, and prioritise remediation.",
+    "Nano EASM is a cybersecurity SaaS platform for External Attack Surface Management. It helps IT teams, security generalists, and small MSSPs uncover internet-facing assets, monitor exposure changes, and prioritise remediation as the external exposure foundation for continuous threat exposure management programs.",
   sameAs: [],
   contactPoint: [
     {
@@ -84,7 +84,7 @@ const SOFTWARE_APPLICATION_JSONLD = {
   operatingSystem: "Web",
   url: SITE_URL,
   description:
-    "Nano EASM is a cybersecurity platform for external asset discovery, exposure monitoring, risk scanning, and plain-English remediation guidance. Built for IT teams, security generalists, and small MSSPs.",
+    "Nano EASM is a cybersecurity platform for external asset discovery, exposure monitoring, risk scanning, and plain-English remediation guidance — the external exposure foundation for continuous threat exposure management (CTEM). Built for IT teams, security generalists, and small MSSPs.",
   keywords: [
     "external attack surface management",
     "EASM",
@@ -92,6 +92,9 @@ const SOFTWARE_APPLICATION_JSONLD = {
     "asset discovery",
     "vulnerability scanning",
     "exposure monitoring",
+    "exposure management",
+    "continuous threat exposure management",
+    "CTEM",
     "shadow IT",
     "MSSP",
     "cybersecurity SaaS",
@@ -170,9 +173,9 @@ export default function UnauthenticatedHomePage() {
 
               <HeroItem>
                 <p className="mt-6 max-w-3xl text-base text-white/70 leading-7 sm:text-lg sm:leading-8">
-                  Nano EASM helps IT teams, security generalists, and small MSSPs stay on top
-                  of external exposure without juggling multiple tools. Start with a domain,
-                  IP, or cloud asset — uncover exposed assets, scan for risk, monitor
+                  Nano EASM helps IT teams, security generalists, and small MSSPs move from
+                  one-off scanning to continuous external exposure management. Start with a
+                  domain, IP, or cloud asset — uncover exposed assets, scan for risk, monitor
                   changes, prioritise what matters, and turn findings into clear next steps.
                 </p>
               </HeroItem>
@@ -314,6 +317,60 @@ export default function UnauthenticatedHomePage() {
                 </FadeInOnScroll>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* ================= FROM EASM TO CTEM ================= */}
+        <section id="ctem" className="relative py-16 sm:py-20">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-teal-500/[0.02] to-transparent pointer-events-none" />
+          <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
+            <FadeInOnScroll>
+              <div className="text-center mb-12">
+                <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">Continuous exposure</span>
+                <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">From EASM to CTEM</h2>
+                <p className="mt-5 text-base text-white/50 max-w-3xl mx-auto leading-relaxed">
+                  Continuous Threat Exposure Management is about continuously understanding what is
+                  exposed, what changed, what matters most, and what needs to be fixed first.
+                  Nano EASM focuses on the <span className="text-white/80">external attack surface layer</span> of that
+                  journey — helping teams discover internet-facing assets, monitor exposure changes,
+                  prioritise findings, and mobilise remediation.
+                </p>
+              </div>
+            </FadeInOnScroll>
+
+            {/* 5-step lifecycle pipeline — visually distinct from "How it works"
+                so the page doesn't read as duplicate content. Centered numbered
+                chips connected by a thin teal line; stacks vertically on mobile. */}
+            <FadeInOnScroll>
+              <div className="relative">
+                <div className="hidden lg:block absolute top-5 left-[10%] right-[10%] h-px bg-gradient-to-r from-transparent via-teal-500/30 to-transparent" />
+                <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-2">
+                  {[
+                    { n: "01", verb: "Discover", desc: "Uncover internet-facing domains, IPs, services, and cloud assets." },
+                    { n: "02", verb: "Prioritise", desc: "Rank findings by severity, exposure, and context." },
+                    { n: "03", verb: "Monitor", desc: "Track exposure changes over time." },
+                    { n: "04", verb: "Remediate", desc: "Turn findings into plain-English next steps." },
+                    { n: "05", verb: "Validate", desc: "Re-check fixes and confirm exposure reduction where supported." },
+                  ].map(({ n, verb, desc }) => (
+                    <div key={n} className="relative text-center px-3">
+                      <div className="relative mx-auto mb-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-teal-500/30 bg-[#060b18] text-xs font-semibold text-teal-400">
+                        {n}
+                      </div>
+                      <h3 className="text-sm font-semibold text-white mb-2">{verb}</h3>
+                      <p className="text-xs text-white/40 leading-relaxed">{desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </FadeInOnScroll>
+
+            <FadeInOnScroll delay={150}>
+              <p className="mt-12 text-center text-xs text-white/30 max-w-3xl mx-auto leading-relaxed">
+                Nano EASM focuses on the external exposure layer of CTEM — where unknown
+                internet-facing assets, exposed services, and changing risk often create the
+                first gaps teams need to close.
+              </p>
+            </FadeInOnScroll>
           </div>
         </section>
 
