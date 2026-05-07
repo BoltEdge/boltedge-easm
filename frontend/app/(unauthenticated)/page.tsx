@@ -8,25 +8,41 @@ import JsonLd from "./JsonLd";
 
 const SITE_URL = "https://nanoeasm.com";
 
+// Homepage description and OG image. Per-page metadata overrides root
+// metadata in Next.js, so we re-declare images here explicitly —
+// otherwise the override would replace the root openGraph object
+// without inheriting its images array.
+const HOME_DESCRIPTION =
+  "Nano EASM helps teams discover external assets, monitor exposure changes, prioritise risk, and take a practical first step toward continuous threat exposure management.";
+const HOME_OG_IMAGE_URL = `${SITE_URL}/opengraph-image.png`;
+const HOME_OG_IMAGE_ALT = "Nano EASM external attack surface management platform preview";
+
 export const metadata: Metadata = {
   title: "Nano EASM — External Attack Surface Management Platform",
-  description:
-    "Nano EASM helps teams discover external assets, monitor exposure changes, prioritise risk, and take a practical first step toward continuous threat exposure management (CTEM).",
+  description: HOME_DESCRIPTION,
   alternates: { canonical: "/" },
   openGraph: {
     title: "Nano EASM — External Attack Surface Management Platform",
-    description:
-      "Nano EASM helps teams discover external assets, monitor exposure changes, prioritise risk, and take a practical first step toward continuous threat exposure management (CTEM).",
+    description: HOME_DESCRIPTION,
     url: SITE_URL,
     type: "website",
     siteName: "Nano EASM",
     locale: "en_AU",
+    images: [
+      {
+        url: HOME_OG_IMAGE_URL,
+        width: 1200,
+        height: 630,
+        type: "image/png",
+        alt: HOME_OG_IMAGE_ALT,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Nano EASM — External Attack Surface Management Platform",
-    description:
-      "Discover external assets, monitor exposure changes, prioritise risk, and take a practical first step toward continuous threat exposure management (CTEM).",
+    description: HOME_DESCRIPTION,
+    images: [HOME_OG_IMAGE_URL],
   },
 };
 import {

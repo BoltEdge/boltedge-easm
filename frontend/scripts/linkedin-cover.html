@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<!--
+  Source for the LinkedIn company-page cover image at
+  frontend/scripts/linkedin-cover.png. Not served by Next.js — this is
+  a static asset for upload to the LinkedIn admin console.
+
+  Dimensions: 1128 × 191 (LinkedIn company page banner spec).
+  LinkedIn overlays the company profile picture at the bottom-left of
+  the cover, partially obscuring ~120px square. The wordmark is
+  positioned slightly toward the centre-left so it isn't hidden, and
+  critical text sits in the central horizontal band.
+
+  Regenerate with:
+    chrome --headless=new --disable-gpu --hide-scrollbars \
+      --window-size=1128,400 \
+      --screenshot=frontend/scripts/linkedin-cover.png \
+      file:///<abs-path>/frontend/scripts/linkedin-cover.html
+
+  Note: the recommended Chrome window-size is 400 (not 191). Chrome
+  headless silently enforces a minimum viewport height around 200px
+  that breaks vertical centering when you ask for 191. The CSS below
+  pins the actual canvas to 191px regardless of viewport height, and
+  uses `padding-bottom: calc(100vh - 191px)` to push everything below
+  the canvas off-screen so the screenshot's effective image is the
+  191px we want. Output PNG is then 1128×actual-window-height; if the
+  exact 1128×191 dimensions are needed, post-process with the trim
+  step in the regen script.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nano EASM — LinkedIn Cover</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 1128px;
+    height: 191px;
+    overflow: hidden;
+    background: #020617;
+  }
+  body {
+    /* Body itself is the flex container — drops a layer of nesting
+       that was confusing Chrome headless's vertical centring. */
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 56px;
+    gap: 28px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+    color: #f8fafc;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .glow-right {
+    position: absolute;
+    width: 700px;
+    height: 700px;
+    right: -300px;
+    top: -270px;
+    background: radial-gradient(circle, rgba(20,184,166,0.20) 0%, rgba(20,184,166,0.05) 35%, rgba(20,184,166,0) 65%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-left {
+    position: absolute;
+    width: 460px;
+    height: 460px;
+    left: -180px;
+    bottom: -240px;
+    background: radial-gradient(circle, rgba(20,184,166,0.10) 0%, rgba(20,184,166,0) 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(148,163,184,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px);
+    background-size: 48px 48px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 100% at 60% 50%, black 30%, transparent 90%);
+            mask-image: radial-gradient(ellipse 80% 100% at 60% 50%, black 30%, transparent 90%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .logo {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    flex-shrink: 0;
+  }
+  .logo .icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    background: #0a0f1e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 1px rgba(20,184,166,0.18), 0 6px 18px rgba(20,184,166,0.18);
+  }
+  .logo .icon svg { width: 24px; height: 24px; display: block; }
+  .logo .word {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #f8fafc;
+    line-height: 1;
+  }
+  .logo .word .accent { color: #14b8a6; }
+
+  .copy {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    flex: 1;
+    min-width: 0;
+  }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(20,184,166,0.08);
+    border: 1px solid rgba(20,184,166,0.25);
+    color: #5eead4;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+  .eyebrow .pulse {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: #14b8a6;
+    box-shadow: 0 0 6px #14b8a6;
+  }
+  .headline {
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.7px;
+    color: #f8fafc;
+    margin-bottom: 6px;
+    white-space: nowrap;
+  }
+  .headline .accent { color: #14b8a6; }
+  .sub {
+    font-size: 12px;
+    line-height: 1.4;
+    color: #94a3b8;
+    font-weight: 400;
+    letter-spacing: 0.3px;
+  }
+  .sub .dot {
+    display: inline-block;
+    width: 3px; height: 3px; border-radius: 50%;
+    background: rgba(148,163,184,0.6);
+    vertical-align: middle;
+    margin: 0 7px 2px;
+  }
+
+  .url {
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+    text-align: right;
+    font-size: 13px;
+    color: #14b8a6;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    line-height: 1.2;
+  }
+  .url .label {
+    display: block;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    color: rgba(148,163,184,0.7);
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+</style>
+</head>
+<body>
+  <div class="glow-right"></div>
+  <div class="glow-left"></div>
+  <div class="grid"></div>
+
+  <div class="logo">
+    <div class="icon">
+      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.5 4L9.5 17H14.5L13 28L21.5 14.5H16L17.5 4Z" fill="#14b8a6"/>
+      </svg>
+    </div>
+    <div class="word">Nano<span class="accent">EASM</span></div>
+  </div>
+
+  <div class="copy">
+    <div class="eyebrow"><span class="pulse"></span>Continuous external exposure</div>
+    <div class="headline">External <span class="accent">Attack&nbsp;Surface</span> Management</div>
+    <div class="sub">
+      Discover<span class="dot"></span>Prioritise<span class="dot"></span>Monitor<span class="dot"></span>Remediate
+    </div>
+  </div>
+
+  <div class="url">
+    <span class="label">Visit</span>
+    nanoeasm.com
+  </div>
+</body>
+</html>

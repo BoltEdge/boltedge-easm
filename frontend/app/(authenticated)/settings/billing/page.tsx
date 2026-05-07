@@ -308,16 +308,21 @@ export default function BillingPage() {
     } finally { setUpgrading(false); }
   }
 
-  const PLAN_ORDER = ["free", "starter", "professional", "enterprise_silver", "enterprise_gold"];
+  const PLAN_ORDER = ["free", "starter", "professional", "enterprise_silver", "enterprise_gold", "custom"];
   const TIER_COLORS: Record<string, string> = {
     free: "#6b7280", starter: "#00b8d4", professional: "#7c5cfc",
-    enterprise_silver: "#ff8800", enterprise_gold: "#ffd700",
+    enterprise_silver: "#ff8800", enterprise_gold: "#ffd700", custom: "#a855f7",
   };
   // Plans that the auto-upgrade flow grants without admin/sales
   // involvement (must match backend AUTO_FREE_UPGRADE_PLANS in
   // app/billing/routes.py). Higher tiers route through the contact
   // form so the operator can manually decide.
   const AUTO_FREE_UPGRADE_PLANS = new Set(["free", "starter", "professional"]);
+  // Plans that always require sales contact (regardless of billing
+  // state). Custom is a contracted, sales-quoted tier — never a
+  // self-serve target — so the upgrade button on its card routes to
+  // the contact form even after real billing is enabled.
+  const CONTACT_SALES_PLANS = new Set(["custom"]);
 
   function UsageBar({ label, current, limit }: { label: string; current: number; limit: number }) {
     const isUnlimited = limit === -1;
@@ -555,22 +560,32 @@ export default function BillingPage() {
                     {p.limits.webhooks && <li className="text-xs text-muted-foreground flex items-center gap-1.5"><Check className="w-3 h-3 text-[#10b981]" />Webhooks</li>}
                   </ul>
 
-                  {/* Free-upgrade badge (only when billing is disabled and
-                      not on this card's plan). Auto-upgrade tiers get an
-                      emerald pill; contact-required tiers get an amber
-                      pill so the user can see at a glance which path
-                      this plan needs. */}
-                  {!BILLING_ENABLED && !isCurrent && p.key !== "free" && (
+                  {/* Plan-state badge above the action button. Three
+                      variants:
+                        - Auto-upgrade tiers (Free/Starter/Pro): emerald
+                          "Free upgrade available"
+                        - Contact-required tiers (Silver/Gold) while
+                          billing is off: amber "Free upgrade — contact us"
+                        - Custom: purple "Sales-quoted" — Custom is never
+                          a self-serve free upgrade regardless of billing
+                          state, so it needs distinct framing
+                      Hidden on the Free card and on the user's current
+                      plan (no action available). */}
+                  {!isCurrent && p.key !== "free" && (
                     <div className="mb-2">
-                      {AUTO_FREE_UPGRADE_PLANS.has(p.key) ? (
+                      {CONTACT_SALES_PLANS.has(p.key) ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-purple-500/10 text-purple-300 border border-purple-500/30">
+                          Sales-quoted
+                        </span>
+                      ) : !BILLING_ENABLED && AUTO_FREE_UPGRADE_PLANS.has(p.key) ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
                           Free upgrade available
                         </span>
-                      ) : (
+                      ) : !BILLING_ENABLED ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
                           Free upgrade — contact us
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   )}
 
@@ -600,6 +615,18 @@ export default function BillingPage() {
                             ? <>Upgrade to {p.label}</>
                             : <>Downgrade to {p.label}</>}
                       </Button>
+                    ) : CONTACT_SALES_PLANS.has(p.key) ? (
+                      // Custom is sales-quoted regardless of direction
+                      // or billing state — it can't be self-served.
+                      // Route every click to the contact form with a
+                      // `type=custom` hint so the inbound queue is
+                      // sortable.
+                      <a
+                        href={`/?type=custom&plan=${p.key}#contact`}
+                        className="w-full inline-flex items-center justify-center rounded-md bg-primary hover:bg-primary/90 text-primary-foreground h-10 px-4 text-sm font-medium"
+                      >
+                        Contact sales
+                      </a>
                     ) : isUpgrade ? (
                       // Auto-upgrade vs contact-required gating. When
                       // billing is off and the target plan isn't in the
