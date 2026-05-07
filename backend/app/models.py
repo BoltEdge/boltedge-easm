@@ -787,7 +787,8 @@ class ScanProfile(db.Model):
     use_nmap = db.Column(db.Boolean, nullable=False, default=False)
     use_nuclei = db.Column(db.Boolean, nullable=False, default=False)
     use_sslyze = db.Column(db.Boolean, nullable=False, default=False)
-    
+    use_leak = db.Column(db.Boolean, nullable=False, default=False)
+
     # Shodan settings
     shodan_include_history = db.Column(db.Boolean, nullable=False, default=False)
     shodan_include_cves = db.Column(db.Boolean, nullable=False, default=False)

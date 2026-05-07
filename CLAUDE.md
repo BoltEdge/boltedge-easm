@@ -318,6 +318,18 @@ ADMIN_EMAIL=admin@nanoeasm.com
 ENABLE_BILLING=false
 SHODAN_API_KEY=<your key>
 RESEND_API_KEY=<your key>
+# GitHub Personal Access Token — public_repo scope is sufficient. Used by
+# the LeakEngine to query GitHub Code Search for leaked secrets associated
+# with a scanned domain. When unset, sensitive-path probing still runs and
+# the GitHub-search step is skipped silently. Rate limit: 30 searches/min
+# per token, so generate a dedicated token rather than reusing a personal one.
+GITHUB_TOKEN=<your github PAT>
+# GitLab Personal Access Token — read_api scope is sufficient. Used by
+# the LeakEngine's GitLab code-search step. Public blob search works
+# without a token but the per-IP unauthenticated rate limit is harsh
+# (~10 requests/min globally pooled). With a token, ~2,000/min per token.
+# Like GITHUB_TOKEN, prefer a dedicated bot account, not a personal one.
+GITLAB_TOKEN=<your gitlab PAT>
 # MFA — generate once with:
 #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 # Required for MFA enrolment. Rotating this key invalidates every enrolled MFA secret.

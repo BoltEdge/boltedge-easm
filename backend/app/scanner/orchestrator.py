@@ -322,7 +322,34 @@ def _get_enabled_engines(profile: Optional[ScanProfile], asset: Optional[Asset] 
     if is_deep:
         enabled.append("cloud_asset")
 
+    # Leak engine: sensitive-path probing + GitHub/GitLab/etc. code search.
+    # Profile-gated via use_leak, but additionally feature-gated by the org's
+    # plan tier (Starter+) — Free users on a Standard scan still get the
+    # other engines, just not leak detection. The engine itself further
+    # degrades gracefully when GITHUB_TOKEN isn't set (sensitive paths still
+    # run, the GitHub-search step is skipped).
+    if profile.use_leak and _org_has_leak_detection(asset):
+        enabled.append("leak")
+
     return enabled
+
+
+def _org_has_leak_detection(asset: Optional[Asset]) -> bool:
+    """Check whether the asset's org plan includes the leak_detection
+    feature. Returns False on any error so a misconfigured plan never
+    accidentally exposes the feature."""
+    try:
+        if not asset or not asset.organization_id:
+            return False
+        from app.models import Organization
+        from app.billing.routes import get_effective_limits
+        org = Organization.query.get(asset.organization_id)
+        if not org:
+            return False
+        limits = get_effective_limits(org)
+        return bool(limits.get("leak_detection", False))
+    except Exception:
+        return False
 
 
 def _get_engine_config(
@@ -426,6 +453,28 @@ def _get_engine_config(
     if engine_name == "db_probe":
         return {
             "timeout": 5,
+        }
+
+    if engine_name == "leak":
+        if not profile:
+            return {}
+        # Sensitive-path probing is cheap (parallel HEAD requests with a
+        # short per-path timeout) so it runs at every level the engine is
+        # enabled at. GitHub / GitLab code search are gated separately
+        # because they talk to external APIs with stricter rate limits.
+        name_lower = (profile.name or "").lower()
+        is_deep = any(k in name_lower for k in ("deep", "full"))
+        # Standard gets a smaller per-source budget than Deep/Full so the
+        # everyday profile finishes inside its timeout. Each source is
+        # additionally gated inside the engine: missing GITHUB_TOKEN /
+        # GITLAB_TOKEN just skip that source's API calls without failing.
+        return {
+            "check_sensitive_paths": True,
+            "check_github_leaks": True,
+            "check_gitlab_leaks": True,
+            "max_github_searches": 24 if is_deep else 12,
+            "max_gitlab_searches": 16 if is_deep else 8,
+            "path_timeout": 5,
         }
 
     if engine_name == "cloud_asset":

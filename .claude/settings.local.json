@@ -21,7 +21,10 @@
       "PowerShell($out = npx tsc --noEmit 2>&1; \"Total error lines: $\\($out.Count\\)\"; $out | Select-String -Pattern \"findings.page\" | ForEach-Object { $_.Line })",
       "Bash(python -c \"from alembic.script import ScriptDirectory; from alembic.config import Config; cfg = Config\\('migrations/alembic.ini'\\); cfg.set_main_option\\('script_location', 'migrations'\\); s = ScriptDirectory.from_config\\(cfg\\); print\\('heads:', s.get_heads\\(\\)\\)\")",
       "Bash(taskkill //F //IM python.exe)",
-      "Bash(npx --no-install tsc --noEmit)"
+      "Bash(npx --no-install tsc --noEmit)",
+      "Bash(python -c \"from app.models import ScanProfile; from app.scanner.orchestrator import _select_engines_for_asset, _get_engine_config; print\\('imports ok'\\)\")",
+      "Bash(python -c \"from app.models import ScanProfile; from app.scanner.orchestrator import _get_enabled_engines, _get_engine_config; print\\('imports ok'\\); print\\('ScanProfile.use_leak attr:', hasattr\\(ScanProfile, 'use_leak'\\)\\)\")",
+      "Bash(python -c ' *)"
     ]
   }
 }

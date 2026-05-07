@@ -94,6 +94,20 @@ GITHUB_CATEGORY_MAP: Dict[str, str] = {
 }
 
 
+# ─── GitLab category → template routing ──────────────────────────────────
+# Parallel to GITHUB_CATEGORY_MAP. Distinct templates so the user-facing
+# copy can correctly say "found on GitLab" vs "found on GitHub".
+
+GITLAB_CATEGORY_MAP: Dict[str, str] = {
+    "credentials": "leak-gitlab-credentials",
+    "api_key":     "leak-gitlab-api-key",
+    "cloud_creds": "leak-gitlab-cloud-creds",
+    "secrets":     "leak-gitlab-secrets",
+    "env_file":    "leak-gitlab-env-file",
+    "config":      "leak-gitlab-config",
+}
+
+
 # ─── Render helper ───────────────────────────────────────────────────────
 
 def _render(text: Optional[str], **subs: Any) -> Optional[str]:
@@ -265,6 +279,62 @@ class LeakAnalyzer(BaseAnalyzer):
                 details=details,
                 dedupe_fields={
                     "domain": domain,
+                    "category": category,
+                    "query_hash": (search.get("query", "") or "")[:50],
+                },
+                finding_type="leak",
+            ))
+
+        # ── 3. GitLab code-search leaks ──
+        gl_data = leak_data.get("gitlab_leaks", {})
+        for search in gl_data.get("searches", []):
+            count = search.get("leak_count", 0) or search.get("total_count", 0)
+            if count == 0:
+                continue
+
+            category = search.get("category", "credentials")
+            tid = GITLAB_CATEGORY_MAP.get(category) or "leak-gitlab"
+
+            template = get_template(tid)
+            if template is None:
+                logger.warning("Missing leak gitlab template: %s (category=%s)", tid, category)
+                continue
+
+            matches = search.get("matches", []) or []
+            sample_files = [
+                {
+                    "project_id": m.get("project_id"),
+                    "path": m.get("path", ""),
+                    "ref": m.get("ref"),
+                    "startline": m.get("startline"),
+                    "secret_matches": m.get("secret_matches") or [],
+                }
+                for m in matches[:5]
+            ]
+
+            details = {
+                "value": search.get("title") or category,
+                "search_query": search.get("query", ""),
+                "total_results": count,
+                "category": category,
+                "sample_files": sample_files,
+                "source": "gitlab",
+            }
+
+            engine_severity = search.get("severity", template.severity or "high")
+
+            drafts.append(_draft_from_template(
+                template,
+                template_id=tid,
+                severity_override=engine_severity,
+                confidence="medium",
+                asset=domain,
+                value=search.get("title") or category,
+                extra_tags=[category, "gitlab"],
+                details=details,
+                dedupe_fields={
+                    "domain": domain,
+                    "source": "gitlab",
                     "category": category,
                     "query_hash": (search.get("query", "") or "")[:50],
                 },

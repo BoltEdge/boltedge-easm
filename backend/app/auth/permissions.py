@@ -369,7 +369,7 @@ def require_feature(feature: str):
     Decorator: reject request if the org's plan doesn't include a feature.
 
     Supported features:
-        "monitoring", "deep_discovery", "webhooks"
+        "monitoring", "deep_discovery", "webhooks", "leak_detection"
 
     Usage:
         @require_auth

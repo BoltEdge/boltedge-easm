@@ -164,13 +164,14 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 // ── Verify-with-lookup-tools deep links ──
 //
 // Maps a finding's category (and where useful, fields from details_json)
-// to the most relevant lookup tools. Each link goes to /tools?tool=...&
-// target=...&autorun=1 — the tools page parses those params, spawns a
-// panel for that tool with the target pre-filled, and runs it.
+// to the single most relevant lookup tool. The link goes to /tools?tool=
+// ...&target=...&autorun=1 — the tools page parses those params, spawns
+// a panel for that tool with the target pre-filled, and runs it.
 //
-// Capped at 2 links per finding to keep the row tight. Returns [] when
-// no tool maps cleanly (e.g. a misconfiguration with no usable target),
-// in which case the calling component should hide the section entirely.
+// Single primary tool per finding (deliberate — keeps the row uncluttered
+// and steers the user to the verify path most likely to be useful).
+// Returns [] when no tool maps cleanly (e.g. a misconfiguration with no
+// usable target), in which case the calling component hides the section.
 
 type ToolLink = { tool: string; target: string; label: string };
 
@@ -283,7 +284,8 @@ function buildToolLinks(finding: any): ToolLink[] {
       break;
   }
 
-  return links.slice(0, 2);
+  // Primary tool only — first item in each branch above is the primary.
+  return links.slice(0, 1);
 }
 
 function VerifyWithToolsSection({ finding }: { finding: any }) {
@@ -296,6 +298,8 @@ function VerifyWithToolsSection({ finding }: { finding: any }) {
           <Link
             key={`${link.tool}-${link.target}`}
             href={`/tools?tool=${encodeURIComponent(link.tool)}&target=${encodeURIComponent(link.target)}&autorun=1`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 rounded-md border border-teal-500/30 bg-teal-500/[0.06] px-3 py-1.5 text-xs font-medium text-teal-300 hover:bg-teal-500/[0.12] hover:text-teal-200 transition-colors"
           >
             <ExternalLink className="w-3 h-3" />
@@ -304,8 +308,8 @@ function VerifyWithToolsSection({ finding }: { finding: any }) {
         ))}
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground/60">
-        Opens the tools workspace pre-filled and auto-runs the check. Useful for
-        confirming the finding is still live before triaging it.
+        Opens the tools workspace in a new tab, pre-filled and auto-running the
+        check. Useful for confirming the finding is still live before triaging it.
       </p>
     </Section>
   );

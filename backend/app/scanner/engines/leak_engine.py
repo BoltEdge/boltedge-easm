@@ -5,14 +5,23 @@ Leak Detection engine.
 Combines multiple leak detection methods during scan jobs:
     1. Sensitive path scanning - checks for exposed files (.env, .git, etc.)
     2. GitHub code search - searches public repos for leaked credentials
-    3. Google dork generation - produces manual investigation queries
+    3. GitLab code search - searches public projects for leaked credentials
+    4. Google dork generation - produces manual investigation queries
+
+Each public-source search additionally runs the matched snippets through
+the shared secret-pattern detector (`tools.secret_patterns`) so keyword
+hits are upgraded to high-confidence pattern matches when an actual
+recognisable secret format (AWS key, GitHub PAT, Stripe key, etc.) is
+present in the snippet.
 
 This engine collects raw data. The LeakAnalyzer interprets findings.
 
 Profile config options:
     check_sensitive_paths:  bool  (default: True)
     check_github_leaks:    bool  (default: False for Quick, True for Deep)
+    check_gitlab_leaks:    bool  (default: same as github)
     max_github_searches:   int   (default: 12)
+    max_gitlab_searches:   int   (default: 8)
     path_timeout:          int   (default: 5)
 """
 
@@ -54,7 +63,9 @@ class LeakEngine(BaseEngine):
 
         check_paths = config.get("check_sensitive_paths", True)
         check_github = config.get("check_github_leaks", False)
+        check_gitlab = config.get("check_gitlab_leaks", check_github)
         max_searches = config.get("max_github_searches", 12)
+        max_gitlab_searches = config.get("max_gitlab_searches", 8)
         path_timeout = config.get("path_timeout", 5)
 
         data: Dict[str, Any] = {"domain": domain}
@@ -109,7 +120,33 @@ class LeakEngine(BaseEngine):
         else:
             data["github_leaks"] = {"total_leaks": 0, "searches": []}
 
-        # 3. Google dorks (always generated, no API call)
+        # 3. GitLab code search — same shape as GitHub. Runs against
+        # gitlab.com's public blob index. Auth-optional (works without
+        # GITLAB_TOKEN, but the per-IP rate limit is much harsher
+        # without one).
+        if check_gitlab:
+            try:
+                from app.tools.gitlab_leaks import run_gitlab_leak_scan
+                gl_results = run_gitlab_leak_scan(
+                    domain, full=True, max_searches=max_gitlab_searches,
+                )
+                data["gitlab_leaks"] = {
+                    "total_leaks": gl_results.get("totalLeaks", 0),
+                    "searches": gl_results.get("searches", []),
+                    "rate_limited": gl_results.get("rateLimited", False),
+                    "token_available": gl_results.get("tokenAvailable", False),
+                }
+                logger.info(
+                    f"LeakEngine: GitLab search for {domain} - "
+                    f"{gl_results.get('totalLeaks', 0)} potential leaks found"
+                )
+            except Exception as e:
+                logger.error(f"LeakEngine: GitLab search failed for {domain}: {e}")
+                data["gitlab_leaks"] = {"total_leaks": 0, "searches": [], "error": str(e)}
+        else:
+            data["gitlab_leaks"] = {"total_leaks": 0, "searches": []}
+
+        # 4. Google dorks (always generated, no API call)
         if "dorks" not in data:
             from app.tools.github_leaks import GOOGLE_DORKS
             data["dorks"] = [
@@ -126,7 +163,9 @@ class LeakEngine(BaseEngine):
         result.metadata = {
             "paths_checked": check_paths,
             "github_checked": check_github,
+            "gitlab_checked": check_gitlab,
             "github_token_available": bool(os.environ.get("GITHUB_TOKEN")),
+            "gitlab_token_available": bool(os.environ.get("GITLAB_TOKEN")),
         }
 
         return result

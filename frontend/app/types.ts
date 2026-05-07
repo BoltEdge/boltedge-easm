@@ -181,6 +181,7 @@ export interface ScanProfile {
   useNmap: boolean;
   useNuclei: boolean;
   useSslyze: boolean;
+  useLeak: boolean;
   // Shodan settings
   shodanIncludeHistory: boolean;
   shodanIncludeCves: boolean;

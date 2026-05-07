@@ -76,6 +76,7 @@ def list_scan_profiles():
             "useNmap": profile.use_nmap,
             "useNuclei": profile.use_nuclei,
             "useSslyze": profile.use_sslyze,
+            "useLeak": profile.use_leak,
             
             # Shodan settings
             "shodanIncludeHistory": profile.shodan_include_history,
@@ -129,6 +130,7 @@ def get_scan_profile(profile_id: str):
         "useNmap": profile.use_nmap,
         "useNuclei": profile.use_nuclei,
         "useSslyze": profile.use_sslyze,
+        "useLeak": profile.use_leak,
         
         # Shodan settings
         "shodanIncludeHistory": profile.shodan_include_history,

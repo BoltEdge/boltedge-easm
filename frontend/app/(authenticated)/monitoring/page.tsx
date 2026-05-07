@@ -1117,9 +1117,9 @@ function AlertsTab({ setBanner, planLimit }: {
 // ── Verify-with-lookup-tools deep links for alerts ──
 //
 // Mirrors the same pattern in FindingDetailsDialog: maps the alert's
-// alertType (and tags/title for SPF/DKIM/DMARC nuance) to the most
-// relevant lookup tools, then renders /tools deep-link buttons.
-// Capped at 2 to keep the row tight; renders nothing if no tool maps.
+// alertType (and tags/title for SPF/DKIM/DMARC nuance) to the single
+// most relevant lookup tool, then renders a /tools deep-link button.
+// Renders nothing if no tool maps cleanly.
 
 type AlertToolLink = { tool: string; target: string; label: string };
 
@@ -1174,7 +1174,8 @@ function buildAlertToolLinks(alert: any): AlertToolLink[] {
     default:
       break;
   }
-  return links.slice(0, 2);
+  // Primary tool only — first item in each branch above is the primary.
+  return links.slice(0, 1);
 }
 
 function AlertVerifyTools({ alert }: { alert: MonitorAlert }) {
@@ -1193,6 +1194,8 @@ function AlertVerifyTools({ alert }: { alert: MonitorAlert }) {
           <Link
             key={`${link.tool}-${link.target}`}
             href={`/tools?tool=${encodeURIComponent(link.tool)}&target=${encodeURIComponent(link.target)}&autorun=1`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 rounded-md border border-teal-500/30 bg-teal-500/[0.06] px-3 py-1.5 text-xs font-medium text-teal-300 hover:bg-teal-500/[0.12] hover:text-teal-200 transition-colors"
           >
             <ExternalLink className="w-3 h-3" />
@@ -1201,7 +1204,7 @@ function AlertVerifyTools({ alert }: { alert: MonitorAlert }) {
         ))}
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground/60">
-        Opens the tools workspace pre-filled and auto-runs the check.
+        Opens the tools workspace in a new tab, pre-filled and auto-running the check.
       </p>
     </div>
   );

@@ -2699,6 +2699,193 @@ _r(FindingTemplate(
     references=list(_LEAK_REFS_GITHUB),
 ))
 
+
+# ───────────────────────────────────────────────────────────────────────────
+# Leaks — GitLab Code Search (parallel to GitHub family)
+# ───────────────────────────────────────────────────────────────────────────
+# Mirrors the GitHub leak templates. Distinct so the user-facing copy
+# accurately names the source (GitLab vs GitHub) — same triage flow,
+# different remediation steps because GitLab's takedown process and
+# code-removal UX differ from GitHub's.
+
+_LEAK_REFS_GITLAB = (
+    "GitLab — Removing sensitive data from a repository",
+    "OWASP Application Security Verification Standard — Secrets Management",
+    "CIS Critical Security Controls — v8 Control 4 (Secure Configuration)",
+)
+
+_r(FindingTemplate(
+    template_id="leak-gitlab-credentials",
+    title="Credentials referencing {asset} found in public GitLab code",
+    description=(
+        "Public-GitLab blob search returned files referencing {asset} "
+        "alongside what looks like credential material (passwords, "
+        "DB_PASSWORD-style env strings). Code search alone can't "
+        "confirm a true leak — the matched files might use the keyword "
+        "in a different context — but every match is worth opening "
+        "and verifying. Real credential exposure on a public GitLab "
+        "project means an attacker can copy/paste the secret straight "
+        "into a working session."
+    ),
+    remediation=(
+        "Open each matching file linked in the finding details and "
+        "verify whether a real credential is present. If yes, rotate "
+        "the credential immediately and revoke any tokens it grants. "
+        "Then have the file removed: GitLab keeps full history, so "
+        "deleting the current copy isn't enough — use `git filter-repo` "
+        "or BFG Repo-Cleaner to scrub history, then force-push. If the "
+        "repository belongs to someone else, contact the project owner "
+        "or use GitLab's abuse-reporting form to request takedown."
+    ),
+    severity="critical",
+    category="leak",
+    cwe="CWE-798",
+    tags=["gitlab-leak", "credentials", "code-search"],
+    summary="Public GitLab code search returned files referencing {asset} that may contain credentials — open each match and rotate any real secrets.",
+    alert_name="GitLab — Credentials Possibly Leaked",
+    monitor_type="github_change",
+    references=list(_LEAK_REFS_GITLAB),
+))
+
+_r(FindingTemplate(
+    template_id="leak-gitlab-api-key",
+    title="API tokens referencing {asset} found in public GitLab code",
+    description=(
+        "Public-GitLab blob search returned files referencing {asset} "
+        "alongside identifiers that look like API tokens or keys. "
+        "Some matches will be false positives (variable names, "
+        "comments, fixtures), but each one needs eyes on it because a "
+        "single live key can hand attackers full programmatic access "
+        "to your service."
+    ),
+    remediation=(
+        "Open each matching file and check whether a real token is "
+        "present. If yes, revoke or rotate the token at the issuing "
+        "service immediately, then scrub the file from the project's "
+        "git history (deleting the current commit isn't enough — "
+        "history retains the value). Notify the project owner if the "
+        "repository isn't yours."
+    ),
+    severity="critical",
+    category="leak",
+    cwe="CWE-798",
+    tags=["gitlab-leak", "api-key", "code-search"],
+    summary="Public GitLab code search returned API tokens referencing {asset} — verify each match and rotate immediately if real.",
+    alert_name="GitLab — API Token Possibly Leaked",
+    monitor_type="github_change",
+    references=list(_LEAK_REFS_GITLAB),
+))
+
+_r(FindingTemplate(
+    template_id="leak-gitlab-cloud-creds",
+    title="Cloud credentials referencing {asset} found in public GitLab code",
+    description=(
+        "Public-GitLab blob search returned files referencing {asset} "
+        "alongside cloud-credential strings (AWS_SECRET_ACCESS_KEY, "
+        "GCP service-account JSON, Azure shared keys). Cloud "
+        "credentials are among the highest-impact leaks — a working "
+        "key can cost five to six figures within hours via crypto "
+        "mining or data exfiltration."
+    ),
+    remediation=(
+        "Treat this as same-day work. Verify whether a real credential "
+        "is present in each match. If yes:\n"
+        "  1. Rotate the credential at the cloud provider IMMEDIATELY.\n"
+        "  2. Audit the cloud account for unauthorised activity since "
+        "     the file's commit date.\n"
+        "  3. Scrub the file from project history.\n"
+        "  4. Configure git pre-commit hooks (gitleaks, detect-secrets) "
+        "     to block future commits."
+    ),
+    severity="critical",
+    category="leak",
+    cwe="CWE-798",
+    tags=["gitlab-leak", "cloud-creds", "aws", "gcp", "azure"],
+    summary="Public GitLab code search returned cloud-credential strings referencing {asset} — rotate at the cloud provider TODAY if real.",
+    alert_name="GitLab — Cloud Credentials Possibly Leaked",
+    monitor_type="github_change",
+    references=list(_LEAK_REFS_GITLAB),
+))
+
+_r(FindingTemplate(
+    template_id="leak-gitlab-secrets",
+    title="Secret-like strings referencing {asset} found in public GitLab code",
+    description=(
+        "Public-GitLab blob search returned files referencing {asset} "
+        "alongside the keyword 'secret'. Many of these will be config "
+        "constants or comments rather than real secrets, but each "
+        "match should be opened and verified."
+    ),
+    remediation=(
+        "Open each matching file and check whether a real secret is "
+        "present. Rotate any live values, scrub the file from git "
+        "history, and add pre-commit secret-scanning to the repository."
+    ),
+    severity="high",
+    category="leak",
+    cwe="CWE-200",
+    tags=["gitlab-leak", "secrets", "code-search"],
+    summary="Public GitLab code search returned secret-like strings referencing {asset} — verify each match.",
+    alert_name="GitLab — Secret-Like String Found",
+    monitor_type="github_change",
+    references=list(_LEAK_REFS_GITLAB),
+))
+
+_r(FindingTemplate(
+    template_id="leak-gitlab-env-file",
+    title="Environment files referencing {asset} found in public GitLab code",
+    description=(
+        "Public-GitLab blob search returned `.env` files referencing "
+        "{asset}. Environment files routinely contain database "
+        "passwords, API keys, OAuth secrets, and other "
+        "production-critical material. A `.env` published to a public "
+        "repo is one of the highest-impact leak categories."
+    ),
+    remediation=(
+        "Open each matching `.env` file and review every line. Rotate "
+        "every real credential, scrub the file from git history, and "
+        "add `.env*` to `.gitignore` going forward. Configure a "
+        "pre-commit hook to block future `.env` commits."
+    ),
+    severity="high",
+    category="leak",
+    cwe="CWE-200",
+    tags=["gitlab-leak", "env-file", "code-search"],
+    summary="Public GitLab code search returned .env files referencing {asset} — assume credentials inside are leaked and rotate.",
+    alert_name="GitLab — .env File Leaked",
+    monitor_type="github_change",
+    references=list(_LEAK_REFS_GITLAB),
+))
+
+_r(FindingTemplate(
+    template_id="leak-gitlab-config",
+    title="Config files referencing {asset} found in public GitLab code",
+    description=(
+        "Public-GitLab blob search returned config files (json, yaml, "
+        "ini, conf) referencing {asset}. Config files don't always "
+        "contain secrets, but they often leak internal hostnames, API "
+        "endpoints, ports, and ACL rules that help an attacker map "
+        "your environment."
+    ),
+    remediation=(
+        "Open each matching file and confirm what's exposed. If real "
+        "credentials are present, rotate. If only configuration "
+        "metadata is exposed, decide whether it should be public — "
+        "internal hostnames and endpoint lists are sometimes "
+        "deliberately published, but more often they're an oversight. "
+        "Have the file removed from the project if it's an oversight."
+    ),
+    severity="medium",
+    category="leak",
+    cwe="CWE-200",
+    tags=["gitlab-leak", "config", "code-search"],
+    summary="Code search found config files referencing {asset} in public GitLab projects — review for credential or topology leaks.",
+    alert_name="GitLab — Config Leaked",
+    monitor_type="github_change",
+    references=list(_LEAK_REFS_GITLAB),
+))
+
+
 # ───────────────────────────────────────────────────────────────────────────
 # Nuclei — Marquee CVEs (Batch D1)
 # ───────────────────────────────────────────────────────────────────────────

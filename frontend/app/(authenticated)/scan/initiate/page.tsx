@@ -59,6 +59,15 @@ function engineList(profile: ScanProfile): string[] {
   if (profile.useNmap) features.push("Port Scanning");
   if (profile.useNuclei) features.push("Vulnerability Detection");
   if (profile.useSslyze) features.push("SSL/TLS Analysis");
+  // useLeak is a single backend toggle but covers three distinct
+  // capabilities; surface them separately so users picking a profile
+  // can see at a glance that the scan checks for GitHub-leaked
+  // credentials, not just port/CVE vulnerabilities.
+  if (profile.useLeak) {
+    features.push("Exposed File Probe");
+    features.push("GitHub Leak Scan");
+    features.push("GitLab Leak Scan");
+  }
   if (profile.shodanIncludeHistory) features.push("Historical Data");
   if (profile.shodanIncludeCves) features.push("CVE Database");
   if (profile.shodanIncludeDns) features.push("DNS Records");

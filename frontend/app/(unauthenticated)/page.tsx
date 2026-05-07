@@ -34,6 +34,7 @@ import {
   TrendingUp, FileText, ArrowRight,
   Search, Webhook, ClipboardCheck, Radar,
   Code2, ShieldCheck, Check, X,
+  KeyRound,
 } from "lucide-react";
 
 import LandingNav from "./LandingNav";
@@ -93,6 +94,9 @@ const SOFTWARE_APPLICATION_JSONLD = {
     "exposure management",
     "continuous threat exposure management",
     "CTEM",
+    "leaked credential detection",
+    "secret scanning",
+    "github leak detection",
     "shadow IT",
     "MSSP",
     "cybersecurity SaaS",
@@ -101,6 +105,7 @@ const SOFTWARE_APPLICATION_JSONLD = {
     "External asset discovery (subdomains, IPs, services, certificates)",
     "Vulnerability scanning with risk scoring",
     "Continuous exposure monitoring with change detection",
+    "Leaked-credential and secret detection via GitHub and GitLab code search",
     "Plain-English remediation guidance",
     "REST API for security workflow integration",
     "Multi-tenant workspaces for MSSPs",
@@ -258,6 +263,7 @@ export default function UnauthenticatedHomePage() {
               {[
                 { icon: Radar, title: "Asset Discovery", desc: "Enumerate subdomains, IPs, and services from a root domain using multiple passive and active intelligence sources — all automated.", color: "from-cyan-500/20 to-cyan-500/5", iconColor: "text-cyan-400" },
                 { icon: Search, title: "Multi-Engine Scanning", desc: "Scan with 9 purpose-built engines across network, web, and certificate attack surfaces. Choose Quick, Standard, or Deep profiles — or schedule recurring scans.", color: "from-purple-500/20 to-purple-500/5", iconColor: "text-purple-400" },
+                { icon: KeyRound, title: "Leak & Secret Detection", desc: "Find leaked credentials and exposed config in public GitHub and GitLab code referencing your domain. Probe for exposed .env, .git, SSH keys, and SQL dumps. Recognises 23 secret formats including AWS keys, GitHub PATs, Stripe keys, and OpenAI tokens.", color: "from-orange-500/20 to-orange-500/5", iconColor: "text-orange-400" },
                 { icon: BarChart3, title: "Exposure Scoring", desc: "Quantified risk scores per asset and group with logarithmic severity weighting. Track score changes over time with trend analysis.", color: "from-amber-500/20 to-amber-500/5", iconColor: "text-amber-400" },
                 { icon: Bell, title: "Continuous Monitoring", desc: "Monitor assets and groups for changes. Configurable check intervals from every 12 hours to every 5 days. Fine-tune alerts with custom rules.", color: "from-rose-500/20 to-rose-500/5", iconColor: "text-rose-400" },
                 { icon: ClipboardCheck, title: "Remediation Workflow", desc: "Track findings through open → in progress → resolved. Accept risk with justification, suppress false positives, and measure time-to-remediate.", color: "from-emerald-500/20 to-emerald-500/5", iconColor: "text-emerald-400" },
