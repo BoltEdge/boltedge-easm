@@ -738,12 +738,59 @@ def delete_organization(org_id: int):
 
     org_name = org.name
 
-    # All child tables have ondelete="CASCADE" at DB level — a direct SQL
-    # DELETE bypasses SQLAlchemy ORM cascade and lets Postgres handle it.
-    db.session.execute(text("DELETE FROM organization WHERE id = :oid"), {"oid": org_id})
+    # Capture member user ids before the cascade wipes the membership
+    # rows. Users who had this org as their *only* membership get
+    # deleted — otherwise the user row stays in the DB, blocks
+    # re-registration on the same email, and shows up in the admin
+    # user list as a ghost. Mirrors the owner-initiated delete path
+    # in billing/routes.py.
+    member_user_ids = [
+        m.user_id for m in OrganizationMember.query.filter_by(organization_id=org_id).all()
+    ]
+
+    log_audit(
+        organization_id=None,  # admin action — no org context after delete
+        user_id=g.current_user.id,
+        action="admin.organization_deleted",
+        category="admin",
+        target_type="organization",
+        target_id=str(org_id),
+        target_label=org_name,
+        description=f"Admin permanently deleted organization '{org_name}'",
+        metadata={"deleted_by": g.current_user.email},
+    )
+
+    # ORM delete (not raw SQL) so SQLAlchemy's relationship cascades
+    # fire alongside the DB-level FK cascades — needed for any
+    # cleanup that lives in Python rather than the schema.
+    db.session.delete(org)
+    db.session.flush()
+
+    deleted_user_ids: list[int] = []
+    for uid in member_user_ids:
+        other = (
+            OrganizationMember.query
+            .filter_by(user_id=uid, is_active=True)
+            .filter(OrganizationMember.organization_id != org_id)
+            .first()
+        )
+        if other:
+            continue
+        user = User.query.get(uid)
+        if not user:
+            continue
+        if user.is_superadmin:
+            # Don't delete superadmins even if this was their only org.
+            continue
+        deleted_user_ids.append(uid)
+        db.session.delete(user)
+
     db.session.commit()
 
-    return jsonify(message=f'Organization "{org_name}" permanently deleted.'), 200
+    return jsonify(
+        message=f'Organization "{org_name}" permanently deleted.',
+        deletedUserCount=len(deleted_user_ids),
+    ), 200
 
 
 # ════════════════════════════════════════════════════════════════
