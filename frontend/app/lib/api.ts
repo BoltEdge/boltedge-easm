@@ -1971,6 +1971,11 @@ export async function getAdminHealth(): Promise<any> {
   return apiFetch<any>("/admin/health");
 }
 
+export async function triggerAdminHealthProbe(kinds?: string[]): Promise<any> {
+  const qs = kinds && kinds.length ? `?kinds=${encodeURIComponent(kinds.join(","))}` : "";
+  return apiFetch<any>(`/admin/health/probe${qs}`, { method: "POST" });
+}
+
 export async function getAdminQuickScans(params?: {
   page?: number; ip?: string; target?: string; status?: string; source?: string;
 }): Promise<any> {

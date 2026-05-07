@@ -399,6 +399,13 @@ def _run_cycle() -> None:
     ).all()
 
     if not due_monitors:
+        # Even an empty cycle counts as a successful heartbeat — the
+        # scheduler ran, queried the table, and returned.
+        try:
+            from app.health.heartbeat import heartbeat
+            heartbeat("monitor_scheduler", success=True, message="Idle cycle")
+        except Exception:
+            logger.exception("monitor_scheduler heartbeat failed")
         return
 
     logger.info("Scheduler cycle: %d monitors due", len(due_monitors))
@@ -435,6 +442,19 @@ def _run_cycle() -> None:
             monitor.next_check_at = _compute_next_check(monitor.frequency)
             monitor.updated_at = now
             db.session.commit()
+
+    # End-of-cycle heartbeat. We've made it through the loop — even
+    # if individual monitors errored, the scheduler itself is healthy.
+    try:
+        from app.health.heartbeat import heartbeat
+        heartbeat(
+            "monitor_scheduler",
+            success=True,
+            message=f"Processed {len(due_monitors)} monitor(s)",
+            metadata={"monitorsDue": len(due_monitors)},
+        )
+    except Exception:
+        logger.exception("monitor_scheduler heartbeat failed")
 
 
 # ---------------------------------------------------------------------------

@@ -71,39 +71,61 @@ def _process_due_schedules(app):
         from app.extensions import db
         from app.models import ScanSchedule, ScanJob, Asset
 
-        now = now_utc()
+        cycle_success = True
+        executed = 0
+        failed = 0
+        try:
+            now = now_utc()
 
-        # Find all enabled schedules that are due
-        due_schedules = (
-            ScanSchedule.query
-            .filter(
-                ScanSchedule.enabled == True,
-                ScanSchedule.next_run_at <= now,
+            # Find all enabled schedules that are due
+            due_schedules = (
+                ScanSchedule.query
+                .filter(
+                    ScanSchedule.enabled == True,
+                    ScanSchedule.next_run_at <= now,
+                )
+                .all()
             )
-            .all()
-        )
 
-        if not due_schedules:
-            return
+            if due_schedules:
+                logger.info(f"Found {len(due_schedules)} due schedule(s)")
 
-        logger.info(f"Found {len(due_schedules)} due schedule(s)")
-
-        for schedule in due_schedules:
-            try:
-                _execute_schedule(schedule, db)
-            except Exception as e:
-                logger.error(f"Failed to execute schedule {schedule.id}: {e}")
-                # Don't let one failure block others - still update next_run
+            for schedule in due_schedules:
                 try:
-                    schedule.next_run_at = _compute_next_run(
-                        schedule.frequency,
-                        schedule.time_of_day,
-                        schedule.day_of_week,
-                        schedule.day_of_month,
-                    )
-                    db.session.commit()
-                except Exception:
-                    db.session.rollback()
+                    _execute_schedule(schedule, db)
+                    executed += 1
+                except Exception as e:
+                    failed += 1
+                    logger.error(f"Failed to execute schedule {schedule.id}: {e}")
+                    # Don't let one failure block others - still update next_run
+                    try:
+                        schedule.next_run_at = _compute_next_run(
+                            schedule.frequency,
+                            schedule.time_of_day,
+                            schedule.day_of_week,
+                            schedule.day_of_month,
+                        )
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+        except Exception as e:
+            cycle_success = False
+            logger.exception("scan_schedule cycle crashed: %s", e)
+            raise
+        finally:
+            try:
+                from app.health.heartbeat import heartbeat
+                heartbeat(
+                    "scan_schedule",
+                    success=cycle_success and failed == 0,
+                    message=(
+                        f"Executed {executed}, failed {failed}"
+                        if (executed or failed) else "Idle cycle"
+                    ),
+                    metadata={"executed": executed, "failed": failed},
+                )
+            except Exception:
+                logger.exception("scan_schedule heartbeat failed")
 
 
 def _execute_schedule(schedule, db):

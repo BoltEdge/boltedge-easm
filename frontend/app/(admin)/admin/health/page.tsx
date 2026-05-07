@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { getAdminHealth } from "../../../lib/api";
+import { getAdminHealth, triggerAdminHealthProbe } from "../../../lib/api";
 import {
   RefreshCw, CheckCircle2, AlertTriangle, XCircle,
-  Database, Layers, Activity, TrendingUp, Clock, Users, Building2,
+  Database, Layers, Activity, TrendingUp, Clock, Building2,
+  Cpu, Search, Plug, GitBranch, Zap,
 } from "lucide-react";
 
 function fmtUptime(secs: number | null): string {
@@ -18,12 +19,42 @@ function fmtUptime(secs: number | null): string {
   return `${s}s`;
 }
 
-type StatusKind = "healthy" | "degraded" | "critical";
+type StatusKind = "healthy" | "degraded" | "critical" | "down" | "unknown";
 
 const STATUS_CONFIG: Record<StatusKind, { label: string; icon: any; pill: string; dot: string }> = {
   healthy:  { label: "Healthy",  icon: CheckCircle2,   pill: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20", dot: "bg-emerald-400" },
   degraded: { label: "Degraded", icon: AlertTriangle,  pill: "bg-amber-500/10 text-amber-300 border-amber-500/20",       dot: "bg-amber-400" },
   critical: { label: "Critical", icon: XCircle,        pill: "bg-red-500/10 text-red-300 border-red-500/20",             dot: "bg-red-400 animate-pulse" },
+  down:     { label: "Down",     icon: XCircle,        pill: "bg-red-500/10 text-red-300 border-red-500/20",             dot: "bg-red-400" },
+  unknown:  { label: "Unknown",  icon: AlertTriangle,  pill: "bg-white/[0.06] text-white/40 border-white/10",             dot: "bg-white/30" },
+};
+
+function timeAgo(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const t = new Date(iso).getTime();
+  if (!t || isNaN(t)) return "—";
+  const seconds = Math.floor((Date.now() - t) / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return `${Math.floor(seconds / 86400)}d ago`;
+}
+
+type ProbeItem = {
+  kind: string;
+  name: string;
+  status: StatusKind;
+  message: string | null;
+  metadata: Record<string, any>;
+  durationMs: number | null;
+  lastCheckedAt: string | null;
+  lastHealthyAt: string | null;
+};
+
+type ProbeRollup = {
+  overall: StatusKind;
+  counts: Record<StatusKind, number>;
+  items: ProbeItem[];
 };
 
 function StatusPill({ status }: { status: StatusKind }) {
@@ -61,6 +92,130 @@ function Row({ label, value, sub, valueClass = "text-white" }: { label: string; 
   );
 }
 
+function ProbeStatusDot({ status }: { status: StatusKind }) {
+  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.unknown;
+  return <span className={`w-2 h-2 rounded-full ${cfg.dot} flex-shrink-0`} title={cfg.label} />;
+}
+
+function ProbeCard({
+  title,
+  icon: Icon,
+  rollup,
+  emptyText = "No probes recorded yet — run flask health probe or wait for the 6h scheduler.",
+}: {
+  title: string;
+  icon: any;
+  rollup: ProbeRollup | undefined;
+  emptyText?: string;
+}) {
+  const counts = rollup?.counts ?? { healthy: 0, degraded: 0, down: 0, unknown: 0 };
+  const items = rollup?.items ?? [];
+  const overall: StatusKind = (rollup?.overall as StatusKind) ?? "unknown";
+  const cfg = STATUS_CONFIG[overall];
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Icon className="w-4 h-4 text-teal-400" />
+          <h3 className="text-sm font-semibold text-white">{title}</h3>
+        </div>
+        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${cfg.pill}`}>{cfg.label}</span>
+      </div>
+      <div className="flex items-center gap-3 text-[11px] text-white/40 mb-3">
+        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />{counts.healthy ?? 0}</span>
+        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400" />{counts.degraded ?? 0}</span>
+        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-400" />{counts.down ?? 0}</span>
+        {(counts.unknown ?? 0) > 0 && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-white/30" />{counts.unknown}</span>}
+      </div>
+      {items.length === 0 ? (
+        <div className="text-xs text-white/30">{emptyText}</div>
+      ) : (
+        <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+          {items.map((it) => (
+            <div key={`${it.kind}:${it.name}`} className="flex items-start gap-2 text-xs py-1 border-b border-white/[0.04] last:border-0">
+              <ProbeStatusDot status={it.status} />
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-white/80 truncate">{it.name}</div>
+                {it.message && <div className="text-[10px] text-white/40 truncate" title={it.message}>{it.message}</div>}
+                <div className="text-[10px] text-white/25">{timeAgo(it.lastCheckedAt)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SchedulerCard({ items }: { items: ProbeItem[] }) {
+  const overall: StatusKind = items.some(i => i.status === "down")
+    ? "down"
+    : items.some(i => i.status === "degraded") ? "degraded"
+    : items.some(i => i.status === "unknown") && !items.some(i => i.status === "healthy") ? "unknown"
+    : "healthy";
+  const cfg = STATUS_CONFIG[overall];
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Zap className="w-4 h-4 text-teal-400" />
+          <h3 className="text-sm font-semibold text-white">Schedulers</h3>
+        </div>
+        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${cfg.pill}`}>{cfg.label}</span>
+      </div>
+      {items.length === 0 ? (
+        <div className="text-xs text-white/30">No heartbeats recorded yet.</div>
+      ) : (
+        <div className="space-y-1.5">
+          {items.map((it) => {
+            const interval = it.metadata?.intervalSeconds ?? null;
+            const intervalLabel = interval
+              ? interval >= 3600 ? `every ${Math.round(interval / 3600)}h`
+                : interval >= 60  ? `every ${Math.round(interval / 60)}m`
+                : `every ${interval}s`
+              : "";
+            return (
+              <div key={it.name} className="flex items-start gap-2 text-xs py-1.5 border-b border-white/[0.04] last:border-0">
+                <ProbeStatusDot status={it.status} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-white/80 truncate">{it.name}<span className="text-white/30 font-normal"> {intervalLabel}</span></div>
+                  {it.message && <div className="text-[10px] text-white/40 truncate" title={it.message}>{it.message}</div>}
+                  <div className="text-[10px] text-white/25">last heartbeat {timeAgo(it.lastCheckedAt)}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MigrationCard({ items }: { items: ProbeItem[] }) {
+  const migration = items.find(i => i.name === "migrations");
+  if (!migration) return null;
+  const cfg = STATUS_CONFIG[migration.status];
+  const md = migration.metadata || {};
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <GitBranch className="w-4 h-4 text-teal-400" />
+          <h3 className="text-sm font-semibold text-white">Migrations</h3>
+        </div>
+        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${cfg.pill}`}>{cfg.label}</span>
+      </div>
+      <div className="text-xs text-white/60 mb-2">{migration.message}</div>
+      {md.current && (
+        <div className="space-y-1 text-[11px]">
+          <Row label="DB at" value={<span className="font-mono">{md.current?.slice(0, 12)}</span>} />
+          <Row label="Code at" value={<span className="font-mono">{(md.head ?? "?").slice(0, 12)}</span>} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PoolBar({ checked, idle, overflow, total }: { checked: number; idle: number; overflow: number; total: number }) {
   const max = Math.max(total + overflow, 1);
   const checkedPct = (checked / max) * 100;
@@ -86,6 +241,7 @@ export default function AdminHealth() {
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [probing, setProbing] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
@@ -99,6 +255,19 @@ export default function AdminHealth() {
       setLoading(false);
     }
   }, []);
+
+  const probeNow = useCallback(async () => {
+    setProbing(true);
+    setError(null);
+    try {
+      await triggerAdminHealthProbe();
+      await load();
+    } catch (e: any) {
+      setError(e?.message || "Probe trigger failed");
+    } finally {
+      setProbing(false);
+    }
+  }, [load]);
 
   useEffect(() => { setLoading(true); load(); }, [load]);
 
@@ -115,6 +284,12 @@ export default function AdminHealth() {
   const platform = data?.platform ?? {};
   const activity = data?.recentActivity ?? {};
   const uptime = data?.uptime ?? {};
+  const engines: ProbeRollup | undefined = data?.engines;
+  const analyzers: ProbeRollup | undefined = data?.analyzers;
+  const discovery: ProbeRollup | undefined = data?.discovery;
+  const externalApis: ProbeRollup | undefined = data?.externalApis;
+  const schedulers: ProbeItem[] = data?.schedulers ?? [];
+  const systemItems: ProbeItem[] = data?.system?.items ?? [];
 
   return (
     <div className="space-y-5">
@@ -139,6 +314,15 @@ export default function AdminHealth() {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
             Refresh
+          </button>
+          <button
+            onClick={probeNow}
+            disabled={probing}
+            title="Re-run all engine, analyzer, discovery, and external-API probes now."
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-teal-300 hover:text-teal-200 bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/20 transition-colors disabled:opacity-40"
+          >
+            <Zap className={`w-3.5 h-3.5 ${probing ? "animate-pulse" : ""}`} />
+            {probing ? "Probing…" : "Probe now"}
           </button>
         </div>
       </div>
@@ -220,6 +404,24 @@ export default function AdminHealth() {
             <Row label="Scans started (24h)" value={activity.scansStarted24h ?? 0} />
             <Row label="Discovery started (24h)" value={activity.discoveryStarted24h ?? 0} />
           </Card>
+
+          {/* Migrations */}
+          <MigrationCard items={systemItems} />
+
+          {/* Schedulers */}
+          <SchedulerCard items={schedulers} />
+
+          {/* Scan engines */}
+          <ProbeCard title="Scan Engines" icon={Cpu} rollup={engines} />
+
+          {/* Analyzers */}
+          <ProbeCard title="Analyzers" icon={Layers} rollup={analyzers} />
+
+          {/* Discovery modules */}
+          <ProbeCard title="Discovery Modules" icon={Search} rollup={discovery} />
+
+          {/* External APIs */}
+          <ProbeCard title="External APIs" icon={Plug} rollup={externalApis} />
 
         </div>
       )}

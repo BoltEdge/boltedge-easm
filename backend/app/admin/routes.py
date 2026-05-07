@@ -2183,10 +2183,66 @@ def platform_health():
     scans_24h     = ScanJob.query.filter(ScanJob.created_at >= cutoff_24h).count()
     disc_24h      = DiscoveryJob.query.filter(DiscoveryJob.created_at >= cutoff_24h).count()
 
+    # ── Engine / analyzer / discovery / external API rollups ──────
+    # Read from the health_check_result table — populated by the
+    # 6-hourly probe scheduler. Never re-runs probes here; the
+    # dashboard must stay snappy even when Shodan is timing out.
+    from app.health.framework import fetch_all, serialize as _hc_serialize
+    from app.health.probes.system_probe import run_system_probes
+
+    health_rows = fetch_all()
+    by_kind = {"engine": [], "analyzer": [], "discovery": [], "scheduler": [],
+               "external_api": [], "system": []}
+    for row in health_rows:
+        if row.kind in by_kind:
+            by_kind[row.kind].append(_hc_serialize(row))
+
+    def _rollup(items):
+        counts = {"healthy": 0, "degraded": 0, "down": 0, "unknown": 0}
+        for it in items:
+            counts[it["status"]] = counts.get(it["status"], 0) + 1
+        if counts["down"] > 0:
+            overall = "down"
+        elif counts["degraded"] > 0:
+            overall = "degraded"
+        elif counts["unknown"] > 0 and counts["healthy"] == 0:
+            overall = "unknown"
+        else:
+            overall = "healthy"
+        return {"overall": overall, "counts": counts, "items": items}
+
+    # System probes (DB ping, migration drift, scheduler liveness) —
+    # cheap, run live every request.
+    system_results = run_system_probes()
+    system_items = [{
+        "kind": r.kind,
+        "name": r.name,
+        "status": r.status.value,
+        "message": r.message,
+        "metadata": r.metadata,
+        "durationMs": r.duration_ms,
+    } for r in system_results]
+
+    migration_status = next(
+        (it["status"] for it in system_items if it["name"] == "migrations"),
+        "unknown",
+    )
+    scheduler_results = [it for it in system_items if it["kind"] == "scheduler"]
+
     # ── Overall status ────────────────────────────────────────────
-    if not db_ok:
+    if not db_ok or migration_status == "down":
         status = "critical"
-    elif error_rate_pct > 20 or queued_scans > 50:
+    elif (
+        error_rate_pct > 20
+        or queued_scans > 50
+        or any(it["status"] == "down" for it in scheduler_results)
+        or any(c["overall"] == "down" for c in (
+            _rollup(by_kind["engine"]),
+            _rollup(by_kind["analyzer"]),
+            _rollup(by_kind["discovery"]),
+            _rollup(by_kind["external_api"]),
+        ))
+    ):
         status = "degraded"
     else:
         status = "healthy"
@@ -2225,7 +2281,44 @@ def platform_health():
             "scansStarted24h": scans_24h,
             "discoveryStarted24h": disc_24h,
         },
+        engines=_rollup(by_kind["engine"]),
+        analyzers=_rollup(by_kind["analyzer"]),
+        discovery=_rollup(by_kind["discovery"]),
+        externalApis=_rollup(by_kind["external_api"]),
+        schedulers=scheduler_results,
+        system={
+            "items": [it for it in system_items if it["kind"] == "system"],
+            "migrationStatus": migration_status,
+        },
     ), 200
+
+
+@admin_bp.post("/health/probe")
+@require_superadmin
+def trigger_health_probe():
+    """
+    Manually trigger a probe run instead of waiting for the 6h
+    scheduler. Useful after rotating an API key or installing a new
+    binary — admin clicks "Probe now" and sees fresh data immediately.
+
+    Optional `kinds` query/body parameter restricts to a subset:
+      ?kinds=engine,external_api
+    Default is all probe kinds.
+    """
+    from app.health.runner import PROBE_KINDS, run_subset
+
+    raw = (request.args.get("kinds") or
+           (request.get_json(silent=True) or {}).get("kinds") or
+           "")
+    if isinstance(raw, list):
+        kinds = [k for k in raw if k in PROBE_KINDS]
+    else:
+        kinds = [k.strip() for k in str(raw).split(",") if k.strip() in PROBE_KINDS]
+    if not kinds:
+        kinds = list(PROBE_KINDS)
+
+    summary = run_subset(kinds)
+    return jsonify(summary=summary, kinds=kinds), 200
 
 
 # ════════════════════════════════════════════════════════════════

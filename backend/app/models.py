@@ -1729,4 +1729,47 @@ class BillingEvent(db.Model):
         backref=db.backref("billing_events", cascade="all, delete-orphan"),
     )
 
+
+# =============================================================================
+# Health monitoring
+# =============================================================================
+
+class HealthCheckResult(db.Model):
+    """
+    Single-row-per-(kind, name) snapshot of every health probe in the
+    system. The probe registry upserts rows here on every run; the
+    /admin/health endpoint and the flask health CLI both read from this
+    table without re-running probes (read paths must stay fast even when
+    Shodan is timing out).
+
+    `kind` values:
+        engine        — scan engines (shodan, nuclei, nmap, …)
+        analyzer      — scan analyzers (ssl_analyzer, port_risk, …)
+        discovery     — discovery modules (ct_logs, dns_enum, …)
+        scheduler     — APScheduler heartbeats (scan_schedule, monitor, trial)
+        external_api  — third-party APIs (Resend, Stripe, GitHub, GitLab)
+        system        — DB pool, migration drift, disk, etc.
+
+    `status` values: healthy | degraded | down | unknown.
+
+    `last_healthy_at` lets the UI render "down for N minutes" without
+    needing a history table — when a probe transitions to down, this
+    field stops advancing and the UI computes the gap from now.
+    """
+    __tablename__ = "health_check_result"
+
+    id = db.Column(db.Integer, primary_key=True)
+    kind = db.Column(db.String(40), nullable=False, index=True)
+    name = db.Column(db.String(80), nullable=False)
+    status = db.Column(db.String(20), nullable=False)  # healthy|degraded|down|unknown
+    message = db.Column(db.Text, nullable=True)
+    check_metadata = db.Column(db.JSON, nullable=True)
+    duration_ms = db.Column(db.Integer, nullable=True)
+    last_checked_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    last_healthy_at = db.Column(db.DateTime, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("kind", "name", name="uq_health_kind_name"),
+    )
+
     

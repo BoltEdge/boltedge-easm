@@ -301,6 +301,15 @@ def create_app() -> Flask:
     def health():
         return jsonify(status="up and running"), 200
 
+    # ── CLI: flask health [subcommand] ──────────────────────────────
+    try:
+        from app.health.cli import register_health_cli
+        register_health_cli(app)
+    except Exception as e:
+        logging.getLogger(__name__).warning(
+            "Failed to register flask health CLI: %s", e
+        )
+
     # ── CLI: flask grant-superadmin <email> ──────────────────────────
     import click
 
@@ -428,21 +437,99 @@ def create_app() -> Flask:
                         send_free_upgrade_expiry_warnings,
                     )
                     log = logging.getLogger(__name__)
-                    count = check_expired_trials()
-                    if count:
-                        log.info("Auto-downgraded %d expired trial(s)", count)
-                    free_count = check_expired_free_upgrades()
-                    if free_count:
-                        log.info("Auto-downgraded %d expired free-upgrade(s)", free_count)
-                    warn_count = send_free_upgrade_expiry_warnings()
-                    if warn_count:
-                        log.info("Sent %d free-upgrade expiry warning(s)", warn_count)
+                    success = True
+                    summary = {}
+                    try:
+                        count = check_expired_trials()
+                        summary["expiredTrials"] = count
+                        if count:
+                            log.info("Auto-downgraded %d expired trial(s)", count)
+                        free_count = check_expired_free_upgrades()
+                        summary["expiredFreeUpgrades"] = free_count
+                        if free_count:
+                            log.info("Auto-downgraded %d expired free-upgrade(s)", free_count)
+                        warn_count = send_free_upgrade_expiry_warnings()
+                        summary["warningsSent"] = warn_count
+                        if warn_count:
+                            log.info("Sent %d free-upgrade expiry warning(s)", warn_count)
+                    except Exception:
+                        success = False
+                        log.exception("trial_expiry cycle failed")
+                        raise
+                    finally:
+                        try:
+                            from app.health.heartbeat import heartbeat
+                            heartbeat(
+                                "trial_expiry",
+                                success=success,
+                                message=(
+                                    f"Trials: {summary.get('expiredTrials', 0)} expired, "
+                                    f"{summary.get('expiredFreeUpgrades', 0)} free-upgrades expired, "
+                                    f"{summary.get('warningsSent', 0)} warnings"
+                                ),
+                                metadata=summary,
+                            )
+                        except Exception:
+                            log.exception("trial_expiry heartbeat failed")
 
             trial_scheduler.add_job(_check_trials, "interval", hours=1)
             trial_scheduler.start()
         except Exception as e:
             logging.getLogger(__name__).warning(
                 "Failed to start trial expiry scheduler: %s", e
+            )
+
+        # Health-probe scheduler — every 6h. Runs all engine, analyzer,
+        # discovery, and external-API probes; persists results to
+        # health_check_result for the dashboard + CLI to read. Also
+        # runs once 30s after startup so a fresh deploy populates the
+        # table immediately.
+        try:
+            from apscheduler.schedulers.background import BackgroundScheduler
+            from datetime import datetime as _dt, timedelta as _td
+            health_scheduler = BackgroundScheduler(daemon=True)
+
+            def _run_health_probes():
+                with app.app_context():
+                    log = logging.getLogger(__name__)
+                    success = True
+                    summary = {}
+                    try:
+                        from app.health.runner import run_periodic_probes
+                        summary = run_periodic_probes()
+                    except Exception:
+                        success = False
+                        log.exception("health probe cycle crashed")
+                        raise
+                    finally:
+                        try:
+                            from app.health.heartbeat import heartbeat
+                            heartbeat(
+                                "health_probes",
+                                success=success,
+                                message=(
+                                    f"{summary.get('total', 0)} probes "
+                                    f"({summary.get('healthy', 0)} healthy, "
+                                    f"{summary.get('degraded', 0)} degraded, "
+                                    f"{summary.get('down', 0)} down)"
+                                ) if summary else "Probe cycle failed",
+                                metadata=summary,
+                            )
+                        except Exception:
+                            log.exception("health_probes heartbeat failed")
+
+            health_scheduler.add_job(
+                _run_health_probes,
+                "interval",
+                hours=6,
+                next_run_time=_dt.now(timezone.utc) + _td(seconds=30),
+                id="health_probes",
+                max_instances=1,
+            )
+            health_scheduler.start()
+        except Exception as e:
+            logging.getLogger(__name__).warning(
+                "Failed to start health probe scheduler: %s", e
             )
     else:
         logging.getLogger(__name__).info(
