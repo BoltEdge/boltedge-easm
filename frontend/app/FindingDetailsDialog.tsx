@@ -957,6 +957,50 @@ export function FindingDetailsDialog({
             </Section>
           )}
 
+          {/* Still-detected-after-resolution warning. The user marked the
+              finding resolved at `resolvedAt`, but a subsequent scan
+              re-detected the same exposure (last_seen_at > resolved_at).
+              The orchestrator deliberately doesn't auto-reopen — that
+              decision is the user's — but it would be silently misleading
+              to leave them thinking the issue is fixed when scans say
+              otherwise. Surface it loudly here. */}
+          {(() => {
+            const isResolved = Boolean(
+              (finding as any).resolved
+              || String((finding as any).status || "").toLowerCase() === "resolved"
+            );
+            if (!isResolved) return null;
+            const parseTs = (v: any): number | null => {
+              if (!v) return null;
+              const s = typeof v === "string" && !v.endsWith("Z") && !v.includes("+") ? v + "Z" : v;
+              const t = new Date(s).getTime();
+              return Number.isNaN(t) ? null : t;
+            };
+            const resolvedAtMs = parseTs((finding as any).resolvedAt ?? (finding as any).resolved_at);
+            const lastSeenMs = parseTs((finding as any).lastSeenAt ?? (finding as any).last_seen_at);
+            if (resolvedAtMs == null || lastSeenMs == null) return null;
+            // 60s buffer to absorb clock-skew / commit ordering between
+            // the user clicking Resolve and the persist flush.
+            if (lastSeenMs <= resolvedAtMs + 60_000) return null;
+            return (
+              <div className="bg-amber-500/[0.06] border border-amber-500/30 rounded-lg p-4 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-amber-300">
+                    This finding is marked resolved, but our most recent scan still detected it.
+                  </div>
+                  <div className="mt-1 text-xs text-amber-200/80 leading-relaxed">
+                    Marked resolved on <strong>{formatDate(resolvedAtMs)}</strong>.
+                    Most recently re-detected on <strong>{formatDate(lastSeenMs)}</strong>.
+                    The fix may not have taken effect, or the detection may be a different
+                    instance of the same exposure. Verify with the lookup tools below
+                    before deciding whether to reopen.
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Asset info card */}
           <Section icon={<Info className="w-4 h-4" />} title="Asset Information">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

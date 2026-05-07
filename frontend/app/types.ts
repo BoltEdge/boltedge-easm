@@ -88,6 +88,13 @@ export interface Finding {
   title: string;
   description: string;
   detectedAt: Date;
+  // Scan-state timestamps. firstSeenAt is set on first detection and
+  // never changes; lastSeenAt is bumped each time a subsequent scan
+  // re-detects the same finding (matched via dedupe_key). The combination
+  // tells us whether a finding is brand-new or known, and — when the user
+  // has marked it resolved — whether scans are still finding it.
+  firstSeenAt?: Date | string | null;
+  lastSeenAt?: Date | string | null;
   status: "open" | "suppressed" | "resolved";
   resolved: boolean;
   resolvedAt?: Date | string | null;

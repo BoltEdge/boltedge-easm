@@ -48,6 +48,47 @@ function getSeverity(f: any): SeverityKey {
   return "info";
 }
 
+// Window after first detection during which a finding is considered "new".
+// Findings older than this lose the green "New" badge — they're still
+// findings, just not freshly-discovered ones.
+const NEW_FINDING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Buffer applied when comparing last_seen_at against resolved_at — avoids
+// flagging a finding as "still detected" purely because of clock-skew or
+// the rounding between when the user clicked Resolve and when the persist
+// flush wrote the resolved_at timestamp.
+const RESOLVED_VS_LAST_SEEN_BUFFER_MS = 60 * 1000;
+
+function safeMs(value: any): number | null {
+  if (!value) return null;
+  const t = typeof value === "string" || typeof value === "number"
+    ? new Date(typeof value === "string" && !value.endsWith("Z") && !value.includes("+") ? value + "Z" : value).getTime()
+    : value instanceof Date ? value.getTime() : NaN;
+  return Number.isNaN(t) ? null : t;
+}
+
+/** Whether a finding was first detected recently. Visualised as a green
+ *  "New" badge so users can see at a glance which rows are fresh from
+ *  the most recent scans vs. carry-over from previous runs. */
+function isNewFinding(f: any): boolean {
+  const firstSeen = safeMs(f?.firstSeenAt ?? f?.first_seen_at);
+  if (firstSeen == null) return false;
+  return Date.now() - firstSeen < NEW_FINDING_WINDOW_MS;
+}
+
+/** Whether a resolved finding is still showing up in scans. The user
+ *  marked it fixed, but the scanner sees the same exposure on a later
+ *  scan — surfaces as an amber "Still detected" badge so the user knows
+ *  their fix may not have taken effect. */
+function isResolvedButStillDetected(f: any): boolean {
+  const resolvedFlag = Boolean(f?.resolved) || String(f?.status || "").toLowerCase() === "resolved";
+  if (!resolvedFlag) return false;
+  const resolvedAt = safeMs(f?.resolvedAt ?? f?.resolved_at);
+  const lastSeen = safeMs(f?.lastSeenAt ?? f?.last_seen_at);
+  if (resolvedAt == null || lastSeen == null) return false;
+  return lastSeen > resolvedAt + RESOLVED_VS_LAST_SEEN_BUFFER_MS;
+}
+
 function getCategory(f: any): string {
   const direct = f.category ?? f.details?.category;
   if (direct) return String(direct).toLowerCase();
@@ -850,6 +891,22 @@ export default function FindingsPage() {
                             {statusBadge && status !== "open" && (
                               <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusBadge.class}`}>
                                 {statusBadge.label}
+                              </span>
+                            )}
+                            {isNewFinding(f) && (
+                              <span
+                                className="text-[10px] px-1.5 py-0.5 rounded border bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                                title="First detected within the last 7 days"
+                              >
+                                New
+                              </span>
+                            )}
+                            {isResolvedButStillDetected(f) && (
+                              <span
+                                className="text-[10px] px-1.5 py-0.5 rounded border bg-amber-500/15 text-amber-300 border-amber-500/30"
+                                title="Marked resolved, but a later scan still detected it. The fix may not have taken effect."
+                              >
+                                Still detected
                               </span>
                             )}
                             {hasRemediation && (

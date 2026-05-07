@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from flask import Blueprint, jsonify
-from sqlalchemy import func, distinct, desc, or_, case, select
+from sqlalchemy import func, distinct, desc, or_, and_, case, select
 
 from app.extensions import db
 from app.models import (
@@ -18,6 +18,23 @@ from app.models import (
     Monitor, OrganizationMember,
 )
 from app.auth.decorators import require_auth, current_user_id, current_organization_id
+
+
+def _is_open_finding_filter():
+    """Filter expression for findings that count toward exposure.
+
+    Mirrors `findings/routes.py:_is_open_filter` — exclude every status
+    that means the user has accepted, suppressed, fixed, or is working
+    on the finding. The previous dashboard query filtered on `ignored`
+    only, which let resolved / accepted_risk / in_progress findings
+    inflate the exposure score even though they're treated as closed
+    on the findings page itself."""
+    return and_(
+        or_(Finding.ignored == False, Finding.ignored == None),  # noqa: E711, E712
+        or_(Finding.resolved == False, Finding.resolved == None),  # noqa: E711, E712
+        or_(Finding.in_progress == False, Finding.in_progress == None),  # noqa: E711, E712
+        or_(Finding.accepted_risk == False, Finding.accepted_risk == None),  # noqa: E711, E712
+    )
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
 
@@ -72,7 +89,7 @@ def dashboard_summary():
         db.session.query(func.count(Finding.id))
         .join(Asset, Finding.asset_id == Asset.id)
         .filter(Asset.organization_id == org_id, Asset.group_id.in_(active_group_ids))
-        .filter(or_(Finding.ignored.is_(False), Finding.ignored.is_(None)))
+        .filter(_is_open_finding_filter())
         .scalar()
         or 0
     )
@@ -84,7 +101,7 @@ def dashboard_summary():
         db.session.query(Asset.criticality, Finding.severity, func.count(Finding.id))
         .join(Asset, Finding.asset_id == Asset.id)
         .filter(Asset.organization_id == org_id, Asset.group_id.in_(active_group_ids))
-        .filter(or_(Finding.ignored.is_(False), Finding.ignored.is_(None)))
+        .filter(_is_open_finding_filter())
         .group_by(Asset.criticality, Finding.severity)
         .all()
     )
@@ -141,7 +158,7 @@ def dashboard_summary():
         )
         .join(Asset, Finding.asset_id == Asset.id)
         .filter(Asset.organization_id == org_id, Asset.group_id.in_(active_group_ids))
-        .filter(or_(Finding.ignored.is_(False), Finding.ignored.is_(None)))
+        .filter(_is_open_finding_filter())
         .filter(Finding.created_at >= start_dt)
         .group_by("day", Finding.severity)
         .all()
@@ -213,7 +230,7 @@ def dashboard_summary():
         )
         .join(Finding, Finding.asset_id == Asset.id)
         .filter(Asset.organization_id == org_id, Asset.group_id.in_(active_group_ids))
-        .filter(or_(Finding.ignored.is_(False), Finding.ignored.is_(None)))
+        .filter(_is_open_finding_filter())
         .group_by(Asset.id, Asset.asset_type, Asset.value)
         .order_by("severity_rank", desc("finding_count"))
         .limit(5)
