@@ -171,7 +171,18 @@ def _alert_to_ui(a: MonitorAlert) -> dict:
         "sourceTarget": a.source_target,
         "createdAt": a.created_at.isoformat() if a.created_at else None,
         "acknowledgedAt": a.acknowledged_at.isoformat() if a.acknowledged_at else None,
+        "acknowledgedBy": _sid(a.acknowledged_by),
+        "acknowledgedByName": (
+            (a.acknowledged_by_user.name or a.acknowledged_by_user.email)
+            if a.acknowledged_by_user else None
+        ),
         "resolvedAt": a.resolved_at.isoformat() if a.resolved_at else None,
+        "resolvedBy": _sid(a.resolved_by),
+        "resolvedByName": (
+            (a.resolved_by_user.name or a.resolved_by_user.email)
+            if a.resolved_by_user else None
+        ),
+        "resolutionReason": a.resolution_reason,
     }
 
 
@@ -219,7 +230,13 @@ def _tuning_rule_to_ui(r: TuningRule) -> dict:
         "targetSeverity": r.target_severity,
         "snoozeUntil": r.snooze_until.isoformat() if r.snooze_until else None,
         "reason": r.reason,
+        "appliedCount": int(r.applied_count or 0),
+        "lastAppliedAt": r.last_applied_at.isoformat() if r.last_applied_at else None,
         "createdAt": r.created_at.isoformat() if r.created_at else None,
+        "createdBy": _sid(r.created_by),
+        "createdByName": (
+            (r.creator.name or r.creator.email) if r.creator else None
+        ),
     }
 
 
@@ -673,10 +690,18 @@ def resolve_alert(alert_id: str):
     if alert.status not in ("open", "acknowledged"):
         return jsonify({"error": f"Cannot resolve alert with status '{alert.status}'."}), 400
 
+    # Optional resolution reason — accepted from the request body.
+    # Trimmed and capped at 2000 chars so a misbehaving client can't
+    # write an unbounded blob through this endpoint.
+    body = request.get_json(silent=True) or {}
+    raw_reason = body.get("reason")
+    reason = (str(raw_reason).strip()[:2000] if raw_reason else None) or None
+
     old_status = alert.status
     alert.status = "resolved"
     alert.resolved_at = _now()
     alert.resolved_by = user_id
+    alert.resolution_reason = reason
     alert.updated_at = _now()
     db.session.commit()
 

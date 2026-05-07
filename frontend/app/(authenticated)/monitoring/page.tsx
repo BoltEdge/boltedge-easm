@@ -888,9 +888,15 @@ function AlertsTab({ setBanner, planLimit }: {
       // Best-effort: also resolve the current alert if the user opted in.
       // A failure here doesn't undo the rule creation — the rule will
       // still suppress future matches even if this resolve call fails.
+      // Pass the rule's reason through so the resolved alert carries the
+      // same context (otherwise the user has to chase the matching rule
+      // to understand why this alert was closed).
       if (suppressAlsoResolve) {
         try {
-          await resolveAlert(suppressTarget.id);
+          const passthroughReason = suppressReason
+            ? `Suppressed via tuning rule: ${suppressReason}`
+            : "Suppressed via tuning rule.";
+          await resolveAlert(suppressTarget.id, passthroughReason);
         } catch (e) {
           // swallow — rule is already created
         }
@@ -1513,13 +1519,31 @@ function AlertDetailsPanel({
             {alert.acknowledgedAt && (
               <>
                 <dt className="text-xs text-muted-foreground">Acknowledged</dt>
-                <dd className="text-foreground">{formatWhen(alert.acknowledgedAt)}</dd>
+                <dd className="text-foreground">
+                  {formatWhen(alert.acknowledgedAt)}
+                  {alert.acknowledgedByName && (
+                    <span className="text-muted-foreground"> · by {alert.acknowledgedByName}</span>
+                  )}
+                </dd>
               </>
             )}
             {alert.resolvedAt && (
               <>
                 <dt className="text-xs text-muted-foreground">Resolved</dt>
-                <dd className="text-foreground">{formatWhen(alert.resolvedAt)}</dd>
+                <dd className="text-foreground">
+                  {formatWhen(alert.resolvedAt)}
+                  {alert.resolvedByName && (
+                    <span className="text-muted-foreground"> · by {alert.resolvedByName}</span>
+                  )}
+                </dd>
+              </>
+            )}
+            {alert.resolutionReason && (
+              <>
+                <dt className="text-xs text-muted-foreground">Resolution reason</dt>
+                <dd className="text-foreground/90 whitespace-pre-wrap break-words">
+                  {alert.resolutionReason}
+                </dd>
               </>
             )}
             {alert.notifiedVia && alert.notifiedVia.length > 0 && (

@@ -50,7 +50,12 @@ export interface MonitorAlert {
   notifiedVia?: string[];
   createdAt?: string;
   acknowledgedAt?: string;
+  acknowledgedBy?: string | null;
+  acknowledgedByName?: string | null;
   resolvedAt?: string;
+  resolvedBy?: string | null;
+  resolvedByName?: string | null;
+  resolutionReason?: string | null;
 }
 
 export interface MonitorSettings {
@@ -82,8 +87,11 @@ export interface TuningRule {
   snoozeUntil?: string;
   reason?: string;
   enabled: boolean;
+  appliedCount?: number;
+  lastAppliedAt?: string | null;
   createdAt?: string;
   createdBy?: string;
+  createdByName?: string | null;
 }
 
 /* ================================================================
@@ -189,8 +197,11 @@ export async function getMonitorAlerts(params?: string): Promise<MonitorAlert[]>
 export async function acknowledgeAlert(id: string): Promise<void> {
   await apiFetch<void>(`/monitors/alerts/${id}/acknowledge`, { method: "POST" });
 }
-export async function resolveAlert(id: string): Promise<void> {
-  await apiFetch<void>(`/monitors/alerts/${id}/resolve`, { method: "POST" });
+export async function resolveAlert(id: string, reason?: string): Promise<void> {
+  await apiFetch<void>(`/monitors/alerts/${id}/resolve`, {
+    method: "POST",
+    body: JSON.stringify(reason ? { reason } : {}),
+  });
 }
 export async function getMonitorSettings(): Promise<MonitorSettings> {
   try {

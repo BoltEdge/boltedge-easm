@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Play, Search, Shield, ShieldCheck, ShieldAlert, Zap, Target,
-  Timer, Check, Info, Loader2,
+  Timer, Check, Info, Loader2, Shuffle,
 } from "lucide-react";
 import { Button } from "../../../ui/button";
 import { Input } from "../../../ui/input";
@@ -114,8 +114,46 @@ export default function InitiateScanPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [allAssets, setAllAssets] = useState<any[]>([]);
+  // "Unscanned only" filter on the per-group asset picker. An asset
+  // is unscanned when it has no lastScanAt — i.e., no scan job has
+  // ever completed against it. Useful for surfacing newly-added assets
+  // a user wants to onboard with a first scan.
+  const [unscannedOnly, setUnscannedOnly] = useState(false);
 
   const selectedProfile = useMemo(() => profiles.find((p) => p.id === selectedProfileId) ?? null, [profiles, selectedProfileId]);
+
+  // Asset list shown in the per-group dropdown — filtered by the
+  // "unscanned only" toggle when active.
+  const displayedAssets = useMemo(() => {
+    if (!unscannedOnly) return assets;
+    return assets.filter((a: any) => !(a?.lastScanAt || a?.last_scan_at));
+  }, [assets, unscannedOnly]);
+
+  const unscannedCount = useMemo(() => {
+    return assets.filter((a: any) => !(a?.lastScanAt || a?.last_scan_at)).length;
+  }, [assets]);
+
+  function pickRandomAsset() {
+    const pool = displayedAssets;
+    if (pool.length === 0) {
+      setBanner({ kind: "err", text: unscannedOnly ? "No unscanned assets in this group." : "No assets in this group." });
+      return;
+    }
+    const picked = pool[Math.floor(Math.random() * pool.length)];
+    setSelAssetId(String(picked.id));
+    setSearchQuery(picked.value || "");
+  }
+
+  // Reset the asset selection when the unscanned filter changes if the
+  // currently-selected asset isn't in the new visible pool.
+  useEffect(() => {
+    if (!selAssetId) return;
+    const stillVisible = displayedAssets.some((a: any) => String(a.id) === selAssetId);
+    if (!stillVisible) {
+      setSelAssetId("");
+      setSearchQuery("");
+    }
+  }, [displayedAssets, selAssetId]);
 
   useEffect(() => {
     Promise.all([getScanProfiles(), getGroups(), getAllAssets()]).then(([p, g, a]) => {
@@ -274,14 +312,62 @@ export default function InitiateScanPage() {
               {selGroupId && (
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-foreground block">Asset <span className="text-muted-foreground font-normal">(blank = scan all)</span></label>
-                  <select value={selAssetId} onChange={(e) => { setSelAssetId(e.target.value); setSearchQuery(e.target.value ? (assets.find((a: any) => String(a.id) === e.target.value)?.value || "") : ""); }}
+                  <select value={selAssetId} onChange={(e) => { setSelAssetId(e.target.value); setSearchQuery(e.target.value ? (displayedAssets.find((a: any) => String(a.id) === e.target.value)?.value || "") : ""); }}
                     disabled={loadingAssets} className="h-10 w-full rounded-md px-3 bg-input-background border border-border text-foreground text-sm disabled:opacity-50">
-                    <option value="">{loadingAssets ? "Loading..." : `All assets (${assets.length})`}</option>
-                    {assets.map((a: any) => <option key={String(a.id)} value={String(a.id)}>{a.value}</option>)}
+                    <option value="">
+                      {loadingAssets
+                        ? "Loading..."
+                        : unscannedOnly
+                          ? `All unscanned (${displayedAssets.length})`
+                          : `All assets (${displayedAssets.length})`}
+                    </option>
+                    {displayedAssets.map((a: any) => (
+                      <option key={String(a.id)} value={String(a.id)}>
+                        {a.value}{!(a.lastScanAt || a.last_scan_at) ? "  •  unscanned" : ""}
+                      </option>
+                    ))}
                   </select>
                 </div>
               )}
             </div>
+
+            {/* Unscanned filter + random picker — only meaningful once a
+                group has been selected and assets have loaded. Surfaces
+                the count of never-scanned assets so users can quickly
+                onboard newly-added inventory without hunting through
+                a long dropdown. */}
+            {selGroupId && !loadingAssets && assets.length > 0 && (
+              <div className="flex items-center gap-3 flex-wrap">
+                <label className="inline-flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={unscannedOnly}
+                    onChange={(e) => setUnscannedOnly(e.target.checked)}
+                    className="rounded border-border bg-background text-primary focus:ring-primary/40"
+                  />
+                  Show only unscanned assets
+                  <span className="text-xs text-muted-foreground/70">
+                    ({unscannedCount} of {assets.length})
+                  </span>
+                </label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={pickRandomAsset}
+                  disabled={displayedAssets.length === 0}
+                  className="gap-1.5"
+                  title={
+                    unscannedOnly
+                      ? "Pick a random unscanned asset from this group"
+                      : "Pick a random asset from this group"
+                  }
+                >
+                  <Shuffle className="w-3.5 h-3.5" />
+                  Pick random
+                </Button>
+              </div>
+            )}
 
             {/* Bulk scan permission notice */}
             {selGroupId && !selAssetId && assets.length > 0 && !canBulk && (

@@ -34,6 +34,22 @@ function actionLabel(action: string) {
   }
 }
 
+// Compact relative-time helper for the "last applied" pill.
+// Anything older than ~30 days falls back to a date so the pill stays
+// short. Used only inside the tuning rule list — for dialog/toolbar
+// timestamps the existing `timeAgo` from _lib.ts is the right tool.
+function timeSinceShort(iso?: string | null): string {
+  if (!iso) return "";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const diffSec = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  if (diffSec < 60) return "just now";
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86_400) return `${Math.floor(diffSec / 3600)}h ago`;
+  if (diffSec < 30 * 86_400) return `${Math.floor(diffSec / 86_400)}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
 export default function TuningPage() {
   const { hasFeature, canDo } = useOrg();
   const planLimit = usePlanLimit();
@@ -210,7 +226,40 @@ export default function TuningPage() {
                             {rule.cwe && <span>· {rule.cwe}</span>}
                             {rule.titleContains && <span>· title contains &quot;{rule.titleContains}&quot;</span>}
                           </div>
-                          {rule.reason && <div className="text-xs text-muted-foreground mt-1.5 italic">&quot;{rule.reason}&quot;</div>}
+                          {(rule.reason || rule.createdByName) && (
+                            <div className="text-xs text-muted-foreground mt-1.5">
+                              {rule.reason && <span className="italic">&quot;{rule.reason}&quot;</span>}
+                              {rule.reason && rule.createdByName && <span className="mx-1.5">·</span>}
+                              {rule.createdByName && (
+                                <span>
+                                  Created by <span className="text-foreground/80">{rule.createdByName}</span>
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          <div className="mt-2">
+                            {(rule.appliedCount ?? 0) > 0 ? (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+                                title={
+                                  rule.lastAppliedAt
+                                    ? `Last applied: ${new Date(rule.lastAppliedAt).toLocaleString()}`
+                                    : undefined
+                                }
+                              >
+                                Applied {rule.appliedCount} time{rule.appliedCount === 1 ? "" : "s"}
+                                {rule.lastAppliedAt && (
+                                  <span className="text-[10px] text-emerald-300/70 font-normal">
+                                    · last {timeSinceShort(rule.lastAppliedAt)}
+                                  </span>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground/60 italic">
+                                Not yet applied — no matching alerts since this rule was created
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           {canEdit && (

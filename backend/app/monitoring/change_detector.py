@@ -139,11 +139,26 @@ def _check_asset(
 
     alerts: list[MonitorAlert] = []
 
+    def _record_rule_application(tuning_result):
+        """Bump the applied_count + last_applied_at on the rule that
+        matched, so the tuning-rules UI can show whether a rule is
+        actually firing. Best-effort visibility — not an audit log.
+        Mutates the rule object that's already attached to the session;
+        commit happens later in _advance_monitor."""
+        rule = getattr(tuning_result, "rule", None)
+        if rule is None:
+            return
+        if getattr(tuning_result, "action", "allow") == "allow":
+            return
+        rule.applied_count = (rule.applied_count or 0) + 1
+        rule.last_applied_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
     # New findings
     for fk, finding in current_map.items():
         if fk in prev_map:
             continue
         generate, tuning = should_alert(finding, asset, org_id, rules=tuning_rules)
+        _record_rule_application(tuning)
         if not generate:
             continue
         alert = MonitorAlert(
@@ -189,6 +204,7 @@ def _check_asset(
         if curr.severity == prev.severity:
             continue
         generate, tuning = should_alert(curr, asset, org_id, rules=tuning_rules)
+        _record_rule_application(tuning)
         if not generate:
             continue
         alert = MonitorAlert(

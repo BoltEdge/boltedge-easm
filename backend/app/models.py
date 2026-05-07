@@ -672,6 +672,10 @@ class MonitorAlert(db.Model):
     acknowledged_by = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), nullable=True)
     resolved_at = db.Column(db.DateTime, nullable=True)
     resolved_by = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), nullable=True)
+    # Optional free-text "why" captured at resolve time. The Suppress-
+    # similar flow passes the tuning rule's reason through here so the
+    # alert row tells the full story without cross-referencing the rule.
+    resolution_reason = db.Column(db.Text, nullable=True)
 
     # Notification tracking
     notified_via = db.Column(db.JSON, nullable=True)  # ["email", "in_app", "webhook"]
@@ -750,6 +754,14 @@ class TuningRule(db.Model):
     # ---- Metadata ----
     reason = db.Column(db.String(500), nullable=True)
     dedupe_key = db.Column(db.String(64), nullable=True, unique=True)  # Hash of match fields
+
+    # ---- Application counters ----
+    # Increments any time the rule causes a non-allow action (suppress,
+    # downgrade, upgrade, snooze). Surfaces in the UI so users can see
+    # whether their rules are actually hitting anything. Best-effort
+    # visibility — not an authoritative audit log.
+    applied_count = db.Column(db.Integer, nullable=False, default=0)
+    last_applied_at = db.Column(db.DateTime, nullable=True)
 
     created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
     updated_at = db.Column(db.DateTime, nullable=False, default=now_utc, onupdate=now_utc)
