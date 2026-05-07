@@ -1,13 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { getAccessToken, getIsSuperadmin, logout } from "../../lib/auth";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Building2, Users, LogOut, ShieldAlert, ScrollText,
   ScanLine, Megaphone, HeartPulse, ShieldBan, MessageSquare, CreditCard,
-  ChevronDown,
+  ChevronDown, ArrowLeft,
 } from "lucide-react";
 
 // The admin nav is grouped by what the operator is *trying to do*, not
@@ -72,6 +71,7 @@ function isGroupActive(pathname: string, group: NavGroup): boolean {
 
 function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   // Each group is collapsible. The active group auto-opens on every
   // navigation; user-toggled state is layered on top via local state
@@ -157,13 +157,25 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="p-3 border-t border-white/[0.06]">
+        <div className="p-3 border-t border-white/[0.06] space-y-1">
+          {/* "Back to app" navigates without ending the session — admins
+              regularly bounce between the admin console and their normal
+              dashboard while triaging issues. The previous wiring called
+              `logout()` here, which cleared the session and forced a
+              re-login on every flip back. */}
           <button
-            onClick={() => logout("/dashboard")}
+            onClick={() => router.push("/dashboard")}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-white/40 hover:text-white hover:bg-white/[0.04] transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to app
+          </button>
+          <button
+            onClick={() => logout("/login")}
             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-white/40 hover:text-white hover:bg-white/[0.04] transition-colors"
           >
             <LogOut className="w-4 h-4" />
-            Back to app
+            Sign out
           </button>
         </div>
       </aside>

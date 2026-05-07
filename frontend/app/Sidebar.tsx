@@ -91,8 +91,8 @@ export default function Sidebar() {
 
   // ── Sub-menu items ──
   const scanningSubs = [
-    { href: "/scan", label: "Scan Jobs", icon: Activity },
     { href: "/scan/initiate", label: "Initiate Scan", icon: Zap },
+    { href: "/scan", label: "Scan Jobs", icon: Activity },
     { href: "/scan/schedules", label: "Schedules", icon: Calendar },
   ];
 
@@ -253,7 +253,7 @@ export default function Sidebar() {
             <Section
               label="Scanning" icon={Activity}
               open={scanningOpen} toggle={() => setScanningOpen((v) => !v)}
-              active={isScanningSection} defaultHref="/scan"
+              active={isScanningSection} defaultHref="/scan/initiate"
               subs={scanningSubs}
             />
           </li>

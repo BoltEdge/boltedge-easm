@@ -364,6 +364,8 @@ def list_findings():
     ignored = request.args.get("ignored")
     status = request.args.get("status")           # open, in_progress, accepted_risk, suppressed, resolved, all
     framework = request.args.get("framework")     # owasp_asvs, cis_v8, nist_csf, pci_dss_4, soc2, iso_27001
+    sort = request.args.get("sort", "recent")     # recent (default) | severity
+    since = request.args.get("since", "all")      # all (default) | 24h | 7d | 30d | 90d
     page = request.args.get("page", 1, type=int)
     per_page = min(request.args.get("per_page", 100, type=int), 500)
 
@@ -419,6 +421,21 @@ def list_findings():
     if asset_id:
         query = query.filter(Finding.asset_id == int(asset_id))
 
+    # Timeframe filter — keep findings whose first sighting falls within
+    # the requested window. Falls back to created_at when first_seen_at
+    # is null (legacy rows from before the column was added). The
+    # `all` value is the no-op default.
+    _SINCE_DAYS = {"24h": 1, "7d": 7, "30d": 30, "90d": 90}
+    if since in _SINCE_DAYS:
+        from datetime import datetime, timedelta, timezone
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=_SINCE_DAYS[since])
+        query = query.filter(
+            or_(
+                Finding.first_seen_at >= cutoff,
+                and_(Finding.first_seen_at.is_(None), Finding.created_at >= cutoff),
+            )
+        )
+
     # Status filter
     if status and status != "all":
         query = _apply_status_filter(query, status)
@@ -441,16 +458,27 @@ def list_findings():
     # Total count for pagination
     total = query.count()
 
-    # Sort: critical first, then by date
-    severity_order = db.case(
-        (Finding.severity == "critical", 0),
-        (Finding.severity == "high", 1),
-        (Finding.severity == "medium", 2),
-        (Finding.severity == "low", 3),
-        (Finding.severity == "info", 4),
-        else_=5,
-    )
-    query = query.order_by(severity_order, Finding.id.desc())
+    # Sort:
+    #   recent (default) — most recently detected first, falling back to
+    #     created_at when first_seen_at is null, then id desc as a stable
+    #     tiebreaker so pagination doesn't skip / repeat rows
+    #   severity         — critical first, then high → info, id desc
+    if sort == "severity":
+        severity_order = db.case(
+            (Finding.severity == "critical", 0),
+            (Finding.severity == "high", 1),
+            (Finding.severity == "medium", 2),
+            (Finding.severity == "low", 3),
+            (Finding.severity == "info", 4),
+            else_=5,
+        )
+        query = query.order_by(severity_order, Finding.id.desc())
+    else:
+        # Treat first_seen_at as the primary "when did this finding
+        # appear" timestamp; coalesce with created_at to keep legacy
+        # rows (no first_seen_at) from sinking to the bottom forever.
+        primary_ts = db.func.coalesce(Finding.first_seen_at, Finding.created_at)
+        query = query.order_by(primary_ts.desc(), Finding.id.desc())
 
     # Pagination
     rows = query.offset((page - 1) * per_page).limit(per_page).all()

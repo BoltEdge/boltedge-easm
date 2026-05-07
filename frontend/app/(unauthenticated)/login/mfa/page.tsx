@@ -172,6 +172,15 @@ function MfaVerifyInner() {
             Contact your admin
           </Link>
         </p>
+
+        <p className="mt-3 text-xs text-white/30 text-center">
+          <Link
+            href="/login"
+            className="text-white/40 hover:text-white/60 transition-colors"
+          >
+            ← Cancel and return to sign-in
+          </Link>
+        </p>
       </div>
     </div>
   );

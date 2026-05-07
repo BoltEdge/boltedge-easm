@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 import type { AssetGroup, Finding } from "../../types";
-import { getGroups, apiFetch, escalateFinding, bulkEscalateFindings, API_BASE_URL } from "../../lib/api";
+import { getGroups, getAllAssets, apiFetch, escalateFinding, bulkEscalateFindings, API_BASE_URL } from "../../lib/api";
 import { getAccessToken } from "../../lib/auth";
 import { useOrg } from "../contexts/OrgContext";
 
@@ -217,6 +217,7 @@ export default function FindingsPage() {
   }, [panelWidth]);
 
   const [groups, setGroups] = useState<AssetGroup[]>([]);
+  const [assets, setAssets] = useState<any[]>([]);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [total, setTotal] = useState(0);
   const [severityCounts, setSeverityCounts] = useState<Record<string, number>>({});
@@ -225,11 +226,17 @@ export default function FindingsPage() {
 
   // Filters
   const [groupFilter, setGroupFilter] = useState("all");
+  const [assetFilter, setAssetFilter] = useState("all");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [frameworkFilter, setFrameworkFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusKey>("open");
+  // Default sort: most recently detected first. The previous default was
+  // severity-first, but users hitting this page after a fresh scan want
+  // to see what just landed, not re-litigate yesterday's criticals.
+  const [sortBy, setSortBy] = useState<"recent" | "severity">("recent");
+  const [sinceFilter, setSinceFilter] = useState<"all" | "24h" | "7d" | "30d" | "90d">("all");
   const [page, setPage] = useState(1);
   const perPage = 50;
 
@@ -260,7 +267,24 @@ export default function FindingsPage() {
   }, [searchQuery]);
 
   // Reset page on filter change
-  useEffect(() => { setPage(1); }, [groupFilter, severityFilter, categoryFilter, frameworkFilter, statusFilter]);
+  useEffect(() => { setPage(1); }, [groupFilter, assetFilter, severityFilter, categoryFilter, frameworkFilter, statusFilter, sortBy, sinceFilter]);
+
+  // Asset list scoped by selected group (when one is chosen) so the
+  // dropdown only shows assets the group filter would permit. Resets
+  // assetFilter to "all" when the user picks a group that excludes the
+  // currently-selected asset, so the UI doesn't end up in a state with
+  // a hidden asset still constraining the query.
+  const filteredAssets = useMemo(() => {
+    if (groupFilter === "all") return assets;
+    return assets.filter(
+      (a) => String(a.groupId ?? a.group_id ?? "") === groupFilter,
+    );
+  }, [assets, groupFilter]);
+  useEffect(() => {
+    if (assetFilter === "all") return;
+    const stillVisible = filteredAssets.some((a) => String(a.id) === assetFilter);
+    if (!stillVisible) setAssetFilter("all");
+  }, [filteredAssets, assetFilter]);
 
   // Auto-clear banner
   useEffect(() => {
@@ -276,17 +300,22 @@ export default function FindingsPage() {
       if (categoryFilter !== "all") params.set("category", categoryFilter);
       if (frameworkFilter !== "all") params.set("framework", frameworkFilter);
       if (groupFilter !== "all") params.set("group_id", groupFilter);
+      if (assetFilter !== "all") params.set("asset_id", assetFilter);
+      if (sortBy !== "recent") params.set("sort", sortBy);
+      if (sinceFilter !== "all") params.set("since", sinceFilter);
       if (debouncedSearch) params.set("q", debouncedSearch);
       params.set("status", statusFilter);
       params.set("page", String(page));
       params.set("per_page", String(perPage));
 
-      const [g, data] = await Promise.all([
+      const [g, a, data] = await Promise.all([
         groups.length ? Promise.resolve(groups) : getGroups(),
+        assets.length ? Promise.resolve(assets) : getAllAssets(),
         apiFetch<any>(`/findings?${params.toString()}`),
       ]);
 
       setGroups(g);
+      setAssets(a || []);
       setFindings(data.findings || data);
       setTotal(data.total ?? (data.findings || data).length);
       setSeverityCounts(data.severityCounts || {});
@@ -298,7 +327,7 @@ export default function FindingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [severityFilter, categoryFilter, frameworkFilter, groupFilter, debouncedSearch, statusFilter, page]);
+  }, [severityFilter, categoryFilter, frameworkFilter, groupFilter, assetFilter, sortBy, sinceFilter, debouncedSearch, statusFilter, page]);
 
   useEffect(() => { loadFindings(); }, [loadFindings]);
 
@@ -402,6 +431,9 @@ export default function FindingsPage() {
     if (categoryFilter !== "all") params.set("category", categoryFilter);
     if (frameworkFilter !== "all") params.set("framework", frameworkFilter);
     if (groupFilter !== "all") params.set("group_id", groupFilter);
+    if (assetFilter !== "all") params.set("asset_id", assetFilter);
+    if (sortBy !== "recent") params.set("sort", sortBy);
+    if (sinceFilter !== "all") params.set("since", sinceFilter);
     if (debouncedSearch) params.set("q", debouncedSearch);
     params.set("status", statusFilter);
 
@@ -651,11 +683,44 @@ export default function FindingsPage() {
               value={groupFilter}
               onChange={(e) => setGroupFilter(e.target.value)}
               className="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/40"
+              title="Filter by asset group"
             >
               <option value="all">All Groups</option>
               {groups.map((g) => (
                 <option key={g.id} value={g.id}>{g.name}</option>
               ))}
+            </select>
+            <select
+              value={assetFilter}
+              onChange={(e) => setAssetFilter(e.target.value)}
+              className="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/40 max-w-[220px]"
+              title="Filter by individual asset"
+            >
+              <option value="all">All Assets</option>
+              {filteredAssets.map((a) => (
+                <option key={a.id} value={String(a.id)}>{a.value || a.name || a.id}</option>
+              ))}
+            </select>
+            <select
+              value={sinceFilter}
+              onChange={(e) => setSinceFilter(e.target.value as typeof sinceFilter)}
+              className="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/40"
+              title="Restrict to findings first detected in this window"
+            >
+              <option value="all">All time</option>
+              <option value="24h">Last 24 hours</option>
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+              <option value="90d">Last 90 days</option>
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/40"
+              title="Sort order"
+            >
+              <option value="recent">Most recent</option>
+              <option value="severity">By severity</option>
             </select>
           </div>
         </div>
