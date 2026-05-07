@@ -66,9 +66,15 @@ def _now_utc() -> datetime:
 # Real cost levers are `scans_per_month` (covers manual + monitoring), the
 # product of `monitored_assets` × `monitoring_frequency`, and
 # `discoveries_per_month`. `assets` is just inventory and cheap.
+# "bestFor" — short positioning sentence for each tier. Surfaced on the
+# user-facing Plans page and the Plans API so customers can pick the
+# right tier at a glance instead of comparing limit tables. Distinct
+# from `label` (the brand name) and `description` (longer marketing
+# copy that lives in landing-page UI). Reviewed and tightened May 2026.
 PLAN_CONFIG = {
     "free": {
         "label": "Free",
+        "bestFor": "Trying it out and evaluating the platform on a couple of assets.",
         "currency": "AUD",
         "price_monthly": 0,
         "price_annual_monthly": 0,
@@ -96,6 +102,7 @@ PLAN_CONFIG = {
     },
     "starter": {
         "label": "Starter",
+        "bestFor": "Individuals, freelance consultants, and small environments.",
         "currency": "AUD",
         "price_monthly": 29,
         "price_annual_monthly": 24,
@@ -123,6 +130,7 @@ PLAN_CONFIG = {
     },
     "professional": {
         "label": "Professional",
+        "bestFor": "Security teams that need continuous monitoring, scheduled reports, and API access.",
         "currency": "AUD",
         "price_monthly": 149,
         "price_annual_monthly": 129,
@@ -150,6 +158,7 @@ PLAN_CONFIG = {
     },
     "enterprise_silver": {
         "label": "Enterprise Silver",
+        "bestFor": "MSSPs and consultancies managing several smaller-to-mid-size client environments.",
         "currency": "AUD",
         "price_monthly": 599,
         "price_annual_monthly": 509,
@@ -177,6 +186,7 @@ PLAN_CONFIG = {
     },
     "enterprise_gold": {
         "label": "Enterprise Gold",
+        "bestFor": "MSSPs handling larger client portfolios — adds audit log and priority support.",
         "currency": "AUD",
         # Self-serve top tier — A$999/mo, A$849/mo billed annually
         # (~15% saving). Beyond this, customers go to Custom (sales).
@@ -206,6 +216,7 @@ PLAN_CONFIG = {
     },
     "custom": {
         "label": "Custom",
+        "bestFor": "Multi-million-asset estates or contracted MSSP delivery with bespoke SLAs and white-labelling.",
         "currency": "AUD",
         # Sales-quoted contract — no public price. The "Contact sales"
         # UI is triggered by price_monthly == -1 throughout the codebase.
@@ -391,6 +402,7 @@ def list_plans():
         plans.append({
             "key": key,
             "label": config["label"],
+            "bestFor": config.get("bestFor"),
             "currency": config.get("currency", "AUD"),
             "priceMonthly": config["price_monthly"],
             "priceAnnualMonthly": config["price_annual_monthly"],

@@ -524,6 +524,15 @@ export default function BillingPage() {
                     )}
                   </div>
 
+                  {/* "Best for" — short positioning sentence so users
+                      can pick the right tier without scanning the
+                      limits list. Comes from PLAN_CONFIG.bestFor on
+                      the backend; renders on every variant since the
+                      copy is price-agnostic. */}
+                  {p.bestFor && (
+                    <p className="text-xs text-muted-foreground mb-4 leading-relaxed">{p.bestFor}</p>
+                  )}
+
                   {/* Price — only shown when billing is enabled */}
                   {BILLING_ENABLED && (
                     <div className="mb-4">

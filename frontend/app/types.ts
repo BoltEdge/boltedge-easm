@@ -286,6 +286,7 @@ export interface BillingInfo {
 export interface PlanOption {
   key: PlanTier;
   label: string;
+  bestFor?: string | null;
   priceMonthly: number;
   priceAnnualMonthly: number;
   priceAnnualTotal: number;
