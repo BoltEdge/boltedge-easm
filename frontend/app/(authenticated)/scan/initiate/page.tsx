@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Play, Search, Shield, ShieldCheck, ShieldAlert, Zap, Target,
-  Timer, Check, Info, Loader2, Shuffle,
+  Timer, Check, Info, Loader2, Shuffle, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { Button } from "../../../ui/button";
 import { Input } from "../../../ui/input";
@@ -103,6 +103,10 @@ export default function InitiateScanPage() {
 
   const [profiles, setProfiles] = useState<ScanProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState("");
+  // Collapsed by default — profile picking is a once-per-session
+  // decision, no need to dominate the page after that. The user can
+  // expand the section to switch profiles.
+  const [profileOpen, setProfileOpen] = useState(false);
   const [groups, setGroups] = useState<Array<{ id: any; name: string }>>([]);
   const [loadingInit, setLoadingInit] = useState(true);
   const [selGroupId, setSelGroupId] = useState("");
@@ -133,6 +137,15 @@ export default function InitiateScanPage() {
     return assets.filter((a: any) => !(a?.lastScanAt || a?.last_scan_at)).length;
   }, [assets]);
 
+  // Org-wide pool of unscanned assets — used by the top-of-panel
+  // "pick a random unscanned asset" button so users don't have to
+  // hunt-and-peck through groups when they just want to onboard a
+  // fresh asset. Computed from allAssets (loaded at mount), not the
+  // per-group list.
+  const globalUnscannedAssets = useMemo(() => {
+    return allAssets.filter((a: any) => !(a?.lastScanAt || a?.last_scan_at));
+  }, [allAssets]);
+
   function pickRandomAsset() {
     const pool = displayedAssets;
     if (pool.length === 0) {
@@ -142,6 +155,22 @@ export default function InitiateScanPage() {
     const picked = pool[Math.floor(Math.random() * pool.length)];
     setSelAssetId(String(picked.id));
     setSearchQuery(picked.value || "");
+  }
+
+  function pickRandomGlobalUnscannedAsset() {
+    if (globalUnscannedAssets.length === 0) {
+      setBanner({ kind: "err", text: "No unscanned assets in your organisation — every asset has been scanned at least once." });
+      return;
+    }
+    const picked = globalUnscannedAssets[Math.floor(Math.random() * globalUnscannedAssets.length)];
+    // Clear the group selection so the picked asset isn't filtered
+    // out of view when this fires across-group. Search query is
+    // populated with the asset value so the visible state matches
+    // what got picked.
+    setSelGroupId("");
+    setSelAssetId(String(picked.id));
+    setSearchQuery(picked.value || "");
+    setSearchOpen(false);
   }
 
   // Reset the asset selection when the unscanned filter changes if the
@@ -257,14 +286,60 @@ export default function InitiateScanPage() {
           <div className={cn("rounded-xl border px-4 py-3 text-sm", banner.kind === "ok" ? "border-[#10b981]/30 bg-[#10b981]/10 text-[#b7f7d9]" : "border-red-500/30 bg-red-500/10 text-red-200")}>{banner.text}</div>
         )}
 
-        {/* Profile Selector */}
-        <div className="bg-card border border-border rounded-xl p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2"><Shield className="w-5 h-5 text-primary" /><h2 className="text-lg font-semibold text-foreground">Scan Profile</h2></div>
-            <span className="text-xs text-muted-foreground">{profiles.length} profile{profiles.length !== 1 ? "s" : ""} available</span>
-          </div>
-          {profiles.length === 0 ? <div className="text-sm text-muted-foreground py-4">No scan profiles found.</div> : (
-            <div className="grid sm:grid-cols-3 gap-4">{profiles.map((p) => <ProfileCard key={p.id} profile={p} selected={selectedProfileId === p.id} onSelect={() => setSelectedProfileId(p.id)} />)}</div>
+        {/* Profile Selector — collapsible. Picking a profile is a
+            once-per-session decision and shouldn't dominate the page,
+            so this collapses by default into a one-line summary
+            showing the current selection. Click the row (or the
+            chevron) to expand the full picker grid and switch. */}
+        <div className="bg-card border border-border rounded-xl">
+          <button
+            type="button"
+            onClick={() => setProfileOpen((v) => !v)}
+            className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-accent/20 rounded-xl transition-colors"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <Shield className="w-5 h-5 text-primary shrink-0" />
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-foreground">Scan Profile</div>
+                {selectedProfile ? (
+                  <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", getProfileMeta(selectedProfile).badge)}>
+                      {selectedProfile.name}
+                    </span>
+                    <span className="text-muted-foreground/60">·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Timer className="w-3 h-3" />{getProfileMeta(selectedProfile).duration}
+                    </span>
+                    <span className="text-muted-foreground/60">·</span>
+                    <span className="truncate">{getProfileMeta(selectedProfile).depth}</span>
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {profiles.length === 0 ? "No scan profiles found." : "Choose a scan profile"}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="text-xs text-muted-foreground flex items-center gap-2 shrink-0">
+              <span className="hidden sm:inline">{profileOpen ? "Hide" : "Change"}</span>
+              {profileOpen
+                ? <ChevronUp className="w-4 h-4" />
+                : <ChevronDown className="w-4 h-4" />}
+            </div>
+          </button>
+          {profileOpen && profiles.length > 0 && (
+            <div className="px-4 pb-4">
+              <div className="grid sm:grid-cols-3 gap-4">
+                {profiles.map((p) => (
+                  <ProfileCard
+                    key={p.id}
+                    profile={p}
+                    selected={selectedProfileId === p.id}
+                    onSelect={() => { setSelectedProfileId(p.id); setProfileOpen(false); }}
+                  />
+                ))}
+              </div>
+            </div>
           )}
         </div>
 
@@ -299,6 +374,32 @@ export default function InitiateScanPage() {
                 )}
               </div>
             </div>
+            {/* Org-wide unscanned shortcut. Surfaces a count of assets
+                that have never been scanned and lets the user pick one
+                at random across the whole organisation — no group
+                selection required. Hidden when there's nothing to
+                pick, so it doesn't add noise once the inventory is
+                fully onboarded. */}
+            {globalUnscannedAssets.length > 0 && (
+              <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg border border-[#00b8d4]/20 bg-[#00b8d4]/[0.04]">
+                <div className="text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">{globalUnscannedAssets.length}</span>
+                  {" "}unscanned asset{globalUnscannedAssets.length === 1 ? "" : "s"} across all groups —{" "}
+                  <span className="text-muted-foreground/70">never been scanned yet</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={pickRandomGlobalUnscannedAsset}
+                  className="gap-1.5 text-xs border-[#00b8d4]/40 text-[#00b8d4] hover:bg-[#00b8d4]/10 shrink-0"
+                  title="Pick a random unscanned asset across all groups"
+                >
+                  <Shuffle className="w-3.5 h-3.5" />
+                  Pick random unscanned
+                </Button>
+              </div>
+            )}
             <div className="flex items-center gap-3"><div className="flex-1 h-px bg-border" /><span className="text-xs text-muted-foreground uppercase">or browse by group</span><div className="flex-1 h-px bg-border" /></div>
             <div className="grid md:grid-cols-2 gap-3">
               <div className="space-y-1.5">

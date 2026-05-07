@@ -37,6 +37,22 @@ def frontend_url() -> str:
 
 # ── Sign-off block (universal, appears at the bottom of every email) ─
 
+# Hosted at frontend/public/email-logo.png — served by Next.js at the
+# root, so the image URL is simply <site>/email-logo.png. We swapped
+# from a unicode ⚡ glyph to a real PNG because most clients render
+# U+26A1 in their emoji font (yellow), ignoring our CSS color override,
+# and Outlook strips inline `background:` declarations on inline
+# elements — net effect was a yellow bolt on a white square. The PNG
+# is the actual brand icon (navy square + teal bolt) baked into a
+# bitmap so every client sees the same thing.
+def _logo_img(size_px: int) -> str:
+    src = f"{frontend_url().rstrip('/')}/email-logo.png"
+    return (
+        f'<img src="{src}" width="{size_px}" height="{size_px}" '
+        f'alt="Nano EASM" style="display:block;border:0;border-radius:{round(size_px * 7 / 32)}px;" />'
+    )
+
+
 def _signoff_html() -> str:
     return f"""
     <div style="margin-top:32px;padding-top:24px;border-top:1px solid {BORDER};">
@@ -44,9 +60,7 @@ def _signoff_html() -> str:
       <table cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td style="padding-right:8px;vertical-align:middle;">
-            <div style="width:24px;height:24px;background:{BRAND_DARK};border-radius:5px;text-align:center;line-height:24px;">
-              <span style="color:{BRAND_TEAL};font-size:14px;font-weight:bold;">⚡</span>
-            </div>
+            {_logo_img(24)}
           </td>
           <td style="vertical-align:middle;">
             <a href="{frontend_url()}" style="color:{BRAND_TEAL};text-decoration:none;font-size:13px;font-weight:500;">nanoeasm.com</a>
@@ -64,9 +78,7 @@ def _header_html() -> str:
       <table cellpadding="0" cellspacing="0" border="0">
         <tr>
           <td style="padding-right:10px;vertical-align:middle;">
-            <div style="width:32px;height:32px;background:{BRAND_DARK};border-radius:7px;text-align:center;line-height:32px;">
-              <span style="color:{BRAND_TEAL};font-size:20px;font-weight:bold;">⚡</span>
-            </div>
+            {_logo_img(32)}
           </td>
           <td style="vertical-align:middle;">
             <span style="font-size:16px;font-weight:600;color:{TEXT_DARK};">Nano<span style="color:{BRAND_TEAL};">EASM</span></span>

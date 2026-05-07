@@ -4,27 +4,20 @@
   frontend/scripts/linkedin-cover.png. Not served by Next.js — this is
   a static asset for upload to the LinkedIn admin console.
 
-  Dimensions: 1128 × 191 (LinkedIn company page banner spec).
-  LinkedIn overlays the company profile picture at the bottom-left of
-  the cover, partially obscuring ~120px square. The wordmark is
-  positioned slightly toward the centre-left so it isn't hidden, and
-  critical text sits in the central horizontal band.
+  Dimensions: 1584 × 396 (LinkedIn's current banner spec, 4:1 ratio).
+  LinkedIn overlays the company profile picture as a circular avatar
+  along the bottom-left. The wordmark sits in the upper-left and the
+  copy is centred vertically + horizontally so the avatar overlap
+  doesn't hide anything important.
 
   Regenerate with:
     chrome --headless=new --disable-gpu --hide-scrollbars \
-      --window-size=1128,400 \
+      --window-size=1584,396 \
       --screenshot=frontend/scripts/linkedin-cover.png \
       file:///<abs-path>/frontend/scripts/linkedin-cover.html
 
-  Note: the recommended Chrome window-size is 400 (not 191). Chrome
-  headless silently enforces a minimum viewport height around 200px
-  that breaks vertical centering when you ask for 191. The CSS below
-  pins the actual canvas to 191px regardless of viewport height, and
-  uses `padding-bottom: calc(100vh - 191px)` to push everything below
-  the canvas off-screen so the screenshot's effective image is the
-  191px we want. Output PNG is then 1128×actual-window-height; if the
-  exact 1128×191 dimensions are needed, post-process with the trim
-  step in the regen script.
+  At 396px tall the viewport is comfortably above Chrome's minimum,
+  so no post-crop step is required (unlike the 1128×191 version).
 -->
 <html lang="en">
 <head>
@@ -33,159 +26,182 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
-    width: 1128px;
-    height: 191px;
+    width: 1584px;
+    height: 396px;
     overflow: hidden;
     background: #020617;
   }
   body {
-    /* Body itself is the flex container — drops a layer of nesting
-       that was confusing Chrome headless's vertical centring. */
     position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 56px;
-    gap: 28px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
     color: #f8fafc;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
 
+  /* Subtle teal radial glows on both edges — same brand system as the
+     OG image. The right glow is slightly stronger so the eye is
+     pulled to that side first, away from the avatar overlay area. */
   .glow-right {
     position: absolute;
-    width: 700px;
-    height: 700px;
-    right: -300px;
-    top: -270px;
-    background: radial-gradient(circle, rgba(20,184,166,0.20) 0%, rgba(20,184,166,0.05) 35%, rgba(20,184,166,0) 65%);
+    width: 1100px;
+    height: 1100px;
+    right: -380px;
+    top: -440px;
+    background: radial-gradient(circle, rgba(20,184,166,0.22) 0%, rgba(20,184,166,0.06) 35%, rgba(20,184,166,0) 65%);
     pointer-events: none;
     z-index: 0;
   }
   .glow-left {
     position: absolute;
-    width: 460px;
-    height: 460px;
-    left: -180px;
-    bottom: -240px;
+    width: 760px;
+    height: 760px;
+    left: -260px;
+    bottom: -380px;
     background: radial-gradient(circle, rgba(20,184,166,0.10) 0%, rgba(20,184,166,0) 60%);
     pointer-events: none;
     z-index: 0;
   }
+
+  /* Faint dot/line grid — masked so it fades toward the edges. */
   .grid {
     position: absolute;
     inset: 0;
     background-image:
       linear-gradient(rgba(148,163,184,0.05) 1px, transparent 1px),
       linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px);
-    background-size: 48px 48px;
+    background-size: 56px 56px;
     -webkit-mask-image: radial-gradient(ellipse 80% 100% at 60% 50%, black 30%, transparent 90%);
             mask-image: radial-gradient(ellipse 80% 100% at 60% 50%, black 30%, transparent 90%);
     z-index: 0;
     pointer-events: none;
   }
 
+  /* Logo lockup — anchored to top-left so the bottom-left avatar
+     overlay area stays clear. */
   .logo {
-    position: relative;
+    position: absolute;
+    top: 44px;
+    left: 80px;
     z-index: 1;
     display: flex;
     align-items: center;
-    gap: 11px;
-    flex-shrink: 0;
+    gap: 16px;
   }
   .logo .icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 9px;
+    width: 60px;
+    height: 60px;
+    border-radius: 13px;
     background: #0a0f1e;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 0 1px rgba(20,184,166,0.18), 0 6px 18px rgba(20,184,166,0.18);
+    box-shadow: 0 0 0 1px rgba(20,184,166,0.18), 0 10px 28px rgba(20,184,166,0.18);
   }
-  .logo .icon svg { width: 24px; height: 24px; display: block; }
+  .logo .icon svg { width: 38px; height: 38px; display: block; }
   .logo .word {
-    font-size: 24px;
+    font-size: 38px;
     font-weight: 700;
-    letter-spacing: -0.5px;
+    letter-spacing: -0.8px;
     color: #f8fafc;
     line-height: 1;
   }
   .logo .word .accent { color: #14b8a6; }
 
+  /* URL block in the top-right corner — small but readable. */
+  .url {
+    position: absolute;
+    top: 56px;
+    right: 80px;
+    z-index: 1;
+    text-align: right;
+    line-height: 1.2;
+  }
+  .url .label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.4px;
+    color: rgba(148,163,184,0.7);
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .url .domain {
+    font-size: 18px;
+    color: #14b8a6;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  /* Centre block — eyebrow + headline + subhead. Vertically centred
+     within the full canvas; horizontally centred. */
   .copy {
-    position: relative;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
     z-index: 1;
     text-align: center;
-    flex: 1;
-    min-width: 0;
+    padding: 0 60px;
   }
   .eyebrow {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     background: rgba(20,184,166,0.08);
-    border: 1px solid rgba(20,184,166,0.25);
+    border: 1px solid rgba(20,184,166,0.28);
     color: #5eead4;
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 600;
-    letter-spacing: 0.8px;
+    letter-spacing: 1.2px;
     text-transform: uppercase;
-    padding: 3px 9px;
+    padding: 6px 14px;
     border-radius: 999px;
-    margin-bottom: 8px;
+    margin-bottom: 20px;
     line-height: 1.4;
   }
   .eyebrow .pulse {
-    width: 5px; height: 5px; border-radius: 50%;
+    width: 7px; height: 7px; border-radius: 50%;
     background: #14b8a6;
-    box-shadow: 0 0 6px #14b8a6;
+    box-shadow: 0 0 9px #14b8a6;
   }
   .headline {
-    font-size: 26px;
+    font-size: 60px;
     font-weight: 800;
-    line-height: 1.1;
-    letter-spacing: -0.7px;
+    line-height: 1.05;
+    letter-spacing: -2px;
     color: #f8fafc;
-    margin-bottom: 6px;
+    margin-bottom: 18px;
     white-space: nowrap;
   }
   .headline .accent { color: #14b8a6; }
   .sub {
-    font-size: 12px;
+    font-size: 22px;
     line-height: 1.4;
     color: #94a3b8;
     font-weight: 400;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.4px;
   }
   .sub .dot {
     display: inline-block;
-    width: 3px; height: 3px; border-radius: 50%;
+    width: 5px; height: 5px; border-radius: 50%;
     background: rgba(148,163,184,0.6);
     vertical-align: middle;
-    margin: 0 7px 2px;
+    margin: 0 12px 3px;
   }
 
-  .url {
-    position: relative;
+  /* Tagline at the bottom-centre — subtle but reinforces position. */
+  .tagline {
+    position: absolute;
+    bottom: 44px;
+    left: 0;
+    right: 0;
     z-index: 1;
-    flex-shrink: 0;
-    text-align: right;
+    text-align: center;
     font-size: 13px;
-    color: #14b8a6;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    line-height: 1.2;
-  }
-  .url .label {
-    display: block;
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.8px;
-    color: rgba(148,163,184,0.7);
-    text-transform: uppercase;
-    margin-bottom: 3px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    color: rgba(148,163,184,0.55);
   }
 </style>
 </head>
@@ -203,6 +219,11 @@
     <div class="word">Nano<span class="accent">EASM</span></div>
   </div>
 
+  <div class="url">
+    <div class="label">Visit</div>
+    <div class="domain">nanoeasm.com</div>
+  </div>
+
   <div class="copy">
     <div class="eyebrow"><span class="pulse"></span>Continuous external exposure</div>
     <div class="headline">External <span class="accent">Attack&nbsp;Surface</span> Management</div>
@@ -211,9 +232,8 @@
     </div>
   </div>
 
-  <div class="url">
-    <span class="label">Visit</span>
-    nanoeasm.com
+  <div class="tagline">
+    The external exposure foundation for continuous threat exposure management.
   </div>
 </body>
 </html>

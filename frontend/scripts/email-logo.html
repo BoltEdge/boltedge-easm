@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<!--
+  Source for the email-header logo PNG at frontend/public/email-logo.png.
+  Rendered at 128×128 (4x the displayed 32×32 size) so the bitmap
+  stays crisp on retina screens after email clients downscale it.
+
+  Regenerate with:
+    chrome --headless=new --disable-gpu --hide-scrollbars \
+      --window-size=128,128 \
+      --screenshot=frontend/public/email-logo.png \
+      file:///<abs-path>/frontend/scripts/email-logo.html
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 128px; height: 128px; overflow: hidden; background: transparent; }
+  body { display: block; }
+  svg { display: block; width: 128px; height: 128px; }
+</style>
+</head>
+<body>
+  <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+    <rect width="32" height="32" rx="7" fill="#0a0f1e"/>
+    <path d="M17.5 4L9.5 17H14.5L13 28L21.5 14.5H16L17.5 4Z" fill="#14b8a6"/>
+  </svg>
+</body>
+</html>
