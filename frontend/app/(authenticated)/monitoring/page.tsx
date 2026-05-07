@@ -7,7 +7,7 @@ import {
   BellRing, Settings, SlidersHorizontal, Clock, CheckCircle2,
   Globe, Lock, Server, FileCode, Zap, ToggleLeft, ToggleRight, Pause,
   X, Loader2, Target, Cpu, Calendar, ArrowUpDown, AlertCircle, Sparkles,
-  ExternalLink,
+  ExternalLink, Plug,
 } from "lucide-react";
 
 import { Button } from "../../ui/button";
@@ -1114,6 +1114,99 @@ function AlertsTab({ setBanner, planLimit }: {
    ALERT DETAILS PANEL
    ================================================================ */
 
+// ── Verify-with-lookup-tools deep links for alerts ──
+//
+// Mirrors the same pattern in FindingDetailsDialog: maps the alert's
+// alertType (and tags/title for SPF/DKIM/DMARC nuance) to the most
+// relevant lookup tools, then renders /tools deep-link buttons.
+// Capped at 2 to keep the row tight; renders nothing if no tool maps.
+
+type AlertToolLink = { tool: string; target: string; label: string };
+
+function buildAlertToolLinks(alert: any): AlertToolLink[] {
+  const type = String(alert?.alertType || alert?.alert_type || "").toLowerCase();
+  const asset = String(alert?.assetValue || alert?.asset_value || "").trim();
+  if (!asset) return [];
+  const tags = String(alert?.alertName || alert?.title || "").toLowerCase();
+
+  const links: AlertToolLink[] = [];
+  switch (type) {
+    case "port_change":
+      links.push({ tool: "connectivity-check", target: asset, label: `Connectivity ${asset}` });
+      links.push({ tool: "reverse-dns", target: asset, label: `Reverse DNS ${asset}` });
+      break;
+    case "dns_change": {
+      const isEmailAuth = /spf|dkim|dmarc|email/.test(tags);
+      if (isEmailAuth) {
+        links.push({ tool: "email-security", target: asset, label: `Email security ${asset}` });
+        links.push({ tool: "dns-lookup", target: asset, label: `DNS lookup ${asset}` });
+      } else {
+        links.push({ tool: "dns-lookup", target: asset, label: `DNS lookup ${asset}` });
+      }
+      break;
+    }
+    case "cert_change":
+    case "cert_expiry":
+      links.push({ tool: "cert-lookup", target: asset, label: `Certificate ${asset}` });
+      break;
+    case "header_change":
+      links.push({ tool: "header-check", target: asset, label: `Header check ${asset}` });
+      break;
+    case "tech_change":
+      links.push({ tool: "header-check", target: asset, label: `Header check ${asset}` });
+      links.push({ tool: "connectivity-check", target: asset, label: `Connectivity ${asset}` });
+      break;
+    case "cloud_change":
+      links.push({ tool: "dns-lookup", target: asset, label: `DNS lookup ${asset}` });
+      break;
+    case "path_change":
+    case "panel_change":
+      links.push({ tool: "sensitive-paths", target: asset, label: `Exposed paths on ${asset}` });
+      break;
+    case "github_change":
+      links.push({ tool: "github-leaks", target: asset, label: `GitHub leaks for ${asset}` });
+      break;
+    case "vuln_change":
+    case "exposure_change":
+    case "config_change":
+      links.push({ tool: "connectivity-check", target: asset, label: `Connectivity ${asset}` });
+      break;
+    default:
+      break;
+  }
+  return links.slice(0, 2);
+}
+
+function AlertVerifyTools({ alert }: { alert: MonitorAlert }) {
+  const links = buildAlertToolLinks(alert);
+  if (links.length === 0) return null;
+  return (
+    <div className="bg-card border border-border rounded-lg p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Plug className="w-4 h-4 text-muted-foreground" />
+        <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+          Verify with lookup tools
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {links.map((link) => (
+          <Link
+            key={`${link.tool}-${link.target}`}
+            href={`/tools?tool=${encodeURIComponent(link.tool)}&target=${encodeURIComponent(link.target)}&autorun=1`}
+            className="inline-flex items-center gap-1.5 rounded-md border border-teal-500/30 bg-teal-500/[0.06] px-3 py-1.5 text-xs font-medium text-teal-300 hover:bg-teal-500/[0.12] hover:text-teal-200 transition-colors"
+          >
+            <ExternalLink className="w-3 h-3" />
+            {link.label}
+          </Link>
+        ))}
+      </div>
+      <p className="mt-2 text-[11px] text-muted-foreground/60">
+        Opens the tools workspace pre-filled and auto-runs the check.
+      </p>
+    </div>
+  );
+}
+
 function AlertDetailsPanel({
   alert,
   onClose,
@@ -1269,6 +1362,9 @@ function AlertDetailsPanel({
             </pre>
           </div>
         )}
+
+        {/* Verify with lookup tools — self-render hides when no relevant tool maps */}
+        <AlertVerifyTools alert={alert} />
 
         {/* Nano EASM Assistant */}
         <NanoAiBar state={aiState} onLoad={onLoadAi} />

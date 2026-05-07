@@ -1,10 +1,11 @@
 // app/(unauthenticated)/LandingNav.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { LayoutDashboard, Menu, X } from "lucide-react";
 import { BILLING_ENABLED } from "../lib/billing-config";
+import { isLoggedIn } from "../lib/auth";
 
 type NavLink = {
   href: string;
@@ -26,6 +27,14 @@ const NAV_LINKS = ALL_NAV_LINKS.filter((l) => !l.billingOnly || BILLING_ENABLED)
 
 export default function LandingNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  // SSR renders the logged-out variant (no token on the server) and the
+  // client re-renders to "Open dashboard" once the mount effect detects a
+  // valid session. This avoids hydration mismatches and stops the "click
+  // Sign in while already logged in → see login form" footgun.
+  const [isAuthed, setIsAuthed] = useState(false);
+  useEffect(() => {
+    setIsAuthed(isLoggedIn());
+  }, []);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[#060b18]/80 backdrop-blur-xl">
@@ -64,18 +73,30 @@ export default function LandingNav() {
 
         {/* Desktop auth buttons */}
         <div className="hidden md:flex items-center gap-3">
-          <Link
-            href="/login"
-            className="text-sm text-white/60 hover:text-white transition-colors px-3 py-2"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/register"
-            className="inline-flex items-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-teal-900/20 hover:bg-teal-500 transition-all"
-          >
-            Get started
-          </Link>
+          {isAuthed ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-teal-900/20 hover:bg-teal-500 transition-all"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              Open dashboard
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="text-sm text-white/60 hover:text-white transition-colors px-3 py-2"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/register"
+                className="inline-flex items-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-teal-900/20 hover:bg-teal-500 transition-all"
+              >
+                Get started
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile hamburger */}
@@ -105,20 +126,33 @@ export default function LandingNav() {
             ))}
 
             <div className="pt-3 mt-2 border-t border-white/[0.06] space-y-2">
-              <Link
-                href="/login"
-                onClick={() => setMobileOpen(false)}
-                className="block w-full px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors text-center"
-              >
-                Sign in
-              </Link>
-              <Link
-                href="/register"
-                onClick={() => setMobileOpen(false)}
-                className="block w-full px-3 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-600 hover:bg-teal-500 transition-all text-center"
-              >
-                Get started
-              </Link>
+              {isAuthed ? (
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex w-full items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-600 hover:bg-teal-500 transition-all"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Open dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    onClick={() => setMobileOpen(false)}
+                    className="block w-full px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors text-center"
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    href="/register"
+                    onClick={() => setMobileOpen(false)}
+                    className="block w-full px-3 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-600 hover:bg-teal-500 transition-all text-center"
+                  >
+                    Get started
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
         </div>

@@ -10,6 +10,7 @@ import {
   EyeOff, Eye, Info, ShieldAlert, Wrench, ExternalLink,
   Tag, BookOpen, CheckCircle2, AlertCircle, RotateCcw,
   Clock, ShieldCheck, ChevronDown, Loader2, Siren, Sparkles, X,
+  Plug,
 } from "lucide-react";
 
 import { Button } from "./ui/button";
@@ -157,6 +158,156 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="text-sm font-semibold text-foreground mt-1">{value}</div>
     </div>
+  );
+}
+
+// ── Verify-with-lookup-tools deep links ──
+//
+// Maps a finding's category (and where useful, fields from details_json)
+// to the most relevant lookup tools. Each link goes to /tools?tool=...&
+// target=...&autorun=1 — the tools page parses those params, spawns a
+// panel for that tool with the target pre-filled, and runs it.
+//
+// Capped at 2 links per finding to keep the row tight. Returns [] when
+// no tool maps cleanly (e.g. a misconfiguration with no usable target),
+// in which case the calling component should hide the section entirely.
+
+type ToolLink = { tool: string; target: string; label: string };
+
+function buildToolLinks(finding: any): ToolLink[] {
+  const cat = String(finding?.category || "").toLowerCase();
+  const details = finding?.details_json ?? finding?.details ?? {};
+  const asset = String(
+    finding?.asset?.value ?? finding?.assetValue ?? finding?.asset_value ?? ""
+  ).trim();
+  const assetTypeRaw = String(
+    finding?.asset?.type ?? finding?.assetType ?? finding?.asset_type ?? ""
+  ).toLowerCase();
+  const ip = (details?.ip as string | undefined) || (assetTypeRaw === "ip" ? asset : "");
+  const port = details?.port;
+  const transport = String(details?.transport || "tcp").toLowerCase();
+  const tplOrTags = (
+    String(finding?.template_id || finding?.templateId || "") +
+    " " +
+    (Array.isArray(finding?.tags) ? finding.tags.join(" ") : "")
+  ).toLowerCase();
+
+  // Build host:port string used by Connectivity Check
+  const hostForPort = ip || asset;
+  const hostPort = hostForPort && port ? `${hostForPort}:${port}` : "";
+
+  const links: ToolLink[] = [];
+
+  switch (cat) {
+    case "ports":
+    case "exposure": {
+      if (hostPort) {
+        links.push({
+          tool: "connectivity-check",
+          target: hostPort,
+          label: `Connectivity check ${hostPort}/${transport}`,
+        });
+      }
+      if (ip) {
+        links.push({ tool: "reverse-dns", target: ip, label: `Reverse DNS ${ip}` });
+      }
+      break;
+    }
+    case "ssl": {
+      if (asset) {
+        links.push({ tool: "cert-lookup", target: asset, label: `Certificate ${asset}` });
+        const t = port ? `${asset}:${port}` : `${asset}:443`;
+        links.push({ tool: "connectivity-check", target: t, label: `Connectivity ${t}` });
+      }
+      break;
+    }
+    case "headers": {
+      if (asset) {
+        links.push({ tool: "header-check", target: asset, label: `Header check ${asset}` });
+      }
+      break;
+    }
+    case "dns": {
+      // SPF/DKIM/DMARC findings are best served by the dedicated email-
+      // security tool; everything else by DNS Lookup.
+      const isEmailAuth = /spf|dkim|dmarc|email-auth|email_auth/.test(tplOrTags);
+      if (asset) {
+        if (isEmailAuth) {
+          links.push({ tool: "email-security", target: asset, label: `Email security ${asset}` });
+          links.push({ tool: "dns-lookup", target: asset, label: `DNS lookup ${asset}` });
+        } else {
+          links.push({ tool: "dns-lookup", target: asset, label: `DNS lookup ${asset}` });
+        }
+      }
+      break;
+    }
+    case "tech":
+    case "technology": {
+      if (asset) {
+        links.push({ tool: "header-check", target: asset, label: `Header check ${asset}` });
+      }
+      if (hostPort) {
+        links.push({ tool: "connectivity-check", target: hostPort, label: `Connectivity ${hostPort}` });
+      }
+      break;
+    }
+    case "cloud": {
+      if (asset) {
+        links.push({ tool: "dns-lookup", target: asset, label: `DNS lookup ${asset}` });
+      }
+      if (ip) {
+        links.push({ tool: "whois", target: ip, label: `WHOIS ${ip}` });
+      }
+      break;
+    }
+    case "api": {
+      if (asset) {
+        links.push({
+          tool: "sensitive-paths",
+          target: asset,
+          label: `Exposed paths on ${asset}`,
+        });
+      }
+      break;
+    }
+    case "cve":
+    case "vulnerability": {
+      if (hostPort) {
+        links.push({ tool: "connectivity-check", target: hostPort, label: `Connectivity ${hostPort}` });
+      } else if (asset) {
+        links.push({ tool: "connectivity-check", target: asset, label: `Connectivity ${asset}` });
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  return links.slice(0, 2);
+}
+
+function VerifyWithToolsSection({ finding }: { finding: any }) {
+  const links = buildToolLinks(finding);
+  if (links.length === 0) return null;
+  return (
+    <Section icon={<Plug className="w-4 h-4" />} title="Verify with lookup tools">
+      <div className="flex flex-wrap gap-2">
+        {links.map((link) => (
+          <Link
+            key={`${link.tool}-${link.target}`}
+            href={`/tools?tool=${encodeURIComponent(link.tool)}&target=${encodeURIComponent(link.target)}&autorun=1`}
+            className="inline-flex items-center gap-1.5 rounded-md border border-teal-500/30 bg-teal-500/[0.06] px-3 py-1.5 text-xs font-medium text-teal-300 hover:bg-teal-500/[0.12] hover:text-teal-200 transition-colors"
+          >
+            <ExternalLink className="w-3 h-3" />
+            {link.label}
+          </Link>
+        ))}
+      </div>
+      <p className="mt-2 text-[11px] text-muted-foreground/60">
+        Opens the tools workspace pre-filled and auto-runs the check. Useful for
+        confirming the finding is still live before triaging it.
+      </p>
+    </Section>
   );
 }
 
@@ -839,6 +990,9 @@ export function FindingDetailsDialog({
               <div className="text-sm text-muted-foreground">{"\u2014"}</div>
             )}
           </Section>
+
+          {/* Verify with lookup tools \u2014 self-render hides when no relevant tool maps */}
+          <VerifyWithToolsSection finding={finding} />
 
           {/* Nano EASM Assistant \u2014 slim banner when collapsed, full panel when expanded */}
           <NanoAiBar state={aiState} onLoad={() => loadAiExplanation(id)} />

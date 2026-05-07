@@ -10,7 +10,7 @@ import { register, apiFetch, startOAuth, resendVerification } from "../../lib/ap
 
 const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true";
 const MICROSOFT_ENABLED = process.env.NEXT_PUBLIC_MICROSOFT_OAUTH_ENABLED === "true";
-import { establishSession, type AuthRole } from "../../lib/auth";
+import { establishSession, isLoggedIn, type AuthRole } from "../../lib/auth";
 import { BILLING_ENABLED } from "../../lib/billing-config";
 
 import { getNames } from "country-list";
@@ -68,6 +68,17 @@ function RegisterPageInner() {
     const n = searchParams?.get("next");
     return n && n.startsWith("/") ? n : "/assets";
   }, [searchParams]);
+
+  // Already-logged-in users hitting /register get bounced to their dashboard
+  // (or the requested nextPath). Invite flows still need the form because
+  // the invite token has to be redeemed against this specific account
+  // creation — punt the redirect when an invite is present.
+  useEffect(() => {
+    if (inviteToken) return;
+    if (isLoggedIn()) {
+      router.replace(nextPath);
+    }
+  }, [inviteToken, nextPath, router]);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");

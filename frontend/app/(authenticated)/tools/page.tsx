@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Lock, Globe, Shield, FileText, Search, RefreshCcw,
   Loader2, ChevronDown, ChevronUp, Plug, Mail,
@@ -1693,6 +1694,83 @@ export default function ToolsPage() {
   }, [panels, maxPanels, runTool]);
 
   const clearHistory = useCallback(() => setHistory([]), []);
+
+  // ── Deep-link from finding/alert detail panels ──────────────────────
+  // URL contract: /tools?tool=<id>&target=<value>&autorun=1
+  // - Spawns or focuses a panel for `tool` with the target pre-filled.
+  // - When autorun=1, runs it as soon as the panel is mounted.
+  // Single-shot: a guard ref ensures it only fires once per page load,
+  // and the URL params are stripped after processing so a refresh
+  // doesn't re-trigger the same run.
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const deepLinkHandled = useRef(false);
+  // The setTimeout(() => runTool(newUid)) pattern that openInTool uses
+  // works for click-triggered flows (state has flushed by the time the
+  // closure runs) but races React's mount-time render path. Instead we
+  // park the request in a ref and let a separate effect — keyed on
+  // panels — pick it up the moment the new panel appears in state.
+  const pendingDeepLinkRunRef = useRef<{ uid: number; target: string } | null>(null);
+
+  useEffect(() => {
+    if (deepLinkHandled.current) return;
+    const tool = searchParams?.get("tool");
+    const target = searchParams?.get("target");
+    const autorun = searchParams?.get("autorun") === "1";
+    if (!tool || !target || !TOOL_MAP[tool]) return;
+    deepLinkHandled.current = true;
+
+    const trimmed = target.trim();
+    const existing = panels.find((p) => p.toolId === tool);
+    if (existing) {
+      setPanels((p) =>
+        p.map((x) => (x.uid === existing.uid ? { ...x, localTarget: trimmed } : x))
+      );
+      if (autorun) pendingDeepLinkRunRef.current = { uid: existing.uid, target: trimmed };
+    } else if (panels.length < maxPanels) {
+      const newUid = nextUid.current++;
+      const cols = Math.min(panels.length + 1, 3);
+      setPanels((p) => [
+        ...p,
+        {
+          uid: newUid,
+          toolId: tool as ToolId,
+          localTarget: trimmed,
+          status: "idle",
+          result: null,
+          error: null,
+          execMs: null,
+          expanded: false,
+          widthPct: 100 / cols,
+          heightPx: LAYOUT.DEFAULT_HEIGHT_PX,
+        },
+      ]);
+      if (autorun) pendingDeepLinkRunRef.current = { uid: newUid, target: trimmed };
+    } else {
+      setAlertBanner({
+        kind: "err",
+        text: `Panel limit reached (${maxPanels}). Remove one to add another.`,
+      });
+    }
+
+    // Strip the params so a refresh doesn't re-fire the run.
+    router.replace("/tools", { scroll: false });
+    // We intentionally read panels/maxPanels/router from the closure at
+    // mount; the deepLinkHandled guard prevents re-execution if any of
+    // these change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fire the pending autorun once the deep-link panel is actually in
+  // the panels array (so runTool's panels.find succeeds).
+  useEffect(() => {
+    const pending = pendingDeepLinkRunRef.current;
+    if (!pending) return;
+    const panel = panels.find((p) => p.uid === pending.uid);
+    if (!panel) return;
+    pendingDeepLinkRunRef.current = null;
+    runTool(pending.uid, pending.target);
+  }, [panels, runTool]);
 
   // Build and copy a shareable URL containing the current workspace
   // shape (#28). Clipboard write is wrapped because some browsers

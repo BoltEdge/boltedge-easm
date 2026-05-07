@@ -2,13 +2,13 @@
 // F4: Redesigned login with split layout, Nano EASM branding
 "use client";
 
-import React, { useMemo, useState, Suspense } from "react";
+import React, { useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, Loader2, Mail } from "lucide-react";
 
 import { login, startOAuth, resendVerification } from "../../lib/api";
-import { establishSession, type AuthRole } from "../../lib/auth";
+import { establishSession, isLoggedIn, type AuthRole } from "../../lib/auth";
 
 const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true";
 const MICROSOFT_ENABLED = process.env.NEXT_PUBLIC_MICROSOFT_OAUTH_ENABLED === "true";
@@ -68,6 +68,17 @@ function LoginPageInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showExpiredBanner, setShowExpiredBanner] = useState(isExpired);
+
+  // Already-logged-in users hitting /login should land on their dashboard
+  // (or the requested nextPath) instead of seeing the form. Don't bounce
+  // when the URL says the session expired — that copy is the whole point
+  // of the visit; let them re-authenticate.
+  useEffect(() => {
+    if (isExpired) return;
+    if (isLoggedIn()) {
+      router.replace(nextPath);
+    }
+  }, [isExpired, nextPath, router]);
 
   // Email-verification gate — set when login returns 403 EMAIL_NOT_VERIFIED.
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
