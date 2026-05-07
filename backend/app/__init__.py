@@ -422,12 +422,21 @@ def create_app() -> Flask:
 
             def _check_trials():
                 with app.app_context():
-                    from app.billing.routes import check_expired_trials
+                    from app.billing.routes import (
+                        check_expired_trials,
+                        check_expired_free_upgrades,
+                        send_free_upgrade_expiry_warnings,
+                    )
+                    log = logging.getLogger(__name__)
                     count = check_expired_trials()
                     if count:
-                        logging.getLogger(__name__).info(
-                            "Auto-downgraded %d expired trial(s)", count
-                        )
+                        log.info("Auto-downgraded %d expired trial(s)", count)
+                    free_count = check_expired_free_upgrades()
+                    if free_count:
+                        log.info("Auto-downgraded %d expired free-upgrade(s)", free_count)
+                    warn_count = send_free_upgrade_expiry_warnings()
+                    if warn_count:
+                        log.info("Sent %d free-upgrade expiry warning(s)", warn_count)
 
             trial_scheduler.add_job(_check_trials, "interval", hours=1)
             trial_scheduler.start()

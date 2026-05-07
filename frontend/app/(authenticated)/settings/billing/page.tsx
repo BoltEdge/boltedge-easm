@@ -313,6 +313,11 @@ export default function BillingPage() {
     free: "#6b7280", starter: "#00b8d4", professional: "#7c5cfc",
     enterprise_silver: "#ff8800", enterprise_gold: "#ffd700",
   };
+  // Plans that the auto-upgrade flow grants without admin/sales
+  // involvement (must match backend AUTO_FREE_UPGRADE_PLANS in
+  // app/billing/routes.py). Higher tiers route through the contact
+  // form so the operator can manually decide.
+  const AUTO_FREE_UPGRADE_PLANS = new Set(["free", "starter", "professional"]);
 
   function UsageBar({ label, current, limit }: { label: string; current: number; limit: number }) {
     const isUnlimited = limit === -1;
@@ -541,6 +546,25 @@ export default function BillingPage() {
                     {p.limits.webhooks && <li className="text-xs text-muted-foreground flex items-center gap-1.5"><Check className="w-3 h-3 text-[#10b981]" />Webhooks</li>}
                   </ul>
 
+                  {/* Free-upgrade badge (only when billing is disabled and
+                      not on this card's plan). Auto-upgrade tiers get an
+                      emerald pill; contact-required tiers get an amber
+                      pill so the user can see at a glance which path
+                      this plan needs. */}
+                  {!BILLING_ENABLED && !isCurrent && p.key !== "free" && (
+                    <div className="mb-2">
+                      {AUTO_FREE_UPGRADE_PLANS.has(p.key) ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+                          Free upgrade available
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                          Free upgrade — contact us
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     {isCurrent ? (
                       <Button variant="outline" disabled className="w-full border-border text-muted-foreground">Current Plan</Button>
@@ -568,9 +592,23 @@ export default function BillingPage() {
                             : <>Downgrade to {p.label}</>}
                       </Button>
                     ) : isUpgrade ? (
-                      <Button onClick={() => setShowUpgrade(p.key)} className="w-full bg-primary hover:bg-primary/90">
-                        {BILLING_ENABLED ? `Upgrade to ${p.label}` : `Switch to ${p.label}`}
-                      </Button>
+                      // Auto-upgrade vs contact-required gating. When
+                      // billing is off and the target plan isn't in the
+                      // auto-grant set, route to the contact form
+                      // instead of opening the confirm dialog (the
+                      // backend would 403 with contactRequired anyway).
+                      !BILLING_ENABLED && !AUTO_FREE_UPGRADE_PLANS.has(p.key) ? (
+                        <a
+                          href={`/?type=upgrade&plan=${p.key}#contact`}
+                          className="w-full inline-flex items-center justify-center rounded-md bg-primary hover:bg-primary/90 text-primary-foreground h-10 px-4 text-sm font-medium"
+                        >
+                          Contact us for upgrade
+                        </a>
+                      ) : (
+                        <Button onClick={() => setShowUpgrade(p.key)} className="w-full bg-primary hover:bg-primary/90">
+                          {BILLING_ENABLED ? `Upgrade to ${p.label}` : `Upgrade free to ${p.label}`}
+                        </Button>
+                      )
                     ) : isDowngrade ? (
                       <Button variant="outline" onClick={() => setShowUpgrade(p.key)} className="w-full border-border text-foreground hover:bg-accent">
                         {BILLING_ENABLED ? `Downgrade to ${p.label}` : `Switch to ${p.label}`}

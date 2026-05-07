@@ -126,6 +126,11 @@ def _org_row(org: Organization, asset_count: int | None = None) -> dict:
         "isActive": org.is_active,
         "isSuspended": org.is_suspended,
         "createdAt": org.created_at.isoformat() + "Z" if org.created_at else None,
+        "planExpiresAt": org.plan_expires_at.isoformat() + "Z" if org.plan_expires_at else None,
+        "freeUpgradeStartedAt": (
+            org.free_upgrade_started_at.isoformat() + "Z"
+            if org.free_upgrade_started_at else None
+        ),
     }
 
 
@@ -278,6 +283,10 @@ def get_organization(org_id: int):
         planStatus=org.plan_status,
         planStartedAt=org.plan_started_at.isoformat() + "Z" if org.plan_started_at else None,
         planExpiresAt=org.plan_expires_at.isoformat() + "Z" if org.plan_expires_at else None,
+        freeUpgradeStartedAt=(
+            org.free_upgrade_started_at.isoformat() + "Z"
+            if org.free_upgrade_started_at else None
+        ),
         isActive=org.is_active,
         isSuspended=org.is_suspended,
         limitOverrides=org.limit_overrides or {},
@@ -423,6 +432,185 @@ def set_org_plan(org_id: int):
         trialEmailSent=trial_email_sent,
         notifiedEmail=notified_email,
     ), 200
+
+
+# ════════════════════════════════════════════════════════════════
+# FREE-UPGRADE MANAGEMENT (admin)
+# ════════════════════════════════════════════════════════════════
+#
+# Three actions for the org-detail page's free-upgrade panel:
+#   - extend: add N days to plan_expires_at
+#   - stop: end the upgrade now (downgrade to Free)
+#   - send-warning: trigger an "expiring soon" email to the org now
+#
+# All three are superadmin-only and audit-logged. The user-facing
+# upgrade flow lives in app/billing/routes.py:upgrade — these admin
+# endpoints just manipulate the resulting state.
+
+
+@admin_bp.post("/organizations/<int:org_id>/free-upgrade/extend")
+@require_superadmin
+def admin_extend_free_upgrade(org_id: int):
+    """Extend the org's free upgrade by N days. Common values: 30, 90.
+    Custom date supported via `until` (ISO). One of `days` or `until`
+    is required."""
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+    from app.billing.routes import PLAN_CONFIG
+
+    org = Organization.query.get(org_id)
+    if not org:
+        return jsonify(error="not found"), 404
+
+    body = request.get_json(silent=True) or {}
+    days = body.get("days")
+    until_raw = body.get("until")
+
+    now = _dt.now(_tz.utc).replace(tzinfo=None)
+    base = org.plan_expires_at if org.plan_expires_at and org.plan_expires_at > now else now
+    new_expiry = None
+    if isinstance(days, int) and days > 0 and days <= 365:
+        new_expiry = base + _td(days=days)
+    elif until_raw:
+        try:
+            new_expiry = _dt.fromisoformat(str(until_raw).replace("Z", ""))
+            if new_expiry <= now:
+                return jsonify(error="`until` must be in the future."), 400
+        except Exception:
+            return jsonify(error="`until` must be ISO-8601."), 400
+    else:
+        return jsonify(error="Provide `days` (1-365) or `until` (ISO-8601)."), 400
+
+    old_expiry = org.plan_expires_at
+    org.plan_expires_at = new_expiry
+    if not org.free_upgrade_started_at:
+        # First-time extension on an org that pre-dates the flag —
+        # backfill the start to now so the admin UI shows something
+        # sensible instead of "started: never".
+        org.free_upgrade_started_at = now
+
+    log_audit(
+        organization_id=None,
+        user_id=g.current_user.id,
+        action="admin.free_upgrade_extended",
+        category="admin",
+        target_type="organization",
+        target_id=str(org.id),
+        target_label=org.name,
+        description=(
+            f"Free upgrade extended from "
+            f"{old_expiry.isoformat() if old_expiry else 'none'} to "
+            f"{new_expiry.isoformat()}"
+        ),
+        metadata={
+            "old_expires_at": old_expiry.isoformat() if old_expiry else None,
+            "new_expires_at": new_expiry.isoformat(),
+            "plan": org.plan,
+            "added_days": days,
+            "until": str(until_raw) if until_raw else None,
+        },
+    )
+    db.session.commit()
+
+    return jsonify(
+        message=f"Free upgrade extended to {new_expiry.isoformat()}Z.",
+        org=_org_row(org),
+        planExpiresAt=org.plan_expires_at.isoformat() + "Z",
+    ), 200
+
+
+@admin_bp.post("/organizations/<int:org_id>/free-upgrade/stop")
+@require_superadmin
+def admin_stop_free_upgrade(org_id: int):
+    """End the org's free upgrade now — downgrade to Free immediately."""
+    from datetime import datetime as _dt, timezone as _tz
+    from app.billing.routes import PLAN_CONFIG
+
+    org = Organization.query.get(org_id)
+    if not org:
+        return jsonify(error="not found"), 404
+
+    if org.plan == "free":
+        return jsonify(message="Org is already on the Free plan.", org=_org_row(org)), 200
+
+    now = _dt.now(_tz.utc).replace(tzinfo=None)
+    old_plan = org.plan
+    org.plan = "free"
+    org.plan_status = "active"
+    org.plan_started_at = now
+    org.plan_expires_at = None
+    org.free_upgrade_started_at = None
+    org.billing_cycle = None
+    org.asset_limit = PLAN_CONFIG["free"]["limits"]["assets"]
+
+    log_audit(
+        organization_id=None,
+        user_id=g.current_user.id,
+        action="admin.free_upgrade_stopped",
+        category="admin",
+        target_type="organization",
+        target_id=str(org.id),
+        target_label=org.name,
+        description=f"Free upgrade stopped early (was on {old_plan}); downgraded to Free.",
+        metadata={"previous_plan": old_plan},
+    )
+    db.session.commit()
+
+    return jsonify(message="Free upgrade stopped; org is now on Free.", org=_org_row(org)), 200
+
+
+@admin_bp.post("/organizations/<int:org_id>/free-upgrade/send-warning")
+@require_superadmin
+def admin_send_free_upgrade_warning(org_id: int):
+    """Manually send an "upgrade about to expire" email to this org.
+    Independent of the auto T-5 / T-1 scheduler — useful for off-cycle
+    nudges (e.g., admin spots an org that hasn't responded to the
+    automatic emails)."""
+    from datetime import datetime as _dt, timezone as _tz
+    from app.billing.routes import PLAN_CONFIG
+    from app.billing.emails import send_free_upgrade_warning
+
+    org = Organization.query.get(org_id)
+    if not org:
+        return jsonify(error="not found"), 404
+
+    if not org.plan_expires_at:
+        return jsonify(error="Org has no active free upgrade to warn about."), 400
+
+    now = _dt.now(_tz.utc).replace(tzinfo=None)
+    days_remaining = max(0, (org.plan_expires_at - now).days)
+    config = PLAN_CONFIG.get(org.plan, {})
+
+    sent = False
+    try:
+        sent = send_free_upgrade_warning(
+            org,
+            plan_label=config.get("label", org.plan),
+            expires_at=org.plan_expires_at,
+            days_remaining=days_remaining,
+        )
+    except Exception:
+        pass
+
+    log_audit(
+        organization_id=None,
+        user_id=g.current_user.id,
+        action="admin.free_upgrade_warning_sent_manual",
+        category="admin",
+        target_type="organization",
+        target_id=str(org.id),
+        target_label=org.name,
+        description=(
+            f"Manually sent free-upgrade expiry warning ({days_remaining} days remaining)."
+            if sent
+            else "Attempted to send free-upgrade warning but email send failed."
+        ),
+        metadata={"days_remaining": days_remaining, "plan": org.plan, "sent": sent},
+    )
+    db.session.commit()
+
+    if not sent:
+        return jsonify(error="Email send failed — no recipient or Resend error."), 502
+    return jsonify(message=f"Warning email sent ({days_remaining} days remaining).", sent=True), 200
 
 
 @admin_bp.post("/organizations/<int:org_id>/limits")

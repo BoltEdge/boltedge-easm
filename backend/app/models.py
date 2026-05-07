@@ -134,6 +134,14 @@ class Organization(db.Model):
     
     # Trial tracking
     trial_ends_at = db.Column(db.DateTime, nullable=True)
+
+    # Free-upgrade tracking. While the operator company isn't registered
+    # for real billing, users self-serve a 30-day grant of Starter /
+    # Professional. plan_expires_at carries the expiry; this column
+    # records when the most recent free-upgrade started so the admin
+    # console can show "started X days ago" without subtracting back
+    # from expiry. NULL when the org has never taken a free upgrade.
+    free_upgrade_started_at = db.Column(db.DateTime, nullable=True)
     
     # Billing cycle: monthly, annual
     billing_cycle = db.Column(db.String(20), nullable=True)

@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
   getAdminOrganization, setAdminOrgPlan, archiveAdminOrg,
   suspendAdminOrg, deleteAdminOrg, setAdminOrgLimits,
+  extendAdminFreeUpgrade, stopAdminFreeUpgrade, sendAdminFreeUpgradeWarning,
 } from "../../../../lib/api";
 import {
   ArrowLeft, Globe, Archive, ArchiveRestore, ShieldOff, ShieldCheck,
@@ -179,6 +180,49 @@ export default function OrgDetailPage() {
       setBanner({ kind: "err", text: e?.message || "Failed to save limits" });
     } finally {
       setLimitsBusy(false); }
+  }
+
+  // ── Free-upgrade admin actions ────────────────────────────────────
+  // The user-facing /billing/upgrade endpoint grants the initial
+  // 30-day window. These admin handlers let the operator extend it,
+  // stop it early, or send an off-cycle expiry warning email — all
+  // backed by the admin endpoints in app/admin/routes.py.
+  const [freeUpgradeBusy, setFreeUpgradeBusy] = useState(false);
+
+  async function handleExtendFreeUpgrade(days: number) {
+    if (!id) return;
+    setFreeUpgradeBusy(true);
+    try {
+      const res = await extendAdminFreeUpgrade(Number(id), { days });
+      setBanner({ kind: "ok", text: res?.message || `Extended by ${days} days.` });
+      load();
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || "Extend failed." });
+    } finally { setFreeUpgradeBusy(false); }
+  }
+
+  async function handleStopFreeUpgrade() {
+    if (!id) return;
+    if (!confirm("Stop this org's free upgrade now? They will be downgraded to Free immediately.")) return;
+    setFreeUpgradeBusy(true);
+    try {
+      const res = await stopAdminFreeUpgrade(Number(id));
+      setBanner({ kind: "ok", text: res?.message || "Free upgrade stopped." });
+      load();
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || "Stop failed." });
+    } finally { setFreeUpgradeBusy(false); }
+  }
+
+  async function handleSendFreeUpgradeWarning() {
+    if (!id) return;
+    setFreeUpgradeBusy(true);
+    try {
+      const res = await sendAdminFreeUpgradeWarning(Number(id));
+      setBanner({ kind: "ok", text: res?.message || "Warning email sent." });
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || "Send failed." });
+    } finally { setFreeUpgradeBusy(false); }
   }
 
   if (loading) return <div className="text-white/40 text-sm">Loading…</div>;
@@ -376,6 +420,92 @@ export default function OrgDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Free-upgrade tracking — shown only when this org is on a free
+          upgrade (i.e. plan_expires_at is set and they're not on Free).
+          Lets operators extend, stop, or manually send the expiry
+          warning email without leaving the org-detail page. */}
+      {org.planExpiresAt && org.plan !== "free" && (() => {
+        const expiryMs = new Date(org.planExpiresAt).getTime();
+        const daysLeft = Math.ceil((expiryMs - Date.now()) / 86_400_000);
+        const isExpired = daysLeft < 0;
+        const isUrgent = !isExpired && daysLeft <= 5;
+        const startedDays = org.freeUpgradeStartedAt
+          ? Math.floor((Date.now() - new Date(org.freeUpgradeStartedAt).getTime()) / 86_400_000)
+          : null;
+        const tone = isExpired ? "border-red-500/40 bg-red-500/[0.04]"
+          : isUrgent ? "border-amber-500/40 bg-amber-500/[0.04]"
+          : "border-emerald-500/30 bg-emerald-500/[0.04]";
+        return (
+          <div className={`rounded-xl border ${tone} p-5`}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-white">Free upgrade</h2>
+              <span className={`text-[11px] font-semibold ${isExpired ? "text-red-300" : isUrgent ? "text-amber-300" : "text-emerald-300"}`}>
+                {isExpired
+                  ? `Expired ${Math.abs(daysLeft)} day${Math.abs(daysLeft) === 1 ? "" : "s"} ago`
+                  : daysLeft === 0
+                    ? "Expires today"
+                    : daysLeft === 1
+                      ? "Expires tomorrow"
+                      : `${daysLeft} days remaining`}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs mb-4">
+              <div>
+                <div className="text-white/30 mb-0.5">Started</div>
+                <div className="text-white/70">
+                  {org.freeUpgradeStartedAt ? formatDate(org.freeUpgradeStartedAt) : "—"}
+                  {startedDays !== null && startedDays >= 0 && (
+                    <span className="text-white/30 ml-1.5">
+                      ({startedDays === 0 ? "today" : `${startedDays}d ago`})
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <div className="text-white/30 mb-0.5">Expires</div>
+                <div className="text-white/70">{formatDate(org.planExpiresAt)}</div>
+              </div>
+              <div>
+                <div className="text-white/30 mb-0.5">Plan</div>
+                <div className="font-semibold" style={{ color: planColor }}>
+                  {PLAN_LABELS[org.plan] || org.plan}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleExtendFreeUpgrade(30)}
+                disabled={freeUpgradeBusy}
+                className="px-3 py-1.5 rounded text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors disabled:opacity-50"
+              >
+                Extend +30 days
+              </button>
+              <button
+                onClick={() => handleExtendFreeUpgrade(90)}
+                disabled={freeUpgradeBusy}
+                className="px-3 py-1.5 rounded text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors disabled:opacity-50"
+              >
+                Extend +90 days
+              </button>
+              <button
+                onClick={handleSendFreeUpgradeWarning}
+                disabled={freeUpgradeBusy}
+                className="px-3 py-1.5 rounded text-xs font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition-colors disabled:opacity-50"
+              >
+                Send expiring-soon email
+              </button>
+              <button
+                onClick={handleStopFreeUpgrade}
+                disabled={freeUpgradeBusy}
+                className="px-3 py-1.5 rounded text-xs font-medium bg-red-500/15 text-red-300 border border-red-500/30 hover:bg-red-500/25 transition-colors disabled:opacity-50 ml-auto"
+              >
+                Stop now → downgrade to Free
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Members */}
       <div className="rounded-xl border border-white/[0.06] overflow-hidden">

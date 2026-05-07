@@ -26,6 +26,22 @@ from flask import Blueprint, request, jsonify, g
 # When False: upgrades are free (no expiry set), trial logic skipped in UI.
 # Set ENABLE_BILLING=true in environment to restore full billing behaviour.
 ENABLE_BILLING = os.environ.get("ENABLE_BILLING", "false").lower() == "true"
+
+# Free-upgrade kill switch. While the operator company isn't registered
+# for real billing, users can self-serve a 30-day grant of Starter or
+# Professional (auto-upgrade) without admin involvement. Higher tiers
+# still require contact. Flip to false once real billing is wired and
+# the auto-upgrade buttons should disappear from the Plans page.
+FREE_UPGRADES_ENABLED = os.environ.get("FREE_UPGRADES_ENABLED", "true").lower() == "true"
+
+# Plans the auto-upgrade endpoint will grant without admin involvement.
+# Higher tiers (enterprise_silver / enterprise_gold) are routed through
+# the contact form so the operator can decide whether to grant.
+AUTO_FREE_UPGRADE_PLANS = {"free", "starter", "professional"}
+
+# Length of each free upgrade grant. Resets on every successful upgrade
+# (a user hopping between tiers gets a fresh 30 days each time).
+FREE_UPGRADE_DURATION_DAYS = 30
 from app.extensions import db
 from app.auth.decorators import require_auth, current_user_id, current_organization_id
 from app.models import Organization, TrialHistory, OrganizationMember, Asset
@@ -568,6 +584,29 @@ def upgrade():
             trial_record.outcome = "converted"
             trial_record.ended_at = now
 
+    # Free-upgrade gating. While billing is disabled and free upgrades
+    # are enabled, self-serve grants are limited to the Free / Starter /
+    # Professional tier set. Higher tiers (Enterprise Silver / Gold)
+    # need admin involvement so the operator can decide whether to
+    # extend a 30-day grant. Refused with `contactRequired=true` so
+    # the frontend can route the visitor to the contact form.
+    is_free_upgrade = (not ENABLE_BILLING) and FREE_UPGRADES_ENABLED
+    if is_free_upgrade and target_plan not in AUTO_FREE_UPGRADE_PLANS:
+        return jsonify(
+            error=(
+                f"The {config['label']} plan isn't available as a self-serve "
+                f"free upgrade yet. Please contact us and we'll grant it manually."
+            ),
+            contactRequired=True,
+            plan=target_plan,
+        ), 403
+
+    if not ENABLE_BILLING and not FREE_UPGRADES_ENABLED:
+        return jsonify(
+            error="Plan upgrades are currently disabled. Please contact us.",
+            contactRequired=True,
+        ), 403
+
     org.plan = target_plan
     org.plan_status = "active"
     org.plan_started_at = now
@@ -580,8 +619,18 @@ def upgrade():
             org.plan_expires_at = now + timedelta(days=365)
         else:
             org.plan_expires_at = now + timedelta(days=30)
+        # Real billing — clear any prior free-upgrade timestamp.
+        org.free_upgrade_started_at = None
+    elif is_free_upgrade and target_plan != "free":
+        # Self-serve free upgrade: grant a fresh 30 days. Stamping
+        # free_upgrade_started_at on every grant means a user hopping
+        # between tiers always gets a clean 30-day clock — matches the
+        # user's "reset on each upgrade" requirement.
+        org.plan_expires_at = now + timedelta(days=FREE_UPGRADE_DURATION_DAYS)
+        org.free_upgrade_started_at = now
     else:
-        org.plan_expires_at = None  # no expiry when billing is disabled
+        org.plan_expires_at = None
+        org.free_upgrade_started_at = None
 
     log_audit(
         organization_id=org.id,
@@ -591,11 +640,31 @@ def upgrade():
         target_type="organization",
         target_id=str(org.id),
         target_label=org.name,
-        description=f"Upgraded to {config['label']} ({billing_cycle})",
-        metadata={"old_plan": old_plan, "new_plan": target_plan, "billing_cycle": billing_cycle, "from_trial": old_status == "trialing"},
+        description=(
+            f"Free upgrade to {config['label']} ({FREE_UPGRADE_DURATION_DAYS} days)"
+            if is_free_upgrade and target_plan != "free"
+            else f"Upgraded to {config['label']} ({billing_cycle})"
+        ),
+        metadata={
+            "old_plan": old_plan,
+            "new_plan": target_plan,
+            "billing_cycle": billing_cycle,
+            "from_trial": old_status == "trialing",
+            "free_upgrade": bool(is_free_upgrade and target_plan != "free"),
+            "expires_at": org.plan_expires_at.isoformat() if org.plan_expires_at else None,
+        },
     )
 
     db.session.commit()
+
+    # Send confirmation email — best-effort. A failure here doesn't undo
+    # the upgrade itself; the user has the upgrade either way.
+    if is_free_upgrade and target_plan != "free":
+        try:
+            from app.billing.emails import send_free_upgrade_confirmation
+            send_free_upgrade_confirmation(org, plan_label=config["label"], expires_at=org.plan_expires_at)
+        except Exception:
+            logger.exception("Free-upgrade confirmation email failed for org %s", org.id)
 
     return jsonify(
         message=f"Upgraded to {config['label']}!",
@@ -810,6 +879,138 @@ def check_expired_trials():
         db.session.commit()
 
     return len(expired_orgs)
+
+
+def check_expired_free_upgrades():
+    """Auto-downgrade orgs whose free upgrade has run out.
+
+    Mirrors check_expired_trials() but keys off plan_expires_at
+    (set when the user clicked the auto-upgrade button) instead of
+    trial_ends_at (set when admin grants a request-based trial).
+    Both can co-exist; a single org will only be on one path at a
+    time. Best-effort — never raises."""
+    if ENABLE_BILLING:
+        # Real billing is on — Stripe drives plan_expires_at via
+        # subscription events, not the free-upgrade flow. Skip.
+        return 0
+    now = _now_utc()
+    expired_orgs = Organization.query.filter(
+        Organization.plan_status == "active",
+        Organization.plan != "free",
+        Organization.plan_expires_at != None,  # noqa: E711
+        Organization.plan_expires_at <= now,
+    ).all()
+
+    for org in expired_orgs:
+        old_plan = org.plan
+        org.plan = "free"
+        org.plan_status = "active"
+        org.plan_started_at = now
+        org.plan_expires_at = None
+        org.free_upgrade_started_at = None
+        org.billing_cycle = None
+        org.asset_limit = PLAN_CONFIG["free"]["limits"]["assets"]
+
+        log_audit(
+            organization_id=org.id,
+            user_id=None,
+            action="billing.free_upgrade_expired",
+            category="billing",
+            target_type="organization",
+            target_id=str(org.id),
+            target_label=org.name,
+            description=(
+                f"Free upgrade expired for {PLAN_CONFIG.get(old_plan, {}).get('label', old_plan)}, "
+                f"downgraded to Free"
+            ),
+            metadata={"expired_plan": old_plan},
+        )
+
+    if expired_orgs:
+        db.session.commit()
+
+    return len(expired_orgs)
+
+
+def send_free_upgrade_expiry_warnings():
+    """Send T-5 and T-1 day warning emails for active free upgrades.
+
+    Idempotency: this runs hourly, so each org could receive a given
+    warning up to 24 times before expiry. We dedupe by stamping a
+    flag on the audit log — checked via the most recent
+    `billing.free_upgrade_warning_sent` audit row for the org. Cheap
+    and avoids a new column."""
+    if ENABLE_BILLING:
+        return 0
+    from datetime import timedelta as _td
+    from app.models import AuditLog
+    from app.billing.emails import send_free_upgrade_warning
+
+    now = _now_utc()
+    sent = 0
+
+    # Pull all orgs whose plan_expires_at falls in the next 5 days
+    # (catches both T-5 and T-1 windows; the per-window dedupe is
+    # done below via the audit-log lookup).
+    upcoming_orgs = Organization.query.filter(
+        Organization.plan_status == "active",
+        Organization.plan != "free",
+        Organization.plan_expires_at != None,  # noqa: E711
+        Organization.plan_expires_at > now,
+        Organization.plan_expires_at <= now + _td(days=6),
+    ).all()
+
+    for org in upcoming_orgs:
+        days_remaining = (org.plan_expires_at - now).days
+        # Decide which window we're in. T-5 fires once when there's
+        # exactly 4 or 5 days left; T-1 fires once when there's 0 or
+        # 1 day left. Hourly schedule means we sweep every hour, so
+        # we use the audit log to ensure each window only sends once
+        # per upgrade grant.
+        window = None
+        if 4 <= days_remaining <= 5:
+            window = "t5"
+        elif 0 <= days_remaining <= 1:
+            window = "t1"
+        if window is None:
+            continue
+
+        # Dedupe: skip if we already sent this window's warning since
+        # the most recent free_upgrade_started_at.
+        since = org.free_upgrade_started_at or now - _td(days=60)
+        already_sent = AuditLog.query.filter(
+            AuditLog.organization_id == org.id,
+            AuditLog.action == "billing.free_upgrade_warning_sent",
+            AuditLog.created_at >= since,
+        ).all()
+        if any((a.metadata_json or {}).get("window") == window for a in already_sent):
+            continue
+
+        config = PLAN_CONFIG.get(org.plan, {})
+        ok = send_free_upgrade_warning(
+            org,
+            plan_label=config.get("label", org.plan),
+            expires_at=org.plan_expires_at,
+            days_remaining=days_remaining,
+        )
+        if ok:
+            sent += 1
+            log_audit(
+                organization_id=org.id,
+                user_id=None,
+                action="billing.free_upgrade_warning_sent",
+                category="billing",
+                target_type="organization",
+                target_id=str(org.id),
+                target_label=org.name,
+                description=f"Free-upgrade expiry warning ({window.upper()}) sent to org",
+                metadata={"window": window, "days_remaining": days_remaining,
+                          "plan": org.plan, "expires_at": org.plan_expires_at.isoformat()},
+            )
+
+    if sent:
+        db.session.commit()
+    return sent
 
 
 # ════════════════════════════════════════════════════════════════

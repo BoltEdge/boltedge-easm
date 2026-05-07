@@ -2028,6 +2028,31 @@ export async function deleteAdminOrg(orgId: number): Promise<any> {
   return apiFetch<any>(`/admin/organizations/${orgId}`, { method: "DELETE" });
 }
 
+// Free-upgrade admin actions. The user-facing /billing/upgrade endpoint
+// grants the initial 30 days; these admin endpoints let operators
+// extend, stop, or send manual expiry warnings without going through
+// the user-facing flow.
+export async function extendAdminFreeUpgrade(
+  orgId: number, opts: { days?: number; until?: string },
+): Promise<any> {
+  return apiFetch<any>(`/admin/organizations/${orgId}/free-upgrade/extend`, {
+    method: "POST",
+    body: JSON.stringify(opts),
+  });
+}
+
+export async function stopAdminFreeUpgrade(orgId: number): Promise<any> {
+  return apiFetch<any>(`/admin/organizations/${orgId}/free-upgrade/stop`, {
+    method: "POST",
+  });
+}
+
+export async function sendAdminFreeUpgradeWarning(orgId: number): Promise<any> {
+  return apiFetch<any>(`/admin/organizations/${orgId}/free-upgrade/send-warning`, {
+    method: "POST",
+  });
+}
+
 export async function suspendAdminUser(userId: number): Promise<any> {
   return apiFetch<any>(`/admin/users/${userId}/suspend`, { method: "POST" });
 }

@@ -567,3 +567,133 @@ def send_trial_approved_email(
     subject = f"Your {plan_label} trial is active — Nano EASM"
     html = shell(title=f"Your {plan_label} trial is active", body_html=body)
     return send_via_resend(to=to_email, subject=subject, html=html)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Free-upgrade emails
+# ─────────────────────────────────────────────────────────────────────
+#
+# Used while real billing is disabled and orgs self-serve a 30-day
+# upgrade to Starter / Professional. Three send paths share two
+# templates:
+#   1. Confirmation — sent on every successful upgrade
+#   2. Warning — sent (a) automatically at T-5 and T-1 days from
+#      expiry, and (b) manually by admins from the org-detail page
+#
+# Both are best-effort. Drop the email rather than block the upgrade
+# itself if Resend is unavailable.
+
+
+def _format_expiry(expires_at) -> str:
+    """Render a datetime as e.g. 'June 7, 2026'. NULL → 'soon'."""
+    if not expires_at:
+        return "soon"
+    try:
+        return expires_at.strftime("%B %-d, %Y")
+    except Exception:
+        # Windows strftime doesn't support %-d; fall back to %d.
+        try:
+            return expires_at.strftime("%B %d, %Y")
+        except Exception:
+            return str(expires_at)
+
+
+def send_free_upgrade_confirmation(
+    org: Organization,
+    *,
+    plan_label: str,
+    expires_at,
+) -> bool:
+    """Confirm a free 30-day upgrade has been activated."""
+    to_email = _recipient_for(org)
+    if not to_email:
+        logger.info("send_free_upgrade_confirmation: no recipient for org %s", org.id)
+        return False
+
+    fe = frontend_url()
+    expiry_str = _format_expiry(expires_at)
+
+    body = f"""
+    <p style="font-size:15px;line-height:1.6;color:{_TEXT_DARK};margin:0 0 14px 0;">
+      Your free upgrade to <strong>{plan_label}</strong> is now active on
+      <strong>{org.name}</strong>.
+    </p>
+    <p style="font-size:15px;line-height:1.6;color:{_TEXT_DARK};margin:0 0 14px 0;">
+      The grant runs until <strong>{expiry_str}</strong>. After that date your
+      organisation will return to the Free plan unless you reach out to
+      extend it.
+    </p>
+    <div style="margin:22px 0;">
+      <a href="{fe}/dashboard" style="display:inline-block;background:{_BRAND_TEAL};color:#fff;text-decoration:none;padding:11px 22px;border-radius:8px;font-weight:600;font-size:14px;">Open dashboard</a>
+    </div>
+    <p style="font-size:13px;line-height:1.6;color:{_TEXT_MUTED};margin:18px 0 0 0;">
+      Need more than 30 days, or want to talk pricing? Just reply to this
+      email — a real person reads every reply.
+    </p>
+    """
+
+    subject = f"Your {plan_label} upgrade is active — Nano EASM"
+    html = shell(title=f"{plan_label} upgrade activated", body_html=body)
+    try:
+        return send_via_resend(to=to_email, subject=subject, html=html)
+    except Exception:
+        logger.exception("send_free_upgrade_confirmation failed for org %s", org.id)
+        return False
+
+
+def send_free_upgrade_warning(
+    org: Organization,
+    *,
+    plan_label: str,
+    expires_at,
+    days_remaining: int,
+) -> bool:
+    """Warn that a free upgrade is about to expire.
+
+    Used by both the auto-scheduler (T-5 / T-1 days) and the admin-
+    triggered manual-send button. The same template covers all three;
+    the body adapts to the days_remaining count."""
+    to_email = _recipient_for(org)
+    if not to_email:
+        logger.info("send_free_upgrade_warning: no recipient for org %s", org.id)
+        return False
+
+    fe = frontend_url()
+    expiry_str = _format_expiry(expires_at)
+
+    if days_remaining <= 0:
+        when_phrase = "today"
+    elif days_remaining == 1:
+        when_phrase = "tomorrow"
+    else:
+        when_phrase = f"in {days_remaining} days"
+
+    body = f"""
+    <p style="font-size:15px;line-height:1.6;color:{_TEXT_DARK};margin:0 0 14px 0;">
+      Your <strong>{plan_label}</strong> free upgrade on
+      <strong>{org.name}</strong> expires <strong>{when_phrase}</strong>
+      ({expiry_str}).
+    </p>
+    <p style="font-size:15px;line-height:1.6;color:{_TEXT_DARK};margin:0 0 14px 0;">
+      When the grant ends your organisation will return to the Free plan.
+      Any monitors, scheduled scans, and assets above the Free-tier limits
+      will be paused — but no data is deleted, and you can re-upgrade any
+      time.
+    </p>
+    <div style="margin:22px 0;">
+      <a href="{fe}/settings/billing" style="display:inline-block;background:{_BRAND_TEAL};color:#fff;text-decoration:none;padding:11px 22px;border-radius:8px;font-weight:600;font-size:14px;">Review your plan</a>
+    </div>
+    <p style="font-size:13px;line-height:1.6;color:{_TEXT_MUTED};margin:18px 0 0 0;">
+      Want to keep going? Reply to this email and we'll extend it.
+    </p>
+    """
+
+    subject = (
+        f"Your {plan_label} upgrade expires {when_phrase} — Nano EASM"
+    )
+    html = shell(title=f"{plan_label} upgrade expiring {when_phrase}", body_html=body)
+    try:
+        return send_via_resend(to=to_email, subject=subject, html=html)
+    except Exception:
+        logger.exception("send_free_upgrade_warning failed for org %s", org.id)
+        return False

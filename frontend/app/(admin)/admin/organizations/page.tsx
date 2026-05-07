@@ -133,16 +133,16 @@ export default function AdminOrganizations() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/[0.06] bg-white/[0.02]">
-              {["Organization", "Plan", "Assets", "Members", "Scans/mo", "Created", "Change Plan", "Actions"].map((h) => (
+              {["Organization", "Plan", "Plan expires", "Assets", "Members", "Scans/mo", "Created", "Change Plan", "Actions"].map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-xs font-medium text-white/40">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-white/30 text-xs">Loading…</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-white/30 text-xs">Loading…</td></tr>
             ) : !data?.organizations?.length ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-white/30 text-xs">No organizations found.</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-white/30 text-xs">No organizations found.</td></tr>
             ) : data.organizations.map((org: any) => {
               const color = PLAN_COLORS[org.plan] || "#6b7280";
               const isActing = actionOrgId === org.id;
@@ -167,6 +167,26 @@ export default function AdminOrganizations() {
                     <span className="px-2 py-0.5 rounded text-[11px] font-semibold" style={{ backgroundColor: `${color}15`, color }}>
                       {PLAN_LABELS[org.plan] || org.plan}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {org.planExpiresAt ? (() => {
+                      const expiryMs = new Date(org.planExpiresAt).getTime();
+                      const daysLeft = Math.ceil((expiryMs - Date.now()) / 86_400_000);
+                      const tone = daysLeft < 0 ? "text-red-400"
+                        : daysLeft <= 5 ? "text-amber-300"
+                        : "text-white/50";
+                      const label = daysLeft < 0 ? "expired"
+                        : daysLeft === 0 ? "today"
+                        : daysLeft === 1 ? "in 1 day"
+                        : `in ${daysLeft}d`;
+                      return (
+                        <span className={tone} title={new Date(org.planExpiresAt).toLocaleString()}>
+                          {label}
+                        </span>
+                      );
+                    })() : (
+                      <span className="text-white/20">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-white/60">{org.assetsCount} / {org.assetLimit === -1 ? "∞" : org.assetLimit}</td>
                   <td className="px-4 py-3 text-white/60">{org.memberCount}</td>
