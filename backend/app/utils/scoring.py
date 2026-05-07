@@ -12,7 +12,18 @@
 #   60–80   = significant risk (criticals present or many highs)
 #   80–100  = critical posture, needs immediate action
 #
-# Only OPEN findings count — resolved, suppressed, and info are excluded.
+# Counts that count: callers must exclude RESOLVED and SUPPRESSED
+# findings before passing severity counts here. IN_PROGRESS and
+# ACCEPTED_RISK findings should still be included — both represent
+# real, unmitigated exposures the user has acknowledged but not fixed.
+# Info-severity findings contribute zero by design (see formula below).
+# Canonical filter helpers:
+#   - dashboard/routes.py:_counts_toward_exposure  (org rollup)
+#   - assets/routes.py     (per-asset)
+#   - groups/routes.py     (per-group)
+#   - trending/routes.py   (daily snapshot)
+#   - reports/routes.py    (PDF / scheduled)
+# Full policy lives in docs/risk-score-calculation.md.
 # =============================================================================
 
 from __future__ import annotations

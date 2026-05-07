@@ -507,7 +507,7 @@ export function NanoAiBar({
         <div className="min-w-0">
           <div className="text-sm font-medium text-teal-100">Nano EASM Assistant</div>
           <div className="text-xs text-muted-foreground">
-            Get a plain-English explanation, evidence, and remediation steps for this finding.
+            What this means and how to fix it.
           </div>
         </div>
       </div>

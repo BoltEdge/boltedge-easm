@@ -25,7 +25,8 @@
       "Bash(python -c \"from app.models import ScanProfile; from app.scanner.orchestrator import _select_engines_for_asset, _get_engine_config; print\\('imports ok'\\)\")",
       "Bash(python -c \"from app.models import ScanProfile; from app.scanner.orchestrator import _get_enabled_engines, _get_engine_config; print\\('imports ok'\\); print\\('ScanProfile.use_leak attr:', hasattr\\(ScanProfile, 'use_leak'\\)\\)\")",
       "Bash(python -c ' *)",
-      "Bash(python -c \"from app.dashboard.routes import dashboard_bp, _is_open_finding_filter; print\\('imports ok'\\)\")"
+      "Bash(python -c \"from app.dashboard.routes import dashboard_bp, _is_open_finding_filter; print\\('imports ok'\\)\")",
+      "Bash(python -c \"from app.dashboard.routes import dashboard_bp, _counts_toward_exposure; print\\('imports ok'\\)\")"
     ]
   }
 }

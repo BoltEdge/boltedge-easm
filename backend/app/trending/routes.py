@@ -127,9 +127,15 @@ def generate_snapshot(org_id: int, group_id: int | None = None, snapshot_date: d
     # ── Asset count ──
     snapshot.asset_count = asset_query.count()
 
-    # ── Active findings (not suppressed) ──
+    # ── Findings that count toward exposure ──
+    # Exclude suppressed (false positive) and resolved (user has fixed
+    # the issue). Keep in-progress and accepted-risk: both represent
+    # exposures that are still real, the user has just acknowledged
+    # them. See dashboard/routes.py:_counts_toward_exposure for the
+    # canonical explanation of these semantics.
     active_findings = finding_query.filter(
-        or_(Finding.ignored == False, Finding.ignored == None)
+        or_(Finding.ignored == False, Finding.ignored == None),
+        or_(Finding.resolved == False, Finding.resolved == None),
     )
 
     severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}

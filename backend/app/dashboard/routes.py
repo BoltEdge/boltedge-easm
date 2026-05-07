@@ -20,20 +20,25 @@ from app.models import (
 from app.auth.decorators import require_auth, current_user_id, current_organization_id
 
 
-def _is_open_finding_filter():
-    """Filter expression for findings that count toward exposure.
+def _counts_toward_exposure():
+    """Filter expression for findings that count toward the exposure score.
 
-    Mirrors `findings/routes.py:_is_open_filter` — exclude every status
-    that means the user has accepted, suppressed, fixed, or is working
-    on the finding. The previous dashboard query filtered on `ignored`
-    only, which let resolved / accepted_risk / in_progress findings
-    inflate the exposure score even though they're treated as closed
-    on the findings page itself."""
+    Risk-scoring semantics differ from the findings-page status filter
+    (`findings/routes.py:_is_open_filter`). For scoring we exclude only:
+      - Suppressed / ignored (false positives — never were real)
+      - Resolved (the user has fixed the issue, so the exposure is gone)
+    We deliberately INCLUDE:
+      - In progress (work is underway but the exposure still exists)
+      - Accepted risk (the user has acknowledged the exposure but chosen
+        not to fix it — the risk is still real, just consciously held)
+    Otherwise users could dial their score down by marking everything
+    "Accept risk", which would defeat the point of the metric.
+
+    Matches the existing logic in `groups/routes.py` and
+    `assets/routes.py`. The dashboard was previously the odd one out."""
     return and_(
         or_(Finding.ignored == False, Finding.ignored == None),  # noqa: E711, E712
         or_(Finding.resolved == False, Finding.resolved == None),  # noqa: E711, E712
-        or_(Finding.in_progress == False, Finding.in_progress == None),  # noqa: E711, E712
-        or_(Finding.accepted_risk == False, Finding.accepted_risk == None),  # noqa: E711, E712
     )
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
@@ -89,7 +94,7 @@ def dashboard_summary():
         db.session.query(func.count(Finding.id))
         .join(Asset, Finding.asset_id == Asset.id)
         .filter(Asset.organization_id == org_id, Asset.group_id.in_(active_group_ids))
-        .filter(_is_open_finding_filter())
+        .filter(_counts_toward_exposure())
         .scalar()
         or 0
     )
@@ -101,7 +106,7 @@ def dashboard_summary():
         db.session.query(Asset.criticality, Finding.severity, func.count(Finding.id))
         .join(Asset, Finding.asset_id == Asset.id)
         .filter(Asset.organization_id == org_id, Asset.group_id.in_(active_group_ids))
-        .filter(_is_open_finding_filter())
+        .filter(_counts_toward_exposure())
         .group_by(Asset.criticality, Finding.severity)
         .all()
     )
@@ -158,7 +163,7 @@ def dashboard_summary():
         )
         .join(Asset, Finding.asset_id == Asset.id)
         .filter(Asset.organization_id == org_id, Asset.group_id.in_(active_group_ids))
-        .filter(_is_open_finding_filter())
+        .filter(_counts_toward_exposure())
         .filter(Finding.created_at >= start_dt)
         .group_by("day", Finding.severity)
         .all()
@@ -230,7 +235,7 @@ def dashboard_summary():
         )
         .join(Finding, Finding.asset_id == Asset.id)
         .filter(Asset.organization_id == org_id, Asset.group_id.in_(active_group_ids))
-        .filter(_is_open_finding_filter())
+        .filter(_counts_toward_exposure())
         .group_by(Asset.id, Asset.asset_type, Asset.value)
         .order_by("severity_rank", desc("finding_count"))
         .limit(5)

@@ -87,6 +87,14 @@ function RegisterPageInner() {
   const [showPassword, setShowPassword] = useState(false);
   const [jobTitle, setJobTitle] = useState("");
   const [company, setCompany] = useState("");
+  // When the visitor isn't employed by a company they want to identify
+  // (freelancers, indie consultants, students), let them tick this
+  // instead of inventing a company name. The submitted `company` value
+  // becomes the literal string "Self-employed" — keeps the column
+  // populated, easy to filter in admin reports, and prevents the
+  // empty-name path that was previously possible when the field was
+  // optional.
+  const [selfEmployed, setSelfEmployed] = useState(false);
   const [country, setCountry] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -132,11 +140,16 @@ function RegisterPageInner() {
       .finally(() => setInviteLoading(false));
   }, [inviteToken]);
 
+  // Company is now a required choice — either tick "self-employed" or
+  // type a company name. Job title is always required.
+  const companyValid = selfEmployed || company.trim().length > 0;
   const canSubmit =
     firstName.trim().length > 0 &&
     lastName.trim().length > 0 &&
     email.trim().length > 0 &&
     password.length >= 8 &&
+    jobTitle.trim().length > 0 &&
+    companyValid &&
     acceptedTerms &&
     !loading;
 
@@ -156,8 +169,8 @@ function RegisterPageInner() {
         name: `${firstName.trim()} ${lastName.trim()}`.trim(),
         email: email.trim().toLowerCase(),
         password,
-        job_title: jobTitle.trim() || undefined,
-        company: company.trim() || undefined,
+        job_title: jobTitle.trim(),
+        company: selfEmployed ? "Self-employed" : company.trim(),
         country: country.trim() || undefined,
         invite_token: inviteToken || undefined,
       });
@@ -483,33 +496,44 @@ function RegisterPageInner() {
             {/* Optional fields — hide for invite flow */}
             {!inviteToken && (
               <div className="pt-3 border-t border-white/[0.04] space-y-4">
-                <p className="text-[11px] text-white/20 uppercase tracking-wider">Optional</p>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-white/50 block">Job title</label>
-                    <input
-                      className={inputClass}
-                      placeholder="Security Engineer"
-                      value={jobTitle}
-                      onChange={(e) => setJobTitle(e.target.value)}
-                      autoComplete="organization-title"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-white/50 block">Company</label>
-                    <input
-                      className={inputClass}
-                      placeholder="Acme Corp"
-                      value={company}
-                      onChange={(e) => setCompany(e.target.value)}
-                      autoComplete="organization"
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-white/50 block">Job title</label>
+                  <input
+                    className={inputClass}
+                    placeholder="Security Engineer"
+                    value={jobTitle}
+                    onChange={(e) => setJobTitle(e.target.value)}
+                    autoComplete="organization-title"
+                    required
+                  />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-white/50 block">Country</label>
+                  <label className="text-xs font-medium text-white/50 block">Company</label>
+                  <input
+                    className={`${inputClass} ${selfEmployed ? "opacity-50" : ""}`}
+                    placeholder={selfEmployed ? "Self-employed" : "Acme Corp"}
+                    value={selfEmployed ? "" : company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    autoComplete="organization"
+                    disabled={selfEmployed}
+                    required={!selfEmployed}
+                  />
+                  <label className="flex items-center gap-2 text-xs text-white/50 cursor-pointer pt-1 select-none">
+                    <input
+                      type="checkbox"
+                      checked={selfEmployed}
+                      onChange={(e) => setSelfEmployed(e.target.checked)}
+                      className="rounded border-white/20 bg-white/[0.04] text-teal-500 focus:ring-teal-500/40"
+                    />
+                    I&rsquo;m self-employed (freelancer, consultant, or student)
+                  </label>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-white/50 block">
+                    Country <span className="text-white/30 font-normal">(optional)</span>
+                  </label>
                   <select
                     className={`${inputClass} appearance-none`}
                     style={{ backgroundColor: '#0d1427' }}

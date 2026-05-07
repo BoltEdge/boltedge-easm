@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
-  Eye, Plus, Search, RefreshCcw, Trash2, Shield, ShieldAlert, Pencil,
+  Eye, EyeOff, Plus, Search, RefreshCcw, Trash2, Shield, ShieldAlert, Pencil,
   BellRing, Settings, SlidersHorizontal, Clock, CheckCircle2,
   Globe, Lock, Server, FileCode, Zap, ToggleLeft, ToggleRight, Pause,
   X, Loader2, Target, Cpu, Calendar, ArrowUpDown, AlertCircle, Sparkles,
@@ -27,7 +27,7 @@ import {
   alertStatusBadge, MONITOR_TYPE_CONFIG, SEVERITY_ORDER,
   getMonitors, createMonitor, updateMonitor, deleteMonitor,
   getMonitorAlerts, acknowledgeAlert, resolveAlert,
-  getGroups, getGroupAssets,
+  getGroups, getGroupAssets, createTuningRule,
 } from "./_lib";
 import type { Monitor, MonitorAlert } from "./_lib";
 
@@ -839,6 +839,81 @@ function AlertsTab({ setBanner, planLimit }: {
     }
   }
 
+  // ── Suppress dialog state ──
+  // Opens when the user clicks "Suppress similar" on an alert. Pre-fills
+  // the auto-derived match conditions (template_id, asset, severity)
+  // from the alert. On confirm, creates a tuning rule that hides future
+  // alerts matching the pattern AND resolves this current alert.
+  const [suppressTarget, setSuppressTarget] = useState<MonitorAlert | null>(null);
+  const [suppressTemplateId, setSuppressTemplateId] = useState("");
+  const [suppressAssetPattern, setSuppressAssetPattern] = useState("");
+  const [suppressSeverityMatch, setSuppressSeverityMatch] = useState("");
+  const [suppressReason, setSuppressReason] = useState("");
+  const [suppressAlsoResolve, setSuppressAlsoResolve] = useState(true);
+  const [suppressing, setSuppressing] = useState(false);
+
+  function openSuppressDialog(alert: MonitorAlert) {
+    setSuppressTarget(alert);
+    setSuppressTemplateId(String((alert as any).templateId ?? (alert as any).template_id ?? ""));
+    setSuppressAssetPattern(alert.assetValue || "");
+    setSuppressSeverityMatch(alert.severity || "");
+    setSuppressReason(`Suppressed from alert "${alert.title}"`);
+    setSuppressAlsoResolve(true);
+  }
+
+  function closeSuppressDialog() {
+    setSuppressTarget(null);
+    setSuppressTemplateId("");
+    setSuppressAssetPattern("");
+    setSuppressSeverityMatch("");
+    setSuppressReason("");
+    setSuppressing(false);
+  }
+
+  async function handleSuppressConfirm() {
+    if (!suppressTarget) return;
+    if (!suppressTemplateId && !suppressAssetPattern && !suppressSeverityMatch) {
+      setBanner({ kind: "err", text: "Add at least one match condition." });
+      return;
+    }
+    try {
+      setSuppressing(true);
+      await createTuningRule({
+        action: "suppress",
+        templateId: suppressTemplateId || undefined,
+        assetPattern: suppressAssetPattern || undefined,
+        severityMatch: suppressSeverityMatch || undefined,
+        reason: suppressReason || undefined,
+      });
+      // Best-effort: also resolve the current alert if the user opted in.
+      // A failure here doesn't undo the rule creation — the rule will
+      // still suppress future matches even if this resolve call fails.
+      if (suppressAlsoResolve) {
+        try {
+          await resolveAlert(suppressTarget.id);
+        } catch (e) {
+          // swallow — rule is already created
+        }
+      }
+      setBanner({
+        kind: "ok",
+        text: suppressAlsoResolve
+          ? "Suppression rule created and current alert resolved. Future matching alerts will be auto-suppressed."
+          : "Suppression rule created. Future matching alerts will be auto-suppressed.",
+      });
+      closeSuppressDialog();
+      load();
+    } catch (e: any) {
+      if (isPlanError(e)) {
+        closeSuppressDialog();
+        planLimit.handle(e.planError);
+      } else {
+        setBanner({ kind: "err", text: e?.message || "Failed to create rule." });
+        setSuppressing(false);
+      }
+    }
+  }
+
   const filtered = useMemo(() => {
     let result = alerts;
     if (statusFilter !== "all") result = result.filter((a) => a.status === statusFilter);
@@ -1095,6 +1170,7 @@ function AlertsTab({ setBanner, planLimit }: {
               canClose={canClose}
               onAcknowledge={() => handleAcknowledge(selected)}
               onResolve={() => handleResolve(selected)}
+              onSuppress={() => openSuppressDialog(selected)}
               aiState={aiState}
               onLoadAi={() => loadAiExplanation(String(selected.id))}
               onRegenerateAi={() => {
@@ -1106,6 +1182,95 @@ function AlertsTab({ setBanner, planLimit }: {
           </aside>
         )}
       </div>
+
+      {/* Suppress-similar confirmation dialog. Auto-derived match
+          conditions are pre-filled from the source alert; the user can
+          edit them before confirming. On submit we create a tuning rule
+          (suppresses future matching alerts) and optionally resolve the
+          current alert in the same flow. */}
+      <Dialog
+        open={suppressTarget !== null}
+        onOpenChange={(open) => { if (!open) closeSuppressDialog(); }}
+      >
+        <DialogContent className="bg-card border-border text-foreground sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <EyeOff className="w-5 h-5 text-zinc-400" />
+              Suppress similar alerts
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-2">
+            Creates a tuning rule that hides future alerts matching these conditions.
+            Edit any field to widen or narrow the match.
+          </p>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground block">Template ID</label>
+              <Input
+                value={suppressTemplateId}
+                onChange={(e) => setSuppressTemplateId(e.target.value)}
+                placeholder="e.g. dns-no-spf or dns-* (blank = any template)"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground block">Asset pattern</label>
+              <Input
+                value={suppressAssetPattern}
+                onChange={(e) => setSuppressAssetPattern(e.target.value)}
+                placeholder="e.g. example.com or *.staging.example.com"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground block">Severity match</label>
+              <select
+                value={suppressSeverityMatch}
+                onChange={(e) => setSuppressSeverityMatch(e.target.value)}
+                className="h-10 w-full rounded-md px-3 bg-input-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">Any severity</option>
+                {SEVERITY_ORDER.map((s) => (
+                  <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground block">Reason (optional)</label>
+              <Input
+                value={suppressReason}
+                onChange={(e) => setSuppressReason(e.target.value)}
+                placeholder="Why is this being suppressed?"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={suppressAlsoResolve}
+                onChange={(e) => setSuppressAlsoResolve(e.target.checked)}
+                className="rounded border-border bg-background text-primary focus:ring-primary/40"
+              />
+              Also resolve the current alert
+            </label>
+          </div>
+          <div className="flex items-center justify-between pt-2">
+            <Link
+              href="/monitoring/tuning"
+              className="text-xs text-primary hover:underline"
+              onClick={() => closeSuppressDialog()}
+            >
+              Need more options? Open the full tuning editor →
+            </Link>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={closeSuppressDialog} disabled={suppressing}>
+                Cancel
+              </Button>
+              <Button onClick={handleSuppressConfirm} disabled={suppressing}>
+                {suppressing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <EyeOff className="w-4 h-4 mr-2" />}
+                {suppressing ? "Creating rule…" : "Suppress and create rule"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1217,6 +1382,7 @@ function AlertDetailsPanel({
   canClose,
   onAcknowledge,
   onResolve,
+  onSuppress,
   aiState,
   onLoadAi,
   onRegenerateAi,
@@ -1228,6 +1394,7 @@ function AlertDetailsPanel({
   canClose: boolean;
   onAcknowledge: () => void;
   onResolve: () => void;
+  onSuppress: () => void;
   aiState: AiState;
   onLoadAi: () => void;
   onRegenerateAi: () => void;
@@ -1270,6 +1437,14 @@ function AlertDetailsPanel({
               <Button size="sm" variant="outline" onClick={onResolve}
                 className="border-[#10b981]/50 text-[#10b981] hover:bg-[#10b981]/10 text-xs">
                 Resolve
+              </Button>
+            )}
+            {canClose && alert.status !== "resolved" && (
+              <Button size="sm" variant="outline" onClick={onSuppress}
+                className="border-zinc-500/40 text-zinc-300 hover:bg-zinc-500/10 text-xs gap-1.5"
+                title="Create a tuning rule to suppress similar alerts in the future">
+                <EyeOff className="w-3.5 h-3.5" />
+                Suppress similar
               </Button>
             )}
             <button

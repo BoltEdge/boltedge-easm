@@ -300,7 +300,16 @@ def _gather_report_data(org_id: int, scope: str, group_id: int | None, config: d
     else:
         suppressed_count = suppressed_query.count()
 
-    # ── Filter suppressed findings ──
+    # ── Filter findings that don't count toward exposure ──
+    # Always exclude resolved (user has fixed it). Suppressed/ignored
+    # is conditional: when the user explicitly opts to include them in
+    # the report (e.g., for an audit dump), we leave them in. We keep
+    # in-progress and accepted-risk in either way because both
+    # represent real exposures the user has acknowledged but not fixed.
+    # Matches the semantics in dashboard/routes.py:_counts_toward_exposure.
+    finding_query = finding_query.filter(
+        db.or_(Finding.resolved == False, Finding.resolved == None)
+    )
     if not include_ignored:
         finding_query = finding_query.filter(
             db.or_(Finding.ignored == False, Finding.ignored == None)

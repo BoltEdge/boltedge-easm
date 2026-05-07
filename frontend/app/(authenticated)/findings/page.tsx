@@ -6,7 +6,7 @@ import {
   AlertTriangle, Search, Loader2, Download, EyeOff, Eye,
   CheckSquare, Square, X, ChevronDown, ChevronLeft, ChevronRight,
   Tag, Wrench, CheckCircle2, RotateCcw, Clock, ShieldCheck,
-  AlertCircle, Cloud, Database, Box, Cpu, Shield, Siren,
+  AlertCircle, Cloud, Database, Box, Cpu, Shield, Siren, RefreshCw,
 } from "lucide-react";
 
 import type { AssetGroup, Finding } from "../../types";
@@ -763,6 +763,15 @@ export default function FindingsPage() {
               <option value="recent">Most recent</option>
               <option value="severity">By severity</option>
             </select>
+            <button
+              type="button"
+              onClick={() => loadFindings()}
+              disabled={loading}
+              title="Reload findings"
+              className="h-10 w-10 inline-flex items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground hover:border-primary/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            </button>
           </div>
         </div>
 
