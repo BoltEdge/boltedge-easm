@@ -29,7 +29,7 @@ const TOP_NAV: NavTopItem[] = [
     kind: "dropdown",
     label: "Product",
     items: [
-      { href: "/#features", label: "Features", description: "What the platform does, end to end." },
+      { href: "/#features", label: "Capabilities", description: "What the platform does, end to end." },
       { href: "/#how-it-works", label: "How it works", description: "Discover → scan → score → monitor." },
       { href: "/coverage", label: "Coverage", description: "Every finding category we detect.", badge: "New" },
       { href: "/quick-scan", label: "Quick Scan", description: "Try a free scan, no signup." },
@@ -66,32 +66,24 @@ function visibleNav(): NavTopItem[] {
 }
 
 
-// Single shared "which menu is open" state owned by LandingNav and
-// passed down. Opening one menu auto-closes any other. Click-outside
-// is also handled at the parent level — one listener instead of one
-// per dropdown.
+// All-open behaviour: when any dropdown trigger is hovered or clicked,
+// every dropdown's panel opens at once. The user can scan the whole
+// nav surface in one glance instead of clicking each trigger
+// separately. Trade-off: a wider visual footprint when open. The
+// chevron on every trigger rotates together so the visual stays
+// coherent.
 type DropdownDesktopProps = {
   label: string;
   items: NavSubItem[];
   isOpen: boolean;
-  onOpen: () => void;
   onClose: () => void;
-  onHoverOpen: () => void;
-  onHoverClose: () => void;
 };
 
-function DropdownDesktop({
-  label, items, isOpen, onOpen, onClose, onHoverOpen, onHoverClose,
-}: DropdownDesktopProps) {
+function DropdownDesktop({ label, items, isOpen, onClose }: DropdownDesktopProps) {
   return (
-    <div
-      className="relative"
-      onMouseEnter={onHoverOpen}
-      onMouseLeave={onHoverClose}
-    >
+    <div className="relative">
       <button
         type="button"
-        onClick={() => (isOpen ? onClose() : onOpen())}
         className="inline-flex items-center gap-1 text-sm text-white/50 hover:text-white transition-colors py-2"
         aria-expanded={isOpen}
         aria-haspopup="menu"
@@ -140,12 +132,12 @@ export default function LandingNav() {
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
   const [isAuthed, setIsAuthed] = useState(false);
 
-  // Single "which dropdown is open" state shared by every desktop
-  // dropdown. Opening one auto-closes any other; click-outside &
-  // ESC close whatever is open. Hover uses a 120ms grace timer so
-  // the user can move pointer between trigger and panel without
-  // flicker.
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  // Single "are any dropdowns open?" boolean shared by every desktop
+  // dropdown trigger. Hovering or clicking ANY trigger opens every
+  // dropdown's panel at once; click-outside or ESC closes them all
+  // together. Hover uses a 120ms grace timer so the user can move
+  // pointer between trigger and any panel without flicker.
+  const [menusOpen, setMenusOpen] = useState(false);
   const desktopNavRef = useRef<HTMLDivElement | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -157,18 +149,17 @@ export default function LandingNav() {
     setIsAuthed(isLoggedIn());
   }, []);
 
-  // Click-outside + ESC close the open dropdown. Single listener for
-  // the whole nav (lifted from per-dropdown to here when we made
-  // openMenu a single shared value).
+  // Click-outside + ESC close the dropdowns. Single listener for the
+  // whole nav.
   useEffect(() => {
-    if (!openMenu) return;
+    if (!menusOpen) return;
     const onClick = (e: MouseEvent) => {
       if (desktopNavRef.current && !desktopNavRef.current.contains(e.target as Node)) {
-        setOpenMenu(null);
+        setMenusOpen(false);
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenMenu(null);
+      if (e.key === "Escape") setMenusOpen(false);
     };
     document.addEventListener("mousedown", onClick);
     document.addEventListener("keydown", onKey);
@@ -176,7 +167,7 @@ export default function LandingNav() {
       document.removeEventListener("mousedown", onClick);
       document.removeEventListener("keydown", onKey);
     };
-  }, [openMenu]);
+  }, [menusOpen]);
 
   const cancelClose = () => {
     if (closeTimer.current) {
@@ -186,8 +177,10 @@ export default function LandingNav() {
   };
   const scheduleClose = () => {
     cancelClose();
-    closeTimer.current = setTimeout(() => setOpenMenu(null), 120);
+    closeTimer.current = setTimeout(() => setMenusOpen(false), 120);
   };
+  const openAll = () => { cancelClose(); setMenusOpen(true); };
+  const closeAll = () => { cancelClose(); setMenusOpen(false); };
 
   const nav = visibleNav();
 
@@ -213,25 +206,41 @@ export default function LandingNav() {
           </span>
         </Link>
 
-        {/* Desktop nav */}
-        <nav ref={desktopNavRef} className="hidden md:flex items-center gap-6">
+        {/* Desktop nav. Hovering OR clicking anywhere on the nav row
+            (including non-dropdown links) opens every dropdown
+            simultaneously. Hover-out closes after a short grace
+            timer; click-outside closes immediately via the document
+            listener. */}
+        <nav
+          ref={desktopNavRef}
+          className="hidden md:flex items-center gap-6"
+          onMouseEnter={openAll}
+          onMouseLeave={scheduleClose}
+          onClick={(e) => {
+            // Click on a flat link bubbles up here too — let those
+            // close the menu, but let dropdown triggers toggle.
+            const target = e.target as HTMLElement;
+            if (target.closest("a")) {
+              closeAll();
+              return;
+            }
+            // Trigger button click — toggle.
+            setMenusOpen((v) => !v);
+          }}
+        >
           {nav.map((item) =>
             item.kind === "dropdown" ? (
               <DropdownDesktop
                 key={item.label}
                 label={item.label}
                 items={item.items}
-                isOpen={openMenu === item.label}
-                onOpen={() => { cancelClose(); setOpenMenu(item.label); }}
-                onClose={() => { cancelClose(); setOpenMenu(null); }}
-                onHoverOpen={() => { cancelClose(); setOpenMenu(item.label); }}
-                onHoverClose={scheduleClose}
+                isOpen={menusOpen}
+                onClose={closeAll}
               />
             ) : (
               <Link
                 key={item.label}
                 href={item.href}
-                onClick={() => setOpenMenu(null)}
                 className="text-sm text-white/50 hover:text-white transition-colors py-2"
               >
                 {item.label}
