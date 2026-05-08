@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<!--
+  Source for the /coverage Open Graph card. Renders at 1200×630 and
+  is pasted into frontend/app/(unauthenticated)/coverage/opengraph-image.png
+  via Chrome headless:
+
+    chrome --headless=new --disable-gpu --hide-scrollbars \
+      --window-size=1200,630 \
+      --screenshot=frontend/app/(unauthenticated)/coverage/opengraph-image.png \
+      file:///<abs-path>/frontend/scripts/coverage-og.html
+
+  Visual structure mirrors the page itself: dark navy backdrop, teal
+  glow, headline + subhead on the left, five category icons on the
+  right showing the Vulnerabilities → Service Exposure → Data Leaks
+  → Misconfigurations → Security Hygiene sequence.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nano EASM — Coverage OG card</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 1200px;
+    height: 630px;
+    overflow: hidden;
+    background: #060b18;
+  }
+  body {
+    position: relative;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+    color: #f8fafc;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Teal glow on the right side, behind the icon column. */
+  .glow {
+    position: absolute;
+    width: 1000px;
+    height: 1000px;
+    right: -300px;
+    top: -300px;
+    background: radial-gradient(circle, rgba(20,184,166,0.22) 0%, rgba(20,184,166,0.06) 35%, rgba(20,184,166,0) 65%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Subtle grid backdrop, masked toward the edges. */
+  .grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(148,163,184,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px);
+    background-size: 56px 56px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 100% at 50% 50%, black 30%, transparent 90%);
+            mask-image: radial-gradient(ellipse 80% 100% at 50% 50%, black 30%, transparent 90%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* Logo lockup top-left. */
+  .logo {
+    position: absolute;
+    top: 56px;
+    left: 64px;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .logo .icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    background: #0a0f1e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 1px rgba(20,184,166,0.18), 0 10px 28px rgba(20,184,166,0.18);
+  }
+  .logo .icon svg { width: 36px; height: 36px; display: block; }
+  .logo .word {
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: -0.6px;
+    line-height: 1;
+  }
+  .logo .word .accent { color: #14b8a6; }
+
+  /* URL top-right. */
+  .url {
+    position: absolute;
+    top: 70px;
+    right: 64px;
+    z-index: 1;
+    text-align: right;
+  }
+  .url .label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.4px;
+    color: rgba(148,163,184,0.7);
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .url .domain {
+    font-size: 18px;
+    color: #14b8a6;
+    font-weight: 600;
+  }
+
+  /* Eyebrow + headline + subhead, left column. */
+  .copy {
+    position: absolute;
+    left: 64px;
+    top: 200px;
+    z-index: 1;
+    width: 620px;
+  }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(20,184,166,0.08);
+    border: 1px solid rgba(20,184,166,0.28);
+    color: #5eead4;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 22px;
+  }
+  .eyebrow .pulse {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #14b8a6;
+    box-shadow: 0 0 9px #14b8a6;
+  }
+  .headline {
+    font-size: 64px;
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -2px;
+  }
+  .headline .accent { color: #14b8a6; }
+  .sub {
+    margin-top: 22px;
+    font-size: 22px;
+    line-height: 1.45;
+    color: #94a3b8;
+    font-weight: 400;
+    letter-spacing: 0.2px;
+  }
+
+  /* Category icon column, right side. Five chips stacked. */
+  .cats {
+    position: absolute;
+    right: 80px;
+    top: 175px;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .cat {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    padding: 12px 16px 12px 12px;
+    width: 320px;
+  }
+  .cat .ico {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .cat .ico svg { width: 20px; height: 20px; }
+  .cat .name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #f1f5f9;
+    letter-spacing: 0.1px;
+  }
+
+  .cat-vuln  .ico { background: rgba(239,68,68,0.10);    border: 1px solid rgba(239,68,68,0.22); }
+  .cat-vuln  .ico svg { color: #fca5a5; }
+  .cat-svc   .ico { background: rgba(245,158,11,0.10);   border: 1px solid rgba(245,158,11,0.22); }
+  .cat-svc   .ico svg { color: #fcd34d; }
+  .cat-leak  .ico { background: rgba(217,70,239,0.10);   border: 1px solid rgba(217,70,239,0.22); }
+  .cat-leak  .ico svg { color: #f0abfc; }
+  .cat-misc  .ico { background: rgba(249,115,22,0.10);   border: 1px solid rgba(249,115,22,0.22); }
+  .cat-misc  .ico svg { color: #fdba74; }
+  .cat-hyg   .ico { background: rgba(20,184,166,0.10);   border: 1px solid rgba(20,184,166,0.22); }
+  .cat-hyg   .ico svg { color: #5eead4; }
+
+  /* Tagline along the bottom. */
+  .tagline {
+    position: absolute;
+    bottom: 50px;
+    left: 64px;
+    right: 64px;
+    z-index: 1;
+    font-size: 14px;
+    color: rgba(148,163,184,0.45);
+    letter-spacing: 0.3px;
+  }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="grid"></div>
+
+  <div class="logo">
+    <div class="icon">
+      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.5 4L9.5 17H14.5L13 28L21.5 14.5H16L17.5 4Z" fill="#14b8a6"/>
+      </svg>
+    </div>
+    <div class="word">Nano<span class="accent">EASM</span></div>
+  </div>
+
+  <div class="url">
+    <div class="label">Coverage</div>
+    <div class="domain">nanoeasm.com/coverage</div>
+  </div>
+
+  <div class="copy">
+    <div class="eyebrow"><span class="pulse"></span>What we detect</div>
+    <div class="headline">
+      Five categories of <span class="accent">external exposure</span>.
+    </div>
+    <div class="sub">
+      Vulnerabilities, exposed services, leaked secrets, misconfigurations, and security hygiene — toggleable per organisation or per asset group.
+    </div>
+  </div>
+
+  <div class="cats">
+    <!-- Vulnerabilities (Bug) -->
+    <div class="cat cat-vuln">
+      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 2 1.88 1.88"/><path d="M14.12 3.88 16 2"/><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"/><path d="M12 20v-9"/><path d="M6.53 9C4.6 8.8 3 7.1 3 5"/><path d="M6 13H2"/><path d="M3 21c0-2.1 1.7-3.9 3.8-4"/><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"/><path d="M22 13h-4"/><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/></svg></div>
+      <div class="name">Vulnerabilities</div>
+    </div>
+    <!-- Service Exposure (Globe) -->
+    <div class="cat cat-svc">
+      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></div>
+      <div class="name">Service Exposure</div>
+    </div>
+    <!-- Data Leaks (Key) -->
+    <div class="cat cat-leak">
+      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg></div>
+      <div class="name">Data Leaks</div>
+    </div>
+    <!-- Misconfigurations (AlertTriangle) -->
+    <div class="cat cat-misc">
+      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>
+      <div class="name">Misconfigurations</div>
+    </div>
+    <!-- Security Hygiene (Shield) -->
+    <div class="cat cat-hyg">
+      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></div>
+      <div class="name">Security Hygiene</div>
+    </div>
+  </div>
+
+  <div class="tagline">
+    External attack surface management — discover, scan, monitor, prioritise.
+  </div>
+</body>
+</html>

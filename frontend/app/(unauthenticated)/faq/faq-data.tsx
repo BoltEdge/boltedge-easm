@@ -66,6 +66,80 @@ export const FAQS: Category[] = [
         ),
       },
       {
+        q: "What does Nano EASM detect?",
+        a: (
+          <div className="space-y-3">
+            <p>
+              Every alert Nano EASM raises falls into one of five categories. The full
+              catalogue is on the <Link href="/coverage" className="text-teal-400 hover:underline">Coverage page</Link> —
+              short version:
+            </p>
+            <ul className="space-y-2 list-disc pl-5">
+              <li>
+                <strong className="text-white/80">Vulnerabilities</strong> — known
+                CVEs and software flaws in services running on your assets.
+              </li>
+              <li>
+                <strong className="text-white/80">Service Exposure</strong> — admin
+                panels, dev tools, databases, and cloud assets reachable from the
+                internet.
+              </li>
+              <li>
+                <strong className="text-white/80">Data Leaks</strong> — secrets,
+                credentials, configuration files, and source code exposed in public
+                repos or directly on the asset.
+              </li>
+              <li>
+                <strong className="text-white/80">Misconfigurations</strong> — CORS,
+                open redirects, default credentials, and accessible admin endpoints.
+              </li>
+              <li>
+                <strong className="text-white/80">Security Hygiene</strong> —
+                expiring certificates, missing security headers, weak DMARC/SPF, and
+                end-of-life software stacks.
+              </li>
+            </ul>
+            <p>
+              You can toggle each category on or off for your organisation, and
+              override per asset group — e.g. a group of expected admin panels can
+              have Service Exposure disabled while still receiving everything else.
+            </p>
+          </div>
+        ),
+      },
+      {
+        q: "Can I turn off categories of alerts?",
+        a: (
+          <p>
+            Yes. Each of the{" "}
+            <Link href="/coverage" className="text-teal-400 hover:underline">
+              five detection categories
+            </Link>{" "}
+            can be enabled or disabled at the organisation level, and overridden
+            per asset group. Findings are still recorded in the dashboard for
+            auditing — you&rsquo;re only suppressing the alert/notification, not the
+            data. For finer control, the platform also supports tuning rules that
+            suppress findings matching a pattern (host, port, finding type).
+          </p>
+        ),
+      },
+      {
+        q: "Can different asset groups have different alert rules?",
+        a: (
+          <p>
+            Yes. An organisation has a default set of alert categories enabled, and
+            any asset group can override those defaults. Common patterns we see:
+            a group of internal-by-design admin tools with{" "}
+            <em>Service Exposure</em> disabled (admin panels are expected); a
+            dev/staging group with <em>Misconfigurations</em> and{" "}
+            <em>Hygiene</em> turned down because configs are deliberately loose;
+            a PCI-scope group with <em>everything</em> required at every severity.
+            The group&rsquo;s rules apply only to its assets — the rest of the
+            organisation continues with the org default.
+          </p>
+        ),
+      },
+      {
         q: "Do I need to install anything?",
         a: (
           <p>

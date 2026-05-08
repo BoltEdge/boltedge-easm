@@ -8,7 +8,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Globe2, Radar, Bell, ClipboardCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Globe2, Radar, Bell, ClipboardCheck, Bug, ShieldCheck, KeyRound, AlertTriangle } from "lucide-react";
 
 import LandingNav from "../../LandingNav";
 import JsonLd from "../../JsonLd";
@@ -178,6 +178,64 @@ export default function WhatIsNanoEasmPage() {
                 </div>
                 <h3 className="text-sm font-semibold text-white">{title}</h3>
                 <p className="mt-1.5 text-sm text-white/50 leading-relaxed">{blurb}</p>
+              </div>
+            ))}
+          </div>
+
+          <h2 className="mt-10 text-2xl font-semibold tracking-tight">
+            What Nano EASM detects
+          </h2>
+          <p className="mt-3 text-white/60 leading-relaxed">
+            Every alert the platform raises falls into one of five categories. You
+            can toggle any of them on or off for your organisation, and override per
+            asset group — see the{" "}
+            <Link href="/coverage" className="text-teal-400 hover:underline">
+              full coverage page
+            </Link>{" "}
+            for details.
+          </p>
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[
+              {
+                icon: Bug,
+                title: "Vulnerabilities",
+                blurb:
+                  "Known CVEs and software flaws in services running on your assets.",
+              },
+              {
+                icon: Globe2,
+                title: "Service Exposure",
+                blurb:
+                  "Admin panels, dev tools, databases, and cloud assets reachable from the internet.",
+              },
+              {
+                icon: KeyRound,
+                title: "Data Leaks",
+                blurb:
+                  "Secrets, credentials, configuration files, and source code exposed in public repos or directly on the asset.",
+              },
+              {
+                icon: AlertTriangle,
+                title: "Misconfigurations",
+                blurb:
+                  "CORS, open redirects, default credentials, and accessible admin endpoints.",
+              },
+              {
+                icon: ShieldCheck,
+                title: "Security Hygiene",
+                blurb:
+                  "Expiring certificates, missing security headers, weak DMARC/SPF, and end-of-life software stacks.",
+              },
+            ].map(({ icon: Icon, title, blurb }) => (
+              <div
+                key={title}
+                className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4"
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Icon className="w-4 h-4 text-teal-400" />
+                  <h3 className="text-sm font-semibold text-white">{title}</h3>
+                </div>
+                <p className="text-sm text-white/55 leading-relaxed">{blurb}</p>
               </div>
             ))}
           </div>

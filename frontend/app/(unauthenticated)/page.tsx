@@ -78,6 +78,13 @@ const ORGANIZATION_JSONLD = {
   logo: `${SITE_URL}/logo-on-dark.svg`,
   description:
     "Nano EASM is a cybersecurity SaaS platform for External Attack Surface Management. It helps IT teams, security generalists, and small MSSPs uncover internet-facing assets, monitor exposure changes, and prioritise remediation as the external exposure foundation for continuous threat exposure management programs.",
+  // schema.org disambiguatingDescription is purpose-built for cases
+  // where two entities share a name. Reinforces the entity-graph
+  // signal without bloating the visible content. Verilog "nanoasm"
+  // is the open-source assembler (8bitworkshop) — different product,
+  // same superficial spelling.
+  disambiguatingDescription:
+    "Nano EASM is a cloud-hosted cybersecurity platform for External Attack Surface Management — not the similarly-spelled open-source Verilog assembler 'nanoasm' used in retro hardware projects.",
   sameAs: [],
   contactPoint: [
     {
@@ -113,9 +120,25 @@ const SOFTWARE_APPLICATION_JSONLD = {
     "leaked credential detection",
     "secret scanning",
     "github leak detection",
+    "gitlab leak detection",
     "shadow IT",
     "MSSP",
     "cybersecurity SaaS",
+    // Coverage-category keywords — each is a distinct search-intent
+    // surface mapped to one of the five customer-facing categories
+    // surfaced on /coverage. Keep in sync if the taxonomy changes.
+    "data leak detection",
+    "credential leak monitoring",
+    "service exposure detection",
+    "external CVE scanner",
+    "misconfiguration detection",
+    "DMARC scanner",
+    "SPF DKIM monitoring",
+    "SSL certificate monitoring",
+    "subdomain takeover detection",
+    "exposed admin panel detection",
+    "cloud bucket exposure",
+    "security headers scanner",
   ].join(", "),
   featureList: [
     "External asset discovery (subdomains, IPs, services, certificates)",
@@ -305,6 +328,33 @@ export default function UnauthenticatedHomePage() {
                 </FadeInOnScroll>
               ))}
             </div>
+
+            {/* Coverage CTA — links to /coverage so customers can see
+                the five categories of detection grouped under each
+                capability. Mostly here for internal-link strength on
+                the highest-priority sub-page. */}
+            <FadeInOnScroll>
+              <div className="mt-12 rounded-2xl border border-teal-500/20 bg-teal-500/[0.04] p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base sm:text-lg font-semibold text-white">
+                    Want to see exactly what we detect?
+                  </h3>
+                  <p className="mt-1.5 text-sm text-white/50 leading-relaxed max-w-2xl">
+                    Every alert falls into one of five categories — vulnerabilities,
+                    service exposure, data leaks, misconfigurations, security
+                    hygiene. Toggle any of them on or off, per organisation or per
+                    asset group.
+                  </p>
+                </div>
+                <Link
+                  href="/coverage"
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-500 transition-colors"
+                >
+                  See full coverage
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            </FadeInOnScroll>
           </div>
         </section>
 
@@ -572,10 +622,15 @@ export default function UnauthenticatedHomePage() {
       </main>
 
       {/* ================= FOOTER ================= */}
+      {/* Mirrors the top-nav grouping: Product / Resources / Trust.
+          Footer is the second-strongest internal-linking surface
+          (every page renders it), so the five coverage sub-pages get
+          a permanent home here too. */}
       <footer className="border-t border-white/[0.06]">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div>
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
+            {/* Brand column */}
+            <div className="col-span-2 md:col-span-2">
               <Link href="/" className="flex items-center gap-2.5">
                 <svg
                   width="22"
@@ -593,20 +648,66 @@ export default function UnauthenticatedHomePage() {
                   Nano <span className="text-teal-400">EASM</span>
                 </span>
               </Link>
-              <p className="mt-2 text-sm text-white/30">
-                Nano EASM &mdash; External Attack Surface Management for modern security teams.
+              <p className="mt-3 text-sm text-white/40 leading-relaxed max-w-xs">
+                External Attack Surface Management for modern security
+                teams. Discover, scan, monitor, prioritise.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-white/30">
-              <Link href="/faq" className="hover:text-white/60 transition-colors">FAQ</Link>
-              <Link href="/terms-and-policies/terms-of-use" className="hover:text-white/60 transition-colors">Terms</Link>
-              <Link href="/terms-and-policies/privacy-policy" className="hover:text-white/60 transition-colors">Privacy</Link>
-              <Link href="/terms-and-policies" className="hover:text-white/60 transition-colors">Terms &amp; Policies</Link>
-              <Link href="/#contact" className="hover:text-white/60 transition-colors">Contact</Link>
+
+            {/* Product */}
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-4">Product</h4>
+              <ul className="space-y-2.5 text-sm">
+                <li><Link href="/#features" className="text-white/50 hover:text-white transition-colors">Capabilities</Link></li>
+                <li><Link href="/#how-it-works" className="text-white/50 hover:text-white transition-colors">How it works</Link></li>
+                <li><Link href="/coverage" className="text-white/50 hover:text-white transition-colors">Coverage</Link></li>
+                <li><Link href="/quick-scan" className="text-white/50 hover:text-white transition-colors">Quick Scan</Link></li>
+                {BILLING_ENABLED && (
+                  <li><Link href="/#pricing" className="text-white/50 hover:text-white transition-colors">Pricing</Link></li>
+                )}
+              </ul>
+            </div>
+
+            {/* Resources */}
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-4">Resources</h4>
+              <ul className="space-y-2.5 text-sm">
+                <li><Link href="/faq" className="text-white/50 hover:text-white transition-colors">FAQ</Link></li>
+                <li><Link href="/api-docs" className="text-white/50 hover:text-white transition-colors">API docs</Link></li>
+                <li><Link href="/resources/what-is-nano-easm" className="text-white/50 hover:text-white transition-colors">What is Nano EASM?</Link></li>
+                <li><Link href="/#contact" className="text-white/50 hover:text-white transition-colors">Contact</Link></li>
+              </ul>
+            </div>
+
+            {/* Trust */}
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-4">Trust</h4>
+              <ul className="space-y-2.5 text-sm">
+                <li><Link href="/terms-and-policies" className="text-white/50 hover:text-white transition-colors">All policies</Link></li>
+                <li><Link href="/terms-and-policies/terms-of-use" className="text-white/50 hover:text-white transition-colors">Terms of Use</Link></li>
+                <li><Link href="/terms-and-policies/privacy-policy" className="text-white/50 hover:text-white transition-colors">Privacy</Link></li>
+                <li><Link href="/terms-and-policies/security-scanning-authorisation" className="text-white/50 hover:text-white transition-colors">Scanning Authorisation</Link></li>
+                <li><Link href="/terms-and-policies/data-handling-retention" className="text-white/50 hover:text-white transition-colors">Data handling</Link></li>
+              </ul>
             </div>
           </div>
-          <div className="mt-8 pt-6 border-t border-white/[0.04] text-xs text-white/20 text-center">
-            &copy; {new Date().getFullYear()} Nano EASM. All rights reserved.
+
+          {/* Coverage sub-page strip — cheap permanent internal links
+              to all five category pages, on every marketing page. */}
+          <div className="mt-10 pt-6 border-t border-white/[0.04]">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-white/35">
+              <span className="font-semibold text-white/45">Detection coverage:</span>
+              <Link href="/coverage/vulnerabilities" className="hover:text-white/70 transition-colors">Vulnerabilities</Link>
+              <Link href="/coverage/service-exposure" className="hover:text-white/70 transition-colors">Service Exposure</Link>
+              <Link href="/coverage/data-leaks" className="hover:text-white/70 transition-colors">Data Leaks</Link>
+              <Link href="/coverage/misconfigurations" className="hover:text-white/70 transition-colors">Misconfigurations</Link>
+              <Link href="/coverage/security-hygiene" className="hover:text-white/70 transition-colors">Security Hygiene</Link>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/25">
+            <span>&copy; {new Date().getFullYear()} Nano EASM. All rights reserved.</span>
+            <span>Built for security teams in Australia 🇦🇺</span>
           </div>
         </div>
       </footer>

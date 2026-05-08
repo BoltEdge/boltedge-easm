@@ -61,6 +61,21 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 0.9,
     },
+    // Five per-category sub-pages — each carries its own
+    // category-specific keyword surface and 400+ words of unique
+    // content. See app/(unauthenticated)/coverage/category-content.ts.
+    ...[
+      "vulnerabilities",
+      "service-exposure",
+      "data-leaks",
+      "misconfigurations",
+      "security-hygiene",
+    ].map((slug) => ({
+      url: `${SITE_URL}/coverage/${slug}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.85,
+    })),
     {
       url: `${SITE_URL}/api-docs`,
       lastModified: now,

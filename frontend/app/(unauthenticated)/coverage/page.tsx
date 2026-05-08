@@ -100,8 +100,49 @@ const CATEGORY_VISUALS: Record<
   },
 };
 
-// JSON-LD lets Google understand the page as a structured catalogue.
-const COVERAGE_JSONLD = {
+// JSON-LD — three pieces:
+//   1. WebPage    binds the page to the site, names the SoftwareApplication
+//      it's about, and carries the keyword surface for the categories.
+//   2. ItemList   the five categories themselves, in order.
+//   3. Breadcrumb home → coverage trail.
+// Three separate objects (not one nested) so each surface validates
+// independently with Google's Rich Results Test.
+const COVERAGE_KEYWORDS = [
+  "EASM coverage",
+  "external attack surface coverage",
+  "vulnerability detection",
+  "service exposure detection",
+  "data leak detection",
+  "credential leak monitoring",
+  "misconfiguration detection",
+  "DMARC SPF scanner",
+  "SSL certificate monitoring",
+  "subdomain takeover detection",
+];
+
+const COVERAGE_PAGE_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  name: PAGE_TITLE,
+  description: PAGE_DESCRIPTION,
+  url: `${SITE_URL}/coverage`,
+  inLanguage: "en-AU",
+  isPartOf: {
+    "@type": "WebSite",
+    name: "Nano EASM",
+    url: SITE_URL,
+  },
+  about: {
+    "@type": "SoftwareApplication",
+    name: "Nano EASM",
+    applicationCategory: "SecurityApplication",
+    applicationSubCategory: "External Attack Surface Management",
+    url: SITE_URL,
+  },
+  keywords: COVERAGE_KEYWORDS.join(", "),
+};
+
+const COVERAGE_LIST_JSONLD = {
   "@context": "https://schema.org",
   "@type": "ItemList",
   name: "Nano EASM coverage — finding categories",
@@ -112,13 +153,23 @@ const COVERAGE_JSONLD = {
     position: idx + 1,
     name: cat.label,
     description: cat.blurb,
+    url: `${SITE_URL}/coverage/${cat.id.replace(/_/g, "-")}`,
   })),
+};
+
+const COVERAGE_BREADCRUMB_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+    { "@type": "ListItem", position: 2, name: "Coverage", item: `${SITE_URL}/coverage` },
+  ],
 };
 
 export default function CoveragePage() {
   return (
     <>
-      <JsonLd data={COVERAGE_JSONLD} />
+      <JsonLd data={[COVERAGE_PAGE_JSONLD, COVERAGE_LIST_JSONLD, COVERAGE_BREADCRUMB_JSONLD]} />
       <LandingNav />
 
       <main className="pt-24 pb-20">
@@ -146,22 +197,29 @@ export default function CoveragePage() {
             </p>
           </div>
 
-          {/* Category overview cards */}
+          {/* Category overview cards. Each card is a link to the
+              dedicated /coverage/{slug} sub-page — internal linking
+              from the index page boosts the sub-page rankings. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {coverageData.categories.map((cat) => {
               const visuals = CATEGORY_VISUALS[cat.id] ?? CATEGORY_VISUALS.security_hygiene;
               const Icon = visuals.icon;
+              const slug = cat.id.replace(/_/g, "-");
               return (
-                <div
+                <Link
                   key={cat.id}
-                  className={`rounded-xl border ${visuals.ring} ${visuals.tint} p-6 transition-all`}
+                  href={`/coverage/${slug}`}
+                  className={`group rounded-xl border ${visuals.ring} ${visuals.tint} p-6 transition-all hover:bg-white/[0.04]`}
                 >
                   <div className={`w-11 h-11 rounded-lg flex items-center justify-center ${visuals.tint} border ${visuals.ring} mb-4`}>
                     <Icon className={`w-5 h-5 ${visuals.accent}`} />
                   </div>
                   <h3 className={`text-base font-semibold ${visuals.accent} mb-2`}>{cat.label}</h3>
                   <p className="text-sm text-white/55 leading-relaxed">{cat.blurb}</p>
-                </div>
+                  <div className={`mt-4 text-xs font-medium ${visuals.accent} opacity-60 group-hover:opacity-100 transition-opacity`}>
+                    Learn more →
+                  </div>
+                </Link>
               );
             })}
           </div>
