@@ -223,63 +223,36 @@ def render_catalogue(mod) -> str:
 def render_coverage_json(mod) -> str:
     """Render coverage.json — what the public /coverage page renders.
 
+    INTENTIONALLY MINIMAL. The public page is now category-only — five
+    cards with id / label / blurb. This file is baked into the public
+    Next.js bundle, so anything in it can be retrieved by anyone who
+    fetches the JS chunk. Per-template data (titles, severities,
+    descriptions, alert names, CWE) is detection IP and lives behind
+    the root-admin-only `GET /admin/templates` endpoint instead — DO
+    NOT add per-template fields to this file.
+
     Schema:
         {
-          "totalTemplates": 341,
           "generatedOn": "2026-05-08",
           "categories": [
-            {
-              "id": "vulnerabilities",
-              "label": "Vulnerabilities",
-              "blurb": "Known CVEs and software flaws...",
-              "totalCount": 53,
-              "severityCounts": {"critical": 23, "high": 18, ...},
-              "templates": [
-                {"id": "nuclei-cve-2021-44228", "title": "Apache Log4j RCE",
-                 "severity": "critical", "summary": "..."},
-                ...
-              ]
-            },
+            {"id": "vulnerabilities", "label": "Vulnerabilities", "blurb": "..."},
             ...
           ]
         }
-
-    Templates are sorted critical → info, then alphabetically by id, so
-    the frontend can render them as-is without further work.
     """
-    templates = mod.get_all_templates()
     customer_categories = mod.CUSTOMER_CATEGORIES
-    grouped = mod.templates_by_customer_category()
 
-    categories_payload = []
-    for cid, cmeta in customer_categories.items():
-        items = sorted(grouped.get(cid, []), key=_sev_rank)
-        sev_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
-        for t in items:
-            sev = (t.severity or "info").lower()
-            sev_counts[sev] = sev_counts.get(sev, 0) + 1
-        categories_payload.append({
+    categories_payload = [
+        {
             "id": cid,
             "label": cmeta["label"],
             "blurb": cmeta["blurb"],
-            "totalCount": len(items),
-            "severityCounts": sev_counts,
-            "templates": [
-                {
-                    "id": t.template_id,
-                    "title": t.title,
-                    "severity": (t.severity or "info").lower(),
-                    "summary": t.summary or "",
-                    "alertName": t.alert_name or "",
-                    "cwe": t.cwe or "",
-                }
-                for t in items
-            ],
-        })
+        }
+        for cid, cmeta in customer_categories.items()
+    ]
 
     return json.dumps(
         {
-            "totalTemplates": len(templates),
             "generatedOn": datetime.date.today().isoformat(),
             "categories": categories_payload,
         },
