@@ -66,24 +66,33 @@ function visibleNav(): NavTopItem[] {
 }
 
 
-// All-open behaviour: when any dropdown trigger is hovered or clicked,
-// every dropdown's panel opens at once. The user can scan the whole
-// nav surface in one glance instead of clicking each trigger
-// separately. Trade-off: a wider visual footprint when open. The
-// chevron on every trigger rotates together so the visual stays
-// coherent.
+// Single-dropdown-at-a-time behaviour. Only one panel ever renders,
+// so panels can't visually collide regardless of trigger spacing or
+// panel width. Opening one trigger automatically closes the other
+// via the shared activeMenu state in the parent.
 type DropdownDesktopProps = {
   label: string;
   items: NavSubItem[];
   isOpen: boolean;
+  onActivate: () => void;
   onClose: () => void;
+  onPointerEnter: () => void;
+  onPointerLeave: () => void;
 };
 
-function DropdownDesktop({ label, items, isOpen, onClose }: DropdownDesktopProps) {
+function DropdownDesktop({
+  label, items, isOpen, onActivate, onClose, onPointerEnter, onPointerLeave,
+}: DropdownDesktopProps) {
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onMouseEnter={onPointerEnter}
+      onMouseLeave={onPointerLeave}
+    >
       <button
         type="button"
+        onClick={() => (isOpen ? onClose() : onActivate())}
+        onFocus={onActivate}
         className="inline-flex items-center gap-1 text-sm text-white/50 hover:text-white transition-colors py-2"
         aria-expanded={isOpen}
         aria-haspopup="menu"
@@ -95,7 +104,14 @@ function DropdownDesktop({ label, items, isOpen, onClose }: DropdownDesktopProps
       {isOpen && (
         <div
           role="menu"
-          className="absolute left-1/2 -translate-x-1/2 top-full mt-1 w-72 rounded-xl border border-white/[0.08] bg-[#060b18]/98 backdrop-blur-xl shadow-2xl shadow-black/50 p-1.5 z-50"
+          // Anchor to the trigger's left edge rather than centring —
+          // centring caused panels to extend further to the left than
+          // the trigger does, so the Product and Resources panels
+          // bled into each other when both were open. Left-anchored
+          // panels stay strictly under their trigger and never cross
+          // a sibling trigger horizontally. max-w clamp prevents
+          // overflow on narrow viewports.
+          className="absolute left-0 top-full mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-white/[0.08] bg-[#060b18]/98 backdrop-blur-xl shadow-2xl shadow-black/50 p-1.5 z-50"
         >
           {items.map((it) => (
             <Link
@@ -132,12 +148,12 @@ export default function LandingNav() {
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
   const [isAuthed, setIsAuthed] = useState(false);
 
-  // Single "are any dropdowns open?" boolean shared by every desktop
-  // dropdown trigger. Hovering or clicking ANY trigger opens every
-  // dropdown's panel at once; click-outside or ESC closes them all
-  // together. Hover uses a 120ms grace timer so the user can move
-  // pointer between trigger and any panel without flicker.
-  const [menusOpen, setMenusOpen] = useState(false);
+  // Which dropdown is open. Single string state — a non-null value
+  // means exactly one dropdown is rendered, so panels can never
+  // visually collide. Switching from one trigger to another is a
+  // single setActiveMenu call: the previous panel's render condition
+  // becomes false on the same render cycle.
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const desktopNavRef = useRef<HTMLDivElement | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -149,17 +165,17 @@ export default function LandingNav() {
     setIsAuthed(isLoggedIn());
   }, []);
 
-  // Click-outside + ESC close the dropdowns. Single listener for the
-  // whole nav.
+  // Click-outside + ESC close whichever dropdown is open. Single
+  // listener for the whole nav.
   useEffect(() => {
-    if (!menusOpen) return;
+    if (!activeMenu) return;
     const onClick = (e: MouseEvent) => {
       if (desktopNavRef.current && !desktopNavRef.current.contains(e.target as Node)) {
-        setMenusOpen(false);
+        setActiveMenu(null);
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenusOpen(false);
+      if (e.key === "Escape") setActiveMenu(null);
     };
     document.addEventListener("mousedown", onClick);
     document.addEventListener("keydown", onKey);
@@ -167,7 +183,7 @@ export default function LandingNav() {
       document.removeEventListener("mousedown", onClick);
       document.removeEventListener("keydown", onKey);
     };
-  }, [menusOpen]);
+  }, [activeMenu]);
 
   const cancelClose = () => {
     if (closeTimer.current) {
@@ -177,10 +193,10 @@ export default function LandingNav() {
   };
   const scheduleClose = () => {
     cancelClose();
-    closeTimer.current = setTimeout(() => setMenusOpen(false), 120);
+    // 120ms grace so the user can move from trigger to panel (or
+    // between sibling triggers) without flicker.
+    closeTimer.current = setTimeout(() => setActiveMenu(null), 120);
   };
-  const openAll = () => { cancelClose(); setMenusOpen(true); };
-  const closeAll = () => { cancelClose(); setMenusOpen(false); };
 
   const nav = visibleNav();
 
@@ -206,41 +222,28 @@ export default function LandingNav() {
           </span>
         </Link>
 
-        {/* Desktop nav. Hovering OR clicking anywhere on the nav row
-            (including non-dropdown links) opens every dropdown
-            simultaneously. Hover-out closes after a short grace
-            timer; click-outside closes immediately via the document
-            listener. */}
-        <nav
-          ref={desktopNavRef}
-          className="hidden md:flex items-center gap-6"
-          onMouseEnter={openAll}
-          onMouseLeave={scheduleClose}
-          onClick={(e) => {
-            // Click on a flat link bubbles up here too — let those
-            // close the menu, but let dropdown triggers toggle.
-            const target = e.target as HTMLElement;
-            if (target.closest("a")) {
-              closeAll();
-              return;
-            }
-            // Trigger button click — toggle.
-            setMenusOpen((v) => !v);
-          }}
-        >
+        {/* Desktop nav. Each dropdown trigger manages its own hover
+            in/out via DropdownDesktop's handlers, so switching from
+            Product → Resources flips activeMenu instantly without a
+            close-then-reopen flicker. */}
+        <nav ref={desktopNavRef} className="hidden md:flex items-center gap-6">
           {nav.map((item) =>
             item.kind === "dropdown" ? (
               <DropdownDesktop
                 key={item.label}
                 label={item.label}
                 items={item.items}
-                isOpen={menusOpen}
-                onClose={closeAll}
+                isOpen={activeMenu === item.label}
+                onActivate={() => { cancelClose(); setActiveMenu(item.label); }}
+                onClose={() => { cancelClose(); setActiveMenu(null); }}
+                onPointerEnter={() => { cancelClose(); setActiveMenu(item.label); }}
+                onPointerLeave={scheduleClose}
               />
             ) : (
               <Link
                 key={item.label}
                 href={item.href}
+                onClick={() => setActiveMenu(null)}
                 className="text-sm text-white/50 hover:text-white transition-colors py-2"
               >
                 {item.label}
