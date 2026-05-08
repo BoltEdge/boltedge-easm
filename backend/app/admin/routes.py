@@ -34,7 +34,7 @@ from sqlalchemy import text
 
 from app.extensions import db
 from app.models import User, Organization, OrganizationMember, AuditLog, ScanJob, Asset, DiscoveryJob, PlatformAnnouncement, QuickScanLog, BlockedIP, ContactRequest, BillingEvent, StripeEvent
-from app.auth.decorators import require_superadmin
+from app.auth.decorators import require_superadmin, require_root_admin
 from app.audit.routes import log_audit
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -2319,6 +2319,85 @@ def trigger_health_probe():
 
     summary = run_subset(kinds)
     return jsonify(summary=summary, kinds=kinds), 200
+
+
+# ════════════════════════════════════════════════════════════════
+# FINDING TEMPLATE REGISTRY (root-admin only)
+# ════════════════════════════════════════════════════════════════
+#
+# The full template registry — every alert the platform can raise,
+# with title / severity / CWE / description / remediation. This is the
+# detection IP and is gated to root admins only (a stricter tier than
+# superadmin). Non-root-admin requests get a 404, matching the rest
+# of the admin routes.
+
+@admin_bp.get("/templates")
+@require_root_admin
+def list_templates():
+    """Return the complete finding-template registry.
+
+    Response:
+        {
+          "totalTemplates": 341,
+          "categories": [
+            {"id": "vulnerabilities", "label": "Vulnerabilities", "blurb": "...",
+             "templates": [
+               {"id": "...", "title": "...", "severity": "...",
+                "cwe": "...", "description": "...", "remediation": "...",
+                "references": [...], "tags": [...], "alertName": "...",
+                "monitorType": "...", "tunable": true, "summary": "..."},
+               ...
+             ]
+            }, ...
+          ]
+        }
+    """
+    from app.scanner.templates import (
+        CUSTOMER_CATEGORIES,
+        templates_by_customer_category,
+    )
+
+    grouped = templates_by_customer_category()
+    sev_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+
+    def _sort_key(t):
+        return (sev_rank.get((t.severity or "info").lower(), 5), t.template_id)
+
+    categories = []
+    total = 0
+    for cid, meta in CUSTOMER_CATEGORIES.items():
+        items = sorted(grouped.get(cid, []), key=_sort_key)
+        total += len(items)
+        categories.append({
+            "id": cid,
+            "label": meta["label"],
+            "blurb": meta["blurb"],
+            "totalCount": len(items),
+            "templates": [
+                {
+                    "id": t.template_id,
+                    "title": t.title,
+                    "severity": (t.severity or "info").lower(),
+                    "internalCategory": t.category,
+                    "cwe": t.cwe or "",
+                    "description": t.description or "",
+                    "remediation": t.remediation or "",
+                    "references": list(t.references or []),
+                    "tags": list(t.tags or []),
+                    "alertName": t.alert_name or "",
+                    "monitorType": t.monitor_type or "",
+                    "tunable": bool(t.tunable),
+                    "summary": t.summary or "",
+                    "confidence": t.confidence or "high",
+                }
+                for t in items
+            ],
+        })
+
+    return jsonify(
+        totalTemplates=total,
+        categories=categories,
+    ), 200
 
 
 # ════════════════════════════════════════════════════════════════

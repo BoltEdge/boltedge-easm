@@ -1976,6 +1976,10 @@ export async function triggerAdminHealthProbe(kinds?: string[]): Promise<any> {
   return apiFetch<any>(`/admin/health/probe${qs}`, { method: "POST" });
 }
 
+export async function getAdminTemplates(): Promise<any> {
+  return apiFetch<any>("/admin/templates");
+}
+
 export async function getAdminQuickScans(params?: {
   page?: number; ip?: string; target?: string; status?: string; source?: string;
 }): Promise<any> {

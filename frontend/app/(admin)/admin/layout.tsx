@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { getAccessToken, getIsSuperadmin, logout } from "../../lib/auth";
+import { getAccessToken, getIsSuperadmin, getIsRootAdmin, logout } from "../../lib/auth";
 import Link from "next/link";
 import {
   LayoutDashboard, Building2, Users, LogOut, ShieldAlert, ScrollText,
   ScanLine, Megaphone, HeartPulse, ShieldBan, MessageSquare, CreditCard,
-  ChevronDown, ArrowLeft,
+  ChevronDown, ArrowLeft, FileSearch,
 } from "lucide-react";
 
 // The admin nav is grouped by what the operator is *trying to do*, not
@@ -15,7 +15,15 @@ import {
 // create-request work coming next without making the sidebar feel
 // crowded. Keep `href` paths stable — the grouping is purely visual,
 // so existing bookmarks still resolve.
-type NavItem = { href: string; label: string; icon: typeof LayoutDashboard };
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  // Render only when getIsRootAdmin() returns true. The route on the
+  // backend already 404s for non-root-admins, but hiding the nav link
+  // keeps the UX clean and avoids tempting other superadmins.
+  rootAdminOnly?: boolean;
+};
 type NavGroup = { id: string; label: string | null; items: NavItem[] };
 
 const NAV_GROUPS: NavGroup[] = [
@@ -59,6 +67,13 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/health", label: "Health", icon: HeartPulse },
     ],
   },
+  {
+    id: "detection",
+    label: "Detection (root)",
+    items: [
+      { href: "/admin/templates", label: "Templates", icon: FileSearch, rootAdminOnly: true },
+    ],
+  },
 ];
 
 function isItemActive(pathname: string, href: string): boolean {
@@ -82,6 +97,16 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   const toggleGroup = (id: string) =>
     setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
 
+  // Strip root-admin-only nav items for non-root-admins, then drop
+  // groups that have nothing left. Done at render time (not module
+  // scope) because getIsRootAdmin() reads from localStorage which
+  // isn't available during SSR.
+  const isRootAdmin = getIsRootAdmin();
+  const visibleGroups: NavGroup[] = NAV_GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((it) => !it.rootAdminOnly || isRootAdmin),
+  })).filter((g) => g.items.length > 0);
+
   return (
     <div className="min-h-screen bg-[#060b18] text-white flex">
       <aside className="w-64 shrink-0 border-r border-white/[0.06] flex flex-col">
@@ -93,7 +118,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           </span>
         </div>
         <nav className="flex-1 p-3 overflow-y-auto">
-          {NAV_GROUPS.map((group) => {
+          {visibleGroups.map((group) => {
             const groupActive = isGroupActive(pathname, group);
             // Open by default if (a) the group has no header and is
             // therefore always rendered, (b) the route is inside it,

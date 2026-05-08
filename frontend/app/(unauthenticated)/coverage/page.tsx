@@ -1,9 +1,10 @@
 // FILE: app/(unauthenticated)/coverage/page.tsx
-// Public Coverage page — single source of truth for what Nano EASM
-// detects. Reads coverage.json (auto-generated from the backend
-// FindingTemplate registry by `python backend/scripts/generate_catalogue.py`)
-// at build time, so the data is always in sync with the live registry
-// and the page is fully SSR'd for SEO.
+// Public Coverage page — describes the five categories of alert that
+// Nano EASM can raise. We deliberately do NOT publish individual
+// template names or the total template count on this page: that's
+// detection IP and lives behind the root-admin-only template browser.
+// This page reads only the high-level category metadata baked into
+// coverage.json.
 
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -12,7 +13,6 @@ import {
 } from "lucide-react";
 import LandingNav from "../LandingNav";
 import JsonLd from "../JsonLd";
-import CoverageCategoryDetails from "./CoverageCategoryDetails";
 // Auto-generated — do not edit by hand. Regenerate with:
 //   python backend/scripts/generate_catalogue.py
 import coverageData from "../../../data/coverage.json";
@@ -21,11 +21,10 @@ const SITE_URL = "https://nanoeasm.com";
 
 export const dynamic = "force-static";
 
-const PAGE_TITLE = "What Nano EASM Detects — Coverage & Templates";
+const PAGE_TITLE = "What Nano EASM Detects — Coverage";
 const PAGE_DESCRIPTION =
-  `${coverageData.totalTemplates}+ finding templates across vulnerabilities, ` +
-  "service exposure, data leaks, misconfigurations, and security hygiene — " +
-  "every alert Nano EASM can raise on your external attack surface.";
+  "Five categories of external-exposure alert: vulnerabilities, service " +
+  "exposure, data leaks, misconfigurations, and security hygiene.";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -101,14 +100,6 @@ const CATEGORY_VISUALS: Record<
   },
 };
 
-const SEVERITY_PILL: Record<string, string> = {
-  critical: "bg-red-500/10 text-red-300 border-red-500/20",
-  high:     "bg-orange-500/10 text-orange-300 border-orange-500/20",
-  medium:   "bg-amber-500/10 text-amber-300 border-amber-500/20",
-  low:      "bg-sky-500/10 text-sky-300 border-sky-500/20",
-  info:     "bg-white/[0.06] text-white/40 border-white/10",
-};
-
 // JSON-LD lets Google understand the page as a structured catalogue.
 const COVERAGE_JSONLD = {
   "@context": "https://schema.org",
@@ -149,89 +140,38 @@ export default function CoveragePage() {
               What Nano EASM <span className="text-teal-400">detects</span>
             </h1>
             <p className="mt-4 text-white/60 text-base sm:text-lg max-w-2xl leading-relaxed">
-              Every alert the platform can raise, grouped into five categories
-              you can toggle independently. {coverageData.totalTemplates}{" "}
-              templates and counting — derived from real engagements,
-              not aspirational marketing.
-            </p>
-            <p className="mt-2 text-xs text-white/30">
-              Last updated {coverageData.generatedOn} · single source of truth in our finding registry.
+              Every alert the platform can raise falls into one of five
+              categories you can toggle independently for your organisation
+              — or per asset group.
             </p>
           </div>
 
           {/* Category overview cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-16">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {coverageData.categories.map((cat) => {
               const visuals = CATEGORY_VISUALS[cat.id] ?? CATEGORY_VISUALS.security_hygiene;
               const Icon = visuals.icon;
               return (
-                <a
+                <div
                   key={cat.id}
-                  href={`#${cat.id}`}
-                  className={`group rounded-xl border ${visuals.ring} ${visuals.tint} p-5 transition-all hover:bg-white/[0.04] hover:border-white/20`}
+                  className={`rounded-xl border ${visuals.ring} ${visuals.tint} p-6 transition-all`}
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${visuals.tint} border ${visuals.ring}`}>
-                      <Icon className={`w-4 h-4 ${visuals.accent}`} />
-                    </div>
-                    <span className="text-2xl font-bold text-white/80 tabular-nums">
-                      {cat.totalCount}
-                    </span>
+                  <div className={`w-11 h-11 rounded-lg flex items-center justify-center ${visuals.tint} border ${visuals.ring} mb-4`}>
+                    <Icon className={`w-5 h-5 ${visuals.accent}`} />
                   </div>
-                  <h3 className={`text-sm font-semibold ${visuals.accent} mb-1`}>{cat.label}</h3>
-                  <p className="text-xs text-white/50 leading-relaxed line-clamp-3">{cat.blurb}</p>
-                  <div className="flex items-center gap-1.5 mt-3 flex-wrap">
-                    {(["critical", "high", "medium", "low", "info"] as const).map((sev) => {
-                      const n = (cat.severityCounts as Record<string, number>)[sev] ?? 0;
-                      if (n === 0) return null;
-                      return (
-                        <span
-                          key={sev}
-                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${SEVERITY_PILL[sev]}`}
-                        >
-                          {n} {sev}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </a>
-              );
-            })}
-          </div>
-
-          {/* Per-category details */}
-          <div className="space-y-12">
-            {coverageData.categories.map((cat) => {
-              const visuals = CATEGORY_VISUALS[cat.id] ?? CATEGORY_VISUALS.security_hygiene;
-              const Icon = visuals.icon;
-              return (
-                <section key={cat.id} id={cat.id} className="scroll-mt-24">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${visuals.tint} border ${visuals.ring}`}>
-                      <Icon className={`w-5 h-5 ${visuals.accent}`} />
-                    </div>
-                    <div>
-                      <h2 className={`text-2xl font-bold ${visuals.accent}`}>{cat.label}</h2>
-                      <p className="text-xs text-white/40">{cat.totalCount} templates</p>
-                    </div>
-                  </div>
-                  <p className="text-white/60 text-sm leading-relaxed mb-6 max-w-3xl">{cat.blurb}</p>
-
-                  <CoverageCategoryDetails
-                    templates={cat.templates}
-                    severityPill={SEVERITY_PILL}
-                  />
-                </section>
+                  <h3 className={`text-base font-semibold ${visuals.accent} mb-2`}>{cat.label}</h3>
+                  <p className="text-sm text-white/55 leading-relaxed">{cat.blurb}</p>
+                </div>
               );
             })}
           </div>
 
           {/* CTA */}
-          <div className="mt-20 rounded-xl border border-teal-500/20 bg-teal-500/[0.04] p-8 text-center">
+          <div className="mt-16 rounded-xl border border-teal-500/20 bg-teal-500/[0.04] p-8 text-center">
             <h3 className="text-lg font-semibold text-white">Run a free quick scan</h3>
             <p className="text-white/50 text-sm mt-2 max-w-xl mx-auto">
-              Enter a domain, get a real result in under a minute — no signup, no credit card.
-              See exactly which templates fired against your asset.
+              Enter a domain, get a real result in under a minute — no signup,
+              no credit card.
             </p>
             <div className="flex items-center justify-center gap-3 mt-5">
               <Link

@@ -45,7 +45,7 @@ const TOP_NAV: NavTopItem[] = [
       { href: "/resources/what-is-nano-easm", label: "What is Nano EASM?", description: "The platform, explained." },
     ],
   },
-  { kind: "link", href: "/terms-and-policies", label: "Legal" },
+  { kind: "link", href: "/terms-and-policies", label: "Trust" },
   { kind: "link", href: "/#contact", label: "Contact" },
 ];
 
@@ -66,55 +66,41 @@ function visibleNav(): NavTopItem[] {
 }
 
 
-function DropdownDesktop({ label, items }: { label: string; items: NavSubItem[] }) {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement | null>(null);
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+// Single shared "which menu is open" state owned by LandingNav and
+// passed down. Opening one menu auto-closes any other. Click-outside
+// is also handled at the parent level — one listener instead of one
+// per dropdown.
+type DropdownDesktopProps = {
+  label: string;
+  items: NavSubItem[];
+  isOpen: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onHoverOpen: () => void;
+  onHoverClose: () => void;
+};
 
-  // Click-outside to close. Hover-out closes via the timer below
-  // (gives the user a small grace window to move pointer between
-  // trigger and panel without flicker).
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  const scheduleClose = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => setOpen(false), 120);
-  };
-  const cancelClose = () => {
-    if (closeTimer.current) {
-      clearTimeout(closeTimer.current);
-      closeTimer.current = null;
-    }
-  };
-
+function DropdownDesktop({
+  label, items, isOpen, onOpen, onClose, onHoverOpen, onHoverClose,
+}: DropdownDesktopProps) {
   return (
     <div
-      ref={wrapRef}
       className="relative"
-      onMouseEnter={() => { cancelClose(); setOpen(true); }}
-      onMouseLeave={scheduleClose}
+      onMouseEnter={onHoverOpen}
+      onMouseLeave={onHoverClose}
     >
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (isOpen ? onClose() : onOpen())}
         className="inline-flex items-center gap-1 text-sm text-white/50 hover:text-white transition-colors py-2"
-        aria-expanded={open}
+        aria-expanded={isOpen}
         aria-haspopup="menu"
       >
         {label}
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
-      {open && (
+      {isOpen && (
         <div
           role="menu"
           className="absolute left-1/2 -translate-x-1/2 top-full mt-1 w-72 rounded-xl border border-white/[0.08] bg-[#060b18]/98 backdrop-blur-xl shadow-2xl shadow-black/50 p-1.5 z-50"
@@ -124,7 +110,7 @@ function DropdownDesktop({ label, items }: { label: string; items: NavSubItem[] 
               key={it.href}
               href={it.href}
               role="menuitem"
-              onClick={() => setOpen(false)}
+              onClick={onClose}
               className="block px-3 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors group"
             >
               <div className="flex items-center justify-between gap-2">
@@ -154,6 +140,15 @@ export default function LandingNav() {
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
   const [isAuthed, setIsAuthed] = useState(false);
 
+  // Single "which dropdown is open" state shared by every desktop
+  // dropdown. Opening one auto-closes any other; click-outside &
+  // ESC close whatever is open. Hover uses a 120ms grace timer so
+  // the user can move pointer between trigger and panel without
+  // flicker.
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const desktopNavRef = useRef<HTMLDivElement | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // SSR renders the logged-out variant (no token on the server) and
   // the client re-renders to "Open dashboard" once mount detects a
   // valid session — avoids hydration mismatch + the "click Sign in
@@ -161,6 +156,38 @@ export default function LandingNav() {
   useEffect(() => {
     setIsAuthed(isLoggedIn());
   }, []);
+
+  // Click-outside + ESC close the open dropdown. Single listener for
+  // the whole nav (lifted from per-dropdown to here when we made
+  // openMenu a single shared value).
+  useEffect(() => {
+    if (!openMenu) return;
+    const onClick = (e: MouseEvent) => {
+      if (desktopNavRef.current && !desktopNavRef.current.contains(e.target as Node)) {
+        setOpenMenu(null);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenMenu(null);
+    };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [openMenu]);
+
+  const cancelClose = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimer.current = setTimeout(() => setOpenMenu(null), 120);
+  };
 
   const nav = visibleNav();
 
@@ -187,14 +214,24 @@ export default function LandingNav() {
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-6">
+        <nav ref={desktopNavRef} className="hidden md:flex items-center gap-6">
           {nav.map((item) =>
             item.kind === "dropdown" ? (
-              <DropdownDesktop key={item.label} label={item.label} items={item.items} />
+              <DropdownDesktop
+                key={item.label}
+                label={item.label}
+                items={item.items}
+                isOpen={openMenu === item.label}
+                onOpen={() => { cancelClose(); setOpenMenu(item.label); }}
+                onClose={() => { cancelClose(); setOpenMenu(null); }}
+                onHoverOpen={() => { cancelClose(); setOpenMenu(item.label); }}
+                onHoverClose={scheduleClose}
+              />
             ) : (
               <Link
                 key={item.label}
                 href={item.href}
+                onClick={() => setOpenMenu(null)}
                 className="text-sm text-white/50 hover:text-white transition-colors py-2"
               >
                 {item.label}

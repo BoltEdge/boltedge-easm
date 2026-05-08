@@ -235,3 +235,39 @@ def require_superadmin(fn: Callable):
         return fn(*args, **kwargs)
 
     return wrapper
+
+
+def require_root_admin(fn: Callable):
+    """
+    Decorator for routes that should only be accessible to root admins
+    — a stricter tier than superadmin (root admins are protected from
+    demotion, suspension, impersonation, and only granted via CLI).
+    Used for content that's sensitive even to other superadmins, e.g.
+    the full finding-template registry which is the platform's
+    detection IP.
+
+    Same 404-on-failure semantics as require_superadmin: never reveal
+    the route exists to anyone who isn't authorised.
+    """
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        token = get_bearer_token()
+        if not token:
+            return jsonify(error="not found"), 404
+
+        uid = verify_access_token(
+            secret_key=current_app.config["SECRET_KEY"], token=token
+        )
+        if not uid:
+            return jsonify(error="not found"), 404
+
+        user = User.query.get(uid)
+        if not user or not user.is_root_admin:
+            return jsonify(error="not found"), 404
+
+        g.current_user = user
+        g.current_user_id = int(user.id)
+
+        return fn(*args, **kwargs)
+
+    return wrapper
