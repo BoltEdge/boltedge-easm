@@ -1,40 +1,168 @@
 // app/(unauthenticated)/LandingNav.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Menu, X } from "lucide-react";
+import { ChevronDown, LayoutDashboard, Menu, X } from "lucide-react";
 import { BILLING_ENABLED } from "../lib/billing-config";
 import { isLoggedIn } from "../lib/auth";
 
-type NavLink = {
+// Nav model — top-level items can be either flat links or dropdowns
+// containing sub-items. Pricing stays billing-gated. Hash anchors are
+// only valid on the home page; if the user is on a sub-page (FAQ,
+// Coverage, etc.), we route them to "/" first via the href anyway.
+
+type NavSubItem = {
   href: string;
   label: string;
+  description?: string;
+  badge?: string;
   billingOnly?: boolean;
-  external?: boolean;
 };
 
-const ALL_NAV_LINKS: NavLink[] = [
-  { href: "/#features", label: "Features" },
-  { href: "/#how-it-works", label: "How it works" },
-  { href: "/#try-it", label: "Quick Test" },
-  { href: "/#pricing", label: "Pricing", billingOnly: true },
-  { href: "/api-docs", label: "API", external: true },
-  { href: "/#contact", label: "Contact" },
+type NavTopItem =
+  | { kind: "link"; href: string; label: string; billingOnly?: boolean }
+  | { kind: "dropdown"; label: string; items: NavSubItem[] };
+
+const TOP_NAV: NavTopItem[] = [
+  {
+    kind: "dropdown",
+    label: "Product",
+    items: [
+      { href: "/#features", label: "Features", description: "What the platform does, end to end." },
+      { href: "/#how-it-works", label: "How it works", description: "Discover → scan → score → monitor." },
+      { href: "/coverage", label: "Coverage", description: "Every finding category we detect.", badge: "New" },
+      { href: "/quick-scan", label: "Quick Scan", description: "Try a free scan, no signup." },
+      { href: "/#pricing", label: "Pricing", description: "Plan tiers and limits.", billingOnly: true },
+    ],
+  },
+  {
+    kind: "dropdown",
+    label: "Resources",
+    items: [
+      { href: "/faq", label: "FAQ", description: "Common questions, plain answers." },
+      { href: "/api-docs", label: "API docs", description: "Integrate Nano EASM with your stack." },
+      { href: "/resources/what-is-nano-easm", label: "What is Nano EASM?", description: "The platform, explained." },
+    ],
+  },
+  { kind: "link", href: "/terms-and-policies", label: "Legal" },
+  { kind: "link", href: "/#contact", label: "Contact" },
 ];
 
-const NAV_LINKS = ALL_NAV_LINKS.filter((l) => !l.billingOnly || BILLING_ENABLED);
+
+// Filter billing-only sub-items when billing is disabled. We don't
+// remove whole top-level dropdowns — Pricing is the only billing-gated
+// item, and Product still has plenty of entries without it.
+function visibleNav(): NavTopItem[] {
+  return TOP_NAV.map((top) => {
+    if (top.kind === "link") {
+      if (top.billingOnly && !BILLING_ENABLED) return null;
+      return top;
+    }
+    const items = top.items.filter((it) => !it.billingOnly || BILLING_ENABLED);
+    if (items.length === 0) return null;
+    return { ...top, items };
+  }).filter(Boolean) as NavTopItem[];
+}
+
+
+function DropdownDesktop({ label, items }: { label: string; items: NavSubItem[] }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Click-outside to close. Hover-out closes via the timer below
+  // (gives the user a small grace window to move pointer between
+  // trigger and panel without flicker).
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const scheduleClose = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setOpen(false), 120);
+  };
+  const cancelClose = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+
+  return (
+    <div
+      ref={wrapRef}
+      className="relative"
+      onMouseEnter={() => { cancelClose(); setOpen(true); }}
+      onMouseLeave={scheduleClose}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1 text-sm text-white/50 hover:text-white transition-colors py-2"
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
+        {label}
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute left-1/2 -translate-x-1/2 top-full mt-1 w-72 rounded-xl border border-white/[0.08] bg-[#060b18]/98 backdrop-blur-xl shadow-2xl shadow-black/50 p-1.5 z-50"
+        >
+          {items.map((it) => (
+            <Link
+              key={it.href}
+              href={it.href}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="block px-3 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors group"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium text-white/85 group-hover:text-white">
+                  {it.label}
+                </span>
+                {it.badge && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-bold uppercase tracking-wider">
+                    {it.badge}
+                  </span>
+                )}
+              </div>
+              {it.description && (
+                <div className="text-xs text-white/40 mt-0.5 leading-relaxed">{it.description}</div>
+              )}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 export default function LandingNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  // SSR renders the logged-out variant (no token on the server) and the
-  // client re-renders to "Open dashboard" once the mount effect detects a
-  // valid session. This avoids hydration mismatches and stops the "click
-  // Sign in while already logged in → see login form" footgun.
+  const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
   const [isAuthed, setIsAuthed] = useState(false);
+
+  // SSR renders the logged-out variant (no token on the server) and
+  // the client re-renders to "Open dashboard" once mount detects a
+  // valid session — avoids hydration mismatch + the "click Sign in
+  // while logged in → see login form" footgun.
   useEffect(() => {
     setIsAuthed(isLoggedIn());
   }, []);
+
+  const nav = visibleNav();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[#060b18]/80 backdrop-blur-xl">
@@ -59,16 +187,20 @@ export default function LandingNav() {
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-8">
-          {NAV_LINKS.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className="text-sm text-white/50 hover:text-white transition-colors"
-            >
-              {label}
-            </Link>
-          ))}
+        <nav className="hidden md:flex items-center gap-6">
+          {nav.map((item) =>
+            item.kind === "dropdown" ? (
+              <DropdownDesktop key={item.label} label={item.label} items={item.items} />
+            ) : (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="text-sm text-white/50 hover:text-white transition-colors py-2"
+              >
+                {item.label}
+              </Link>
+            )
+          )}
         </nav>
 
         {/* Desktop auth buttons */}
@@ -113,17 +245,56 @@ export default function LandingNav() {
       {/* Mobile dropdown */}
       {mobileOpen && (
         <div className="md:hidden border-t border-white/[0.06] bg-[#060b18]/95 backdrop-blur-xl">
-          <nav className="flex flex-col px-4 py-4 space-y-1">
-            {NAV_LINKS.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => setMobileOpen(false)}
-                className="block px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors"
-              >
-                {label}
-              </Link>
-            ))}
+          <nav className="flex flex-col px-4 py-4 space-y-1 max-h-[80vh] overflow-y-auto">
+            {nav.map((item) => {
+              if (item.kind === "link") {
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="block px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors"
+                  >
+                    {item.label}
+                  </Link>
+                );
+              }
+              const expanded = mobileExpanded === item.label;
+              return (
+                <div key={item.label} className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => setMobileExpanded(expanded ? null : item.label)}
+                    className="flex w-full items-center justify-between px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/[0.06] transition-colors"
+                    aria-expanded={expanded}
+                  >
+                    <span>{item.label}</span>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
+                  </button>
+                  {expanded && (
+                    <div className="pl-3 space-y-0.5">
+                      {item.items.map((sub) => (
+                        <Link
+                          key={sub.href}
+                          href={sub.href}
+                          onClick={() => setMobileOpen(false)}
+                          className="block px-3 py-2 rounded-lg text-sm text-white/55 hover:text-white hover:bg-white/[0.06] transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>{sub.label}</span>
+                            {sub.badge && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-bold uppercase tracking-wider">
+                                {sub.badge}
+                              </span>
+                            )}
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
             <div className="pt-3 mt-2 border-t border-white/[0.06] space-y-2">
               {isAuthed ? (

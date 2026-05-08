@@ -1,8 +1,8 @@
 # Nano EASM — Finding Template Catalogue
 
-_Auto-generated from `backend/app/scanner/templates.py` on 2026-05-04._
+_Auto-generated from `backend/app/scanner/templates.py` on 2026-05-08._
 
-**Total templates registered: 332**
+**Total templates registered: 341**
 
 This catalogue is the single source of truth for every finding the platform produces. Each template carries the title, description, remediation, severity, CWE, references, and monitoring metadata that gets surfaced in the UI, in PDF reports, in email alerts, and inside the Nano EASM Assistant explainer.
 
@@ -13,7 +13,7 @@ Placeholders rendered at scan time: `{asset}`, `{value}`, `{port}`, `{provider}`
 - [DNS / Email Security](#dns--email-security) — 12 templates
 - [Subdomain Takeover](#subdomain-takeover) — 44 templates
 - [Cloud Asset Exposure](#cloud-asset-exposure) — 11 templates
-- [Sensitive Path / Leak Detection](#sensitive-path--leak-detection) — 26 templates
+- [Sensitive Path / Leak Detection](#sensitive-path--leak-detection) — 32 templates
 - [Nuclei — Marquee CVEs](#nuclei--marquee-cves) — 42 templates
 - [Nuclei — Other (panels, default-creds, misconfig, info-disclosure, generic)](#nuclei--other-panels-default-creds-misconfig-info-disclosure-generic) — 148 templates
 - [SSL / TLS](#ssl--tls) — 13 templates
@@ -42,7 +42,7 @@ _12 templates_
 
 ### `dns-zone-transfer-open`
 
-**Severity:** CRITICAL · **CWE:** CWE-200
+**Severity:** CRITICAL · **CWE:** CWE-200 · **Category:** security_hygiene
 
 **Title:** DNS zone transfer (AXFR) successful for {asset}
 
@@ -69,7 +69,7 @@ _12 templates_
 
 ### `dns-dmarc-none`
 
-**Severity:** HIGH · **CWE:** CWE-290
+**Severity:** HIGH · **CWE:** CWE-290 · **Category:** security_hygiene
 
 **Title:** DMARC policy is 'none' (monitoring only) for {asset}
 
@@ -95,7 +95,7 @@ _12 templates_
 
 ### `dns-no-dmarc`
 
-**Severity:** HIGH · **CWE:** CWE-290
+**Severity:** HIGH · **CWE:** CWE-290 · **Category:** security_hygiene
 
 **Title:** No DMARC record for {asset}
 
@@ -125,7 +125,7 @@ _12 templates_
 
 ### `dns-no-spf`
 
-**Severity:** HIGH · **CWE:** CWE-290
+**Severity:** HIGH · **CWE:** CWE-290 · **Category:** security_hygiene
 
 **Title:** No SPF record for {asset}
 
@@ -156,7 +156,7 @@ _12 templates_
 
 ### `dns-spf-plus-all`
 
-**Severity:** HIGH · **CWE:** CWE-290
+**Severity:** HIGH · **CWE:** CWE-290 · **Category:** security_hygiene
 
 **Title:** SPF record allows all senders (+all) for {asset}
 
@@ -182,7 +182,7 @@ _12 templates_
 
 ### `dns-dmarc-no-rua`
 
-**Severity:** MEDIUM · **CWE:** CWE-778
+**Severity:** MEDIUM · **CWE:** CWE-778 · **Category:** security_hygiene
 
 **Title:** DMARC record has no reporting address (rua) for {asset}
 
@@ -207,7 +207,7 @@ _12 templates_
 
 ### `dns-no-dkim`
 
-**Severity:** MEDIUM · **CWE:** CWE-345
+**Severity:** MEDIUM · **CWE:** CWE-345 · **Category:** security_hygiene
 
 **Title:** No DKIM records found for {asset}
 
@@ -233,7 +233,7 @@ _12 templates_
 
 ### `dns-single-nameserver`
 
-**Severity:** MEDIUM · **CWE:** —
+**Severity:** MEDIUM · **CWE:** — · **Category:** security_hygiene
 
 **Title:** Only one nameserver for {asset}
 
@@ -259,7 +259,7 @@ _12 templates_
 
 ### `dns-spf-neutral`
 
-**Severity:** MEDIUM · **CWE:** CWE-290
+**Severity:** MEDIUM · **CWE:** CWE-290 · **Category:** security_hygiene
 
 **Title:** SPF uses neutral (?all) for {asset}
 
@@ -284,7 +284,7 @@ _12 templates_
 
 ### `dns-spf-softfail`
 
-**Severity:** MEDIUM · **CWE:** CWE-290
+**Severity:** MEDIUM · **CWE:** CWE-290 · **Category:** security_hygiene
 
 **Title:** SPF uses softfail (~all) for {asset}
 
@@ -310,7 +310,7 @@ _12 templates_
 
 ### `dns-spf-too-many-lookups`
 
-**Severity:** MEDIUM · **CWE:** CWE-754
+**Severity:** MEDIUM · **CWE:** CWE-754 · **Category:** security_hygiene
 
 **Title:** SPF record exceeds 10-lookup limit for {asset}
 
@@ -336,7 +336,7 @@ _12 templates_
 
 ### `dns-no-ipv6`
 
-**Severity:** LOW · **CWE:** —
+**Severity:** LOW · **CWE:** — · **Category:** security_hygiene
 
 **Title:** No IPv6 (AAAA) records for {asset}
 
@@ -366,7 +366,7 @@ _44 templates_
 
 ### `takeover-confirmed`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed third-party resource at {asset}
 
@@ -402,7 +402,7 @@ _44 templates_
 
 ### `takeover-confirmed-aws-cloudfront`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed AWS CloudFront distribution at {asset}
 
@@ -439,7 +439,7 @@ _44 templates_
 
 ### `takeover-confirmed-aws-elastic-beanstalk`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed AWS Elastic Beanstalk environment at {asset}
 
@@ -476,7 +476,7 @@ _44 templates_
 
 ### `takeover-confirmed-aws-s3-cloudfront`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed AWS S3 bucket at {asset}
 
@@ -513,7 +513,7 @@ _44 templates_
 
 ### `takeover-confirmed-azure-api-management`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Azure API Management service instance at {asset}
 
@@ -550,7 +550,7 @@ _44 templates_
 
 ### `takeover-confirmed-azure-app-service`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Azure App Service app at {asset}
 
@@ -587,7 +587,7 @@ _44 templates_
 
 ### `takeover-confirmed-azure-blob-storage`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Azure Blob Storage container at {asset}
 
@@ -624,7 +624,7 @@ _44 templates_
 
 ### `takeover-confirmed-azure-cdn`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Azure CDN endpoint at {asset}
 
@@ -661,7 +661,7 @@ _44 templates_
 
 ### `takeover-confirmed-azure-traffic-manager`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Azure Traffic Manager profile at {asset}
 
@@ -698,7 +698,7 @@ _44 templates_
 
 ### `takeover-confirmed-azure-virtual-machine`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Azure Virtual Machine DNS label at {asset}
 
@@ -735,7 +735,7 @@ _44 templates_
 
 ### `takeover-confirmed-bitbucket-pages`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Bitbucket Pages repository at {asset}
 
@@ -772,7 +772,7 @@ _44 templates_
 
 ### `takeover-confirmed-cargo-collective`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Cargo Collective site at {asset}
 
@@ -809,7 +809,7 @@ _44 templates_
 
 ### `takeover-confirmed-cloudflare`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Cloudflare resource at {asset}
 
@@ -846,7 +846,7 @@ _44 templates_
 
 ### `takeover-confirmed-fastly`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Fastly service at {asset}
 
@@ -883,7 +883,7 @@ _44 templates_
 
 ### `takeover-confirmed-feedpress`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Feedpress feed at {asset}
 
@@ -919,7 +919,7 @@ _44 templates_
 
 ### `takeover-confirmed-fly-io`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Fly.io app at {asset}
 
@@ -956,7 +956,7 @@ _44 templates_
 
 ### `takeover-confirmed-freshdesk`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Freshdesk helpdesk at {asset}
 
@@ -993,7 +993,7 @@ _44 templates_
 
 ### `takeover-confirmed-ghost`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Ghost publication at {asset}
 
@@ -1030,7 +1030,7 @@ _44 templates_
 
 ### `takeover-confirmed-github-pages`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed GitHub Pages site at {asset}
 
@@ -1068,7 +1068,7 @@ _44 templates_
 
 ### `takeover-confirmed-gitlab-pages`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed GitLab Pages site at {asset}
 
@@ -1105,7 +1105,7 @@ _44 templates_
 
 ### `takeover-confirmed-google-cloud-storage`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Google Cloud Storage bucket at {asset}
 
@@ -1142,7 +1142,7 @@ _44 templates_
 
 ### `takeover-confirmed-helpjuice`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Helpjuice knowledge base at {asset}
 
@@ -1179,7 +1179,7 @@ _44 templates_
 
 ### `takeover-confirmed-helpscout`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed HelpScout docs site at {asset}
 
@@ -1216,7 +1216,7 @@ _44 templates_
 
 ### `takeover-confirmed-heroku`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Heroku app at {asset}
 
@@ -1253,7 +1253,7 @@ _44 templates_
 
 ### `takeover-confirmed-landingi`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Landingi landing page at {asset}
 
@@ -1289,7 +1289,7 @@ _44 templates_
 
 ### `takeover-confirmed-launchrock`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed LaunchRock landing page at {asset}
 
@@ -1325,7 +1325,7 @@ _44 templates_
 
 ### `takeover-confirmed-netlify`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Netlify site at {asset}
 
@@ -1362,7 +1362,7 @@ _44 templates_
 
 ### `takeover-confirmed-pantheon`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Pantheon site at {asset}
 
@@ -1399,7 +1399,7 @@ _44 templates_
 
 ### `takeover-confirmed-readme-io`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed ReadMe.io docs at {asset}
 
@@ -1436,7 +1436,7 @@ _44 templates_
 
 ### `takeover-confirmed-render`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Render service at {asset}
 
@@ -1473,7 +1473,7 @@ _44 templates_
 
 ### `takeover-confirmed-shopify`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Shopify store at {asset}
 
@@ -1510,7 +1510,7 @@ _44 templates_
 
 ### `takeover-confirmed-statuspage`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Statuspage status page at {asset}
 
@@ -1547,7 +1547,7 @@ _44 templates_
 
 ### `takeover-confirmed-surge-sh`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Surge.sh project at {asset}
 
@@ -1584,7 +1584,7 @@ _44 templates_
 
 ### `takeover-confirmed-teamwork`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Teamwork site at {asset}
 
@@ -1621,7 +1621,7 @@ _44 templates_
 
 ### `takeover-confirmed-tilda`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Tilda site at {asset}
 
@@ -1658,7 +1658,7 @@ _44 templates_
 
 ### `takeover-confirmed-tumblr`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Tumblr blog at {asset}
 
@@ -1695,7 +1695,7 @@ _44 templates_
 
 ### `takeover-confirmed-unbounce`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Unbounce landing page at {asset}
 
@@ -1732,7 +1732,7 @@ _44 templates_
 
 ### `takeover-confirmed-uservoice`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed UserVoice feedback site at {asset}
 
@@ -1769,7 +1769,7 @@ _44 templates_
 
 ### `takeover-confirmed-vercel`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Vercel project at {asset}
 
@@ -1806,7 +1806,7 @@ _44 templates_
 
 ### `takeover-confirmed-webflow`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Webflow site at {asset}
 
@@ -1843,7 +1843,7 @@ _44 templates_
 
 ### `takeover-confirmed-wordpress-com`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed WordPress.com site at {asset}
 
@@ -1880,7 +1880,7 @@ _44 templates_
 
 ### `takeover-confirmed-zendesk`
 
-**Severity:** CRITICAL · **CWE:** CWE-284
+**Severity:** CRITICAL · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Subdomain takeover — unclaimed Zendesk help center at {asset}
 
@@ -1917,7 +1917,7 @@ _44 templates_
 
 ### `takeover-dangling-cname`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Dangling CNAME at {asset} → {cname_target}
 
@@ -1943,7 +1943,7 @@ _44 templates_
 
 ### `takeover-suspicious`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** security_hygiene
 
 **Title:** Suspicious CNAME at {asset} → {cname_target}
 
@@ -1973,7 +1973,7 @@ _11 templates_
 
 ### `cloud-registry-public-images`
 
-**Severity:** CRITICAL · **CWE:** CWE-200
+**Severity:** CRITICAL · **CWE:** CWE-200 · **Category:** service_exposure
 
 **Title:** Public {provider} with pullable images: {value}
 
@@ -2011,7 +2011,7 @@ _11 templates_
 
 ### `cloud-serverless-config-leak`
 
-**Severity:** CRITICAL · **CWE:** CWE-215
+**Severity:** CRITICAL · **CWE:** CWE-215 · **Category:** service_exposure
 
 **Title:** {provider} endpoint leaking configuration: {value}
 
@@ -2048,7 +2048,7 @@ _11 templates_
 
 ### `cloud-storage-listing-enabled`
 
-**Severity:** CRITICAL · **CWE:** CWE-548
+**Severity:** CRITICAL · **CWE:** CWE-548 · **Category:** service_exposure
 
 **Title:** Public {provider} bucket with directory listing: {value}
 
@@ -2082,7 +2082,7 @@ _11 templates_
 
 ### `cloud-storage-sensitive-files`
 
-**Severity:** CRITICAL · **CWE:** CWE-552
+**Severity:** CRITICAL · **CWE:** CWE-552 · **Category:** service_exposure
 
 **Title:** Public {provider} bucket with sensitive files: {value}
 
@@ -2121,7 +2121,7 @@ _11 templates_
 
 ### `cloud-cdn-origin-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-1327
+**Severity:** HIGH · **CWE:** CWE-1327 · **Category:** service_exposure
 
 **Title:** {provider} origin reachable, bypassing CDN: {value}
 
@@ -2158,7 +2158,7 @@ _11 templates_
 
 ### `cloud-registry-public-access`
 
-**Severity:** HIGH · **CWE:** CWE-306
+**Severity:** HIGH · **CWE:** CWE-306 · **Category:** service_exposure
 
 **Title:** Public {provider} catalogue exposed: {value}
 
@@ -2184,7 +2184,7 @@ _11 templates_
 
 ### `cloud-serverless-no-auth`
 
-**Severity:** HIGH · **CWE:** CWE-306
+**Severity:** HIGH · **CWE:** CWE-306 · **Category:** service_exposure
 
 **Title:** Unauthenticated {provider} endpoint: {value}
 
@@ -2217,7 +2217,7 @@ _11 templates_
 
 ### `cloud-serverless-stack-trace`
 
-**Severity:** HIGH · **CWE:** CWE-209
+**Severity:** HIGH · **CWE:** CWE-209 · **Category:** service_exposure
 
 **Title:** {provider} endpoint leaking stack traces: {value}
 
@@ -2250,7 +2250,7 @@ _11 templates_
 
 ### `cloud-storage-public-access`
 
-**Severity:** HIGH · **CWE:** CWE-732
+**Severity:** HIGH · **CWE:** CWE-732 · **Category:** service_exposure
 
 **Title:** Publicly accessible {provider} bucket: {value}
 
@@ -2288,7 +2288,7 @@ _11 templates_
 
 ### `cloud-registry-private-tracked`
 
-**Severity:** INFO · **CWE:** — · **Tunable:** no
+**Severity:** INFO · **CWE:** — · **Category:** service_exposure · **Tunable:** no
 
 **Title:** {provider} detected (private): {value}
 
@@ -2310,7 +2310,7 @@ _11 templates_
 
 ### `cloud-storage-private-tracked`
 
-**Severity:** INFO · **CWE:** — · **Tunable:** no
+**Severity:** INFO · **CWE:** — · **Category:** service_exposure · **Tunable:** no
 
 **Title:** {provider} bucket detected (private): {value}
 
@@ -2332,11 +2332,11 @@ _11 templates_
 
 ## Sensitive Path / Leak Detection
 
-_26 templates_
+_32 templates_
 
 ### `leak-env-file`
 
-**Severity:** CRITICAL · **CWE:** CWE-200
+**Severity:** CRITICAL · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** Environment file exposed at {asset} ({value})
 
@@ -2371,7 +2371,7 @@ _26 templates_
 
 ### `leak-git-exposed`
 
-**Severity:** CRITICAL · **CWE:** CWE-538
+**Severity:** CRITICAL · **CWE:** CWE-538 · **Category:** data_leaks
 
 **Title:** Git repository exposed at {asset} ({value})
 
@@ -2407,7 +2407,7 @@ _26 templates_
 
 ### `leak-github-api-key`
 
-**Severity:** CRITICAL · **CWE:** CWE-798
+**Severity:** CRITICAL · **CWE:** CWE-798 · **Category:** data_leaks
 
 **Title:** API keys referencing {asset} found in public GitHub code
 
@@ -2434,7 +2434,7 @@ _26 templates_
 
 ### `leak-github-cloud-creds`
 
-**Severity:** CRITICAL · **CWE:** CWE-798
+**Severity:** CRITICAL · **CWE:** CWE-798 · **Category:** data_leaks
 
 **Title:** Cloud credentials referencing {asset} found in public GitHub code
 
@@ -2472,7 +2472,7 @@ _26 templates_
 
 ### `leak-github-credentials`
 
-**Severity:** CRITICAL · **CWE:** CWE-200
+**Severity:** CRITICAL · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** Credentials referencing {asset} found in public GitHub code
 
@@ -2506,7 +2506,7 @@ _26 templates_
 
 ### `leak-github-env-file`
 
-**Severity:** CRITICAL · **CWE:** CWE-200
+**Severity:** CRITICAL · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** .env files referencing {asset} found in public GitHub code
 
@@ -2533,7 +2533,7 @@ _26 templates_
 
 ### `leak-github-secrets`
 
-**Severity:** CRITICAL · **CWE:** CWE-200
+**Severity:** CRITICAL · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** Private keys referencing {asset} found in public GitHub code
 
@@ -2558,9 +2558,94 @@ _26 templates_
 
 ---
 
+### `leak-gitlab-api-key`
+
+**Severity:** CRITICAL · **CWE:** CWE-798 · **Category:** data_leaks
+
+**Title:** API tokens referencing {asset} found in public GitLab code
+
+**Summary:** Public GitLab code search returned API tokens referencing {asset} — verify each match and rotate immediately if real.
+
+**Description:**
+
+> Public-GitLab blob search returned files referencing {asset} alongside identifiers that look like API tokens or keys. Some matches will be false positives (variable names, comments, fixtures), but each one needs eyes on it because a single live key can hand attackers full programmatic access to your service.
+
+**Remediation:**
+
+> Open each matching file and check whether a real token is present. If yes, revoke or rotate the token at the issuing service immediately, then scrub the file from the project's git history (deleting the current commit isn't enough — history retains the value). Notify the project owner if the repository isn't yours.
+
+**Tags:** `gitlab-leak`, `api-key`, `code-search`
+**Alert name:** GitLab — API Token Possibly Leaked
+**Monitor type:** `github_change`
+
+**References:**
+- GitLab — Removing sensitive data from a repository
+- OWASP Application Security Verification Standard — Secrets Management
+- CIS Critical Security Controls — v8 Control 4 (Secure Configuration)
+
+---
+
+### `leak-gitlab-cloud-creds`
+
+**Severity:** CRITICAL · **CWE:** CWE-798 · **Category:** data_leaks
+
+**Title:** Cloud credentials referencing {asset} found in public GitLab code
+
+**Summary:** Public GitLab code search returned cloud-credential strings referencing {asset} — rotate at the cloud provider TODAY if real.
+
+**Description:**
+
+> Public-GitLab blob search returned files referencing {asset} alongside cloud-credential strings (AWS_SECRET_ACCESS_KEY, GCP service-account JSON, Azure shared keys). Cloud credentials are among the highest-impact leaks — a working key can cost five to six figures within hours via crypto mining or data exfiltration.
+
+**Remediation:**
+
+> Treat this as same-day work. Verify whether a real credential is present in each match. If yes:
+>   1. Rotate the credential at the cloud provider IMMEDIATELY.
+>   2. Audit the cloud account for unauthorised activity since      the file's commit date.
+>   3. Scrub the file from project history.
+>   4. Configure git pre-commit hooks (gitleaks, detect-secrets)      to block future commits.
+
+**Tags:** `gitlab-leak`, `cloud-creds`, `aws`, `gcp`, `azure`
+**Alert name:** GitLab — Cloud Credentials Possibly Leaked
+**Monitor type:** `github_change`
+
+**References:**
+- GitLab — Removing sensitive data from a repository
+- OWASP Application Security Verification Standard — Secrets Management
+- CIS Critical Security Controls — v8 Control 4 (Secure Configuration)
+
+---
+
+### `leak-gitlab-credentials`
+
+**Severity:** CRITICAL · **CWE:** CWE-798 · **Category:** data_leaks
+
+**Title:** Credentials referencing {asset} found in public GitLab code
+
+**Summary:** Public GitLab code search returned files referencing {asset} that may contain credentials — open each match and rotate any real secrets.
+
+**Description:**
+
+> Public-GitLab blob search returned files referencing {asset} alongside what looks like credential material (passwords, DB_PASSWORD-style env strings). Code search alone can't confirm a true leak — the matched files might use the keyword in a different context — but every match is worth opening and verifying. Real credential exposure on a public GitLab project means an attacker can copy/paste the secret straight into a working session.
+
+**Remediation:**
+
+> Open each matching file linked in the finding details and verify whether a real credential is present. If yes, rotate the credential immediately and revoke any tokens it grants. Then have the file removed: GitLab keeps full history, so deleting the current copy isn't enough — use `git filter-repo` or BFG Repo-Cleaner to scrub history, then force-push. If the repository belongs to someone else, contact the project owner or use GitLab's abuse-reporting form to request takedown.
+
+**Tags:** `gitlab-leak`, `credentials`, `code-search`
+**Alert name:** GitLab — Credentials Possibly Leaked
+**Monitor type:** `github_change`
+
+**References:**
+- GitLab — Removing sensitive data from a repository
+- OWASP Application Security Verification Standard — Secrets Management
+- CIS Critical Security Controls — v8 Control 4 (Secure Configuration)
+
+---
+
 ### `leak-htpasswd`
 
-**Severity:** CRITICAL · **CWE:** CWE-522
+**Severity:** CRITICAL · **CWE:** CWE-522 · **Category:** data_leaks
 
 **Title:** Apache password file exposed at {asset} ({value})
 
@@ -2587,7 +2672,7 @@ _26 templates_
 
 ### `leak-sql-dump`
 
-**Severity:** CRITICAL · **CWE:** CWE-552
+**Severity:** CRITICAL · **CWE:** CWE-552 · **Category:** data_leaks
 
 **Title:** SQL database dump exposed at {asset} ({value})
 
@@ -2622,7 +2707,7 @@ _26 templates_
 
 ### `leak-ssh-private-key`
 
-**Severity:** CRITICAL · **CWE:** CWE-200
+**Severity:** CRITICAL · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** SSH private key exposed at {asset} ({value})
 
@@ -2659,7 +2744,7 @@ _26 templates_
 
 ### `leak-wp-config-backup`
 
-**Severity:** CRITICAL · **CWE:** CWE-552
+**Severity:** CRITICAL · **CWE:** CWE-552 · **Category:** data_leaks
 
 **Title:** WordPress config backup exposed at {asset} ({value})
 
@@ -2694,7 +2779,7 @@ _26 templates_
 
 ### `leak-apache-status`
 
-**Severity:** HIGH · **CWE:** CWE-200
+**Severity:** HIGH · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** Apache server status / info exposed at {asset} ({value})
 
@@ -2728,7 +2813,7 @@ _26 templates_
 
 ### `leak-docker-compose`
 
-**Severity:** HIGH · **CWE:** CWE-538
+**Severity:** HIGH · **CWE:** CWE-538 · **Category:** data_leaks
 
 **Title:** docker-compose.yml exposed at {asset} ({value})
 
@@ -2762,7 +2847,7 @@ _26 templates_
 
 ### `leak-github`
 
-**Severity:** HIGH · **CWE:** CWE-200
+**Severity:** HIGH · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** Possible code leak referencing {asset} in public GitHub repos
 
@@ -2787,9 +2872,63 @@ _26 templates_
 
 ---
 
+### `leak-gitlab-env-file`
+
+**Severity:** HIGH · **CWE:** CWE-200 · **Category:** data_leaks
+
+**Title:** Environment files referencing {asset} found in public GitLab code
+
+**Summary:** Public GitLab code search returned .env files referencing {asset} — assume credentials inside are leaked and rotate.
+
+**Description:**
+
+> Public-GitLab blob search returned `.env` files referencing {asset}. Environment files routinely contain database passwords, API keys, OAuth secrets, and other production-critical material. A `.env` published to a public repo is one of the highest-impact leak categories.
+
+**Remediation:**
+
+> Open each matching `.env` file and review every line. Rotate every real credential, scrub the file from git history, and add `.env*` to `.gitignore` going forward. Configure a pre-commit hook to block future `.env` commits.
+
+**Tags:** `gitlab-leak`, `env-file`, `code-search`
+**Alert name:** GitLab — .env File Leaked
+**Monitor type:** `github_change`
+
+**References:**
+- GitLab — Removing sensitive data from a repository
+- OWASP Application Security Verification Standard — Secrets Management
+- CIS Critical Security Controls — v8 Control 4 (Secure Configuration)
+
+---
+
+### `leak-gitlab-secrets`
+
+**Severity:** HIGH · **CWE:** CWE-200 · **Category:** data_leaks
+
+**Title:** Secret-like strings referencing {asset} found in public GitLab code
+
+**Summary:** Public GitLab code search returned secret-like strings referencing {asset} — verify each match.
+
+**Description:**
+
+> Public-GitLab blob search returned files referencing {asset} alongside the keyword 'secret'. Many of these will be config constants or comments rather than real secrets, but each match should be opened and verified.
+
+**Remediation:**
+
+> Open each matching file and check whether a real secret is present. Rotate any live values, scrub the file from git history, and add pre-commit secret-scanning to the repository.
+
+**Tags:** `gitlab-leak`, `secrets`, `code-search`
+**Alert name:** GitLab — Secret-Like String Found
+**Monitor type:** `github_change`
+
+**References:**
+- GitLab — Removing sensitive data from a repository
+- OWASP Application Security Verification Standard — Secrets Management
+- CIS Critical Security Controls — v8 Control 4 (Secure Configuration)
+
+---
+
 ### `leak-package-creds`
 
-**Severity:** HIGH · **CWE:** CWE-522
+**Severity:** HIGH · **CWE:** CWE-522 · **Category:** data_leaks
 
 **Title:** Package manager credentials exposed at {asset} ({value})
 
@@ -2817,7 +2956,7 @@ _26 templates_
 
 ### `leak-phpinfo`
 
-**Severity:** HIGH · **CWE:** CWE-200
+**Severity:** HIGH · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** phpinfo() exposed at {asset} ({value})
 
@@ -2844,7 +2983,7 @@ _26 templates_
 
 ### `leak-svn-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-538
+**Severity:** HIGH · **CWE:** CWE-538 · **Category:** data_leaks
 
 **Title:** Subversion metadata exposed at {asset} ({value})
 
@@ -2870,7 +3009,7 @@ _26 templates_
 
 ### `leak-web-config`
 
-**Severity:** HIGH · **CWE:** CWE-200
+**Severity:** HIGH · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** IIS web.config exposed at {asset} ({value})
 
@@ -2897,7 +3036,7 @@ _26 templates_
 
 ### `leak-wp-installer`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** data_leaks
 
 **Title:** WordPress installer accessible at {asset} ({value})
 
@@ -2924,7 +3063,7 @@ _26 templates_
 
 ### `leak-api-docs`
 
-**Severity:** MEDIUM · **CWE:** CWE-200
+**Severity:** MEDIUM · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** API documentation exposed at {asset} ({value})
 
@@ -2953,7 +3092,7 @@ _26 templates_
 
 ### `leak-dockerfile`
 
-**Severity:** MEDIUM · **CWE:** CWE-200
+**Severity:** MEDIUM · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** Dockerfile exposed at {asset} ({value})
 
@@ -2980,7 +3119,7 @@ _26 templates_
 
 ### `leak-github-config`
 
-**Severity:** MEDIUM · **CWE:** CWE-200
+**Severity:** MEDIUM · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** Config files referencing {asset} found in public GitHub code
 
@@ -3005,9 +3144,36 @@ _26 templates_
 
 ---
 
+### `leak-gitlab-config`
+
+**Severity:** MEDIUM · **CWE:** CWE-200 · **Category:** data_leaks
+
+**Title:** Config files referencing {asset} found in public GitLab code
+
+**Summary:** Code search found config files referencing {asset} in public GitLab projects — review for credential or topology leaks.
+
+**Description:**
+
+> Public-GitLab blob search returned config files (json, yaml, ini, conf) referencing {asset}. Config files don't always contain secrets, but they often leak internal hostnames, API endpoints, ports, and ACL rules that help an attacker map your environment.
+
+**Remediation:**
+
+> Open each matching file and confirm what's exposed. If real credentials are present, rotate. If only configuration metadata is exposed, decide whether it should be public — internal hostnames and endpoint lists are sometimes deliberately published, but more often they're an oversight. Have the file removed from the project if it's an oversight.
+
+**Tags:** `gitlab-leak`, `config`, `code-search`
+**Alert name:** GitLab — Config Leaked
+**Monitor type:** `github_change`
+
+**References:**
+- GitLab — Removing sensitive data from a repository
+- OWASP Application Security Verification Standard — Secrets Management
+- CIS Critical Security Controls — v8 Control 4 (Secure Configuration)
+
+---
+
 ### `leak-htaccess`
 
-**Severity:** MEDIUM · **CWE:** CWE-538
+**Severity:** MEDIUM · **CWE:** CWE-538 · **Category:** data_leaks
 
 **Title:** Apache .htaccess exposed at {asset} ({value})
 
@@ -3033,7 +3199,7 @@ _26 templates_
 
 ### `leak-path`
 
-**Severity:** MEDIUM · **CWE:** CWE-200
+**Severity:** MEDIUM · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** Sensitive path exposed at {asset}: {value}
 
@@ -3059,7 +3225,7 @@ _26 templates_
 
 ### `leak-ds-store`
 
-**Severity:** LOW · **CWE:** CWE-538
+**Severity:** LOW · **CWE:** CWE-538 · **Category:** data_leaks
 
 **Title:** .DS_Store exposed at {asset} ({value})
 
@@ -3085,7 +3251,7 @@ _26 templates_
 
 ### `leak-package-manifest`
 
-**Severity:** LOW · **CWE:** CWE-200
+**Severity:** LOW · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** Package manifest exposed at {asset} ({value})
 
@@ -3115,7 +3281,7 @@ _42 templates_
 
 ### `nuclei-cve-2017-5638`
 
-**Severity:** CRITICAL · **CWE:** CWE-1336
+**Severity:** CRITICAL · **CWE:** CWE-1336 · **Category:** vulnerabilities
 
 **Title:** CVE-2017-5638: Apache Struts2 RCE (Equifax-grade) on {asset}
 
@@ -3144,7 +3310,7 @@ _42 templates_
 
 ### `nuclei-cve-2018-13379`
 
-**Severity:** CRITICAL · **CWE:** CWE-22
+**Severity:** CRITICAL · **CWE:** CWE-22 · **Category:** vulnerabilities
 
 **Title:** CVE-2018-13379: Fortinet FortiOS SSL VPN path traversal on {asset}
 
@@ -3173,7 +3339,7 @@ _42 templates_
 
 ### `nuclei-cve-2019-0708`
 
-**Severity:** CRITICAL · **CWE:** CWE-416
+**Severity:** CRITICAL · **CWE:** CWE-416 · **Category:** vulnerabilities
 
 **Title:** CVE-2019-0708: BlueKeep — Windows RDP RCE on {asset}
 
@@ -3202,7 +3368,7 @@ _42 templates_
 
 ### `nuclei-cve-2019-11510`
 
-**Severity:** CRITICAL · **CWE:** CWE-22
+**Severity:** CRITICAL · **CWE:** CWE-22 · **Category:** vulnerabilities
 
 **Title:** CVE-2019-11510: Pulse Secure SSL VPN path traversal on {asset}
 
@@ -3231,7 +3397,7 @@ _42 templates_
 
 ### `nuclei-cve-2020-1472`
 
-**Severity:** CRITICAL · **CWE:** CWE-330
+**Severity:** CRITICAL · **CWE:** CWE-330 · **Category:** vulnerabilities
 
 **Title:** CVE-2020-1472: Zerologon — Netlogon privilege escalation on {asset}
 
@@ -3260,7 +3426,7 @@ _42 templates_
 
 ### `nuclei-cve-2020-14882`
 
-**Severity:** CRITICAL · **CWE:** CWE-22
+**Severity:** CRITICAL · **CWE:** CWE-22 · **Category:** vulnerabilities
 
 **Title:** CVE-2020-14882: Oracle WebLogic Server unauthenticated RCE on {asset}
 
@@ -3289,7 +3455,7 @@ _42 templates_
 
 ### `nuclei-cve-2021-26084`
 
-**Severity:** CRITICAL · **CWE:** CWE-917
+**Severity:** CRITICAL · **CWE:** CWE-917 · **Category:** vulnerabilities
 
 **Title:** CVE-2021-26084: Atlassian Confluence OGNL injection on {asset}
 
@@ -3318,7 +3484,7 @@ _42 templates_
 
 ### `nuclei-cve-2021-26855`
 
-**Severity:** CRITICAL · **CWE:** CWE-918
+**Severity:** CRITICAL · **CWE:** CWE-918 · **Category:** vulnerabilities
 
 **Title:** CVE-2021-26855: ProxyLogon — Exchange Server SSRF on {asset}
 
@@ -3348,7 +3514,7 @@ _42 templates_
 
 ### `nuclei-cve-2021-34527`
 
-**Severity:** CRITICAL · **CWE:** CWE-269
+**Severity:** CRITICAL · **CWE:** CWE-269 · **Category:** vulnerabilities
 
 **Title:** CVE-2021-34527: PrintNightmare — Windows Print Spooler RCE on {asset}
 
@@ -3377,7 +3543,7 @@ _42 templates_
 
 ### `nuclei-cve-2021-44228`
 
-**Severity:** CRITICAL · **CWE:** CWE-502
+**Severity:** CRITICAL · **CWE:** CWE-502 · **Category:** vulnerabilities
 
 **Title:** CVE-2021-44228: Log4Shell — Apache Log4j RCE on {asset}
 
@@ -3416,7 +3582,7 @@ _42 templates_
 
 ### `nuclei-cve-2021-45046`
 
-**Severity:** CRITICAL · **CWE:** CWE-502
+**Severity:** CRITICAL · **CWE:** CWE-502 · **Category:** vulnerabilities
 
 **Title:** CVE-2021-45046: Log4j 2.15 mitigation bypass on {asset}
 
@@ -3445,7 +3611,7 @@ _42 templates_
 
 ### `nuclei-cve-2022-1388`
 
-**Severity:** CRITICAL · **CWE:** CWE-287
+**Severity:** CRITICAL · **CWE:** CWE-287 · **Category:** vulnerabilities
 
 **Title:** CVE-2022-1388: F5 BIG-IP iControl REST auth bypass on {asset}
 
@@ -3474,7 +3640,7 @@ _42 templates_
 
 ### `nuclei-cve-2022-22954`
 
-**Severity:** CRITICAL · **CWE:** CWE-1336
+**Severity:** CRITICAL · **CWE:** CWE-1336 · **Category:** vulnerabilities
 
 **Title:** CVE-2022-22954: VMware Workspace ONE Access SSTI RCE on {asset}
 
@@ -3503,7 +3669,7 @@ _42 templates_
 
 ### `nuclei-cve-2022-22963`
 
-**Severity:** CRITICAL · **CWE:** CWE-94
+**Severity:** CRITICAL · **CWE:** CWE-94 · **Category:** vulnerabilities
 
 **Title:** CVE-2022-22963: Spring Cloud Function SpEL injection on {asset}
 
@@ -3532,7 +3698,7 @@ _42 templates_
 
 ### `nuclei-cve-2022-22965`
 
-**Severity:** CRITICAL · **CWE:** CWE-915
+**Severity:** CRITICAL · **CWE:** CWE-915 · **Category:** vulnerabilities
 
 **Title:** CVE-2022-22965: Spring4Shell — Spring Framework RCE on {asset}
 
@@ -3562,7 +3728,7 @@ _42 templates_
 
 ### `nuclei-cve-2022-26134`
 
-**Severity:** CRITICAL · **CWE:** CWE-917
+**Severity:** CRITICAL · **CWE:** CWE-917 · **Category:** vulnerabilities
 
 **Title:** CVE-2022-26134: Atlassian Confluence OGNL injection RCE on {asset}
 
@@ -3592,7 +3758,7 @@ _42 templates_
 
 ### `nuclei-cve-2022-41082`
 
-**Severity:** CRITICAL · **CWE:** CWE-502
+**Severity:** CRITICAL · **CWE:** CWE-502 · **Category:** vulnerabilities
 
 **Title:** CVE-2022-41082: ProxyNotShell — Microsoft Exchange RCE on {asset}
 
@@ -3621,7 +3787,7 @@ _42 templates_
 
 ### `nuclei-cve-2022-47966`
 
-**Severity:** CRITICAL · **CWE:** CWE-611
+**Severity:** CRITICAL · **CWE:** CWE-611 · **Category:** vulnerabilities
 
 **Title:** CVE-2022-47966: ManageEngine ADSelfService Plus RCE on {asset}
 
@@ -3650,7 +3816,7 @@ _42 templates_
 
 ### `nuclei-cve-2023-22515`
 
-**Severity:** CRITICAL · **CWE:** CWE-287
+**Severity:** CRITICAL · **CWE:** CWE-287 · **Category:** vulnerabilities
 
 **Title:** CVE-2023-22515: Confluence broken access control on {asset}
 
@@ -3680,7 +3846,7 @@ _42 templates_
 
 ### `nuclei-cve-2023-22518`
 
-**Severity:** CRITICAL · **CWE:** CWE-285
+**Severity:** CRITICAL · **CWE:** CWE-285 · **Category:** vulnerabilities
 
 **Title:** CVE-2023-22518: Confluence improper authorisation on {asset}
 
@@ -3709,7 +3875,7 @@ _42 templates_
 
 ### `nuclei-cve-2023-23397`
 
-**Severity:** CRITICAL · **CWE:** CWE-294
+**Severity:** CRITICAL · **CWE:** CWE-294 · **Category:** vulnerabilities
 
 **Title:** CVE-2023-23397: Outlook NTLM credential leak on {asset}
 
@@ -3738,7 +3904,7 @@ _42 templates_
 
 ### `nuclei-cve-2023-27350`
 
-**Severity:** CRITICAL · **CWE:** CWE-287
+**Severity:** CRITICAL · **CWE:** CWE-287 · **Category:** vulnerabilities
 
 **Title:** CVE-2023-27350: PaperCut MF/NG auth bypass + RCE on {asset}
 
@@ -3767,7 +3933,7 @@ _42 templates_
 
 ### `nuclei-cve-2023-34362`
 
-**Severity:** CRITICAL · **CWE:** CWE-89
+**Severity:** CRITICAL · **CWE:** CWE-89 · **Category:** vulnerabilities
 
 **Title:** CVE-2023-34362: MOVEit Transfer SQL injection RCE on {asset}
 
@@ -3797,7 +3963,7 @@ _42 templates_
 
 ### `nuclei-cve-2023-4966`
 
-**Severity:** CRITICAL · **CWE:** CWE-119
+**Severity:** CRITICAL · **CWE:** CWE-119 · **Category:** vulnerabilities
 
 **Title:** CVE-2023-4966: Citrix Bleed — NetScaler ADC/Gateway on {asset}
 
@@ -3828,7 +3994,7 @@ _42 templates_
 
 ### `nuclei-cve-2023-50164`
 
-**Severity:** CRITICAL · **CWE:** CWE-22
+**Severity:** CRITICAL · **CWE:** CWE-22 · **Category:** vulnerabilities
 
 **Title:** CVE-2023-50164: Apache Struts file-upload path traversal on {asset}
 
@@ -3857,7 +4023,7 @@ _42 templates_
 
 ### `nuclei-cve-2023-7028`
 
-**Severity:** CRITICAL · **CWE:** CWE-640
+**Severity:** CRITICAL · **CWE:** CWE-640 · **Category:** vulnerabilities
 
 **Title:** CVE-2023-7028: GitLab account takeover via password reset on {asset}
 
@@ -3887,7 +4053,7 @@ _42 templates_
 
 ### `nuclei-cve-2024-1709`
 
-**Severity:** CRITICAL · **CWE:** CWE-287
+**Severity:** CRITICAL · **CWE:** CWE-287 · **Category:** vulnerabilities
 
 **Title:** CVE-2024-1709: ConnectWise ScreenConnect auth bypass on {asset}
 
@@ -3917,7 +4083,7 @@ _42 templates_
 
 ### `nuclei-cve-2024-21762`
 
-**Severity:** CRITICAL · **CWE:** CWE-787
+**Severity:** CRITICAL · **CWE:** CWE-787 · **Category:** vulnerabilities
 
 **Title:** CVE-2024-21762: Fortinet FortiOS SSL VPN OOB write on {asset}
 
@@ -3947,7 +4113,7 @@ _42 templates_
 
 ### `nuclei-cve-2024-21887`
 
-**Severity:** CRITICAL · **CWE:** CWE-77
+**Severity:** CRITICAL · **CWE:** CWE-77 · **Category:** vulnerabilities
 
 **Title:** CVE-2024-21887: Ivanti Connect Secure command injection on {asset}
 
@@ -3978,7 +4144,7 @@ _42 templates_
 
 ### `nuclei-cve-2024-23113`
 
-**Severity:** CRITICAL · **CWE:** CWE-134
+**Severity:** CRITICAL · **CWE:** CWE-134 · **Category:** vulnerabilities
 
 **Title:** CVE-2024-23113: Fortinet FortiOS format-string RCE on {asset}
 
@@ -4007,7 +4173,7 @@ _42 templates_
 
 ### `nuclei-cve-2024-27198`
 
-**Severity:** CRITICAL · **CWE:** CWE-287
+**Severity:** CRITICAL · **CWE:** CWE-287 · **Category:** vulnerabilities
 
 **Title:** CVE-2024-27198: JetBrains TeamCity authentication bypass on {asset}
 
@@ -4037,7 +4203,7 @@ _42 templates_
 
 ### `nuclei-cve-2024-29849`
 
-**Severity:** CRITICAL · **CWE:** CWE-287
+**Severity:** CRITICAL · **CWE:** CWE-287 · **Category:** vulnerabilities
 
 **Title:** CVE-2024-29849: Veeam Backup Enterprise Manager auth bypass on {asset}
 
@@ -4067,7 +4233,7 @@ _42 templates_
 
 ### `nuclei-cve-2024-3094`
 
-**Severity:** CRITICAL · **CWE:** CWE-506
+**Severity:** CRITICAL · **CWE:** CWE-506 · **Category:** vulnerabilities
 
 **Title:** CVE-2024-3094: XZ Utils backdoor on {asset}
 
@@ -4098,7 +4264,7 @@ _42 templates_
 
 ### `nuclei-cve-2024-3400`
 
-**Severity:** CRITICAL · **CWE:** CWE-77
+**Severity:** CRITICAL · **CWE:** CWE-77 · **Category:** vulnerabilities
 
 **Title:** CVE-2024-3400: Palo Alto GlobalProtect command injection on {asset}
 
@@ -4129,7 +4295,7 @@ _42 templates_
 
 ### `nuclei-cve-2020-3452`
 
-**Severity:** HIGH · **CWE:** CWE-22
+**Severity:** HIGH · **CWE:** CWE-22 · **Category:** vulnerabilities
 
 **Title:** CVE-2020-3452: Cisco ASA / FTD path traversal on {asset}
 
@@ -4158,7 +4324,7 @@ _42 templates_
 
 ### `nuclei-cve-2022-30190`
 
-**Severity:** HIGH · **CWE:** CWE-94
+**Severity:** HIGH · **CWE:** CWE-94 · **Category:** vulnerabilities
 
 **Title:** CVE-2022-30190: Follina — MS Office MSDT RCE on {asset}
 
@@ -4187,7 +4353,7 @@ _42 templates_
 
 ### `nuclei-cve-2022-41040`
 
-**Severity:** HIGH · **CWE:** CWE-918
+**Severity:** HIGH · **CWE:** CWE-918 · **Category:** vulnerabilities
 
 **Title:** CVE-2022-41040: ProxyNotShell — Microsoft Exchange SSRF on {asset}
 
@@ -4216,7 +4382,7 @@ _42 templates_
 
 ### `nuclei-cve-2023-46805`
 
-**Severity:** HIGH · **CWE:** CWE-287
+**Severity:** HIGH · **CWE:** CWE-287 · **Category:** vulnerabilities
 
 **Title:** CVE-2023-46805: Ivanti Connect Secure auth bypass on {asset}
 
@@ -4245,7 +4411,7 @@ _42 templates_
 
 ### `nuclei-cve-2024-21893`
 
-**Severity:** HIGH · **CWE:** CWE-918
+**Severity:** HIGH · **CWE:** CWE-918 · **Category:** vulnerabilities
 
 **Title:** CVE-2024-21893: Ivanti Connect Secure SSRF on {asset}
 
@@ -4274,7 +4440,7 @@ _42 templates_
 
 ### `nuclei-cve-2024-26229`
 
-**Severity:** HIGH · **CWE:** CWE-269
+**Severity:** HIGH · **CWE:** CWE-269 · **Category:** vulnerabilities
 
 **Title:** CVE-2024-26229: Windows CSC SYSTEM elevation on {asset}
 
@@ -4303,7 +4469,7 @@ _42 templates_
 
 ### `nuclei-cve-2024-27199`
 
-**Severity:** HIGH · **CWE:** CWE-22
+**Severity:** HIGH · **CWE:** CWE-22 · **Category:** vulnerabilities
 
 **Title:** CVE-2024-27199: JetBrains TeamCity path traversal on {asset}
 
@@ -4332,7 +4498,7 @@ _42 templates_
 
 ### `nuclei-cve-2021-45105`
 
-**Severity:** MEDIUM · **CWE:** CWE-674
+**Severity:** MEDIUM · **CWE:** CWE-674 · **Category:** vulnerabilities
 
 **Title:** CVE-2021-45105: Log4j 2.16 DoS via recursive lookup on {asset}
 
@@ -4365,7 +4531,7 @@ _148 templates_
 
 ### `nuclei-apache-airflow-default-login`
 
-**Severity:** CRITICAL · **CWE:** CWE-1188
+**Severity:** CRITICAL · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Apache Airflow default credentials accepted at {asset}
 
@@ -4402,7 +4568,7 @@ _148 templates_
 
 ### `nuclei-aws-access-key-disclosure`
 
-**Severity:** CRITICAL · **CWE:** CWE-798
+**Severity:** CRITICAL · **CWE:** CWE-798 · **Category:** data_leaks
 
 **Title:** AWS access key disclosed in response from {asset}
 
@@ -4439,7 +4605,7 @@ _148 templates_
 
 ### `nuclei-aws-imds-ssrf`
 
-**Severity:** CRITICAL · **CWE:** CWE-918
+**Severity:** CRITICAL · **CWE:** CWE-918 · **Category:** vulnerabilities
 
 **Title:** AWS IMDS reachable via SSRF from {asset}
 
@@ -4473,7 +4639,7 @@ _148 templates_
 
 ### `nuclei-azure-imds-ssrf`
 
-**Severity:** CRITICAL · **CWE:** CWE-918
+**Severity:** CRITICAL · **CWE:** CWE-918 · **Category:** vulnerabilities
 
 **Title:** Azure IMDS reachable via SSRF from {asset}
 
@@ -4499,7 +4665,7 @@ _148 templates_
 
 ### `nuclei-azure-shared-key-disclosure`
 
-**Severity:** CRITICAL · **CWE:** CWE-798
+**Severity:** CRITICAL · **CWE:** CWE-798 · **Category:** data_leaks
 
 **Title:** Azure storage shared key disclosed at {asset}
 
@@ -4533,7 +4699,7 @@ _148 templates_
 
 ### `nuclei-cpanel-default-login`
 
-**Severity:** CRITICAL · **CWE:** CWE-1188
+**Severity:** CRITICAL · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** cPanel default credentials accepted at {asset}
 
@@ -4566,7 +4732,7 @@ _148 templates_
 
 ### `nuclei-etcd-exposed`
 
-**Severity:** CRITICAL · **CWE:** CWE-306
+**Severity:** CRITICAL · **CWE:** CWE-306 · **Category:** service_exposure
 
 **Title:** etcd cluster exposed at {asset}
 
@@ -4592,7 +4758,7 @@ _148 templates_
 
 ### `nuclei-exposed-helm-tiller`
 
-**Severity:** CRITICAL · **CWE:** CWE-306
+**Severity:** CRITICAL · **CWE:** CWE-306 · **Category:** misconfigurations
 
 **Title:** Helm Tiller (v2) reachable on {asset}
 
@@ -4622,7 +4788,7 @@ _148 templates_
 
 ### `nuclei-gcp-metadata-ssrf`
 
-**Severity:** CRITICAL · **CWE:** CWE-918
+**Severity:** CRITICAL · **CWE:** CWE-918 · **Category:** vulnerabilities
 
 **Title:** GCP metadata server reachable via SSRF from {asset}
 
@@ -4648,7 +4814,7 @@ _148 templates_
 
 ### `nuclei-gcp-service-account-disclosure`
 
-**Severity:** CRITICAL · **CWE:** CWE-798
+**Severity:** CRITICAL · **CWE:** CWE-798 · **Category:** data_leaks
 
 **Title:** GCP service account credentials disclosed at {asset}
 
@@ -4682,7 +4848,7 @@ _148 templates_
 
 ### `nuclei-jboss-default-login`
 
-**Severity:** CRITICAL · **CWE:** CWE-1188
+**Severity:** CRITICAL · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** JBoss default credentials accepted at {asset}
 
@@ -4716,7 +4882,7 @@ _148 templates_
 
 ### `nuclei-jenkins-default-credentials`
 
-**Severity:** CRITICAL · **CWE:** CWE-1188
+**Severity:** CRITICAL · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Jenkins default credentials accepted at {asset}
 
@@ -4756,7 +4922,7 @@ _148 templates_
 
 ### `nuclei-jenkins-script-console`
 
-**Severity:** CRITICAL · **CWE:** CWE-77
+**Severity:** CRITICAL · **CWE:** CWE-77 · **Category:** service_exposure
 
 **Title:** Jenkins script console exposed at {asset}
 
@@ -4789,7 +4955,7 @@ _148 templates_
 
 ### `nuclei-jmx-rmi-exposed`
 
-**Severity:** CRITICAL · **CWE:** CWE-306
+**Severity:** CRITICAL · **CWE:** CWE-306 · **Category:** service_exposure
 
 **Title:** JMX-RMI management endpoint exposed at {asset}
 
@@ -4823,7 +4989,7 @@ _148 templates_
 
 ### `nuclei-kubernetes-api-exposed`
 
-**Severity:** CRITICAL · **CWE:** CWE-306
+**Severity:** CRITICAL · **CWE:** CWE-306 · **Category:** service_exposure
 
 **Title:** Kubernetes API server exposed at {asset}
 
@@ -4850,7 +5016,7 @@ _148 templates_
 
 ### `nuclei-mssql-default-login`
 
-**Severity:** CRITICAL · **CWE:** CWE-1188
+**Severity:** CRITICAL · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Microsoft SQL Server default credentials accepted at {asset}
 
@@ -4890,7 +5056,7 @@ _148 templates_
 
 ### `nuclei-mysql-default-credentials`
 
-**Severity:** CRITICAL · **CWE:** CWE-1188
+**Severity:** CRITICAL · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** MySQL default credentials accepted at {asset}
 
@@ -4926,7 +5092,7 @@ _148 templates_
 
 ### `nuclei-phpmyadmin-default-login`
 
-**Severity:** CRITICAL · **CWE:** CWE-1188
+**Severity:** CRITICAL · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** phpMyAdmin default credentials accepted at {asset}
 
@@ -4960,7 +5126,7 @@ _148 templates_
 
 ### `nuclei-plesk-default-login`
 
-**Severity:** CRITICAL · **CWE:** CWE-1188
+**Severity:** CRITICAL · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Plesk default credentials accepted at {asset}
 
@@ -4993,7 +5159,7 @@ _148 templates_
 
 ### `nuclei-postgres-default-credentials`
 
-**Severity:** CRITICAL · **CWE:** CWE-1188
+**Severity:** CRITICAL · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** PostgreSQL default credentials accepted at {asset}
 
@@ -5029,7 +5195,7 @@ _148 templates_
 
 ### `nuclei-private-key-disclosure`
 
-**Severity:** CRITICAL · **CWE:** CWE-200
+**Severity:** CRITICAL · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** Private key material disclosed at {asset}
 
@@ -5062,7 +5228,7 @@ _148 templates_
 
 ### `nuclei-solarwinds-default-login`
 
-**Severity:** CRITICAL · **CWE:** CWE-1188
+**Severity:** CRITICAL · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** SolarWinds default credentials accepted at {asset}
 
@@ -5096,7 +5262,7 @@ _148 templates_
 
 ### `nuclei-solr-default-credentials`
 
-**Severity:** CRITICAL · **CWE:** CWE-1188
+**Severity:** CRITICAL · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Apache Solr default credentials accepted at {asset}
 
@@ -5129,7 +5295,7 @@ _148 templates_
 
 ### `nuclei-spring-actuator-env`
 
-**Severity:** CRITICAL · **CWE:** CWE-200
+**Severity:** CRITICAL · **CWE:** CWE-200 · **Category:** service_exposure
 
 **Title:** Spring Boot Actuator /env endpoint exposed at {asset}
 
@@ -5161,7 +5327,7 @@ _148 templates_
 
 ### `nuclei-tomcat-default-login`
 
-**Severity:** CRITICAL · **CWE:** CWE-1188
+**Severity:** CRITICAL · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Tomcat Manager default credentials accepted at {asset}
 
@@ -5198,7 +5364,7 @@ _148 templates_
 
 ### `nuclei-weblogic-default-login`
 
-**Severity:** CRITICAL · **CWE:** CWE-1188
+**Severity:** CRITICAL · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Oracle WebLogic default credentials accepted at {asset}
 
@@ -5232,7 +5398,7 @@ _148 templates_
 
 ### `nuclei-webmin-default-credentials`
 
-**Severity:** CRITICAL · **CWE:** CWE-1188
+**Severity:** CRITICAL · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Webmin default credentials accepted at {asset}
 
@@ -5268,7 +5434,7 @@ _148 templates_
 
 ### `nuclei-websphere-default-login`
 
-**Severity:** CRITICAL · **CWE:** CWE-1188
+**Severity:** CRITICAL · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** IBM WebSphere default credentials accepted at {asset}
 
@@ -5301,7 +5467,7 @@ _148 templates_
 
 ### `nuclei-wordpress-default-credentials`
 
-**Severity:** CRITICAL · **CWE:** CWE-1188
+**Severity:** CRITICAL · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** WordPress default credentials accepted at {asset}
 
@@ -5341,7 +5507,7 @@ _148 templates_
 
 ### `nuclei-activemq-admin-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** ActiveMQ web console exposed at {asset}
 
@@ -5367,7 +5533,7 @@ _148 templates_
 
 ### `nuclei-activemq-default-credentials`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** ActiveMQ default credentials accepted at {asset}
 
@@ -5401,7 +5567,7 @@ _148 templates_
 
 ### `nuclei-airflow-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Apache Airflow webserver exposed at {asset}
 
@@ -5427,7 +5593,7 @@ _148 templates_
 
 ### `nuclei-argo-cd-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Argo CD UI exposed at {asset}
 
@@ -5453,7 +5619,7 @@ _148 templates_
 
 ### `nuclei-axis-default-credentials`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Axis camera default credentials accepted at {asset}
 
@@ -5486,7 +5652,7 @@ _148 templates_
 
 ### `nuclei-blind-ssrf`
 
-**Severity:** HIGH · **CWE:** CWE-918
+**Severity:** HIGH · **CWE:** CWE-918 · **Category:** vulnerabilities
 
 **Title:** Blind server-side request forgery on {asset}
 
@@ -5512,7 +5678,7 @@ _148 templates_
 
 ### `nuclei-cacti-default-login`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Cacti default credentials accepted at {asset}
 
@@ -5546,7 +5712,7 @@ _148 templates_
 
 ### `nuclei-cisco-default-credentials`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Cisco device default credentials accepted at {asset}
 
@@ -5579,7 +5745,7 @@ _148 templates_
 
 ### `nuclei-consul-ui-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Consul UI exposed at {asset}
 
@@ -5605,7 +5771,7 @@ _148 templates_
 
 ### `nuclei-cors-wildcard-with-credentials`
 
-**Severity:** HIGH · **CWE:** CWE-942
+**Severity:** HIGH · **CWE:** CWE-942 · **Category:** misconfigurations
 
 **Title:** CORS allows wildcard origin with credentials on {asset}
 
@@ -5636,7 +5802,7 @@ _148 templates_
 
 ### `nuclei-couchdb-default-login`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Apache CouchDB default credentials accepted at {asset}
 
@@ -5669,7 +5835,7 @@ _148 templates_
 
 ### `nuclei-couchdb-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** CouchDB Fauxton admin UI exposed at {asset}
 
@@ -5695,7 +5861,7 @@ _148 templates_
 
 ### `nuclei-docker-registry-v2-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Docker Registry v2 API exposed at {asset}
 
@@ -5721,7 +5887,7 @@ _148 templates_
 
 ### `nuclei-elasticsearch-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Elasticsearch cluster exposed at {asset}
 
@@ -5747,7 +5913,7 @@ _148 templates_
 
 ### `nuclei-exposed-cassandra`
 
-**Severity:** HIGH · **CWE:** CWE-306
+**Severity:** HIGH · **CWE:** CWE-306 · **Category:** misconfigurations
 
 **Title:** Apache Cassandra exposed without authentication on {asset}
 
@@ -5773,7 +5939,7 @@ _148 templates_
 
 ### `nuclei-exposed-couchbase`
 
-**Severity:** HIGH · **CWE:** CWE-306
+**Severity:** HIGH · **CWE:** CWE-306 · **Category:** misconfigurations
 
 **Title:** Couchbase exposed without authentication on {asset}
 
@@ -5799,7 +5965,7 @@ _148 templates_
 
 ### `nuclei-exposed-helm-values`
 
-**Severity:** HIGH · **CWE:** CWE-200
+**Severity:** HIGH · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** Exposed Helm chart values on {asset}
 
@@ -5826,7 +5992,7 @@ _148 templates_
 
 ### `nuclei-exposed-ldap-anonymous`
 
-**Severity:** HIGH · **CWE:** CWE-287
+**Severity:** HIGH · **CWE:** CWE-287 · **Category:** misconfigurations
 
 **Title:** Anonymous LDAP bind allowed on {asset}
 
@@ -5856,7 +6022,7 @@ _148 templates_
 
 ### `nuclei-exposed-memcached`
 
-**Severity:** HIGH · **CWE:** CWE-306
+**Severity:** HIGH · **CWE:** CWE-306 · **Category:** misconfigurations
 
 **Title:** Memcached exposed on {asset}
 
@@ -5883,7 +6049,7 @@ _148 templates_
 
 ### `nuclei-exposed-mongodb-public`
 
-**Severity:** HIGH · **CWE:** CWE-306
+**Severity:** HIGH · **CWE:** CWE-306 · **Category:** misconfigurations
 
 **Title:** Unauthenticated MongoDB on {asset}
 
@@ -5909,7 +6075,7 @@ _148 templates_
 
 ### `nuclei-exposed-redis-public`
 
-**Severity:** HIGH · **CWE:** CWE-306
+**Severity:** HIGH · **CWE:** CWE-306 · **Category:** misconfigurations
 
 **Title:** Unauthenticated Redis on {asset}
 
@@ -5939,7 +6105,7 @@ _148 templates_
 
 ### `nuclei-exposed-rsync`
 
-**Severity:** HIGH · **CWE:** CWE-306
+**Severity:** HIGH · **CWE:** CWE-306 · **Category:** misconfigurations
 
 **Title:** Unauthenticated rsync server on {asset}
 
@@ -5965,7 +6131,7 @@ _148 templates_
 
 ### `nuclei-exposed-snmp-public-community`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** SNMP with default 'public' community string on {asset}
 
@@ -5991,7 +6157,7 @@ _148 templates_
 
 ### `nuclei-firebase-realtime-db-public`
 
-**Severity:** HIGH · **CWE:** CWE-200
+**Severity:** HIGH · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** Firebase Realtime Database publicly readable on {asset}
 
@@ -6022,7 +6188,7 @@ _148 templates_
 
 ### `nuclei-fortinet-default-credentials`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Fortinet device default credentials accepted at {asset}
 
@@ -6055,7 +6221,7 @@ _148 templates_
 
 ### `nuclei-ftp-default-credentials`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** FTP default credentials accepted at {asset}
 
@@ -6090,7 +6256,7 @@ _148 templates_
 
 ### `nuclei-github-token-disclosure`
 
-**Severity:** HIGH · **CWE:** CWE-200
+**Severity:** HIGH · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** GitHub token disclosed at {asset}
 
@@ -6118,7 +6284,7 @@ _148 templates_
 
 ### `nuclei-grafana-default-credentials`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Grafana default credentials accepted at {asset}
 
@@ -6152,7 +6318,7 @@ _148 templates_
 
 ### `nuclei-hikvision-default-credentials`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Hikvision camera default credentials accepted at {asset}
 
@@ -6185,7 +6351,7 @@ _148 templates_
 
 ### `nuclei-host-header-injection`
 
-**Severity:** HIGH · **CWE:** CWE-644
+**Severity:** HIGH · **CWE:** CWE-644 · **Category:** misconfigurations
 
 **Title:** Host header injection vulnerability on {asset}
 
@@ -6211,7 +6377,7 @@ _148 templates_
 
 ### `nuclei-http-request-smuggling`
 
-**Severity:** HIGH · **CWE:** CWE-444
+**Severity:** HIGH · **CWE:** CWE-444 · **Category:** misconfigurations
 
 **Title:** HTTP request smuggling on {asset}
 
@@ -6242,7 +6408,7 @@ _148 templates_
 
 ### `nuclei-influxdb-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** InfluxDB API exposed at {asset}
 
@@ -6268,7 +6434,7 @@ _148 templates_
 
 ### `nuclei-jboss-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** JBoss admin console exposed at {asset}
 
@@ -6294,7 +6460,7 @@ _148 templates_
 
 ### `nuclei-juniper-default-credentials`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Juniper device default credentials accepted at {asset}
 
@@ -6327,7 +6493,7 @@ _148 templates_
 
 ### `nuclei-jwt-no-signature-verification`
 
-**Severity:** HIGH · **CWE:** CWE-347
+**Severity:** HIGH · **CWE:** CWE-347 · **Category:** vulnerabilities
 
 **Title:** JWT signature not verified by {asset}
 
@@ -6355,7 +6521,7 @@ _148 templates_
 
 ### `nuclei-kubernetes-dashboard-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Kubernetes Dashboard exposed at {asset}
 
@@ -6382,7 +6548,7 @@ _148 templates_
 
 ### `nuclei-mikrotik-default-credentials`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** MikroTik RouterOS default credentials accepted at {asset}
 
@@ -6415,7 +6581,7 @@ _148 templates_
 
 ### `nuclei-mlflow-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** MLflow tracking server exposed at {asset}
 
@@ -6441,7 +6607,7 @@ _148 templates_
 
 ### `nuclei-mongo-express-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** mongo-express UI exposed at {asset}
 
@@ -6467,7 +6633,7 @@ _148 templates_
 
 ### `nuclei-mongodb-default-credentials`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** MongoDB default credentials accepted at {asset}
 
@@ -6501,7 +6667,7 @@ _148 templates_
 
 ### `nuclei-nagios-default-login`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Nagios default credentials accepted at {asset}
 
@@ -6535,7 +6701,7 @@ _148 templates_
 
 ### `nuclei-oauth-token-leak`
 
-**Severity:** HIGH · **CWE:** CWE-200
+**Severity:** HIGH · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** OAuth token disclosed at {asset}
 
@@ -6562,7 +6728,7 @@ _148 templates_
 
 ### `nuclei-opennms-default-login`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** OpenNMS default credentials accepted at {asset}
 
@@ -6595,7 +6761,7 @@ _148 templates_
 
 ### `nuclei-portainer-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Portainer UI exposed at {asset}
 
@@ -6621,7 +6787,7 @@ _148 templates_
 
 ### `nuclei-rabbitmq-default-login`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** RabbitMQ default credentials accepted at {asset}
 
@@ -6657,7 +6823,7 @@ _148 templates_
 
 ### `nuclei-rancher-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Rancher UI exposed at {asset}
 
@@ -6683,7 +6849,7 @@ _148 templates_
 
 ### `nuclei-router-default-login`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Router web UI default credentials accepted at {asset}
 
@@ -6718,7 +6884,7 @@ _148 templates_
 
 ### `nuclei-server-side-template-injection`
 
-**Severity:** HIGH · **CWE:** CWE-1336
+**Severity:** HIGH · **CWE:** CWE-1336 · **Category:** vulnerabilities
 
 **Title:** Server-side template injection (SSTI) on {asset}
 
@@ -6751,7 +6917,7 @@ _148 templates_
 
 ### `nuclei-slack-token-disclosure`
 
-**Severity:** HIGH · **CWE:** CWE-200
+**Severity:** HIGH · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** Slack token disclosed at {asset}
 
@@ -6778,7 +6944,7 @@ _148 templates_
 
 ### `nuclei-smtp-open-relay`
 
-**Severity:** HIGH · **CWE:** CWE-285
+**Severity:** HIGH · **CWE:** CWE-285 · **Category:** misconfigurations
 
 **Title:** SMTP open relay on {asset}
 
@@ -6804,7 +6970,7 @@ _148 templates_
 
 ### `nuclei-solr-admin-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Apache Solr admin UI exposed at {asset}
 
@@ -6830,7 +6996,7 @@ _148 templates_
 
 ### `nuclei-spark-master-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Apache Spark master UI exposed at {asset}
 
@@ -6856,7 +7022,7 @@ _148 templates_
 
 ### `nuclei-spring-boot-actuator`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Spring Boot Actuator endpoints exposed at {asset}
 
@@ -6882,7 +7048,7 @@ _148 templates_
 
 ### `nuclei-spring-cloud-env`
 
-**Severity:** HIGH · **CWE:** CWE-200
+**Severity:** HIGH · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** Spring Cloud Config server exposing /env on {asset}
 
@@ -6908,7 +7074,7 @@ _148 templates_
 
 ### `nuclei-ssrf-detected`
 
-**Severity:** HIGH · **CWE:** CWE-918
+**Severity:** HIGH · **CWE:** CWE-918 · **Category:** vulnerabilities
 
 **Title:** Server-side request forgery (SSRF) on {asset}
 
@@ -6934,7 +7100,7 @@ _148 templates_
 
 ### `nuclei-stripe-key-disclosure`
 
-**Severity:** HIGH · **CWE:** CWE-798
+**Severity:** HIGH · **CWE:** CWE-798 · **Category:** data_leaks
 
 **Title:** Stripe API key disclosed at {asset}
 
@@ -6964,7 +7130,7 @@ _148 templates_
 
 ### `nuclei-tomcat-host-manager`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Apache Tomcat Host Manager app exposed at {asset}
 
@@ -6990,7 +7156,7 @@ _148 templates_
 
 ### `nuclei-tomcat-manager-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** service_exposure
 
 **Title:** Apache Tomcat Manager app exposed at {asset}
 
@@ -7016,7 +7182,7 @@ _148 templates_
 
 ### `nuclei-unifi-default-login`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Ubiquiti UniFi default credentials accepted at {asset}
 
@@ -7049,7 +7215,7 @@ _148 templates_
 
 ### `nuclei-weave-scope-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Weave Scope UI exposed at {asset}
 
@@ -7075,7 +7241,7 @@ _148 templates_
 
 ### `nuclei-weblogic-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Oracle WebLogic admin console exposed at {asset}
 
@@ -7101,7 +7267,7 @@ _148 templates_
 
 ### `nuclei-websphere-exposed`
 
-**Severity:** HIGH · **CWE:** CWE-284
+**Severity:** HIGH · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** IBM WebSphere admin console exposed at {asset}
 
@@ -7127,7 +7293,7 @@ _148 templates_
 
 ### `nuclei-zabbix-default-login`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Zabbix default credentials accepted at {asset}
 
@@ -7161,7 +7327,7 @@ _148 templates_
 
 ### `nuclei-zyxel-default-credentials`
 
-**Severity:** HIGH · **CWE:** CWE-1188
+**Severity:** HIGH · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Zyxel device default credentials accepted at {asset}
 
@@ -7194,7 +7360,7 @@ _148 templates_
 
 ### `nuclei-adminer-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Adminer login page exposed at {asset}
 
@@ -7220,7 +7386,7 @@ _148 templates_
 
 ### `nuclei-aws-s3-bucket-info-disclosure`
 
-**Severity:** MEDIUM · **CWE:** CWE-200
+**Severity:** MEDIUM · **CWE:** CWE-200 · **Category:** service_exposure
 
 **Title:** AWS S3 bucket info disclosed at {asset}
 
@@ -7247,7 +7413,7 @@ _148 templates_
 
 ### `nuclei-bitbucket-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Bitbucket Server instance exposed at {asset}
 
@@ -7273,7 +7439,7 @@ _148 templates_
 
 ### `nuclei-cache-deception`
 
-**Severity:** MEDIUM · **CWE:** CWE-525
+**Severity:** MEDIUM · **CWE:** CWE-525 · **Category:** misconfigurations
 
 **Title:** Web cache deception possible on {asset}
 
@@ -7299,7 +7465,7 @@ _148 templates_
 
 ### `nuclei-confluence-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Atlassian Confluence instance exposed at {asset}
 
@@ -7326,7 +7492,7 @@ _148 templates_
 
 ### `nuclei-cors-permissive`
 
-**Severity:** MEDIUM · **CWE:** CWE-942
+**Severity:** MEDIUM · **CWE:** CWE-942 · **Category:** misconfigurations
 
 **Title:** Permissive CORS configuration on {asset}
 
@@ -7351,7 +7517,7 @@ _148 templates_
 
 ### `nuclei-dns-open-resolver`
 
-**Severity:** MEDIUM · **CWE:** CWE-406
+**Severity:** MEDIUM · **CWE:** CWE-406 · **Category:** misconfigurations
 
 **Title:** DNS open resolver on {asset}
 
@@ -7377,7 +7543,7 @@ _148 templates_
 
 ### `nuclei-drupal-admin-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Drupal admin login exposed at {asset}
 
@@ -7403,7 +7569,7 @@ _148 templates_
 
 ### `nuclei-exposed-build-artifacts`
 
-**Severity:** MEDIUM · **CWE:** CWE-200
+**Severity:** MEDIUM · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** CI/CD build artefacts exposed at {asset}
 
@@ -7429,7 +7595,7 @@ _148 templates_
 
 ### `nuclei-exposed-flink-ui`
 
-**Severity:** MEDIUM · **CWE:** CWE-306
+**Severity:** MEDIUM · **CWE:** CWE-306 · **Category:** misconfigurations
 
 **Title:** Apache Flink dashboard exposed on {asset}
 
@@ -7455,7 +7621,7 @@ _148 templates_
 
 ### `nuclei-exposed-mqtt`
 
-**Severity:** MEDIUM · **CWE:** CWE-306
+**Severity:** MEDIUM · **CWE:** CWE-306 · **Category:** misconfigurations
 
 **Title:** MQTT broker exposed without authentication on {asset}
 
@@ -7481,7 +7647,7 @@ _148 templates_
 
 ### `nuclei-exposed-spring-eureka`
 
-**Severity:** MEDIUM · **CWE:** CWE-200
+**Severity:** MEDIUM · **CWE:** CWE-200 · **Category:** misconfigurations
 
 **Title:** Spring Eureka service registry exposed on {asset}
 
@@ -7507,7 +7673,7 @@ _148 templates_
 
 ### `nuclei-firebase-database-info-exposure`
 
-**Severity:** MEDIUM · **CWE:** CWE-200
+**Severity:** MEDIUM · **CWE:** CWE-200 · **Category:** service_exposure
 
 **Title:** Firebase database info disclosed at {asset}
 
@@ -7534,7 +7700,7 @@ _148 templates_
 
 ### `nuclei-gitea-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Gitea instance exposed at {asset}
 
@@ -7560,7 +7726,7 @@ _148 templates_
 
 ### `nuclei-gitlab-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** GitLab login page exposed at {asset}
 
@@ -7586,7 +7752,7 @@ _148 templates_
 
 ### `nuclei-google-api-key-disclosure`
 
-**Severity:** MEDIUM · **CWE:** CWE-200
+**Severity:** MEDIUM · **CWE:** CWE-200 · **Category:** data_leaks
 
 **Title:** Google API key disclosed at {asset}
 
@@ -7613,7 +7779,7 @@ _148 templates_
 
 ### `nuclei-grafana-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Grafana login page exposed at {asset}
 
@@ -7639,7 +7805,7 @@ _148 templates_
 
 ### `nuclei-graphql-batching`
 
-**Severity:** MEDIUM · **CWE:** CWE-770
+**Severity:** MEDIUM · **CWE:** CWE-770 · **Category:** misconfigurations
 
 **Title:** GraphQL batching attacks possible on {asset}
 
@@ -7664,7 +7830,7 @@ _148 templates_
 
 ### `nuclei-graphql-introspection-enabled`
 
-**Severity:** MEDIUM · **CWE:** CWE-200
+**Severity:** MEDIUM · **CWE:** CWE-200 · **Category:** misconfigurations
 
 **Title:** GraphQL introspection enabled on {asset}
 
@@ -7694,7 +7860,7 @@ _148 templates_
 
 ### `nuclei-graphql-playground-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-200
+**Severity:** MEDIUM · **CWE:** CWE-200 · **Category:** misconfigurations
 
 **Title:** GraphQL Playground / GraphiQL exposed on {asset}
 
@@ -7724,7 +7890,7 @@ _148 templates_
 
 ### `nuclei-harbor-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Harbor UI exposed at {asset}
 
@@ -7750,7 +7916,7 @@ _148 templates_
 
 ### `nuclei-jenkins-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Jenkins login page exposed at {asset}
 
@@ -7781,7 +7947,7 @@ _148 templates_
 
 ### `nuclei-jira-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Atlassian Jira instance exposed at {asset}
 
@@ -7807,7 +7973,7 @@ _148 templates_
 
 ### `nuclei-joomla-admin-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Joomla administrator panel exposed at {asset}
 
@@ -7833,7 +7999,7 @@ _148 templates_
 
 ### `nuclei-jwt-weak-secret`
 
-**Severity:** MEDIUM · **CWE:** CWE-326
+**Severity:** MEDIUM · **CWE:** CWE-326 · **Category:** vulnerabilities
 
 **Title:** JWT signed with weak secret on {asset}
 
@@ -7860,7 +8026,7 @@ _148 templates_
 
 ### `nuclei-kafka-ui-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Kafka management UI exposed at {asset}
 
@@ -7885,7 +8051,7 @@ _148 templates_
 
 ### `nuclei-kibana-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Kibana instance exposed at {asset}
 
@@ -7911,7 +8077,7 @@ _148 templates_
 
 ### `nuclei-magento-admin-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Magento admin panel exposed at {asset}
 
@@ -7937,7 +8103,7 @@ _148 templates_
 
 ### `nuclei-nexus-repository-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Sonatype Nexus repository manager exposed at {asset}
 
@@ -7963,7 +8129,7 @@ _148 templates_
 
 ### `nuclei-ntp-monlist`
 
-**Severity:** MEDIUM · **CWE:** CWE-406
+**Severity:** MEDIUM · **CWE:** CWE-406 · **Category:** misconfigurations
 
 **Title:** NTP monlist enabled on {asset}
 
@@ -7989,7 +8155,7 @@ _148 templates_
 
 ### `nuclei-open-redirect`
 
-**Severity:** MEDIUM · **CWE:** CWE-601
+**Severity:** MEDIUM · **CWE:** CWE-601 · **Category:** misconfigurations
 
 **Title:** Open redirect on {asset}
 
@@ -8015,7 +8181,7 @@ _148 templates_
 
 ### `nuclei-phpmyadmin-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** phpMyAdmin login page exposed at {asset}
 
@@ -8041,7 +8207,7 @@ _148 templates_
 
 ### `nuclei-pihole-default-credentials`
 
-**Severity:** MEDIUM · **CWE:** CWE-1188
+**Severity:** MEDIUM · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Pi-hole default credentials accepted at {asset}
 
@@ -8075,7 +8241,7 @@ _148 templates_
 
 ### `nuclei-printer-default-login`
 
-**Severity:** MEDIUM · **CWE:** CWE-1188
+**Severity:** MEDIUM · **CWE:** CWE-1188 · **Category:** misconfigurations
 
 **Title:** Printer default credentials accepted at {asset}
 
@@ -8108,7 +8274,7 @@ _148 templates_
 
 ### `nuclei-prometheus-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** Prometheus metrics endpoint exposed at {asset}
 
@@ -8134,7 +8300,7 @@ _148 templates_
 
 ### `nuclei-rabbitmq-management-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** RabbitMQ management UI exposed at {asset}
 
@@ -8160,7 +8326,7 @@ _148 templates_
 
 ### `nuclei-session-token-in-url`
 
-**Severity:** MEDIUM · **CWE:** CWE-598
+**Severity:** MEDIUM · **CWE:** CWE-598 · **Category:** service_exposure
 
 **Title:** Session token transmitted in URL on {asset}
 
@@ -8187,7 +8353,7 @@ _148 templates_
 
 ### `nuclei-sonarqube-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** SonarQube instance exposed at {asset}
 
@@ -8213,7 +8379,7 @@ _148 templates_
 
 ### `nuclei-uncategorized`
 
-**Severity:** MEDIUM · **CWE:** —
+**Severity:** MEDIUM · **CWE:** — · **Category:** vulnerabilities
 
 **Title:** Nuclei finding: {value} on {asset}
 
@@ -8239,7 +8405,7 @@ _148 templates_
 
 ### `nuclei-vault-ui-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** HashiCorp Vault UI exposed at {asset}
 
@@ -8265,7 +8431,7 @@ _148 templates_
 
 ### `nuclei-wordpress-admin-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** WordPress admin login (wp-admin) exposed at {asset}
 
@@ -8291,7 +8457,7 @@ _148 templates_
 
 ### `nuclei-zookeeper-admin-exposed`
 
-**Severity:** MEDIUM · **CWE:** CWE-284
+**Severity:** MEDIUM · **CWE:** CWE-284 · **Category:** service_exposure
 
 **Title:** ZooKeeper admin server exposed at {asset}
 
@@ -8317,7 +8483,7 @@ _148 templates_
 
 ### `nuclei-apache-version-disclosure`
 
-**Severity:** LOW · **CWE:** CWE-200
+**Severity:** LOW · **CWE:** CWE-200 · **Category:** service_exposure
 
 **Title:** Apache HTTP Server version disclosed by {asset}
 
@@ -8343,7 +8509,7 @@ _148 templates_
 
 ### `nuclei-csrf-token-disclosure`
 
-**Severity:** LOW · **CWE:** CWE-598
+**Severity:** LOW · **CWE:** CWE-598 · **Category:** service_exposure
 
 **Title:** CSRF token in URL/log on {asset}
 
@@ -8370,7 +8536,7 @@ _148 templates_
 
 ### `nuclei-drupal-version-disclosure`
 
-**Severity:** LOW · **CWE:** CWE-200
+**Severity:** LOW · **CWE:** CWE-200 · **Category:** service_exposure
 
 **Title:** Drupal version disclosed by {asset}
 
@@ -8396,7 +8562,7 @@ _148 templates_
 
 ### `nuclei-http-trace-enabled`
 
-**Severity:** LOW · **CWE:** CWE-693
+**Severity:** LOW · **CWE:** CWE-693 · **Category:** misconfigurations
 
 **Title:** HTTP TRACE method enabled on {asset}
 
@@ -8425,7 +8591,7 @@ _148 templates_
 
 ### `nuclei-iis-version-disclosure`
 
-**Severity:** LOW · **CWE:** CWE-200
+**Severity:** LOW · **CWE:** CWE-200 · **Category:** service_exposure
 
 **Title:** IIS version disclosed by {asset}
 
@@ -8454,7 +8620,7 @@ _148 templates_
 
 ### `nuclei-internal-ip-disclosure`
 
-**Severity:** LOW · **CWE:** CWE-200
+**Severity:** LOW · **CWE:** CWE-200 · **Category:** service_exposure
 
 **Title:** Internal IP address disclosed by {asset}
 
@@ -8480,7 +8646,7 @@ _148 templates_
 
 ### `nuclei-joomla-version-disclosure`
 
-**Severity:** LOW · **CWE:** CWE-200
+**Severity:** LOW · **CWE:** CWE-200 · **Category:** service_exposure
 
 **Title:** Joomla version disclosed by {asset}
 
@@ -8506,7 +8672,7 @@ _148 templates_
 
 ### `nuclei-mixed-content`
 
-**Severity:** LOW · **CWE:** CWE-319
+**Severity:** LOW · **CWE:** CWE-319 · **Category:** misconfigurations
 
 **Title:** Mixed content (HTTPS page loads HTTP resources) on {asset}
 
@@ -8532,7 +8698,7 @@ _148 templates_
 
 ### `nuclei-nginx-version-disclosure`
 
-**Severity:** LOW · **CWE:** CWE-200
+**Severity:** LOW · **CWE:** CWE-200 · **Category:** service_exposure
 
 **Title:** nginx version disclosed by {asset}
 
@@ -8558,7 +8724,7 @@ _148 templates_
 
 ### `nuclei-path-disclosure`
 
-**Severity:** LOW · **CWE:** CWE-209
+**Severity:** LOW · **CWE:** CWE-209 · **Category:** service_exposure
 
 **Title:** Server file system path disclosed by {asset}
 
@@ -8584,7 +8750,7 @@ _148 templates_
 
 ### `nuclei-tabnabbing`
 
-**Severity:** LOW · **CWE:** CWE-1022
+**Severity:** LOW · **CWE:** CWE-1022 · **Category:** misconfigurations
 
 **Title:** Reverse tabnabbing — links missing rel=noopener on {asset}
 
@@ -8609,7 +8775,7 @@ _148 templates_
 
 ### `nuclei-tomcat-version-disclosure`
 
-**Severity:** LOW · **CWE:** CWE-200
+**Severity:** LOW · **CWE:** CWE-200 · **Category:** service_exposure
 
 **Title:** Apache Tomcat version disclosed by {asset}
 
@@ -8635,7 +8801,7 @@ _148 templates_
 
 ### `nuclei-wordpress-version-disclosure`
 
-**Severity:** LOW · **CWE:** CWE-200
+**Severity:** LOW · **CWE:** CWE-200 · **Category:** service_exposure
 
 **Title:** WordPress version disclosed by {asset}
 
@@ -8665,7 +8831,7 @@ _13 templates_
 
 ### `ssl-cert-expired`
 
-**Severity:** CRITICAL · **CWE:** CWE-295
+**Severity:** CRITICAL · **CWE:** CWE-295 · **Category:** security_hygiene
 
 **Title:** SSL certificate expired on {asset}:{port}
 
@@ -8691,7 +8857,7 @@ _13 templates_
 
 ### `ssl-cert-expiring-7d`
 
-**Severity:** HIGH · **CWE:** CWE-298
+**Severity:** HIGH · **CWE:** CWE-298 · **Category:** security_hygiene
 
 **Title:** SSL certificate expires in {value} days on {asset}:{port}
 
@@ -8716,7 +8882,7 @@ _13 templates_
 
 ### `ssl-hostname-mismatch`
 
-**Severity:** HIGH · **CWE:** CWE-297
+**Severity:** HIGH · **CWE:** CWE-297 · **Category:** security_hygiene
 
 **Title:** SSL certificate hostname mismatch on {asset}:{port}
 
@@ -8742,7 +8908,7 @@ _13 templates_
 
 ### `ssl-only-deprecated-protocols`
 
-**Severity:** HIGH · **CWE:** CWE-326
+**Severity:** HIGH · **CWE:** CWE-326 · **Category:** security_hygiene
 
 **Title:** Only deprecated TLS versions supported on {asset}
 
@@ -8768,7 +8934,7 @@ _13 templates_
 
 ### `ssl-self-signed`
 
-**Severity:** HIGH · **CWE:** CWE-295
+**Severity:** HIGH · **CWE:** CWE-295 · **Category:** security_hygiene
 
 **Title:** Self-signed SSL certificate on {asset}:{port}
 
@@ -8794,7 +8960,7 @@ _13 templates_
 
 ### `ssl-tls10-enabled`
 
-**Severity:** HIGH · **CWE:** CWE-326
+**Severity:** HIGH · **CWE:** CWE-326 · **Category:** security_hygiene
 
 **Title:** TLS 1.0 enabled on {asset}
 
@@ -8821,7 +8987,7 @@ _13 templates_
 
 ### `ssl-cert-expiring-30d`
 
-**Severity:** MEDIUM · **CWE:** CWE-298
+**Severity:** MEDIUM · **CWE:** CWE-298 · **Category:** security_hygiene
 
 **Title:** SSL certificate expires in {value} days on {asset}:{port}
 
@@ -8846,7 +9012,7 @@ _13 templates_
 
 ### `ssl-tls11-enabled`
 
-**Severity:** MEDIUM · **CWE:** CWE-326
+**Severity:** MEDIUM · **CWE:** CWE-326 · **Category:** security_hygiene
 
 **Title:** TLS 1.1 enabled on {asset}
 
@@ -8872,7 +9038,7 @@ _13 templates_
 
 ### `ssl-cert-expiring-90d`
 
-**Severity:** LOW · **CWE:** CWE-298
+**Severity:** LOW · **CWE:** CWE-298 · **Category:** security_hygiene
 
 **Title:** SSL certificate expires in {value} days on {asset}:{port}
 
@@ -8897,7 +9063,7 @@ _13 templates_
 
 ### `ssl-no-tls13`
 
-**Severity:** LOW · **CWE:** —
+**Severity:** LOW · **CWE:** — · **Category:** security_hygiene
 
 **Title:** TLS 1.3 not supported on {asset}
 
@@ -8923,7 +9089,7 @@ _13 templates_
 
 ### `ssl-cert-info`
 
-**Severity:** INFO · **CWE:** — · **Tunable:** no
+**Severity:** INFO · **CWE:** — · **Category:** security_hygiene · **Tunable:** no
 
 **Title:** SSL certificate on {asset}:{port}: {value}
 
@@ -8941,7 +9107,7 @@ _13 templates_
 
 ### `ssl-connection-error`
 
-**Severity:** INFO · **CWE:** — · **Tunable:** no
+**Severity:** INFO · **CWE:** — · **Category:** security_hygiene · **Tunable:** no
 
 **Title:** SSL/TLS connection failed on {asset}:{port}
 
@@ -8957,7 +9123,7 @@ _13 templates_
 
 ### `ssl-no-tls12`
 
-**Severity:** INFO · **CWE:** —
+**Severity:** INFO · **CWE:** — · **Category:** security_hygiene
 
 **Title:** TLS 1.2 not supported on {asset}
 
@@ -8987,7 +9153,7 @@ _8 templates_
 
 ### `header-missing-content_security_policy`
 
-**Severity:** MEDIUM · **CWE:** CWE-79
+**Severity:** MEDIUM · **CWE:** CWE-79 · **Category:** security_hygiene
 
 **Title:** Missing Content-Security-Policy header on {asset}:{port}
 
@@ -9017,7 +9183,7 @@ _8 templates_
 
 ### `header-missing-permissions_policy`
 
-**Severity:** MEDIUM · **CWE:** —
+**Severity:** MEDIUM · **CWE:** — · **Category:** security_hygiene
 
 **Title:** Missing Permissions-Policy header on {asset}:{port}
 
@@ -9047,7 +9213,7 @@ _8 templates_
 
 ### `header-missing-referrer_policy`
 
-**Severity:** MEDIUM · **CWE:** CWE-200
+**Severity:** MEDIUM · **CWE:** CWE-200 · **Category:** security_hygiene
 
 **Title:** Missing Referrer-Policy header on {asset}:{port}
 
@@ -9073,7 +9239,7 @@ _8 templates_
 
 ### `header-missing-strict_transport_security`
 
-**Severity:** MEDIUM · **CWE:** CWE-319
+**Severity:** MEDIUM · **CWE:** CWE-319 · **Category:** security_hygiene
 
 **Title:** Missing Strict-Transport-Security header on {asset}:{port}
 
@@ -9103,7 +9269,7 @@ _8 templates_
 
 ### `header-missing-x_content_type_options`
 
-**Severity:** MEDIUM · **CWE:** CWE-16
+**Severity:** MEDIUM · **CWE:** CWE-16 · **Category:** security_hygiene
 
 **Title:** Missing X-Content-Type-Options header on {asset}:{port}
 
@@ -9129,7 +9295,7 @@ _8 templates_
 
 ### `header-missing-x_frame_options`
 
-**Severity:** MEDIUM · **CWE:** CWE-1021
+**Severity:** MEDIUM · **CWE:** CWE-1021 · **Category:** security_hygiene
 
 **Title:** Missing X-Frame-Options header on {asset}:{port}
 
@@ -9156,7 +9322,7 @@ _8 templates_
 
 ### `header-powered-by-leak`
 
-**Severity:** LOW · **CWE:** CWE-200
+**Severity:** LOW · **CWE:** CWE-200 · **Category:** security_hygiene
 
 **Title:** X-Powered-By header exposes technology: {value}
 
@@ -9185,7 +9351,7 @@ _8 templates_
 
 ### `header-server-version-leak`
 
-**Severity:** LOW · **CWE:** CWE-200
+**Severity:** LOW · **CWE:** CWE-200 · **Category:** security_hygiene
 
 **Title:** Server header exposes version: {value}
 
@@ -9221,7 +9387,7 @@ _1 template_
 
 ### `http-no-https-redirect`
 
-**Severity:** HIGH · **CWE:** CWE-319
+**Severity:** HIGH · **CWE:** CWE-319 · **Category:** security_hygiene
 
 **Title:** HTTP does not redirect to HTTPS on {asset}
 
@@ -9251,7 +9417,7 @@ _3 templates_
 
 ### `cookie-missing-httponly`
 
-**Severity:** MEDIUM · **CWE:** CWE-1004
+**Severity:** MEDIUM · **CWE:** CWE-1004 · **Category:** security_hygiene
 
 **Title:** Cookie '{value}' missing HttpOnly flag
 
@@ -9276,7 +9442,7 @@ _3 templates_
 
 ### `cookie-missing-samesite`
 
-**Severity:** MEDIUM · **CWE:** CWE-1275
+**Severity:** MEDIUM · **CWE:** CWE-1275 · **Category:** security_hygiene
 
 **Title:** Cookie '{value}' missing SameSite attribute
 
@@ -9302,7 +9468,7 @@ _3 templates_
 
 ### `cookie-missing-secure`
 
-**Severity:** MEDIUM · **CWE:** CWE-614
+**Severity:** MEDIUM · **CWE:** CWE-614 · **Category:** security_hygiene
 
 **Title:** Cookie '{value}' missing Secure flag
 
@@ -9332,7 +9498,7 @@ _10 templates_
 
 ### `port-docker-api-exposed`
 
-**Severity:** CRITICAL · **CWE:** CWE-1327
+**Severity:** CRITICAL · **CWE:** CWE-1327 · **Category:** service_exposure
 
 **Title:** Docker API (unencrypted) exposed on {asset}:{port}
 
@@ -9358,7 +9524,7 @@ _10 templates_
 
 ### `port-elasticsearch-exposed`
 
-**Severity:** CRITICAL · **CWE:** CWE-1327
+**Severity:** CRITICAL · **CWE:** CWE-1327 · **Category:** service_exposure
 
 **Title:** Elasticsearch exposed on {asset}:{port}
 
@@ -9383,7 +9549,7 @@ _10 templates_
 
 ### `port-ftp-exposed`
 
-**Severity:** CRITICAL · **CWE:** CWE-319
+**Severity:** CRITICAL · **CWE:** CWE-319 · **Category:** service_exposure
 
 **Title:** FTP exposed on {asset}:{port}
 
@@ -9409,7 +9575,7 @@ _10 templates_
 
 ### `port-mongodb-exposed`
 
-**Severity:** CRITICAL · **CWE:** CWE-1327
+**Severity:** CRITICAL · **CWE:** CWE-1327 · **Category:** service_exposure
 
 **Title:** MongoDB exposed on {asset}:{port}
 
@@ -9435,7 +9601,7 @@ _10 templates_
 
 ### `port-mysql-exposed`
 
-**Severity:** CRITICAL · **CWE:** CWE-1327
+**Severity:** CRITICAL · **CWE:** CWE-1327 · **Category:** service_exposure
 
 **Title:** MySQL exposed on {asset}:{port}
 
@@ -9461,7 +9627,7 @@ _10 templates_
 
 ### `port-rdp-exposed`
 
-**Severity:** CRITICAL · **CWE:** CWE-1327
+**Severity:** CRITICAL · **CWE:** CWE-1327 · **Category:** service_exposure
 
 **Title:** RDP (Remote Desktop) exposed on {asset}:{port}
 
@@ -9487,7 +9653,7 @@ _10 templates_
 
 ### `port-redis-exposed`
 
-**Severity:** CRITICAL · **CWE:** CWE-1327
+**Severity:** CRITICAL · **CWE:** CWE-1327 · **Category:** service_exposure
 
 **Title:** Redis exposed on {asset}:{port}
 
@@ -9513,7 +9679,7 @@ _10 templates_
 
 ### `port-smb-exposed`
 
-**Severity:** CRITICAL · **CWE:** CWE-1327
+**Severity:** CRITICAL · **CWE:** CWE-1327 · **Category:** service_exposure
 
 **Title:** SMB exposed on {asset}:{port}
 
@@ -9539,7 +9705,7 @@ _10 templates_
 
 ### `port-telnet-exposed`
 
-**Severity:** CRITICAL · **CWE:** CWE-319
+**Severity:** CRITICAL · **CWE:** CWE-319 · **Category:** service_exposure
 
 **Title:** Telnet exposed on {asset}:{port}
 
@@ -9565,7 +9731,7 @@ _10 templates_
 
 ### `port-generic-open`
 
-**Severity:** INFO · **CWE:** —
+**Severity:** INFO · **CWE:** — · **Category:** service_exposure
 
 **Title:** Open port {port}/{value} on {asset}
 
@@ -9594,7 +9760,7 @@ _1 template_
 
 ### `cve-generic`
 
-**Severity:** HIGH · **CWE:** —
+**Severity:** HIGH · **CWE:** — · **Category:** vulnerabilities
 
 **Title:** Known vulnerability: {value}
 
@@ -9625,7 +9791,7 @@ _2 templates_
 
 ### `tech-eol`
 
-**Severity:** MEDIUM · **CWE:** CWE-1104
+**Severity:** MEDIUM · **CWE:** CWE-1104 · **Category:** security_hygiene
 
 **Title:** End-of-life software: {value} on {asset}
 
@@ -9651,7 +9817,7 @@ _2 templates_
 
 ### `tech-detected`
 
-**Severity:** INFO · **CWE:** — · **Tunable:** no
+**Severity:** INFO · **CWE:** — · **Category:** security_hygiene · **Tunable:** no
 
 **Title:** Technology detected: {value}
 
@@ -9673,7 +9839,7 @@ _1 template_
 
 ### `exposure-score`
 
-**Severity:** INFO · **CWE:** — · **Tunable:** no
+**Severity:** INFO · **CWE:** — · **Category:** service_exposure · **Tunable:** no
 
 **Title:** Exposure Score: {value}/100 (Grade {grade})
 
@@ -9695,7 +9861,7 @@ _10 templates_
 
 ### `monitor-tech-eol-detected`
 
-**Severity:** HIGH · **CWE:** —
+**Severity:** HIGH · **CWE:** — · **Category:** security_hygiene
 
 **Title:** End-of-life software detected on {asset}
 
@@ -9720,7 +9886,7 @@ _10 templates_
 
 ### `monitor-dmarc-changed`
 
-**Severity:** MEDIUM · **CWE:** —
+**Severity:** MEDIUM · **CWE:** — · **Category:** security_hygiene
 
 **Title:** DMARC record changed for {asset}
 
@@ -9738,7 +9904,7 @@ _10 templates_
 
 ### `monitor-new-port`
 
-**Severity:** MEDIUM · **CWE:** —
+**Severity:** MEDIUM · **CWE:** — · **Category:** service_exposure
 
 **Title:** New port {port} detected on {asset}
 
@@ -9763,7 +9929,7 @@ _10 templates_
 
 ### `monitor-new-service`
 
-**Severity:** MEDIUM · **CWE:** —
+**Severity:** MEDIUM · **CWE:** — · **Category:** security_hygiene
 
 **Title:** New service detected on {asset}:{port}
 
@@ -9785,7 +9951,7 @@ _10 templates_
 
 ### `monitor-spf-changed`
 
-**Severity:** MEDIUM · **CWE:** —
+**Severity:** MEDIUM · **CWE:** — · **Category:** security_hygiene
 
 **Title:** SPF record changed for {asset}
 
@@ -9803,7 +9969,7 @@ _10 templates_
 
 ### `monitor-new-subdomain`
 
-**Severity:** LOW · **CWE:** —
+**Severity:** LOW · **CWE:** — · **Category:** security_hygiene
 
 **Title:** New subdomain discovered: {value}
 
@@ -9825,7 +9991,7 @@ _10 templates_
 
 ### `monitor-cert-changed`
 
-**Severity:** INFO · **CWE:** — · **Tunable:** no
+**Severity:** INFO · **CWE:** — · **Category:** security_hygiene · **Tunable:** no
 
 **Title:** SSL certificate changed on {asset}:{port}
 
@@ -9843,7 +10009,7 @@ _10 templates_
 
 ### `monitor-dns-record-changed`
 
-**Severity:** INFO · **CWE:** — · **Tunable:** no
+**Severity:** INFO · **CWE:** — · **Category:** security_hygiene · **Tunable:** no
 
 **Title:** DNS record changed for {asset}
 
@@ -9861,7 +10027,7 @@ _10 templates_
 
 ### `monitor-header-changed`
 
-**Severity:** INFO · **CWE:** — · **Tunable:** no
+**Severity:** INFO · **CWE:** — · **Category:** security_hygiene · **Tunable:** no
 
 **Title:** Security header changed on {asset}
 
@@ -9879,7 +10045,7 @@ _10 templates_
 
 ### `monitor-port-closed`
 
-**Severity:** INFO · **CWE:** — · **Tunable:** no
+**Severity:** INFO · **CWE:** — · **Category:** service_exposure · **Tunable:** no
 
 **Title:** Port {port} closed on {asset}
 

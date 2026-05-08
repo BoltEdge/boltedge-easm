@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import importlib.util
+import json
 import os
 import sys
 
@@ -29,6 +30,12 @@ BACKEND_DIR = os.path.dirname(SCRIPT_DIR)
 REPO_ROOT = os.path.dirname(BACKEND_DIR)
 TEMPLATES_PATH = os.path.join(BACKEND_DIR, "app", "scanner", "templates.py")
 CATALOGUE_PATH = os.path.join(REPO_ROOT, "docs", "finding-templates.md")
+# Emitted alongside the catalogue and read at build time by the
+# frontend /coverage page. Living under frontend/data/ rather than
+# frontend/public/ means it's baked into the bundle at build time
+# (SSR-friendly, no runtime fetch, no runtime backend dependency for
+# a marketing page).
+COVERAGE_JSON_PATH = os.path.join(REPO_ROOT, "frontend", "data", "coverage.json")
 
 
 # Section keying — prefix-based grouping with display order. Mirrors the
@@ -166,7 +173,12 @@ def render_catalogue(mod) -> str:
             cwe = t.cwe or "—"
             lines.append(f"### `{t.template_id}`")
             lines.append("")
-            meta_bits = [f"**Severity:** {sev}", f"**CWE:** {cwe}"]
+            customer_cat = getattr(t, "effective_customer_category", None) or "—"
+            meta_bits = [
+                f"**Severity:** {sev}",
+                f"**CWE:** {cwe}",
+                f"**Category:** {customer_cat}",
+            ]
             if t.confidence and t.confidence != "high":
                 meta_bits.append(f"**Confidence:** {t.confidence}")
             if not t.tunable:
@@ -208,6 +220,74 @@ def render_catalogue(mod) -> str:
     return "\n".join(lines)
 
 
+def render_coverage_json(mod) -> str:
+    """Render coverage.json — what the public /coverage page renders.
+
+    Schema:
+        {
+          "totalTemplates": 341,
+          "generatedOn": "2026-05-08",
+          "categories": [
+            {
+              "id": "vulnerabilities",
+              "label": "Vulnerabilities",
+              "blurb": "Known CVEs and software flaws...",
+              "totalCount": 53,
+              "severityCounts": {"critical": 23, "high": 18, ...},
+              "templates": [
+                {"id": "nuclei-cve-2021-44228", "title": "Apache Log4j RCE",
+                 "severity": "critical", "summary": "..."},
+                ...
+              ]
+            },
+            ...
+          ]
+        }
+
+    Templates are sorted critical → info, then alphabetically by id, so
+    the frontend can render them as-is without further work.
+    """
+    templates = mod.get_all_templates()
+    customer_categories = mod.CUSTOMER_CATEGORIES
+    grouped = mod.templates_by_customer_category()
+
+    categories_payload = []
+    for cid, cmeta in customer_categories.items():
+        items = sorted(grouped.get(cid, []), key=_sev_rank)
+        sev_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+        for t in items:
+            sev = (t.severity or "info").lower()
+            sev_counts[sev] = sev_counts.get(sev, 0) + 1
+        categories_payload.append({
+            "id": cid,
+            "label": cmeta["label"],
+            "blurb": cmeta["blurb"],
+            "totalCount": len(items),
+            "severityCounts": sev_counts,
+            "templates": [
+                {
+                    "id": t.template_id,
+                    "title": t.title,
+                    "severity": (t.severity or "info").lower(),
+                    "summary": t.summary or "",
+                    "alertName": t.alert_name or "",
+                    "cwe": t.cwe or "",
+                }
+                for t in items
+            ],
+        })
+
+    return json.dumps(
+        {
+            "totalTemplates": len(templates),
+            "generatedOn": datetime.date.today().isoformat(),
+            "categories": categories_payload,
+        },
+        indent=2,
+        ensure_ascii=False,
+    )
+
+
 def _read_existing(path: str) -> str | None:
     if not os.path.exists(path):
         return None
@@ -228,40 +308,70 @@ def _strip_generated_date(content: str) -> str:
     )
 
 
+def _strip_generated_date_json(content: str) -> str:
+    """Drop the `generatedOn` field from coverage.json drift comparison.
+
+    Same idea as the markdown version — the date stamp shouldn't fail
+    drift detection just because today is a different day.
+    """
+    try:
+        parsed = json.loads(content)
+        parsed.pop("generatedOn", None)
+        return json.dumps(parsed, indent=2, ensure_ascii=False, sort_keys=True)
+    except Exception:
+        return content
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--check",
         action="store_true",
-        help="Exit non-zero if the catalogue is out of sync. Doesn't write.",
+        help="Exit non-zero if the catalogue or coverage.json is out of sync. Doesn't write.",
     )
     args = parser.parse_args()
 
     mod = _load_templates_module()
-    rendered = render_catalogue(mod)
+    rendered_md = render_catalogue(mod)
+    rendered_json = render_coverage_json(mod)
 
     if args.check:
-        existing = _read_existing(CATALOGUE_PATH)
-        if existing is None:
+        existing_md = _read_existing(CATALOGUE_PATH)
+        if existing_md is None:
             print(f"ERROR: {CATALOGUE_PATH} does not exist; run without --check to create.")
             return 1
-        if _strip_generated_date(existing) == _strip_generated_date(rendered):
-            print(f"OK: {CATALOGUE_PATH} is in sync with the registry.")
+        existing_json = _read_existing(COVERAGE_JSON_PATH)
+        md_ok = _strip_generated_date(existing_md) == _strip_generated_date(rendered_md)
+        json_ok = (
+            existing_json is not None
+            and _strip_generated_date_json(existing_json) == _strip_generated_date_json(rendered_json)
+        )
+        if md_ok and json_ok:
+            print(f"OK: {CATALOGUE_PATH} and {COVERAGE_JSON_PATH} are in sync with the registry.")
             return 0
+        if not md_ok:
+            print(f"DRIFT: {CATALOGUE_PATH} is out of sync.", file=sys.stderr)
+        if not json_ok:
+            print(f"DRIFT: {COVERAGE_JSON_PATH} is out of sync.", file=sys.stderr)
         print(
-            f"DRIFT: {CATALOGUE_PATH} is out of sync with the registry.\n"
-            f"Run `python backend/scripts/generate_catalogue.py` to update it.",
+            "Run `python backend/scripts/generate_catalogue.py` to update.",
             file=sys.stderr,
         )
         return 1
 
     os.makedirs(os.path.dirname(CATALOGUE_PATH), exist_ok=True)
     with open(CATALOGUE_PATH, "w", encoding="utf-8") as f:
-        f.write(rendered)
+        f.write(rendered_md)
     print(f"Wrote {CATALOGUE_PATH}")
-    print(f"  size:  {len(rendered):,} chars")
-    print(f"  lines: {len(rendered.splitlines()):,}")
+    print(f"  size:  {len(rendered_md):,} chars")
+    print(f"  lines: {len(rendered_md.splitlines()):,}")
     print(f"  templates: {len(mod.get_all_templates())}")
+
+    os.makedirs(os.path.dirname(COVERAGE_JSON_PATH), exist_ok=True)
+    with open(COVERAGE_JSON_PATH, "w", encoding="utf-8") as f:
+        f.write(rendered_json)
+    print(f"Wrote {COVERAGE_JSON_PATH}")
+    print(f"  size:  {len(rendered_json):,} chars")
     return 0
 
 

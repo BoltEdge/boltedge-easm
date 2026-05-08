@@ -1,0 +1,2809 @@
+{
+  "totalTemplates": 341,
+  "generatedOn": "2026-05-08",
+  "categories": [
+    {
+      "id": "vulnerabilities",
+      "label": "Vulnerabilities",
+      "blurb": "Known CVEs and software flaws in services running on your assets.",
+      "totalCount": 53,
+      "severityCounts": {
+        "critical": 37,
+        "high": 13,
+        "medium": 3,
+        "low": 0,
+        "info": 0
+      },
+      "templates": [
+        {
+          "id": "nuclei-aws-imds-ssrf",
+          "title": "AWS IMDS reachable via SSRF from {asset}",
+          "severity": "critical",
+          "summary": "Your AWS instance metadata service is reachable via SSRF from {asset} — the instance role's credentials should be considered exfiltrated. Audit CloudTrail and rotate.",
+          "alertName": "Misconfig — AWS IMDS SSRF",
+          "cwe": "CWE-918"
+        },
+        {
+          "id": "nuclei-azure-imds-ssrf",
+          "title": "Azure IMDS reachable via SSRF from {asset}",
+          "severity": "critical",
+          "summary": "Azure IMDS reachable via SSRF on {asset} — the VM's managed identity should be considered compromised.",
+          "alertName": "Misconfig — Azure IMDS SSRF",
+          "cwe": "CWE-918"
+        },
+        {
+          "id": "nuclei-cve-2017-5638",
+          "title": "CVE-2017-5638: Apache Struts2 RCE (Equifax-grade) on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2017-5638 — Apache Struts2 RCE (Equifax-grade) — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2017-5638",
+          "cwe": "CWE-1336"
+        },
+        {
+          "id": "nuclei-cve-2018-13379",
+          "title": "CVE-2018-13379: Fortinet FortiOS SSL VPN path traversal on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2018-13379 — Fortinet FortiOS SSL VPN path traversal — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2018-13379",
+          "cwe": "CWE-22"
+        },
+        {
+          "id": "nuclei-cve-2019-0708",
+          "title": "CVE-2019-0708: BlueKeep — Windows RDP RCE on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2019-0708 — BlueKeep — Windows RDP RCE — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2019-0708",
+          "cwe": "CWE-416"
+        },
+        {
+          "id": "nuclei-cve-2019-11510",
+          "title": "CVE-2019-11510: Pulse Secure SSL VPN path traversal on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2019-11510 — Pulse Secure SSL VPN path traversal — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2019-11510",
+          "cwe": "CWE-22"
+        },
+        {
+          "id": "nuclei-cve-2020-1472",
+          "title": "CVE-2020-1472: Zerologon — Netlogon privilege escalation on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2020-1472 — Zerologon — Netlogon privilege escalation — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2020-1472",
+          "cwe": "CWE-330"
+        },
+        {
+          "id": "nuclei-cve-2020-14882",
+          "title": "CVE-2020-14882: Oracle WebLogic Server unauthenticated RCE on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2020-14882 — Oracle WebLogic Server unauthenticated RCE — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2020-14882",
+          "cwe": "CWE-22"
+        },
+        {
+          "id": "nuclei-cve-2021-26084",
+          "title": "CVE-2021-26084: Atlassian Confluence OGNL injection on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2021-26084 — Atlassian Confluence OGNL injection — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2021-26084",
+          "cwe": "CWE-917"
+        },
+        {
+          "id": "nuclei-cve-2021-26855",
+          "title": "CVE-2021-26855: ProxyLogon — Exchange Server SSRF on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2021-26855 — ProxyLogon — Exchange Server SSRF — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2021-26855",
+          "cwe": "CWE-918"
+        },
+        {
+          "id": "nuclei-cve-2021-34527",
+          "title": "CVE-2021-34527: PrintNightmare — Windows Print Spooler RCE on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2021-34527 — PrintNightmare — Windows Print Spooler RCE — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2021-34527",
+          "cwe": "CWE-269"
+        },
+        {
+          "id": "nuclei-cve-2021-44228",
+          "title": "CVE-2021-44228: Log4Shell — Apache Log4j RCE on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2021-44228 — Log4Shell — Apache Log4j RCE — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2021-44228",
+          "cwe": "CWE-502"
+        },
+        {
+          "id": "nuclei-cve-2021-45046",
+          "title": "CVE-2021-45046: Log4j 2.15 mitigation bypass on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2021-45046 — Log4j 2.15 mitigation bypass — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2021-45046",
+          "cwe": "CWE-502"
+        },
+        {
+          "id": "nuclei-cve-2022-1388",
+          "title": "CVE-2022-1388: F5 BIG-IP iControl REST auth bypass on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2022-1388 — F5 BIG-IP iControl REST auth bypass — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2022-1388",
+          "cwe": "CWE-287"
+        },
+        {
+          "id": "nuclei-cve-2022-22954",
+          "title": "CVE-2022-22954: VMware Workspace ONE Access SSTI RCE on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2022-22954 — VMware Workspace ONE Access SSTI RCE — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2022-22954",
+          "cwe": "CWE-1336"
+        },
+        {
+          "id": "nuclei-cve-2022-22963",
+          "title": "CVE-2022-22963: Spring Cloud Function SpEL injection on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2022-22963 — Spring Cloud Function SpEL injection — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2022-22963",
+          "cwe": "CWE-94"
+        },
+        {
+          "id": "nuclei-cve-2022-22965",
+          "title": "CVE-2022-22965: Spring4Shell — Spring Framework RCE on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2022-22965 — Spring4Shell — Spring Framework RCE — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2022-22965",
+          "cwe": "CWE-915"
+        },
+        {
+          "id": "nuclei-cve-2022-26134",
+          "title": "CVE-2022-26134: Atlassian Confluence OGNL injection RCE on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2022-26134 — Atlassian Confluence OGNL injection RCE — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2022-26134",
+          "cwe": "CWE-917"
+        },
+        {
+          "id": "nuclei-cve-2022-41082",
+          "title": "CVE-2022-41082: ProxyNotShell — Microsoft Exchange RCE on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2022-41082 — ProxyNotShell — Microsoft Exchange RCE — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2022-41082",
+          "cwe": "CWE-502"
+        },
+        {
+          "id": "nuclei-cve-2022-47966",
+          "title": "CVE-2022-47966: ManageEngine ADSelfService Plus RCE on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2022-47966 — ManageEngine ADSelfService Plus RCE — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2022-47966",
+          "cwe": "CWE-611"
+        },
+        {
+          "id": "nuclei-cve-2023-22515",
+          "title": "CVE-2023-22515: Confluence broken access control on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2023-22515 — Confluence broken access control — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2023-22515",
+          "cwe": "CWE-287"
+        },
+        {
+          "id": "nuclei-cve-2023-22518",
+          "title": "CVE-2023-22518: Confluence improper authorisation on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2023-22518 — Confluence improper authorisation — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2023-22518",
+          "cwe": "CWE-285"
+        },
+        {
+          "id": "nuclei-cve-2023-23397",
+          "title": "CVE-2023-23397: Outlook NTLM credential leak on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2023-23397 — Outlook NTLM credential leak — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2023-23397",
+          "cwe": "CWE-294"
+        },
+        {
+          "id": "nuclei-cve-2023-27350",
+          "title": "CVE-2023-27350: PaperCut MF/NG auth bypass + RCE on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2023-27350 — PaperCut MF/NG auth bypass + RCE — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2023-27350",
+          "cwe": "CWE-287"
+        },
+        {
+          "id": "nuclei-cve-2023-34362",
+          "title": "CVE-2023-34362: MOVEit Transfer SQL injection RCE on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2023-34362 — MOVEit Transfer SQL injection RCE — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2023-34362",
+          "cwe": "CWE-89"
+        },
+        {
+          "id": "nuclei-cve-2023-4966",
+          "title": "CVE-2023-4966: Citrix Bleed — NetScaler ADC/Gateway on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2023-4966 — Citrix Bleed — NetScaler ADC/Gateway — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2023-4966",
+          "cwe": "CWE-119"
+        },
+        {
+          "id": "nuclei-cve-2023-50164",
+          "title": "CVE-2023-50164: Apache Struts file-upload path traversal on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2023-50164 — Apache Struts file-upload path traversal — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2023-50164",
+          "cwe": "CWE-22"
+        },
+        {
+          "id": "nuclei-cve-2023-7028",
+          "title": "CVE-2023-7028: GitLab account takeover via password reset on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2023-7028 — GitLab account takeover via password reset — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2023-7028",
+          "cwe": "CWE-640"
+        },
+        {
+          "id": "nuclei-cve-2024-1709",
+          "title": "CVE-2024-1709: ConnectWise ScreenConnect auth bypass on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2024-1709 — ConnectWise ScreenConnect auth bypass — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2024-1709",
+          "cwe": "CWE-287"
+        },
+        {
+          "id": "nuclei-cve-2024-21762",
+          "title": "CVE-2024-21762: Fortinet FortiOS SSL VPN OOB write on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2024-21762 — Fortinet FortiOS SSL VPN OOB write — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2024-21762",
+          "cwe": "CWE-787"
+        },
+        {
+          "id": "nuclei-cve-2024-21887",
+          "title": "CVE-2024-21887: Ivanti Connect Secure command injection on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2024-21887 — Ivanti Connect Secure command injection — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2024-21887",
+          "cwe": "CWE-77"
+        },
+        {
+          "id": "nuclei-cve-2024-23113",
+          "title": "CVE-2024-23113: Fortinet FortiOS format-string RCE on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2024-23113 — Fortinet FortiOS format-string RCE — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2024-23113",
+          "cwe": "CWE-134"
+        },
+        {
+          "id": "nuclei-cve-2024-27198",
+          "title": "CVE-2024-27198: JetBrains TeamCity authentication bypass on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2024-27198 — JetBrains TeamCity authentication bypass — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2024-27198",
+          "cwe": "CWE-287"
+        },
+        {
+          "id": "nuclei-cve-2024-29849",
+          "title": "CVE-2024-29849: Veeam Backup Enterprise Manager auth bypass on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2024-29849 — Veeam Backup Enterprise Manager auth bypass — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2024-29849",
+          "cwe": "CWE-287"
+        },
+        {
+          "id": "nuclei-cve-2024-3094",
+          "title": "CVE-2024-3094: XZ Utils backdoor on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2024-3094 — XZ Utils backdoor — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2024-3094",
+          "cwe": "CWE-506"
+        },
+        {
+          "id": "nuclei-cve-2024-3400",
+          "title": "CVE-2024-3400: Palo Alto GlobalProtect command injection on {asset}",
+          "severity": "critical",
+          "summary": "CVE-2024-3400 — Palo Alto GlobalProtect command injection — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2024-3400",
+          "cwe": "CWE-77"
+        },
+        {
+          "id": "nuclei-gcp-metadata-ssrf",
+          "title": "GCP metadata server reachable via SSRF from {asset}",
+          "severity": "critical",
+          "summary": "GCP metadata server reachable via SSRF on {asset} — the instance service-account's tokens should be considered compromised.",
+          "alertName": "Misconfig — GCP Metadata SSRF",
+          "cwe": "CWE-918"
+        },
+        {
+          "id": "cve-generic",
+          "title": "Known vulnerability: {value}",
+          "severity": "high",
+          "summary": "A known security vulnerability was found on your server.",
+          "alertName": "CVE Detected",
+          "cwe": ""
+        },
+        {
+          "id": "nuclei-blind-ssrf",
+          "title": "Blind server-side request forgery on {asset}",
+          "severity": "high",
+          "summary": "Blind SSRF on {asset} — confirmed via out-of-band interaction. Patch as you would any SSRF.",
+          "alertName": "Misconfig — Blind SSRF",
+          "cwe": "CWE-918"
+        },
+        {
+          "id": "nuclei-cve-2020-3452",
+          "title": "CVE-2020-3452: Cisco ASA / FTD path traversal on {asset}",
+          "severity": "high",
+          "summary": "CVE-2020-3452 — Cisco ASA / FTD path traversal — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2020-3452",
+          "cwe": "CWE-22"
+        },
+        {
+          "id": "nuclei-cve-2022-30190",
+          "title": "CVE-2022-30190: Follina — MS Office MSDT RCE on {asset}",
+          "severity": "high",
+          "summary": "CVE-2022-30190 — Follina — MS Office MSDT RCE — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2022-30190",
+          "cwe": "CWE-94"
+        },
+        {
+          "id": "nuclei-cve-2022-41040",
+          "title": "CVE-2022-41040: ProxyNotShell — Microsoft Exchange SSRF on {asset}",
+          "severity": "high",
+          "summary": "CVE-2022-41040 — ProxyNotShell — Microsoft Exchange SSRF — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2022-41040",
+          "cwe": "CWE-918"
+        },
+        {
+          "id": "nuclei-cve-2023-46805",
+          "title": "CVE-2023-46805: Ivanti Connect Secure auth bypass on {asset}",
+          "severity": "high",
+          "summary": "CVE-2023-46805 — Ivanti Connect Secure auth bypass — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2023-46805",
+          "cwe": "CWE-287"
+        },
+        {
+          "id": "nuclei-cve-2024-21893",
+          "title": "CVE-2024-21893: Ivanti Connect Secure SSRF on {asset}",
+          "severity": "high",
+          "summary": "CVE-2024-21893 — Ivanti Connect Secure SSRF — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2024-21893",
+          "cwe": "CWE-918"
+        },
+        {
+          "id": "nuclei-cve-2024-26229",
+          "title": "CVE-2024-26229: Windows CSC SYSTEM elevation on {asset}",
+          "severity": "high",
+          "summary": "CVE-2024-26229 — Windows CSC SYSTEM elevation — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2024-26229",
+          "cwe": "CWE-269"
+        },
+        {
+          "id": "nuclei-cve-2024-27199",
+          "title": "CVE-2024-27199: JetBrains TeamCity path traversal on {asset}",
+          "severity": "high",
+          "summary": "CVE-2024-27199 — JetBrains TeamCity path traversal — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2024-27199",
+          "cwe": "CWE-22"
+        },
+        {
+          "id": "nuclei-jwt-no-signature-verification",
+          "title": "JWT signature not verified by {asset}",
+          "severity": "high",
+          "summary": "JWT signature verification is broken on {asset} — attackers can forge any user identity. Patch immediately.",
+          "alertName": "Info Disclosure — JWT Unsigned",
+          "cwe": "CWE-347"
+        },
+        {
+          "id": "nuclei-server-side-template-injection",
+          "title": "Server-side template injection (SSTI) on {asset}",
+          "severity": "high",
+          "summary": "Server-side template injection on {asset} — likely remote code execution. Patch and audit immediately.",
+          "alertName": "Misconfig — SSTI",
+          "cwe": "CWE-1336"
+        },
+        {
+          "id": "nuclei-ssrf-detected",
+          "title": "Server-side request forgery (SSRF) on {asset}",
+          "severity": "high",
+          "summary": "An SSRF vulnerability on {asset} — attackers may reach your internal services and cloud metadata. Patch and audit.",
+          "alertName": "Misconfig — SSRF",
+          "cwe": "CWE-918"
+        },
+        {
+          "id": "quick-scan-cve",
+          "title": "Known vulnerability ({cve}) on {asset}",
+          "severity": "high",
+          "summary": "The host is running software with a known security flaw. Patch to the fixed version, or apply the vendor's mitigation if no patch is available.",
+          "alertName": "Known Vulnerability Detected",
+          "cwe": "CWE-1395"
+        },
+        {
+          "id": "nuclei-cve-2021-45105",
+          "title": "CVE-2021-45105: Log4j 2.16 DoS via recursive lookup on {asset}",
+          "severity": "medium",
+          "summary": "CVE-2021-45105 — Log4j 2.16 DoS via recursive lookup — detected on {asset}. Patch immediately.",
+          "alertName": "CVE — CVE-2021-45105",
+          "cwe": "CWE-674"
+        },
+        {
+          "id": "nuclei-jwt-weak-secret",
+          "title": "JWT signed with weak secret on {asset}",
+          "severity": "medium",
+          "summary": "JWT secret on {asset} is brute-forceable — anyone with the secret can forge tokens. Rotate now.",
+          "alertName": "Info Disclosure — JWT Weak Secret",
+          "cwe": "CWE-326"
+        },
+        {
+          "id": "nuclei-uncategorized",
+          "title": "Nuclei finding: {value} on {asset}",
+          "severity": "medium",
+          "summary": "Nuclei matched a template on {asset} — see references and evidence for details.",
+          "alertName": "Nuclei Finding",
+          "cwe": ""
+        }
+      ]
+    },
+    {
+      "id": "service_exposure",
+      "label": "Service Exposure",
+      "blurb": "Admin panels, dev tools, databases, and cloud assets reachable from the internet.",
+      "totalCount": 88,
+      "severityCounts": {
+        "critical": 18,
+        "high": 27,
+        "medium": 27,
+        "low": 10,
+        "info": 6
+      },
+      "templates": [
+        {
+          "id": "cloud-registry-public-images",
+          "title": "Public {provider} with pullable images: {value}",
+          "severity": "critical",
+          "summary": "A container registry on your domain is publicly pullable — images often contain embedded secrets and source code.",
+          "alertName": "Container Registry — Public Images",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "cloud-serverless-config-leak",
+          "title": "{provider} endpoint leaking configuration: {value}",
+          "severity": "critical",
+          "summary": "A serverless endpoint on your domain is leaking configuration data — likely including credentials. Rotate now.",
+          "alertName": "Serverless — Config Leak",
+          "cwe": "CWE-215"
+        },
+        {
+          "id": "cloud-storage-listing-enabled",
+          "title": "Public {provider} bucket with directory listing: {value}",
+          "severity": "critical",
+          "summary": "A cloud bucket on your domain lists its contents publicly — anyone can browse and download every file in it.",
+          "alertName": "Cloud Bucket — Listing Enabled",
+          "cwe": "CWE-548"
+        },
+        {
+          "id": "cloud-storage-sensitive-files",
+          "title": "Public {provider} bucket with sensitive files: {value}",
+          "severity": "critical",
+          "summary": "An exposed cloud bucket on your domain contains files that look like credentials, backups, or config — anyone can download them.",
+          "alertName": "Cloud Bucket — Sensitive Files",
+          "cwe": "CWE-552"
+        },
+        {
+          "id": "nuclei-etcd-exposed",
+          "title": "etcd cluster exposed at {asset}",
+          "severity": "critical",
+          "summary": "An exposed etcd cluster was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — etcd",
+          "cwe": "CWE-306"
+        },
+        {
+          "id": "nuclei-jenkins-script-console",
+          "title": "Jenkins script console exposed at {asset}",
+          "severity": "critical",
+          "summary": "An exposed Jenkins script console was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Jenkins Script Console",
+          "cwe": "CWE-77"
+        },
+        {
+          "id": "nuclei-jmx-rmi-exposed",
+          "title": "JMX-RMI management endpoint exposed at {asset}",
+          "severity": "critical",
+          "summary": "An exposed JMX-RMI management endpoint was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — JMX-RMI",
+          "cwe": "CWE-306"
+        },
+        {
+          "id": "nuclei-kubernetes-api-exposed",
+          "title": "Kubernetes API server exposed at {asset}",
+          "severity": "critical",
+          "summary": "An exposed Kubernetes API server was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — K8s API",
+          "cwe": "CWE-306"
+        },
+        {
+          "id": "nuclei-spring-actuator-env",
+          "title": "Spring Boot Actuator /env endpoint exposed at {asset}",
+          "severity": "critical",
+          "summary": "An exposed Spring Boot Actuator /env endpoint was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Spring /env",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "port-docker-api-exposed",
+          "title": "Docker API (unencrypted) exposed on {asset}:{port}",
+          "severity": "critical",
+          "summary": "Your Docker API is wide open to the internet — anyone can take full control of your server.",
+          "alertName": "Docker API Exposed",
+          "cwe": "CWE-1327"
+        },
+        {
+          "id": "port-elasticsearch-exposed",
+          "title": "Elasticsearch exposed on {asset}:{port}",
+          "severity": "critical",
+          "summary": "Your Elasticsearch instance is open to the internet — bots routinely scrape exposed instances.",
+          "alertName": "Elasticsearch Exposed",
+          "cwe": "CWE-1327"
+        },
+        {
+          "id": "port-ftp-exposed",
+          "title": "FTP exposed on {asset}:{port}",
+          "severity": "critical",
+          "summary": "FTP is running on your server — login credentials are sent without encryption.",
+          "alertName": "FTP Exposed",
+          "cwe": "CWE-319"
+        },
+        {
+          "id": "port-mongodb-exposed",
+          "title": "MongoDB exposed on {asset}:{port}",
+          "severity": "critical",
+          "summary": "Your MongoDB database is accessible from the internet.",
+          "alertName": "MongoDB Exposed",
+          "cwe": "CWE-1327"
+        },
+        {
+          "id": "port-mysql-exposed",
+          "title": "MySQL exposed on {asset}:{port}",
+          "severity": "critical",
+          "summary": "Your MySQL database is directly accessible from the internet.",
+          "alertName": "MySQL Exposed",
+          "cwe": "CWE-1327"
+        },
+        {
+          "id": "port-rdp-exposed",
+          "title": "RDP (Remote Desktop) exposed on {asset}:{port}",
+          "severity": "critical",
+          "summary": "Remote Desktop is open to the internet — this is a primary ransomware entry point.",
+          "alertName": "RDP Exposed",
+          "cwe": "CWE-1327"
+        },
+        {
+          "id": "port-redis-exposed",
+          "title": "Redis exposed on {asset}:{port}",
+          "severity": "critical",
+          "summary": "Your Redis cache is open to the internet — attackers can read all your data or take over the server.",
+          "alertName": "Redis Exposed",
+          "cwe": "CWE-1327"
+        },
+        {
+          "id": "port-smb-exposed",
+          "title": "SMB exposed on {asset}:{port}",
+          "severity": "critical",
+          "summary": "Windows file sharing (SMB) is exposed — this is how WannaCry ransomware spread.",
+          "alertName": "SMB Exposed",
+          "cwe": "CWE-1327"
+        },
+        {
+          "id": "port-telnet-exposed",
+          "title": "Telnet exposed on {asset}:{port}",
+          "severity": "critical",
+          "summary": "Telnet is running on your server — all logins and data are sent in plaintext.",
+          "alertName": "Telnet Exposed",
+          "cwe": "CWE-319"
+        },
+        {
+          "id": "cloud-cdn-origin-exposed",
+          "title": "{provider} origin reachable, bypassing CDN: {value}",
+          "severity": "high",
+          "summary": "The origin server behind your CDN looks reachable directly — attackers can bypass your WAF and rate limits.",
+          "alertName": "CDN — Origin Exposed",
+          "cwe": "CWE-1327"
+        },
+        {
+          "id": "cloud-registry-public-access",
+          "title": "Public {provider} catalogue exposed: {value}",
+          "severity": "high",
+          "summary": "A container registry catalogue on your domain is publicly accessible — anything pushed to it will be pullable.",
+          "alertName": "Container Registry — Public Catalog",
+          "cwe": "CWE-306"
+        },
+        {
+          "id": "cloud-serverless-no-auth",
+          "title": "Unauthenticated {provider} endpoint: {value}",
+          "severity": "high",
+          "summary": "A serverless endpoint on your domain is callable without authentication — review whether that's intentional.",
+          "alertName": "Serverless — No Auth",
+          "cwe": "CWE-306"
+        },
+        {
+          "id": "cloud-serverless-stack-trace",
+          "title": "{provider} endpoint leaking stack traces: {value}",
+          "severity": "high",
+          "summary": "A serverless endpoint on your domain returns full stack traces in error responses, exposing internal code paths.",
+          "alertName": "Serverless — Stack Trace Leak",
+          "cwe": "CWE-209"
+        },
+        {
+          "id": "cloud-storage-public-access",
+          "title": "Publicly accessible {provider} bucket: {value}",
+          "severity": "high",
+          "summary": "A cloud bucket on your domain is publicly readable — anyone who knows or guesses an object name can download it.",
+          "alertName": "Cloud Bucket — Public",
+          "cwe": "CWE-732"
+        },
+        {
+          "id": "nuclei-activemq-admin-exposed",
+          "title": "ActiveMQ web console exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed ActiveMQ web console was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — ActiveMQ",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-airflow-exposed",
+          "title": "Apache Airflow webserver exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed Apache Airflow webserver was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Airflow",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-argo-cd-exposed",
+          "title": "Argo CD UI exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed Argo CD UI was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Argo CD",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-consul-ui-exposed",
+          "title": "Consul UI exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed Consul UI was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Consul",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-couchdb-exposed",
+          "title": "CouchDB Fauxton admin UI exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed CouchDB Fauxton admin UI was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — CouchDB",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-docker-registry-v2-exposed",
+          "title": "Docker Registry v2 API exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed Docker Registry v2 API was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Docker Registry",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-elasticsearch-exposed",
+          "title": "Elasticsearch cluster exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed Elasticsearch cluster was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Elasticsearch",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-influxdb-exposed",
+          "title": "InfluxDB API exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed InfluxDB API was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — InfluxDB",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-jboss-exposed",
+          "title": "JBoss admin console exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed JBoss admin console was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — JBoss",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-kubernetes-dashboard-exposed",
+          "title": "Kubernetes Dashboard exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed Kubernetes Dashboard was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — K8s Dashboard",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-mlflow-exposed",
+          "title": "MLflow tracking server exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed MLflow tracking server was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — MLflow",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-mongo-express-exposed",
+          "title": "mongo-express UI exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed mongo-express UI was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — mongo-express",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-portainer-exposed",
+          "title": "Portainer UI exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed Portainer UI was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Portainer",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-rancher-exposed",
+          "title": "Rancher UI exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed Rancher UI was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Rancher",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-solr-admin-exposed",
+          "title": "Apache Solr admin UI exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed Apache Solr admin UI was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Solr",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-spark-master-exposed",
+          "title": "Apache Spark master UI exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed Apache Spark master UI was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Spark Master",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-spring-boot-actuator",
+          "title": "Spring Boot Actuator endpoints exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed Spring Boot Actuator endpoints was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Spring Actuator",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-tomcat-host-manager",
+          "title": "Apache Tomcat Host Manager app exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed Apache Tomcat Host Manager app was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Tomcat Host Manager",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-tomcat-manager-exposed",
+          "title": "Apache Tomcat Manager app exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed Apache Tomcat Manager app was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Tomcat Manager",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-weave-scope-exposed",
+          "title": "Weave Scope UI exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed Weave Scope UI was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Weave Scope",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-weblogic-exposed",
+          "title": "Oracle WebLogic admin console exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed Oracle WebLogic admin console was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — WebLogic",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-websphere-exposed",
+          "title": "IBM WebSphere admin console exposed at {asset}",
+          "severity": "high",
+          "summary": "An exposed IBM WebSphere admin console was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — WebSphere",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "monitor-new-port",
+          "title": "New port {port} detected on {asset}",
+          "severity": "medium",
+          "summary": "A new port just opened on your server that wasn't there before.",
+          "alertName": "New Port Opened",
+          "cwe": ""
+        },
+        {
+          "id": "nuclei-adminer-exposed",
+          "title": "Adminer login page exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed Adminer login page was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Adminer",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-aws-s3-bucket-info-disclosure",
+          "title": "AWS S3 bucket info disclosed at {asset}",
+          "severity": "medium",
+          "summary": "S3 bucket names are visible from {asset} — audit those buckets for public-access misconfiguration.",
+          "alertName": "Info Disclosure — S3 Info",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-bitbucket-exposed",
+          "title": "Bitbucket Server instance exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed Bitbucket Server instance was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Bitbucket",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-confluence-exposed",
+          "title": "Atlassian Confluence instance exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed Atlassian Confluence instance was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Confluence",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-drupal-admin-exposed",
+          "title": "Drupal admin login exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed Drupal admin login was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Drupal Admin",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-firebase-database-info-exposure",
+          "title": "Firebase database info disclosed at {asset}",
+          "severity": "medium",
+          "summary": "Firebase project metadata is disclosed at {asset} — verify the database's security rules are tight.",
+          "alertName": "Info Disclosure — Firebase Info",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-gitea-exposed",
+          "title": "Gitea instance exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed Gitea instance was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Gitea",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-gitlab-exposed",
+          "title": "GitLab login page exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed GitLab login page was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — GitLab",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-grafana-exposed",
+          "title": "Grafana login page exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed Grafana login page was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Grafana",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-harbor-exposed",
+          "title": "Harbor UI exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed Harbor UI was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Harbor",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-jenkins-exposed",
+          "title": "Jenkins login page exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed Jenkins login page was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Jenkins",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-jira-exposed",
+          "title": "Atlassian Jira instance exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed Atlassian Jira instance was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Jira",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-joomla-admin-exposed",
+          "title": "Joomla administrator panel exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed Joomla administrator panel was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Joomla Admin",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-kafka-ui-exposed",
+          "title": "Kafka management UI exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed Kafka management UI was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Kafka UI",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-kibana-exposed",
+          "title": "Kibana instance exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed Kibana instance was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Kibana",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-magento-admin-exposed",
+          "title": "Magento admin panel exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed Magento admin panel was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Magento Admin",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-nexus-repository-exposed",
+          "title": "Sonatype Nexus repository manager exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed Sonatype Nexus repository manager was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Nexus",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-phpmyadmin-exposed",
+          "title": "phpMyAdmin login page exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed phpMyAdmin login page was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — phpMyAdmin",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-prometheus-exposed",
+          "title": "Prometheus metrics endpoint exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed Prometheus metrics endpoint was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Prometheus",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-rabbitmq-management-exposed",
+          "title": "RabbitMQ management UI exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed RabbitMQ management UI was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — RabbitMQ",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-session-token-in-url",
+          "title": "Session token transmitted in URL on {asset}",
+          "severity": "medium",
+          "summary": "Session tokens travel in URL parameters on {asset} — they leak to third parties via Referer and logs.",
+          "alertName": "Info Disclosure — Token in URL",
+          "cwe": "CWE-598"
+        },
+        {
+          "id": "nuclei-sonarqube-exposed",
+          "title": "SonarQube instance exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed SonarQube instance was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — SonarQube",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-vault-ui-exposed",
+          "title": "HashiCorp Vault UI exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed HashiCorp Vault UI was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — Vault",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-wordpress-admin-exposed",
+          "title": "WordPress admin login (wp-admin) exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed WordPress admin login (wp-admin) was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — WordPress Admin",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-zookeeper-admin-exposed",
+          "title": "ZooKeeper admin server exposed at {asset}",
+          "severity": "medium",
+          "summary": "An exposed ZooKeeper admin server was detected on {asset} — verify it's intentionally public and properly secured.",
+          "alertName": "Exposed Panel — ZooKeeper",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "quick-scan-risky-port",
+          "title": "Risky service exposed on {asset} (port {port})",
+          "severity": "medium",
+          "summary": "A high-risk service like RDP, SMB, or a database is open to the internet. Move it behind a VPN or restrict source IPs.",
+          "alertName": "Risky Port Exposed",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "nuclei-apache-version-disclosure",
+          "title": "Apache HTTP Server version disclosed by {asset}",
+          "severity": "low",
+          "summary": "Apache on {asset} reveals its exact version — set ServerTokens Prod for hardening.",
+          "alertName": "Info Disclosure — Apache Version",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-csrf-token-disclosure",
+          "title": "CSRF token in URL/log on {asset}",
+          "severity": "low",
+          "summary": "CSRF tokens travel in URLs on {asset} — they leak via Referer.",
+          "alertName": "Info Disclosure — CSRF in URL",
+          "cwe": "CWE-598"
+        },
+        {
+          "id": "nuclei-drupal-version-disclosure",
+          "title": "Drupal version disclosed by {asset}",
+          "severity": "low",
+          "summary": "Drupal version on {asset} is publicly visible — strip the meta tag and block CHANGELOG-style files.",
+          "alertName": "Info Disclosure — Drupal Version",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-iis-version-disclosure",
+          "title": "IIS version disclosed by {asset}",
+          "severity": "low",
+          "summary": "IIS on {asset} reveals its version — remove the Server and X-Powered-By headers.",
+          "alertName": "Info Disclosure — IIS Version",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-internal-ip-disclosure",
+          "title": "Internal IP address disclosed by {asset}",
+          "severity": "low",
+          "summary": "Internal IP addresses are visible from {asset} — strip them from responses.",
+          "alertName": "Info Disclosure — Internal IP",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-joomla-version-disclosure",
+          "title": "Joomla version disclosed by {asset}",
+          "severity": "low",
+          "summary": "Joomla version on {asset} is publicly visible — strip the generator tag.",
+          "alertName": "Info Disclosure — Joomla Version",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-nginx-version-disclosure",
+          "title": "nginx version disclosed by {asset}",
+          "severity": "low",
+          "summary": "nginx on {asset} reveals its exact version — disable server_tokens for hardening.",
+          "alertName": "Info Disclosure — nginx Version",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-path-disclosure",
+          "title": "Server file system path disclosed by {asset}",
+          "severity": "low",
+          "summary": "File system paths leak in errors from {asset} — disable debug mode in production.",
+          "alertName": "Info Disclosure — Path Disclosure",
+          "cwe": "CWE-209"
+        },
+        {
+          "id": "nuclei-tomcat-version-disclosure",
+          "title": "Apache Tomcat version disclosed by {asset}",
+          "severity": "low",
+          "summary": "Tomcat on {asset} reveals its version — replace default error pages and override server banner.",
+          "alertName": "Info Disclosure — Tomcat Version",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-wordpress-version-disclosure",
+          "title": "WordPress version disclosed by {asset}",
+          "severity": "low",
+          "summary": "WordPress version on {asset} is publicly visible — strip the generator tag and version query strings.",
+          "alertName": "Info Disclosure — WP Version",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "cloud-registry-private-tracked",
+          "title": "{provider} detected (private): {value}",
+          "severity": "info",
+          "summary": "A private container registry on your domain — tracked so we'll notice if it later becomes public.",
+          "alertName": "Container Registry — Inventory",
+          "cwe": ""
+        },
+        {
+          "id": "cloud-storage-private-tracked",
+          "title": "{provider} bucket detected (private): {value}",
+          "severity": "info",
+          "summary": "A private cloud bucket on your domain — tracked so we'll notice if it later becomes public.",
+          "alertName": "Cloud Bucket — Inventory",
+          "cwe": ""
+        },
+        {
+          "id": "exposure-score",
+          "title": "Exposure Score: {value}/100 (Grade {grade})",
+          "severity": "info",
+          "summary": "Your overall security exposure score based on all scan findings.",
+          "alertName": "Exposure Score Updated",
+          "cwe": ""
+        },
+        {
+          "id": "monitor-port-closed",
+          "title": "Port {port} closed on {asset}",
+          "severity": "info",
+          "summary": "A port that was previously open on your server has been closed.",
+          "alertName": "Port Closed",
+          "cwe": ""
+        },
+        {
+          "id": "port-generic-open",
+          "title": "Open port {port}/{value} on {asset}",
+          "severity": "info",
+          "summary": "An open port was found on your server.",
+          "alertName": "New Port Detected",
+          "cwe": ""
+        },
+        {
+          "id": "quick-scan-service-exposure",
+          "title": "Open network service detected on {asset}",
+          "severity": "info",
+          "summary": "A network service is publicly reachable. Confirm whether it should be, and either restrict it or make sure it's hardened.",
+          "alertName": "Public Service Detected",
+          "cwe": "CWE-200"
+        }
+      ]
+    },
+    {
+      "id": "data_leaks",
+      "label": "Data Leaks",
+      "blurb": "Secrets, credentials, configuration files, and source code exposed in public repos or directly on the asset.",
+      "totalCount": 45,
+      "severityCounts": {
+        "critical": 18,
+        "high": 17,
+        "medium": 8,
+        "low": 2,
+        "info": 0
+      },
+      "templates": [
+        {
+          "id": "leak-env-file",
+          "title": "Environment file exposed at {asset} ({value})",
+          "severity": "critical",
+          "summary": "An environment file on {asset} is publicly readable — its credentials should be considered compromised. Rotate now.",
+          "alertName": "Environment File Exposed",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-git-exposed",
+          "title": "Git repository exposed at {asset} ({value})",
+          "severity": "critical",
+          "summary": "The .git directory on {asset} is downloadable — anyone can reconstruct your full source code and commit history.",
+          "alertName": "Git Repo Exposed",
+          "cwe": "CWE-538"
+        },
+        {
+          "id": "leak-github-api-key",
+          "title": "API keys referencing {asset} found in public GitHub code",
+          "severity": "critical",
+          "summary": "Code search found API keys referencing {asset} in public GitHub repos — rotate and audit usage.",
+          "alertName": "GitHub — API Key Leaked",
+          "cwe": "CWE-798"
+        },
+        {
+          "id": "leak-github-cloud-creds",
+          "title": "Cloud credentials referencing {asset} found in public GitHub code",
+          "severity": "critical",
+          "summary": "Code search found cloud credentials referencing {asset} in public GitHub repos — rotate now and audit cloud activity.",
+          "alertName": "GitHub — Cloud Creds Leaked",
+          "cwe": "CWE-798"
+        },
+        {
+          "id": "leak-github-credentials",
+          "title": "Credentials referencing {asset} found in public GitHub code",
+          "severity": "critical",
+          "summary": "Code search found credentials referencing {asset} in public GitHub repos — verify and rotate any real secrets.",
+          "alertName": "GitHub — Credentials Leaked",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-github-env-file",
+          "title": ".env files referencing {asset} found in public GitHub code",
+          "severity": "critical",
+          "summary": "Code search found .env files referencing {asset} in public GitHub repos — rotate every secret inside.",
+          "alertName": "GitHub — .env Leaked",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-github-secrets",
+          "title": "Private keys referencing {asset} found in public GitHub code",
+          "severity": "critical",
+          "summary": "Code search found private keys referencing {asset} in public GitHub repos — revoke and rotate immediately.",
+          "alertName": "GitHub — Private Key Leaked",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-gitlab-api-key",
+          "title": "API tokens referencing {asset} found in public GitLab code",
+          "severity": "critical",
+          "summary": "Public GitLab code search returned API tokens referencing {asset} — verify each match and rotate immediately if real.",
+          "alertName": "GitLab — API Token Possibly Leaked",
+          "cwe": "CWE-798"
+        },
+        {
+          "id": "leak-gitlab-cloud-creds",
+          "title": "Cloud credentials referencing {asset} found in public GitLab code",
+          "severity": "critical",
+          "summary": "Public GitLab code search returned cloud-credential strings referencing {asset} — rotate at the cloud provider TODAY if real.",
+          "alertName": "GitLab — Cloud Credentials Possibly Leaked",
+          "cwe": "CWE-798"
+        },
+        {
+          "id": "leak-gitlab-credentials",
+          "title": "Credentials referencing {asset} found in public GitLab code",
+          "severity": "critical",
+          "summary": "Public GitLab code search returned files referencing {asset} that may contain credentials — open each match and rotate any real secrets.",
+          "alertName": "GitLab — Credentials Possibly Leaked",
+          "cwe": "CWE-798"
+        },
+        {
+          "id": "leak-htpasswd",
+          "title": "Apache password file exposed at {asset} ({value})",
+          "severity": "critical",
+          "summary": "Your Apache .htpasswd file is publicly readable — every account in it should be reset.",
+          "alertName": "htpasswd Exposed",
+          "cwe": "CWE-522"
+        },
+        {
+          "id": "leak-sql-dump",
+          "title": "SQL database dump exposed at {asset} ({value})",
+          "severity": "critical",
+          "summary": "A SQL database dump is publicly downloadable from {asset} — treat as a confirmed breach. Notify and reset.",
+          "alertName": "SQL Dump Exposed",
+          "cwe": "CWE-552"
+        },
+        {
+          "id": "leak-ssh-private-key",
+          "title": "SSH private key exposed at {asset} ({value})",
+          "severity": "critical",
+          "summary": "An SSH private key on {asset} is publicly readable — assume any host that trusts the matching public key is compromised.",
+          "alertName": "SSH Key Exposed",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-wp-config-backup",
+          "title": "WordPress config backup exposed at {asset} ({value})",
+          "severity": "critical",
+          "summary": "A WordPress wp-config backup is publicly readable on {asset} — DB credentials and auth keys should be rotated now.",
+          "alertName": "WordPress Config Backup Exposed",
+          "cwe": "CWE-552"
+        },
+        {
+          "id": "nuclei-aws-access-key-disclosure",
+          "title": "AWS access key disclosed in response from {asset}",
+          "severity": "critical",
+          "summary": "An AWS access key is visible in an HTTP response from {asset} — verify if live and rotate.",
+          "alertName": "Info Disclosure — AWS Key Leak",
+          "cwe": "CWE-798"
+        },
+        {
+          "id": "nuclei-azure-shared-key-disclosure",
+          "title": "Azure storage shared key disclosed at {asset}",
+          "severity": "critical",
+          "summary": "An Azure storage shared key is visible in an HTTP response from {asset} — rotate immediately.",
+          "alertName": "Info Disclosure — Azure Key Leak",
+          "cwe": "CWE-798"
+        },
+        {
+          "id": "nuclei-gcp-service-account-disclosure",
+          "title": "GCP service account credentials disclosed at {asset}",
+          "severity": "critical",
+          "summary": "GCP service-account credentials are visible in an HTTP response from {asset} — rotate and audit.",
+          "alertName": "Info Disclosure — GCP SA Key Leak",
+          "cwe": "CWE-798"
+        },
+        {
+          "id": "nuclei-private-key-disclosure",
+          "title": "Private key material disclosed at {asset}",
+          "severity": "critical",
+          "summary": "A private key is visible in an HTTP response from {asset} — anything it authenticates is compromised.",
+          "alertName": "Info Disclosure — Private Key Leak",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-apache-status",
+          "title": "Apache server status / info exposed at {asset} ({value})",
+          "severity": "high",
+          "summary": "Apache server-status / server-info is publicly reachable on {asset} — it leaks live request info to anyone who looks.",
+          "alertName": "Apache Status Exposed",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-docker-compose",
+          "title": "docker-compose.yml exposed at {asset} ({value})",
+          "severity": "high",
+          "summary": "A docker-compose.yml is publicly readable on {asset} — it likely contains environment secrets that should be rotated.",
+          "alertName": "docker-compose Exposed",
+          "cwe": "CWE-538"
+        },
+        {
+          "id": "leak-github",
+          "title": "Possible code leak referencing {asset} in public GitHub repos",
+          "severity": "high",
+          "summary": "Public GitHub code search found content referencing {asset} — review for any leaked secrets.",
+          "alertName": "GitHub — Code Leak",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-gitlab-env-file",
+          "title": "Environment files referencing {asset} found in public GitLab code",
+          "severity": "high",
+          "summary": "Public GitLab code search returned .env files referencing {asset} — assume credentials inside are leaked and rotate.",
+          "alertName": "GitLab — .env File Leaked",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-gitlab-secrets",
+          "title": "Secret-like strings referencing {asset} found in public GitLab code",
+          "severity": "high",
+          "summary": "Public GitLab code search returned secret-like strings referencing {asset} — verify each match.",
+          "alertName": "GitLab — Secret-Like String Found",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-package-creds",
+          "title": "Package manager credentials exposed at {asset} ({value})",
+          "severity": "high",
+          "summary": "A package-manager auth file on {asset} is publicly readable — registry tokens should be rotated.",
+          "alertName": "Package Manager Creds Exposed",
+          "cwe": "CWE-522"
+        },
+        {
+          "id": "leak-phpinfo",
+          "title": "phpinfo() exposed at {asset} ({value})",
+          "severity": "high",
+          "summary": "A phpinfo() page is exposed on {asset} — delete it; it's a recon goldmine.",
+          "alertName": "phpinfo Exposed",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-svn-exposed",
+          "title": "Subversion metadata exposed at {asset} ({value})",
+          "severity": "high",
+          "summary": "The .svn directory on {asset} is downloadable — your source code and history are reachable.",
+          "alertName": "SVN Metadata Exposed",
+          "cwe": "CWE-538"
+        },
+        {
+          "id": "leak-web-config",
+          "title": "IIS web.config exposed at {asset} ({value})",
+          "severity": "high",
+          "summary": "Your IIS web.config is publicly readable — it may include database connection strings and machine keys.",
+          "alertName": "web.config Exposed",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-wp-installer",
+          "title": "WordPress installer accessible at {asset} ({value})",
+          "severity": "high",
+          "summary": "WordPress installer is reachable on {asset} — confirm the site hasn't been re-initialised by an attacker.",
+          "alertName": "WordPress Installer Accessible",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-exposed-helm-values",
+          "title": "Exposed Helm chart values on {asset}",
+          "severity": "high",
+          "summary": "A Helm values file is publicly readable on {asset} — likely contains secrets that should be rotated.",
+          "alertName": "Misconfig — Helm Values Exposed",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-firebase-realtime-db-public",
+          "title": "Firebase Realtime Database publicly readable on {asset}",
+          "severity": "high",
+          "summary": "A Firebase Realtime Database on {asset} is publicly readable — likely contains user data that's been scraped.",
+          "alertName": "Info Disclosure — Firebase RTDB",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-github-token-disclosure",
+          "title": "GitHub token disclosed at {asset}",
+          "severity": "high",
+          "summary": "A GitHub token is visible at {asset} — revoke and audit user activity.",
+          "alertName": "Info Disclosure — GitHub Token",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-oauth-token-leak",
+          "title": "OAuth token disclosed at {asset}",
+          "severity": "high",
+          "summary": "An OAuth token is visible at {asset} — revoke at the issuing provider and audit user activity.",
+          "alertName": "Info Disclosure — OAuth Token Leak",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-slack-token-disclosure",
+          "title": "Slack token disclosed at {asset}",
+          "severity": "high",
+          "summary": "A Slack token is visible at {asset} — revoke and audit workspace activity.",
+          "alertName": "Info Disclosure — Slack Token",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-spring-cloud-env",
+          "title": "Spring Cloud Config server exposing /env on {asset}",
+          "severity": "high",
+          "summary": "Spring Cloud Config /env exposed on {asset} — secrets across all profiles are leaking. Rotate now.",
+          "alertName": "Misconfig — Spring Cloud /env",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-stripe-key-disclosure",
+          "title": "Stripe API key disclosed at {asset}",
+          "severity": "high",
+          "summary": "A Stripe API key is visible at {asset} — distinguish publishable (safe) from secret (rotate).",
+          "alertName": "Info Disclosure — Stripe Key",
+          "cwe": "CWE-798"
+        },
+        {
+          "id": "leak-api-docs",
+          "title": "API documentation exposed at {asset} ({value})",
+          "severity": "medium",
+          "summary": "API documentation is publicly accessible on {asset} — verify whether this is intentional.",
+          "alertName": "API Docs Exposed",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-dockerfile",
+          "title": "Dockerfile exposed at {asset} ({value})",
+          "severity": "medium",
+          "summary": "A Dockerfile is publicly readable on {asset} — it leaks build details and may contain hardcoded credentials.",
+          "alertName": "Dockerfile Exposed",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-github-config",
+          "title": "Config files referencing {asset} found in public GitHub code",
+          "severity": "medium",
+          "summary": "Code search found config files referencing {asset} in public GitHub repos — review for credential or topology leaks.",
+          "alertName": "GitHub — Config Leaked",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-gitlab-config",
+          "title": "Config files referencing {asset} found in public GitLab code",
+          "severity": "medium",
+          "summary": "Code search found config files referencing {asset} in public GitLab projects — review for credential or topology leaks.",
+          "alertName": "GitLab — Config Leaked",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-htaccess",
+          "title": "Apache .htaccess exposed at {asset} ({value})",
+          "severity": "medium",
+          "summary": "Your .htaccess file is publicly readable — recon material for attackers, not a direct breach.",
+          "alertName": ".htaccess Exposed",
+          "cwe": "CWE-538"
+        },
+        {
+          "id": "leak-path",
+          "title": "Sensitive path exposed at {asset}: {value}",
+          "severity": "medium",
+          "summary": "A sensitive path is publicly readable on {asset} — review and remove or restrict.",
+          "alertName": "Sensitive Path Exposed",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-exposed-build-artifacts",
+          "title": "CI/CD build artefacts exposed at {asset}",
+          "severity": "medium",
+          "summary": "CI/CD build artefacts are reachable at {asset} — they often include credentials in logs.",
+          "alertName": "Info Disclosure — Build Artefacts",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-google-api-key-disclosure",
+          "title": "Google API key disclosed at {asset}",
+          "severity": "medium",
+          "summary": "A Google API key is visible at {asset} — verify whether it's an intentionally-public client-side key or a leaked server-side one.",
+          "alertName": "Info Disclosure — Google API Key",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "leak-ds-store",
+          "title": ".DS_Store exposed at {asset} ({value})",
+          "severity": "low",
+          "summary": "A .DS_Store file on {asset} reveals the names of files in the directory — minor recon win for attackers.",
+          "alertName": ".DS_Store Exposed",
+          "cwe": "CWE-538"
+        },
+        {
+          "id": "leak-package-manifest",
+          "title": "Package manifest exposed at {asset} ({value})",
+          "severity": "low",
+          "summary": "A package manifest is publicly readable on {asset} — your full dependency list is visible to attackers.",
+          "alertName": "Package Manifest Exposed",
+          "cwe": "CWE-200"
+        }
+      ]
+    },
+    {
+      "id": "misconfigurations",
+      "label": "Misconfigurations",
+      "blurb": "CORS, open redirects, default credentials, and accessible admin endpoints.",
+      "totalCount": 64,
+      "severityCounts": {
+        "critical": 17,
+        "high": 31,
+        "medium": 13,
+        "low": 3,
+        "info": 0
+      },
+      "templates": [
+        {
+          "id": "nuclei-apache-airflow-default-login",
+          "title": "Apache Airflow default credentials accepted at {asset}",
+          "severity": "critical",
+          "summary": "Default credentials work on the Apache Airflow instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Airflow",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-cpanel-default-login",
+          "title": "cPanel default credentials accepted at {asset}",
+          "severity": "critical",
+          "summary": "Default credentials work on the cPanel instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — cPanel",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-exposed-helm-tiller",
+          "title": "Helm Tiller (v2) reachable on {asset}",
+          "severity": "critical",
+          "summary": "Helm Tiller (v2) is reachable on {asset} — anyone on the network can deploy arbitrary workloads. Migrate to Helm v3 now.",
+          "alertName": "Misconfig — Helm Tiller",
+          "cwe": "CWE-306"
+        },
+        {
+          "id": "nuclei-jboss-default-login",
+          "title": "JBoss default credentials accepted at {asset}",
+          "severity": "critical",
+          "summary": "Default credentials work on the JBoss instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — JBoss",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-jenkins-default-credentials",
+          "title": "Jenkins default credentials accepted at {asset}",
+          "severity": "critical",
+          "summary": "Default credentials work on the Jenkins instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Jenkins",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-mssql-default-login",
+          "title": "Microsoft SQL Server default credentials accepted at {asset}",
+          "severity": "critical",
+          "summary": "Default credentials work on the Microsoft SQL Server instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — MSSQL",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-mysql-default-credentials",
+          "title": "MySQL default credentials accepted at {asset}",
+          "severity": "critical",
+          "summary": "Default credentials work on the MySQL instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — MySQL",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-phpmyadmin-default-login",
+          "title": "phpMyAdmin default credentials accepted at {asset}",
+          "severity": "critical",
+          "summary": "Default credentials work on the phpMyAdmin instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — phpMyAdmin",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-plesk-default-login",
+          "title": "Plesk default credentials accepted at {asset}",
+          "severity": "critical",
+          "summary": "Default credentials work on the Plesk instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Plesk",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-postgres-default-credentials",
+          "title": "PostgreSQL default credentials accepted at {asset}",
+          "severity": "critical",
+          "summary": "Default credentials work on the PostgreSQL instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Postgres",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-solarwinds-default-login",
+          "title": "SolarWinds default credentials accepted at {asset}",
+          "severity": "critical",
+          "summary": "Default credentials work on the SolarWinds instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — SolarWinds",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-solr-default-credentials",
+          "title": "Apache Solr default credentials accepted at {asset}",
+          "severity": "critical",
+          "summary": "Default credentials work on the Apache Solr instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Solr",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-tomcat-default-login",
+          "title": "Tomcat Manager default credentials accepted at {asset}",
+          "severity": "critical",
+          "summary": "Default credentials work on the Tomcat Manager instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Tomcat Manager",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-weblogic-default-login",
+          "title": "Oracle WebLogic default credentials accepted at {asset}",
+          "severity": "critical",
+          "summary": "Default credentials work on the Oracle WebLogic instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — WebLogic",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-webmin-default-credentials",
+          "title": "Webmin default credentials accepted at {asset}",
+          "severity": "critical",
+          "summary": "Default credentials work on the Webmin instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Webmin",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-websphere-default-login",
+          "title": "IBM WebSphere default credentials accepted at {asset}",
+          "severity": "critical",
+          "summary": "Default credentials work on the IBM WebSphere instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — WebSphere",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-wordpress-default-credentials",
+          "title": "WordPress default credentials accepted at {asset}",
+          "severity": "critical",
+          "summary": "Default credentials work on the WordPress instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — WordPress",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-activemq-default-credentials",
+          "title": "ActiveMQ default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the ActiveMQ instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — ActiveMQ",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-axis-default-credentials",
+          "title": "Axis camera default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the Axis camera instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Axis Camera",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-cacti-default-login",
+          "title": "Cacti default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the Cacti instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Cacti",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-cisco-default-credentials",
+          "title": "Cisco device default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the Cisco device instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Cisco",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-cors-wildcard-with-credentials",
+          "title": "CORS allows wildcard origin with credentials on {asset}",
+          "severity": "high",
+          "summary": "Your CORS config lets any origin read authenticated responses on {asset} — credential-bearing endpoints are exposed cross-origin.",
+          "alertName": "Misconfig — CORS Wildcard + Creds",
+          "cwe": "CWE-942"
+        },
+        {
+          "id": "nuclei-couchdb-default-login",
+          "title": "Apache CouchDB default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the Apache CouchDB instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — CouchDB",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-exposed-cassandra",
+          "title": "Apache Cassandra exposed without authentication on {asset}",
+          "severity": "high",
+          "summary": "Cassandra on {asset} accepts unauthenticated connections — every keyspace is reachable.",
+          "alertName": "Misconfig — Cassandra",
+          "cwe": "CWE-306"
+        },
+        {
+          "id": "nuclei-exposed-couchbase",
+          "title": "Couchbase exposed without authentication on {asset}",
+          "severity": "high",
+          "summary": "Couchbase on {asset} is reachable without proper auth — every bucket is at risk.",
+          "alertName": "Misconfig — Couchbase",
+          "cwe": "CWE-306"
+        },
+        {
+          "id": "nuclei-exposed-ldap-anonymous",
+          "title": "Anonymous LDAP bind allowed on {asset}",
+          "severity": "high",
+          "summary": "LDAP on {asset} allows anonymous binds — your directory structure is enumerable.",
+          "alertName": "Misconfig — LDAP Anonymous",
+          "cwe": "CWE-287"
+        },
+        {
+          "id": "nuclei-exposed-memcached",
+          "title": "Memcached exposed on {asset}",
+          "severity": "high",
+          "summary": "Memcached on {asset} is reachable without auth — your data is at risk and your server may be participating in DDoS amplification.",
+          "alertName": "Misconfig — Memcached",
+          "cwe": "CWE-306"
+        },
+        {
+          "id": "nuclei-exposed-mongodb-public",
+          "title": "Unauthenticated MongoDB on {asset}",
+          "severity": "high",
+          "summary": "MongoDB on {asset} accepts unauthenticated connections — restore from backup if data is missing, then enable auth.",
+          "alertName": "Misconfig — MongoDB Unauth",
+          "cwe": "CWE-306"
+        },
+        {
+          "id": "nuclei-exposed-redis-public",
+          "title": "Unauthenticated Redis on {asset}",
+          "severity": "high",
+          "summary": "Redis on {asset} accepts unauthenticated connections — patch and audit for compromise immediately.",
+          "alertName": "Misconfig — Redis Unauth",
+          "cwe": "CWE-306"
+        },
+        {
+          "id": "nuclei-exposed-rsync",
+          "title": "Unauthenticated rsync server on {asset}",
+          "severity": "high",
+          "summary": "An unauthenticated rsync server on {asset} — anyone can list and download every module's contents.",
+          "alertName": "Misconfig — rsync Unauth",
+          "cwe": "CWE-306"
+        },
+        {
+          "id": "nuclei-exposed-snmp-public-community",
+          "title": "SNMP with default 'public' community string on {asset}",
+          "severity": "high",
+          "summary": "SNMP on {asset} responds to 'public' community — network topology and device config are exposed.",
+          "alertName": "Misconfig — SNMP Public",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-fortinet-default-credentials",
+          "title": "Fortinet device default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the Fortinet device instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Fortinet",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-ftp-default-credentials",
+          "title": "FTP default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the FTP instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — FTP",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-grafana-default-credentials",
+          "title": "Grafana default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the Grafana instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Grafana",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-hikvision-default-credentials",
+          "title": "Hikvision camera default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the Hikvision camera instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Hikvision",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-host-header-injection",
+          "title": "Host header injection vulnerability on {asset}",
+          "severity": "high",
+          "summary": "{asset} uses unverified Host headers — password-reset emails and cached URLs can be poisoned by attackers.",
+          "alertName": "Misconfig — Host Header Injection",
+          "cwe": "CWE-644"
+        },
+        {
+          "id": "nuclei-http-request-smuggling",
+          "title": "HTTP request smuggling on {asset}",
+          "severity": "high",
+          "summary": "HTTP request smuggling is possible on {asset} — attackers can hijack sessions and bypass your CDN/WAF.",
+          "alertName": "Misconfig — Request Smuggling",
+          "cwe": "CWE-444"
+        },
+        {
+          "id": "nuclei-juniper-default-credentials",
+          "title": "Juniper device default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the Juniper device instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Juniper",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-mikrotik-default-credentials",
+          "title": "MikroTik RouterOS default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the MikroTik RouterOS instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — MikroTik",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-mongodb-default-credentials",
+          "title": "MongoDB default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the MongoDB instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — MongoDB",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-nagios-default-login",
+          "title": "Nagios default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the Nagios instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Nagios",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-opennms-default-login",
+          "title": "OpenNMS default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the OpenNMS instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — OpenNMS",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-rabbitmq-default-login",
+          "title": "RabbitMQ default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the RabbitMQ instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — RabbitMQ",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-router-default-login",
+          "title": "Router web UI default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the Router web UI instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Router",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-smtp-open-relay",
+          "title": "SMTP open relay on {asset}",
+          "severity": "high",
+          "summary": "SMTP on {asset} relays mail for anyone — your IP is being used for spam and phishing.",
+          "alertName": "Misconfig — Open SMTP Relay",
+          "cwe": "CWE-285"
+        },
+        {
+          "id": "nuclei-unifi-default-login",
+          "title": "Ubiquiti UniFi default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the Ubiquiti UniFi instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — UniFi",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-zabbix-default-login",
+          "title": "Zabbix default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the Zabbix instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Zabbix",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-zyxel-default-credentials",
+          "title": "Zyxel device default credentials accepted at {asset}",
+          "severity": "high",
+          "summary": "Default credentials work on the Zyxel device instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Zyxel",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-cache-deception",
+          "title": "Web cache deception possible on {asset}",
+          "severity": "medium",
+          "summary": "Web cache deception is possible on {asset} — authenticated user data may end up in the public cache.",
+          "alertName": "Misconfig — Cache Deception",
+          "cwe": "CWE-525"
+        },
+        {
+          "id": "nuclei-cors-permissive",
+          "title": "Permissive CORS configuration on {asset}",
+          "severity": "medium",
+          "summary": "CORS on {asset} reflects arbitrary origins — cross-origin reads from untrusted sites may be possible.",
+          "alertName": "Misconfig — CORS Permissive",
+          "cwe": "CWE-942"
+        },
+        {
+          "id": "nuclei-dns-open-resolver",
+          "title": "DNS open resolver on {asset}",
+          "severity": "medium",
+          "summary": "DNS on {asset} answers recursive queries from anywhere — being used for amplification attacks.",
+          "alertName": "Misconfig — Open DNS Resolver",
+          "cwe": "CWE-406"
+        },
+        {
+          "id": "nuclei-exposed-flink-ui",
+          "title": "Apache Flink dashboard exposed on {asset}",
+          "severity": "medium",
+          "summary": "Apache Flink dashboard on {asset} is reachable without auth — anyone can submit JARs and run code.",
+          "alertName": "Misconfig — Flink",
+          "cwe": "CWE-306"
+        },
+        {
+          "id": "nuclei-exposed-mqtt",
+          "title": "MQTT broker exposed without authentication on {asset}",
+          "severity": "medium",
+          "summary": "An MQTT broker on {asset} accepts unauthenticated connections — IoT data and commands are exposed.",
+          "alertName": "Misconfig — MQTT",
+          "cwe": "CWE-306"
+        },
+        {
+          "id": "nuclei-exposed-spring-eureka",
+          "title": "Spring Eureka service registry exposed on {asset}",
+          "severity": "medium",
+          "summary": "A Spring Eureka registry is reachable on {asset} — your full microservice topology is visible.",
+          "alertName": "Misconfig — Spring Eureka",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-graphql-batching",
+          "title": "GraphQL batching attacks possible on {asset}",
+          "severity": "medium",
+          "summary": "GraphQL on {asset} accepts batched queries — rate limits can be bypassed by stacking many queries per request.",
+          "alertName": "Misconfig — GraphQL Batching",
+          "cwe": "CWE-770"
+        },
+        {
+          "id": "nuclei-graphql-introspection-enabled",
+          "title": "GraphQL introspection enabled on {asset}",
+          "severity": "medium",
+          "summary": "GraphQL on {asset} returns its full schema to anyone — disable introspection in production.",
+          "alertName": "Misconfig — GraphQL Introspection",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-graphql-playground-exposed",
+          "title": "GraphQL Playground / GraphiQL exposed on {asset}",
+          "severity": "medium",
+          "summary": "A GraphQL playground UI is reachable on {asset} — it shouldn't be in production.",
+          "alertName": "Misconfig — GraphQL Playground",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "nuclei-ntp-monlist",
+          "title": "NTP monlist enabled on {asset}",
+          "severity": "medium",
+          "summary": "NTP on {asset} responds to monlist — being used for DDoS amplification.",
+          "alertName": "Misconfig — NTP monlist",
+          "cwe": "CWE-406"
+        },
+        {
+          "id": "nuclei-open-redirect",
+          "title": "Open redirect on {asset}",
+          "severity": "medium",
+          "summary": "An open redirect on {asset} lets attackers craft phishing links that appear to point at your domain.",
+          "alertName": "Misconfig — Open Redirect",
+          "cwe": "CWE-601"
+        },
+        {
+          "id": "nuclei-pihole-default-credentials",
+          "title": "Pi-hole default credentials accepted at {asset}",
+          "severity": "medium",
+          "summary": "Default credentials work on the Pi-hole instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Pi-hole",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-printer-default-login",
+          "title": "Printer default credentials accepted at {asset}",
+          "severity": "medium",
+          "summary": "Default credentials work on the Printer instance at {asset} — rotate immediately and audit recent activity.",
+          "alertName": "Default Creds — Printer",
+          "cwe": "CWE-1188"
+        },
+        {
+          "id": "nuclei-http-trace-enabled",
+          "title": "HTTP TRACE method enabled on {asset}",
+          "severity": "low",
+          "summary": "HTTP TRACE method is enabled on {asset} — disable it as part of your web-server hardening baseline.",
+          "alertName": "Misconfig — TRACE Enabled",
+          "cwe": "CWE-693"
+        },
+        {
+          "id": "nuclei-mixed-content",
+          "title": "Mixed content (HTTPS page loads HTTP resources) on {asset}",
+          "severity": "low",
+          "summary": "An HTTPS page on {asset} loads HTTP resources — a network attacker can inject content into the page.",
+          "alertName": "Misconfig — Mixed Content",
+          "cwe": "CWE-319"
+        },
+        {
+          "id": "nuclei-tabnabbing",
+          "title": "Reverse tabnabbing — links missing rel=noopener on {asset}",
+          "severity": "low",
+          "summary": "External links on {asset} use target=_blank without noopener — older browsers and webviews are vulnerable to tabnabbing.",
+          "alertName": "Misconfig — Tabnabbing",
+          "cwe": "CWE-1022"
+        }
+      ]
+    },
+    {
+      "id": "security_hygiene",
+      "label": "Security Hygiene",
+      "blurb": "Expiring certificates, missing security headers, weak DMARC/SPF, and end-of-life software stacks.",
+      "totalCount": 91,
+      "severityCounts": {
+        "critical": 44,
+        "high": 12,
+        "medium": 22,
+        "low": 6,
+        "info": 7
+      },
+      "templates": [
+        {
+          "id": "dns-zone-transfer-open",
+          "title": "DNS zone transfer (AXFR) successful for {asset}",
+          "severity": "critical",
+          "summary": "Your entire DNS zone is publicly downloadable, exposing your full infrastructure map.",
+          "alertName": "Zone Transfer Exposed",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "ssl-cert-expired",
+          "title": "SSL certificate expired on {asset}:{port}",
+          "severity": "critical",
+          "summary": "Your SSL certificate has expired — visitors see security warnings and can't connect safely.",
+          "alertName": "SSL Certificate Expired",
+          "cwe": "CWE-295"
+        },
+        {
+          "id": "takeover-confirmed",
+          "title": "Subdomain takeover — unclaimed third-party resource at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed third-party resource — anyone can claim it.",
+          "alertName": "Takeover Confirmed",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-aws-cloudfront",
+          "title": "Subdomain takeover — unclaimed AWS CloudFront distribution at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed AWS CloudFront distribution — anyone can claim it and host content as you.",
+          "alertName": "Takeover — CloudFront",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-aws-elastic-beanstalk",
+          "title": "Subdomain takeover — unclaimed AWS Elastic Beanstalk environment at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed AWS Elastic Beanstalk environment — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Beanstalk",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-aws-s3-cloudfront",
+          "title": "Subdomain takeover — unclaimed AWS S3 bucket at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed AWS S3 bucket — anyone can claim it and host content as you.",
+          "alertName": "Takeover — AWS S3",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-azure-api-management",
+          "title": "Subdomain takeover — unclaimed Azure API Management service instance at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Azure API Management service instance — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Azure APIM",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-azure-app-service",
+          "title": "Subdomain takeover — unclaimed Azure App Service app at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Azure App Service app — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Azure App Service",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-azure-blob-storage",
+          "title": "Subdomain takeover — unclaimed Azure Blob Storage container at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Azure Blob Storage container — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Azure Blob",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-azure-cdn",
+          "title": "Subdomain takeover — unclaimed Azure CDN endpoint at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Azure CDN endpoint — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Azure CDN",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-azure-traffic-manager",
+          "title": "Subdomain takeover — unclaimed Azure Traffic Manager profile at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Azure Traffic Manager profile — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Traffic Manager",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-azure-virtual-machine",
+          "title": "Subdomain takeover — unclaimed Azure Virtual Machine DNS label at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Azure Virtual Machine DNS label — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Azure VM",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-bitbucket-pages",
+          "title": "Subdomain takeover — unclaimed Bitbucket Pages repository at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Bitbucket Pages repository — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Bitbucket",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-cargo-collective",
+          "title": "Subdomain takeover — unclaimed Cargo Collective site at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Cargo Collective site — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Cargo",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-cloudflare",
+          "title": "Subdomain takeover — unclaimed Cloudflare resource at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Cloudflare resource — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Cloudflare",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-fastly",
+          "title": "Subdomain takeover — unclaimed Fastly service at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Fastly service — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Fastly",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-feedpress",
+          "title": "Subdomain takeover — unclaimed Feedpress feed at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Feedpress feed — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Feedpress",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-fly-io",
+          "title": "Subdomain takeover — unclaimed Fly.io app at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Fly.io app — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Fly.io",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-freshdesk",
+          "title": "Subdomain takeover — unclaimed Freshdesk helpdesk at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Freshdesk helpdesk — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Freshdesk",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-ghost",
+          "title": "Subdomain takeover — unclaimed Ghost publication at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Ghost publication — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Ghost",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-github-pages",
+          "title": "Subdomain takeover — unclaimed GitHub Pages site at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed GitHub Pages site — anyone can claim it and host content as you.",
+          "alertName": "Takeover — GitHub Pages",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-gitlab-pages",
+          "title": "Subdomain takeover — unclaimed GitLab Pages site at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed GitLab Pages site — anyone can claim it and host content as you.",
+          "alertName": "Takeover — GitLab Pages",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-google-cloud-storage",
+          "title": "Subdomain takeover — unclaimed Google Cloud Storage bucket at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Google Cloud Storage bucket — anyone can claim it and host content as you.",
+          "alertName": "Takeover — GCS",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-helpjuice",
+          "title": "Subdomain takeover — unclaimed Helpjuice knowledge base at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Helpjuice knowledge base — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Helpjuice",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-helpscout",
+          "title": "Subdomain takeover — unclaimed HelpScout docs site at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed HelpScout docs site — anyone can claim it and host content as you.",
+          "alertName": "Takeover — HelpScout",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-heroku",
+          "title": "Subdomain takeover — unclaimed Heroku app at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Heroku app — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Heroku",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-landingi",
+          "title": "Subdomain takeover — unclaimed Landingi landing page at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Landingi landing page — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Landingi",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-launchrock",
+          "title": "Subdomain takeover — unclaimed LaunchRock landing page at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed LaunchRock landing page — anyone can claim it and host content as you.",
+          "alertName": "Takeover — LaunchRock",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-netlify",
+          "title": "Subdomain takeover — unclaimed Netlify site at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Netlify site — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Netlify",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-pantheon",
+          "title": "Subdomain takeover — unclaimed Pantheon site at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Pantheon site — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Pantheon",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-readme-io",
+          "title": "Subdomain takeover — unclaimed ReadMe.io docs at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed ReadMe.io docs — anyone can claim it and host content as you.",
+          "alertName": "Takeover — ReadMe",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-render",
+          "title": "Subdomain takeover — unclaimed Render service at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Render service — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Render",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-shopify",
+          "title": "Subdomain takeover — unclaimed Shopify store at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Shopify store — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Shopify",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-statuspage",
+          "title": "Subdomain takeover — unclaimed Statuspage status page at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Statuspage status page — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Statuspage",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-surge-sh",
+          "title": "Subdomain takeover — unclaimed Surge.sh project at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Surge.sh project — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Surge.sh",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-teamwork",
+          "title": "Subdomain takeover — unclaimed Teamwork site at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Teamwork site — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Teamwork",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-tilda",
+          "title": "Subdomain takeover — unclaimed Tilda site at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Tilda site — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Tilda",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-tumblr",
+          "title": "Subdomain takeover — unclaimed Tumblr blog at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Tumblr blog — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Tumblr",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-unbounce",
+          "title": "Subdomain takeover — unclaimed Unbounce landing page at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Unbounce landing page — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Unbounce",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-uservoice",
+          "title": "Subdomain takeover — unclaimed UserVoice feedback site at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed UserVoice feedback site — anyone can claim it and host content as you.",
+          "alertName": "Takeover — UserVoice",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-vercel",
+          "title": "Subdomain takeover — unclaimed Vercel project at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Vercel project — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Vercel",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-webflow",
+          "title": "Subdomain takeover — unclaimed Webflow site at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Webflow site — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Webflow",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-wordpress-com",
+          "title": "Subdomain takeover — unclaimed WordPress.com site at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed WordPress.com site — anyone can claim it and host content as you.",
+          "alertName": "Takeover — WordPress.com",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "takeover-confirmed-zendesk",
+          "title": "Subdomain takeover — unclaimed Zendesk help center at {asset}",
+          "severity": "critical",
+          "summary": "A subdomain of yours points to an unclaimed Zendesk help center — anyone can claim it and host content as you.",
+          "alertName": "Takeover — Zendesk",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "dns-dmarc-none",
+          "title": "DMARC policy is 'none' (monitoring only) for {asset}",
+          "severity": "high",
+          "summary": "DMARC is in monitor-only mode — spoofed emails still get delivered.",
+          "alertName": "DMARC Not Enforcing",
+          "cwe": "CWE-290"
+        },
+        {
+          "id": "dns-no-dmarc",
+          "title": "No DMARC record for {asset}",
+          "severity": "high",
+          "summary": "Your domain has no DMARC record, leaving email authentication unenforced.",
+          "alertName": "DMARC Record Missing",
+          "cwe": "CWE-290"
+        },
+        {
+          "id": "dns-no-spf",
+          "title": "No SPF record for {asset}",
+          "severity": "high",
+          "summary": "Your domain has no SPF record, so anyone can send emails pretending to be you.",
+          "alertName": "SPF Record Missing",
+          "cwe": "CWE-290"
+        },
+        {
+          "id": "dns-spf-plus-all",
+          "title": "SPF record allows all senders (+all) for {asset}",
+          "severity": "high",
+          "summary": "Your SPF record allows anyone to send email as your domain — it's wide open.",
+          "alertName": "SPF Allows All Senders",
+          "cwe": "CWE-290"
+        },
+        {
+          "id": "http-no-https-redirect",
+          "title": "HTTP does not redirect to HTTPS on {asset}",
+          "severity": "high",
+          "summary": "Visitors who don't type 'https://' get an unencrypted, insecure connection.",
+          "alertName": "No HTTPS Redirect",
+          "cwe": "CWE-319"
+        },
+        {
+          "id": "monitor-tech-eol-detected",
+          "title": "End-of-life software detected on {asset}",
+          "severity": "high",
+          "summary": "We detected end-of-life software on your server that no longer gets security patches.",
+          "alertName": "EOL Software Detected",
+          "cwe": ""
+        },
+        {
+          "id": "ssl-cert-expiring-7d",
+          "title": "SSL certificate expires in {value} days on {asset}:{port}",
+          "severity": "high",
+          "summary": "Your SSL certificate expires in less than a week — renew it now to avoid downtime.",
+          "alertName": "SSL Certificate Expiring Soon",
+          "cwe": "CWE-298"
+        },
+        {
+          "id": "ssl-hostname-mismatch",
+          "title": "SSL certificate hostname mismatch on {asset}:{port}",
+          "severity": "high",
+          "summary": "Your SSL certificate was issued for a different domain — browsers show a mismatch warning.",
+          "alertName": "SSL Hostname Mismatch",
+          "cwe": "CWE-297"
+        },
+        {
+          "id": "ssl-only-deprecated-protocols",
+          "title": "Only deprecated TLS versions supported on {asset}",
+          "severity": "high",
+          "summary": "Your server only supports outdated encryption — modern browsers can't connect at all.",
+          "alertName": "Only Deprecated TLS",
+          "cwe": "CWE-326"
+        },
+        {
+          "id": "ssl-self-signed",
+          "title": "Self-signed SSL certificate on {asset}:{port}",
+          "severity": "high",
+          "summary": "Your site uses a self-signed certificate — browsers will warn visitors it's not trusted.",
+          "alertName": "Self-Signed Certificate",
+          "cwe": "CWE-295"
+        },
+        {
+          "id": "ssl-tls10-enabled",
+          "title": "TLS 1.0 enabled on {asset}",
+          "severity": "high",
+          "summary": "Your server still supports TLS 1.0, which has known security vulnerabilities.",
+          "alertName": "TLS 1.0 Enabled",
+          "cwe": "CWE-326"
+        },
+        {
+          "id": "takeover-dangling-cname",
+          "title": "Dangling CNAME at {asset} → {cname_target}",
+          "severity": "high",
+          "summary": "One of your subdomains points to a third-party service that no longer exists — likely a takeover risk.",
+          "alertName": "Dangling CNAME",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "cookie-missing-httponly",
+          "title": "Cookie '{value}' missing HttpOnly flag",
+          "severity": "medium",
+          "summary": "A cookie on your site can be stolen through JavaScript injection attacks.",
+          "alertName": "Cookie Missing HttpOnly",
+          "cwe": "CWE-1004"
+        },
+        {
+          "id": "cookie-missing-samesite",
+          "title": "Cookie '{value}' missing SameSite attribute",
+          "severity": "medium",
+          "summary": "A cookie on your site is sent with cross-site requests, which could enable forgery attacks.",
+          "alertName": "Cookie Missing SameSite",
+          "cwe": "CWE-1275"
+        },
+        {
+          "id": "cookie-missing-secure",
+          "title": "Cookie '{value}' missing Secure flag",
+          "severity": "medium",
+          "summary": "A cookie on your site can be stolen by anyone on the same network.",
+          "alertName": "Insecure Cookie",
+          "cwe": "CWE-614"
+        },
+        {
+          "id": "dns-dmarc-no-rua",
+          "title": "DMARC record has no reporting address (rua) for {asset}",
+          "severity": "medium",
+          "summary": "You're not receiving DMARC reports because no reporting address is set.",
+          "alertName": "DMARC No Reporting",
+          "cwe": "CWE-778"
+        },
+        {
+          "id": "dns-no-dkim",
+          "title": "No DKIM records found for {asset}",
+          "severity": "medium",
+          "summary": "No DKIM email signing was found, so recipients can't verify your emails are genuine.",
+          "alertName": "DKIM Not Configured",
+          "cwe": "CWE-345"
+        },
+        {
+          "id": "dns-single-nameserver",
+          "title": "Only one nameserver for {asset}",
+          "severity": "medium",
+          "summary": "Your domain relies on a single nameserver — if it fails, your site goes offline.",
+          "alertName": "Single Nameserver",
+          "cwe": ""
+        },
+        {
+          "id": "dns-spf-neutral",
+          "title": "SPF uses neutral (?all) for {asset}",
+          "severity": "medium",
+          "summary": "Your SPF record is set to neutral, which provides no email protection at all.",
+          "alertName": "SPF Neutral Policy",
+          "cwe": "CWE-290"
+        },
+        {
+          "id": "dns-spf-softfail",
+          "title": "SPF uses softfail (~all) for {asset}",
+          "severity": "medium",
+          "summary": "Your SPF record flags unauthorized emails but doesn't block them.",
+          "alertName": "SPF Softfail Only",
+          "cwe": "CWE-290"
+        },
+        {
+          "id": "dns-spf-too-many-lookups",
+          "title": "SPF record exceeds 10-lookup limit for {asset}",
+          "severity": "medium",
+          "summary": "Your SPF record has too many DNS lookups and may break email authentication.",
+          "alertName": "SPF Lookup Limit Exceeded",
+          "cwe": "CWE-754"
+        },
+        {
+          "id": "header-missing-content_security_policy",
+          "title": "Missing Content-Security-Policy header on {asset}:{port}",
+          "severity": "medium",
+          "summary": "Your site has no Content Security Policy, leaving it more vulnerable to XSS attacks.",
+          "alertName": "CSP Missing",
+          "cwe": "CWE-79"
+        },
+        {
+          "id": "header-missing-permissions_policy",
+          "title": "Missing Permissions-Policy header on {asset}:{port}",
+          "severity": "medium",
+          "summary": "Your site doesn't restrict browser features like camera and mic access for embedded content.",
+          "alertName": "Permissions-Policy Missing",
+          "cwe": ""
+        },
+        {
+          "id": "header-missing-referrer_policy",
+          "title": "Missing Referrer-Policy header on {asset}:{port}",
+          "severity": "medium",
+          "summary": "Your site leaks full page URLs to third parties when users click links.",
+          "alertName": "Referrer-Policy Missing",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "header-missing-strict_transport_security",
+          "title": "Missing Strict-Transport-Security header on {asset}:{port}",
+          "severity": "medium",
+          "summary": "Your site doesn't force browsers to always use HTTPS, allowing downgrade attacks.",
+          "alertName": "HSTS Missing",
+          "cwe": "CWE-319"
+        },
+        {
+          "id": "header-missing-x_content_type_options",
+          "title": "Missing X-Content-Type-Options header on {asset}:{port}",
+          "severity": "medium",
+          "summary": "Browsers may misinterpret file types on your site, which could enable script injection.",
+          "alertName": "X-Content-Type-Options Missing",
+          "cwe": "CWE-16"
+        },
+        {
+          "id": "header-missing-x_frame_options",
+          "title": "Missing X-Frame-Options header on {asset}:{port}",
+          "severity": "medium",
+          "summary": "Your site can be embedded in malicious iframes, enabling clickjacking attacks.",
+          "alertName": "X-Frame-Options Missing",
+          "cwe": "CWE-1021"
+        },
+        {
+          "id": "monitor-dmarc-changed",
+          "title": "DMARC record changed for {asset}",
+          "severity": "medium",
+          "summary": "Your DMARC email security record was just changed.",
+          "alertName": "DMARC Record Changed",
+          "cwe": ""
+        },
+        {
+          "id": "monitor-new-service",
+          "title": "New service detected on {asset}:{port}",
+          "severity": "medium",
+          "summary": "A new service appeared on your server that wasn't running before.",
+          "alertName": "New Service Detected",
+          "cwe": ""
+        },
+        {
+          "id": "monitor-spf-changed",
+          "title": "SPF record changed for {asset}",
+          "severity": "medium",
+          "summary": "Your email SPF record was just changed — make sure it was authorized.",
+          "alertName": "SPF Record Changed",
+          "cwe": ""
+        },
+        {
+          "id": "ssl-cert-expiring-30d",
+          "title": "SSL certificate expires in {value} days on {asset}:{port}",
+          "severity": "medium",
+          "summary": "Your SSL certificate expires within a month — plan to renew it soon.",
+          "alertName": "SSL Certificate Expiring",
+          "cwe": "CWE-298"
+        },
+        {
+          "id": "ssl-tls11-enabled",
+          "title": "TLS 1.1 enabled on {asset}",
+          "severity": "medium",
+          "summary": "Your server supports TLS 1.1, which is outdated and being dropped by browsers.",
+          "alertName": "TLS 1.1 Enabled",
+          "cwe": "CWE-326"
+        },
+        {
+          "id": "takeover-suspicious",
+          "title": "Suspicious CNAME at {asset} → {cname_target}",
+          "severity": "medium",
+          "summary": "A CNAME on your domain points to a third-party service we couldn't verify — worth a manual check.",
+          "alertName": "Suspicious CNAME",
+          "cwe": "CWE-284"
+        },
+        {
+          "id": "tech-eol",
+          "title": "End-of-life software: {value} on {asset}",
+          "severity": "medium",
+          "summary": "You're running end-of-life software that no longer gets security updates.",
+          "alertName": "End-of-Life Software",
+          "cwe": "CWE-1104"
+        },
+        {
+          "id": "dns-no-ipv6",
+          "title": "No IPv6 (AAAA) records for {asset}",
+          "severity": "low",
+          "summary": "Your domain isn't reachable over IPv6, which a growing number of networks use.",
+          "alertName": "No IPv6 Support",
+          "cwe": ""
+        },
+        {
+          "id": "header-powered-by-leak",
+          "title": "X-Powered-By header exposes technology: {value}",
+          "severity": "low",
+          "summary": "Your site reveals what technology it runs on, giving attackers a head start.",
+          "alertName": "Technology Stack Exposed",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "header-server-version-leak",
+          "title": "Server header exposes version: {value}",
+          "severity": "low",
+          "summary": "Your web server is advertising its exact software version, making it easier to attack.",
+          "alertName": "Server Version Exposed",
+          "cwe": "CWE-200"
+        },
+        {
+          "id": "monitor-new-subdomain",
+          "title": "New subdomain discovered: {value}",
+          "severity": "low",
+          "summary": "A new subdomain was found for your domain that we hadn't seen before.",
+          "alertName": "New Subdomain Discovered",
+          "cwe": ""
+        },
+        {
+          "id": "ssl-cert-expiring-90d",
+          "title": "SSL certificate expires in {value} days on {asset}:{port}",
+          "severity": "low",
+          "summary": "Your SSL certificate expires within 3 months — a good time to set up auto-renewal.",
+          "alertName": "SSL Certificate Expiry Notice",
+          "cwe": "CWE-298"
+        },
+        {
+          "id": "ssl-no-tls13",
+          "title": "TLS 1.3 not supported on {asset}",
+          "severity": "low",
+          "summary": "Your server doesn't support TLS 1.3, the latest and most secure protocol version.",
+          "alertName": "TLS 1.3 Not Supported",
+          "cwe": ""
+        },
+        {
+          "id": "monitor-cert-changed",
+          "title": "SSL certificate changed on {asset}:{port}",
+          "severity": "info",
+          "summary": "The SSL certificate on your server was just replaced.",
+          "alertName": "Certificate Changed",
+          "cwe": ""
+        },
+        {
+          "id": "monitor-dns-record-changed",
+          "title": "DNS record changed for {asset}",
+          "severity": "info",
+          "summary": "A DNS record for your domain was just changed.",
+          "alertName": "DNS Record Changed",
+          "cwe": ""
+        },
+        {
+          "id": "monitor-header-changed",
+          "title": "Security header changed on {asset}",
+          "severity": "info",
+          "summary": "A security header on your site was just changed.",
+          "alertName": "Security Header Changed",
+          "cwe": ""
+        },
+        {
+          "id": "ssl-cert-info",
+          "title": "SSL certificate on {asset}:{port}: {value}",
+          "severity": "info",
+          "summary": "Details about the SSL certificate on this endpoint.",
+          "alertName": "SSL Certificate Info",
+          "cwe": ""
+        },
+        {
+          "id": "ssl-connection-error",
+          "title": "SSL/TLS connection failed on {asset}:{port}",
+          "severity": "info",
+          "summary": "We couldn't establish a secure connection to this port.",
+          "alertName": "",
+          "cwe": ""
+        },
+        {
+          "id": "ssl-no-tls12",
+          "title": "TLS 1.2 not supported on {asset}",
+          "severity": "info",
+          "summary": "Your server doesn't support TLS 1.2, which some older clients still need.",
+          "alertName": "TLS 1.2 Not Supported",
+          "cwe": ""
+        },
+        {
+          "id": "tech-detected",
+          "title": "Technology detected: {value}",
+          "severity": "info",
+          "summary": "We identified a technology running on your server.",
+          "alertName": "Technology Detected",
+          "cwe": ""
+        }
+      ]
+    }
+  ]
+}

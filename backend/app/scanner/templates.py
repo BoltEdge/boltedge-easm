@@ -24,8 +24,73 @@ Placeholders in title/description/remediation:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Dict, List, Optional
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CUSTOMER-FACING CATEGORIES
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# The internal `category` field on each template is fine-grained (11 values)
+# and reflects how the analysers think. Customers see something coarser —
+# 5 buckets that map to the public Coverage page, the alert-toggle UI, and
+# the marketing-side catalogue.
+#
+# `customer_category` is auto-derived from `category` via the mapping
+# below at template-registration time, so every existing template gets
+# one for free. A template can override by passing `customer_category=`
+# explicitly when there's a special case (e.g. a `dns` template that's
+# really about exposure rather than hygiene).
+#
+# When adding a new internal `category` value, add it to the mapping
+# here. The validator below will fail loudly if a template uses an
+# internal category we haven't mapped.
+
+# Customer-facing category IDs. These are stable strings used as URL
+# slugs, JSON keys, env-var-safe identifiers — do not rename.
+CUSTOMER_CATEGORIES: Dict[str, Dict[str, str]] = {
+    "vulnerabilities": {
+        "label": "Vulnerabilities",
+        "blurb": "Known CVEs and software flaws in services running on your assets.",
+    },
+    "service_exposure": {
+        "label": "Service Exposure",
+        "blurb": "Admin panels, dev tools, databases, and cloud assets reachable from the internet.",
+    },
+    "data_leaks": {
+        "label": "Data Leaks",
+        "blurb": "Secrets, credentials, configuration files, and source code exposed in public repos or directly on the asset.",
+    },
+    "misconfigurations": {
+        "label": "Misconfigurations",
+        "blurb": "CORS, open redirects, default credentials, and accessible admin endpoints.",
+    },
+    "security_hygiene": {
+        "label": "Security Hygiene",
+        "blurb": "Expiring certificates, missing security headers, weak DMARC/SPF, and end-of-life software stacks.",
+    },
+}
+
+CUSTOMER_CATEGORY_IDS = list(CUSTOMER_CATEGORIES.keys())
+
+# Internal category → customer-facing category. Every internal category
+# in templates.py MUST appear here — the validator at registration time
+# refuses templates whose category isn't mapped.
+_INTERNAL_TO_CUSTOMER: Dict[str, str] = {
+    "cve":              "vulnerabilities",
+    "vulnerability":    "vulnerabilities",
+    "exposure":         "service_exposure",
+    "ports":            "service_exposure",
+    "cloud":            "service_exposure",
+    "leak":             "data_leaks",
+    "misconfiguration": "misconfigurations",
+    "ssl":              "security_hygiene",
+    "headers":          "security_hygiene",
+    "dns":              "security_hygiene",
+    "technology":       "security_hygiene",
+    "tech":             "security_hygiene",  # legacy alias for technology
+}
 
 
 @dataclass(frozen=True)
@@ -53,9 +118,21 @@ class FindingTemplate:
     tunable: bool = True
     tuning_key: Optional[str] = None  # defaults to template_id if None
 
+    # Customer-facing taxonomy. Auto-derived from `category` at register
+    # time via _INTERNAL_TO_CUSTOMER. Override by passing this explicitly
+    # when the internal category misrepresents the customer view.
+    customer_category: Optional[str] = None
+
     @property
     def effective_tuning_key(self) -> str:
         return self.tuning_key or self.template_id
+
+    @property
+    def effective_customer_category(self) -> str:
+        """The customer-facing category, auto-derived if not set."""
+        if self.customer_category:
+            return self.customer_category
+        return _INTERNAL_TO_CUSTOMER.get(self.category, "security_hygiene")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -66,9 +143,44 @@ _TEMPLATES: Dict[str, FindingTemplate] = {}
 
 
 def _r(tmpl: FindingTemplate) -> FindingTemplate:
-    """Register a template."""
+    """Register a template.
+
+    Auto-fills `customer_category` from the internal `category` so every
+    template has one, and validates that the mapping is complete. If a
+    new internal category is added without a corresponding customer
+    mapping, registration fails immediately at import — making the
+    drift impossible to ship by accident.
+    """
+    if tmpl.customer_category is None:
+        derived = _INTERNAL_TO_CUSTOMER.get(tmpl.category)
+        if derived is None:
+            raise ValueError(
+                f"Template '{tmpl.template_id}' uses internal category "
+                f"'{tmpl.category}' which has no customer-facing mapping. "
+                f"Add it to _INTERNAL_TO_CUSTOMER in templates.py."
+            )
+        tmpl = replace(tmpl, customer_category=derived)
+    elif tmpl.customer_category not in CUSTOMER_CATEGORIES:
+        raise ValueError(
+            f"Template '{tmpl.template_id}' has invalid customer_category "
+            f"'{tmpl.customer_category}'. Valid: {CUSTOMER_CATEGORY_IDS}"
+        )
     _TEMPLATES[tmpl.template_id] = tmpl
     return tmpl
+
+
+def templates_by_customer_category() -> Dict[str, List[FindingTemplate]]:
+    """Group every registered template by customer-facing category.
+
+    Used by the public /coverage page, the catalogue regen script, and
+    the alert-toggle UI. Returns a dict keyed by CUSTOMER_CATEGORY_IDS,
+    even for empty buckets, so consumers can render every card without
+    having to handle missing keys.
+    """
+    out: Dict[str, List[FindingTemplate]] = {cid: [] for cid in CUSTOMER_CATEGORY_IDS}
+    for tmpl in _TEMPLATES.values():
+        out[tmpl.effective_customer_category].append(tmpl)
+    return out
 
 
 # ───────────────────────────────────────────────────────────────────────────
