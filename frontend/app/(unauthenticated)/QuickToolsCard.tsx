@@ -9,6 +9,10 @@ import {
   LogIn,
 } from "lucide-react";
 
+import TurnstileWidget from "./TurnstileWidget";
+
+const TURNSTILE_ENABLED = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 function cn(...c: Array<string | false | null | undefined>) {
@@ -137,6 +141,8 @@ export default function QuickToolsCard({ onActiveChange }: QuickToolsCardProps =
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [widgetKey, setWidgetKey] = useState(0);
 
   const tool = TOOLS.find((t) => t.id === activeTool)!;
 
@@ -149,6 +155,7 @@ export default function QuickToolsCard({ onActiveChange }: QuickToolsCardProps =
   const handleSubmit = useCallback(async () => {
     const val = inputValue.trim();
     if (!val || tool.authOnly) return;
+    if (TURNSTILE_ENABLED && !turnstileToken) return;
     setLoading(true); setResult(null);
     try {
       let endpoint: string; let body: Record<string, string>;
@@ -158,12 +165,17 @@ export default function QuickToolsCard({ onActiveChange }: QuickToolsCardProps =
         if (isHash) { endpoint = `${API_BASE}/tools/public/cert-hash`; body = { hash: cleaned }; }
         else { endpoint = `${API_BASE}/tools/public/cert-lookup`; body = { domain: val }; }
       } else { endpoint = `${API_BASE}/tools/public/${activeTool}`; body = { [tool.inputField]: val }; }
+      if (turnstileToken) body.turnstileToken = turnstileToken;
       const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!res.ok && data.error) setResult({ error: data.error }); else setResult(data);
     } catch { setResult({ error: "Request failed. Please try again." }); }
-    finally { setLoading(false); }
-  }, [inputValue, activeTool, tool]);
+    finally {
+      setLoading(false);
+      setTurnstileToken(null);
+      setWidgetKey((k) => k + 1);
+    }
+  }, [inputValue, activeTool, tool, turnstileToken]);
 
   const emptyHint = (() => {
     if (tool.authOnly) return "";
@@ -194,17 +206,27 @@ export default function QuickToolsCard({ onActiveChange }: QuickToolsCardProps =
 
       {/* Input — hidden for auth-only tools */}
       {!tool.authOnly && (
-        <div className="px-6 pb-4">
+        <div className="px-6 pb-4 space-y-3">
           <div className="flex gap-2">
             <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !loading && handleSubmit()}
               placeholder={tool.placeholder} disabled={loading}
               className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 font-mono" />
-            <button onClick={handleSubmit} disabled={loading || !inputValue.trim()}
+            <button onClick={handleSubmit} disabled={loading || !inputValue.trim() || (TURNSTILE_ENABLED && !turnstileToken)}
               className={cn("rounded-lg px-4 py-2 text-sm font-medium transition-all shrink-0",
-                loading || !inputValue.trim() ? "bg-muted text-muted-foreground cursor-not-allowed" : "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-lg shadow-teal-500/20 hover:shadow-teal-500/30 hover:brightness-110")}>
+                loading || !inputValue.trim() || (TURNSTILE_ENABLED && !turnstileToken)
+                  ? "bg-muted text-muted-foreground cursor-not-allowed"
+                  : "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-lg shadow-teal-500/20 hover:shadow-teal-500/30 hover:brightness-110")}>
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
             </button>
           </div>
+          {TURNSTILE_ENABLED && (
+            <TurnstileWidget
+              key={widgetKey}
+              onVerify={setTurnstileToken}
+              onExpire={() => setTurnstileToken(null)}
+              onError={() => setTurnstileToken(null)}
+            />
+          )}
         </div>
       )}
 

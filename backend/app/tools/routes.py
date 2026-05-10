@@ -25,6 +25,8 @@ import socket
 from flask import Blueprint, request, jsonify
 
 from app.auth.decorators import require_auth, current_user_id, current_organization_id
+from app.utils.abuse_check import public_abuse_check
+from app.utils.turnstile import verify_turnstile
 
 logger = logging.getLogger(__name__)
 
@@ -294,8 +296,12 @@ def cert_lookup_auth():
 
 
 @tools_bp.post("/public/cert-lookup")
+@public_abuse_check(source="tool_cert", limit=10, label="certificate lookups")
 def cert_lookup_public():
     """Public certificate lookup — trimmed results."""
+    ts_ok, ts_err = verify_turnstile(request)
+    if not ts_ok:
+        return jsonify(error=ts_err, code="TURNSTILE_FAILED"), 403
     body = request.get_json(silent=True) or {}
     domain, err = _validate_domain(body.get("domain", ""))
     if err:
@@ -326,8 +332,12 @@ def cert_hash_auth():
 
 
 @tools_bp.post("/public/cert-hash")
+@public_abuse_check(source="tool_cert_hash", limit=10, label="certificate hash lookups")
 def cert_hash_public():
     """Public cert hash lookup — trimmed results (max 10)."""
+    ts_ok, ts_err = verify_turnstile(request)
+    if not ts_ok:
+        return jsonify(error=ts_err, code="TURNSTILE_FAILED"), 403
     body = request.get_json(silent=True) or {}
     cert_hash, err = _validate_hash(body.get("hash", ""))
     if err:
@@ -354,8 +364,12 @@ def dns_lookup_auth():
 
 
 @tools_bp.post("/public/dns-lookup")
+@public_abuse_check(source="tool_dns", limit=10, label="DNS lookups")
 def dns_lookup_public():
     """Public DNS lookup — trimmed results."""
+    ts_ok, ts_err = verify_turnstile(request)
+    if not ts_ok:
+        return jsonify(error=ts_err, code="TURNSTILE_FAILED"), 403
     body = request.get_json(silent=True) or {}
     domain, err = _validate_domain(body.get("domain", ""))
     if err:
@@ -385,8 +399,12 @@ def reverse_dns_auth():
 
 
 @tools_bp.post("/public/reverse-dns")
+@public_abuse_check(source="tool_revdns", limit=10, label="reverse DNS lookups")
 def reverse_dns_public():
     """Public reverse DNS — basic PTR results."""
+    ts_ok, ts_err = verify_turnstile(request)
+    if not ts_ok:
+        return jsonify(error=ts_err, code="TURNSTILE_FAILED"), 403
     body = request.get_json(silent=True) or {}
     ip, err = _validate_ip(body.get("ip", ""))
     if err:
@@ -419,8 +437,12 @@ def header_check_auth():
 
 
 @tools_bp.post("/public/header-check")
+@public_abuse_check(source="tool_headers", limit=10, label="header checks")
 def header_check_public():
     """Public header check — trimmed results."""
+    ts_ok, ts_err = verify_turnstile(request)
+    if not ts_ok:
+        return jsonify(error=ts_err, code="TURNSTILE_FAILED"), 403
     body = request.get_json(silent=True) or {}
     domain, err = _validate_domain(body.get("domain", ""))
     if err:
@@ -451,8 +473,12 @@ def whois_auth():
 
 
 @tools_bp.post("/public/whois")
+@public_abuse_check(source="tool_whois", limit=10, label="WHOIS lookups")
 def whois_public():
     """Public WHOIS — accepts domain, IP, or ASN. Parsed results only."""
+    ts_ok, ts_err = verify_turnstile(request)
+    if not ts_ok:
+        return jsonify(error=ts_err, code="TURNSTILE_FAILED"), 403
     body = request.get_json(silent=True) or {}
     query, err = _validate_whois_query(body)
     if err:
@@ -500,8 +526,12 @@ def email_security_auth():
 
 
 @tools_bp.post("/public/email-security")
+@public_abuse_check(source="tool_email", limit=10, label="email security checks")
 def email_security_public():
     """Public email security check — summary only."""
+    ts_ok, ts_err = verify_turnstile(request)
+    if not ts_ok:
+        return jsonify(error=ts_err, code="TURNSTILE_FAILED"), 403
     body = request.get_json(silent=True) or {}
     domain, err = _validate_domain(body.get("domain", ""))
     if err:
@@ -530,8 +560,12 @@ def sensitive_paths_auth():
 
 
 @tools_bp.post("/public/sensitive-paths")
+@public_abuse_check(source="tool_paths", limit=10, label="sensitive-path scans")
 def sensitive_paths_public():
     """Public sensitive path scan - summary only."""
+    ts_ok, ts_err = verify_turnstile(request)
+    if not ts_ok:
+        return jsonify(error=ts_err, code="TURNSTILE_FAILED"), 403
     body = request.get_json(silent=True) or {}
     domain, err = _validate_domain(body.get("domain", ""))
     if err:
@@ -561,8 +595,12 @@ def github_leaks_auth():
 
 
 @tools_bp.post("/public/github-leaks")
+@public_abuse_check(source="tool_github", limit=10, label="GitHub leak searches")
 def github_leaks_public():
     """Public GitHub leak scan - summary only."""
+    ts_ok, ts_err = verify_turnstile(request)
+    if not ts_ok:
+        return jsonify(error=ts_err, code="TURNSTILE_FAILED"), 403
     body = request.get_json(silent=True) or {}
     domain, err = _validate_domain(body.get("domain", ""))
     if err:
