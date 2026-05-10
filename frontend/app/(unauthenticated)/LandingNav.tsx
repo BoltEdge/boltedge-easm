@@ -12,13 +12,21 @@ import { isLoggedIn } from "../lib/auth";
 // only valid on the home page; if the user is on a sub-page (FAQ,
 // Coverage, etc.), we route them to "/" first via the href anyway.
 
-type NavSubItem = {
+type NavSubItemLink = {
+  kind?: "link";
   href: string;
   label: string;
   description?: string;
   badge?: string;
   billingOnly?: boolean;
 };
+
+type NavSubItemSection = {
+  kind: "section";
+  label: string;
+};
+
+type NavSubItem = NavSubItemLink | NavSubItemSection;
 
 type NavTopItem =
   | { kind: "link"; href: string; label: string; billingOnly?: boolean }
@@ -32,9 +40,10 @@ const TOP_NAV: NavTopItem[] = [
       { href: "/#features", label: "Capabilities", description: "What the platform does, end to end." },
       { href: "/#how-it-works", label: "How it works", description: "Discover → scan → score → monitor." },
       { href: "/coverage", label: "Coverage", description: "Every finding category we detect.", badge: "New" },
+      { kind: "section", label: "Free tools" },
       { href: "/quick-scan", label: "Quick Scan", description: "Try a free scan, no signup." },
       { href: "/quick-discovery", label: "Quick Discovery", description: "Find subdomains free, no signup." },
-      { href: "/look-up-tools", label: "Free Tools", description: "Lookup utilities — WHOIS, DNS, certs, headers." },
+      { href: "/look-up-tools", label: "Free Tools", description: "WHOIS, DNS, certs, headers — free." },
       { href: "/#pricing", label: "Pricing", description: "Plan tiers and limits.", billingOnly: true },
     ],
   },
@@ -43,7 +52,7 @@ const TOP_NAV: NavTopItem[] = [
     label: "Resources",
     items: [
       { href: "/faq", label: "FAQ", description: "Common questions, plain answers." },
-      { href: "/api-docs", label: "API docs", description: "Integrate Nano EASM with your stack." },
+      { href: "/api-docs", label: "API Docs", description: "Integrate Nano EASM with your stack." },
       { href: "/resources/what-is-nano-easm", label: "What is Nano EASM?", description: "The platform, explained." },
     ],
   },
@@ -61,8 +70,12 @@ function visibleNav(): NavTopItem[] {
       if (top.billingOnly && !BILLING_ENABLED) return null;
       return top;
     }
-    const items = top.items.filter((it) => !it.billingOnly || BILLING_ENABLED);
-    if (items.length === 0) return null;
+    const items = top.items.filter((it) => {
+      if (it.kind === "section") return true;
+      return !it.billingOnly || BILLING_ENABLED;
+    });
+    // Bail if the only items left are section headers with no link entries.
+    if (!items.some((it) => it.kind !== "section")) return null;
     return { ...top, items };
   }).filter(Boolean) as NavTopItem[];
 }
@@ -115,29 +128,41 @@ function DropdownDesktop({
           // overflow on narrow viewports.
           className="absolute left-0 top-full mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-white/[0.08] bg-[#060b18]/98 backdrop-blur-xl shadow-2xl shadow-black/50 p-1.5 z-50"
         >
-          {items.map((it) => (
-            <Link
-              key={it.href}
-              href={it.href}
-              role="menuitem"
-              onClick={onClose}
-              className="block px-3 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors group"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-white/85 group-hover:text-white">
+          {items.map((it, i) => {
+            if (it.kind === "section") {
+              return (
+                <div
+                  key={`section-${i}`}
+                  className="px-3 pt-3 pb-1 mt-1 text-[10px] font-semibold uppercase tracking-wider text-white/40 border-t border-white/[0.06] first:mt-0 first:border-t-0 first:pt-2"
+                >
                   {it.label}
-                </span>
-                {it.badge && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-bold uppercase tracking-wider">
-                    {it.badge}
+                </div>
+              );
+            }
+            return (
+              <Link
+                key={it.href}
+                href={it.href}
+                role="menuitem"
+                onClick={onClose}
+                className="block px-3 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors group"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-white/85 group-hover:text-white">
+                    {it.label}
                   </span>
+                  {it.badge && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-bold uppercase tracking-wider">
+                      {it.badge}
+                    </span>
+                  )}
+                </div>
+                {it.description && (
+                  <div className="text-xs text-white/40 mt-0.5 leading-relaxed">{it.description}</div>
                 )}
-              </div>
-              {it.description && (
-                <div className="text-xs text-white/40 mt-0.5 leading-relaxed">{it.description}</div>
-              )}
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
@@ -324,23 +349,35 @@ export default function LandingNav() {
                   </button>
                   {expanded && (
                     <div className="pl-3 space-y-0.5">
-                      {item.items.map((sub) => (
-                        <Link
-                          key={sub.href}
-                          href={sub.href}
-                          onClick={() => setMobileOpen(false)}
-                          className="block px-3 py-2 rounded-lg text-sm text-white/55 hover:text-white hover:bg-white/[0.06] transition-colors"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span>{sub.label}</span>
-                            {sub.badge && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-bold uppercase tracking-wider">
-                                {sub.badge}
-                              </span>
-                            )}
-                          </div>
-                        </Link>
-                      ))}
+                      {item.items.map((sub, i) => {
+                        if (sub.kind === "section") {
+                          return (
+                            <div
+                              key={`section-${i}`}
+                              className="px-3 pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/40"
+                            >
+                              {sub.label}
+                            </div>
+                          );
+                        }
+                        return (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            onClick={() => setMobileOpen(false)}
+                            className="block px-3 py-2 rounded-lg text-sm text-white/55 hover:text-white hover:bg-white/[0.06] transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{sub.label}</span>
+                              {sub.badge && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-bold uppercase tracking-wider">
+                                  {sub.badge}
+                                </span>
+                              )}
+                            </div>
+                          </Link>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
