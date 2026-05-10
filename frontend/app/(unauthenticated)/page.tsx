@@ -278,7 +278,7 @@ export default function UnauthenticatedHomePage() {
               <div className="text-center mb-10">
                 <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">Try it now</span>
                 <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">See it in action — no signup needed</h2>
-                <p className="mt-4 text-base text-white/40 max-w-xl mx-auto">
+                <p className="mt-4 text-base text-white/55 max-w-xl mx-auto">
                   Run a quick scan or discovery against any domain to see what Nano EASM can find.
                   Create a free account to save results and unlock full features.
                 </p>
@@ -327,7 +327,7 @@ export default function UnauthenticatedHomePage() {
                         <Icon className="h-5 w-5" />
                       </div>
                       <h3 className="text-sm font-semibold text-white mb-2">{title}</h3>
-                      <p className="text-sm text-white/40 leading-relaxed">{desc}</p>
+                      <p className="text-sm text-white/55 leading-relaxed">{desc}</p>
                     </div>
                   </div>
                 </FadeInOnScroll>
@@ -385,7 +385,7 @@ export default function UnauthenticatedHomePage() {
                     <div className="text-5xl font-bold text-white/[0.04] mb-4">{step}</div>
                     <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-teal-500/10 text-teal-400 mb-4"><Icon className="h-5 w-5" /></div>
                     <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-                    <p className="text-sm text-white/40 leading-relaxed">{desc}</p>
+                    <p className="text-sm text-white/55 leading-relaxed">{desc}</p>
                   </div>
                 </FadeInOnScroll>
               ))}
@@ -430,7 +430,7 @@ export default function UnauthenticatedHomePage() {
                         {n}
                       </div>
                       <h3 className="text-sm font-semibold text-white mb-2">{verb}</h3>
-                      <p className="text-xs text-white/40 leading-relaxed">{desc}</p>
+                      <p className="text-xs text-white/55 leading-relaxed">{desc}</p>
                     </div>
                   ))}
                 </div>
@@ -469,7 +469,7 @@ export default function UnauthenticatedHomePage() {
                     <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
                       Start free,<br /><span className="text-white/50">scale when ready</span>
                     </h2>
-                    <p className="mt-4 text-base text-white/40 max-w-lg">
+                    <p className="mt-4 text-base text-white/55 max-w-lg">
                       Start on the Free plan with no payment details required. Upgrade for higher limits as your environment grows.
                     </p>
                     <div className="mt-8 flex flex-col sm:flex-row items-center lg:items-start gap-3">
@@ -509,7 +509,7 @@ export default function UnauthenticatedHomePage() {
               <div className="text-center mb-10">
                 <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">Pricing</span>
                 <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">Start free, scale when ready</h2>
-                <p className="mt-4 text-base text-white/40 max-w-lg mx-auto">Free trials available on every paid plan — request one and we&apos;ll get back to you within one business day.</p>
+                <p className="mt-4 text-base text-white/55 max-w-lg mx-auto">Free trials available on every paid plan — request one and we&apos;ll get back to you within one business day.</p>
               </div>
             </FadeInOnScroll>
 
@@ -533,8 +533,8 @@ export default function UnauthenticatedHomePage() {
                       <span className="text-3xl font-bold text-white">{price}</span>
                       {period && <span className="text-sm text-white/55">{period}</span>}
                     </div>
-                    {annual && <div className="text-[11px] text-white/40 mb-1">{annual}</div>}
-                    <p className="text-xs text-white/40 mb-5">{desc}</p>
+                    {annual && <div className="text-[11px] text-white/55 mb-1">{annual}</div>}
+                    <p className="text-xs text-white/55 mb-5">{desc}</p>
                     {trial && <div className="text-[10px] text-teal-400/80 font-medium mb-4 uppercase tracking-wide">Free trial available</div>}
                     <ul className="space-y-2 mb-6 flex-1">
                       {limits.map((f) => (<li key={f} className="flex items-start gap-2 text-[13px] text-white/50"><Check className="w-3.5 h-3.5 text-teal-500/70 shrink-0 mt-0.5" />{f}</li>))}
@@ -553,7 +553,7 @@ export default function UnauthenticatedHomePage() {
                     <div className="lg:max-w-2xl">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">Custom</span>
-                        <span className="text-xs text-white/40">·  Contact sales</span>
+                        <span className="text-xs text-white/55">·  Contact sales</span>
                       </div>
                       <div className="text-base font-semibold text-white mt-2">Beyond Enterprise Gold</div>
                       <p className="text-sm text-white/50 mt-2 leading-relaxed">
@@ -592,7 +592,7 @@ export default function UnauthenticatedHomePage() {
                   <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
                     Start securing your<span className="bg-gradient-to-r from-teal-400/80 to-cyan-400/70 bg-clip-text text-transparent"> attack surface</span>
                   </h2>
-                  <p className="mt-4 text-base text-white/40 max-w-lg mx-auto">Join security teams using Nano EASM to discover, scan, and continuously monitor their external exposure.</p>
+                  <p className="mt-4 text-base text-white/55 max-w-lg mx-auto">Join security teams using Nano EASM to discover, scan, and continuously monitor their external exposure.</p>
                   <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
                     <Link href="/register" className="group inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/30 hover:bg-teal-500 transition-all">
                       Create free account<ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -612,13 +612,13 @@ export default function UnauthenticatedHomePage() {
               <div className="text-center mb-10">
                 <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">Get in touch</span>
                 <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">Contact us</h2>
-                <p className="mt-4 text-base text-white/40 max-w-xl mx-auto">
+                <p className="mt-4 text-base text-white/55 max-w-xl mx-auto">
                   Questions, feedback, or interested in Enterprise? Send us a message and we&apos;ll get back to you within one business day.
                 </p>
               </div>
             </FadeInOnScroll>
             <FadeInOnScroll delay={100}>
-              <Suspense fallback={<div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 text-sm text-white/40">Loading…</div>}>
+              <Suspense fallback={<div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 text-sm text-white/55">Loading…</div>}>
                 <ContactForm />
               </Suspense>
             </FadeInOnScroll>

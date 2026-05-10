@@ -43,7 +43,7 @@ const TOP_NAV: NavTopItem[] = [
       { kind: "section", label: "Free tools" },
       { href: "/quick-scan", label: "Quick Scan", description: "Try a free scan, no signup." },
       { href: "/quick-discovery", label: "Quick Discovery", description: "Find subdomains free, no signup." },
-      { href: "/look-up-tools", label: "Free Tools", description: "WHOIS, DNS, certs, headers — free." },
+      { href: "/look-up-tools", label: "Lookup Tools", description: "WHOIS, DNS, certs, headers — free." },
       { href: "/#pricing", label: "Pricing", description: "Plan tiers and limits.", billingOnly: true },
     ],
   },
