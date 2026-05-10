@@ -114,17 +114,6 @@ export default function WhatIsNanoEasmPage() {
             prioritise remediation — without juggling multiple tools.
           </p>
 
-          <div className="mt-6 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-5">
-            <p className="text-sm text-amber-200/90">
-              <strong className="text-amber-100">Not to be confused with</strong> the
-              open-source Verilog assembler called &ldquo;nanoasm&rdquo; (used in retro
-              hardware projects and the 8bitworkshop IDE). Nano EASM is a different
-              product entirely — a modern cloud-hosted security platform for the web,
-              not a hardware development tool. They share a similar name; they share
-              nothing else.
-            </p>
-          </div>
-
           <h2 className="mt-12 text-2xl font-semibold tracking-tight">
             What does External Attack Surface Management mean?
           </h2>
