@@ -954,6 +954,19 @@ class ApiKey(db.Model):
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     revoked_at = db.Column(db.DateTime, nullable=True)
 
+    # Phase-1 agent platform: 'customer' for normal API keys, 'agent' for
+    # internal agent platform keys (read-only scoped, hidden from
+    # customer-facing listings).
+    kind = db.Column(
+        db.String(20), nullable=False,
+        default="customer", server_default=db.text("'customer'"),
+        index=True,
+    )
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("kind", "customer")
+        super().__init__(**kwargs)
+
     created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
 
     # Relationships
