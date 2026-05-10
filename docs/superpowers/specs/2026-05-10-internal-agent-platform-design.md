@@ -13,13 +13,13 @@ The platform is **operational scaffolding for the founder**, not an autonomous b
 
 ### In scope
 
-- A dedicated agent-ops platform on the **parent company site** (separate hosting, separate Postgres, separate secrets, separate auth from Nano EASM).
-- An admin UI at `/admin/agents` on the parent site for profiles, threads, recent runs, approval queue, memory viewer.
+- An agent-ops module **co-hosted inside Nano EASM** (same repo, same Postgres, same deploy pipeline) with disciplined boundaries: per-agent read-only API keys, separated agent secrets, namespaced code and DB tables.
+- An admin UI at `/admin/agents` (under the existing superadmin gate) for profiles, threads, recent runs, approval queue, memory viewer.
 - Six agent identities (Engineer, QA, Security Analyst, Strategy, Voice, Founder Ops) with skills underneath.
 - Per-agent isolated memory + a small shared `team_memory` namespace; approval-gated writes.
 - A strict approval queue covering memory writes, externally-visible outputs, code PRs, and integration writes.
 - Manual invocation + scheduled (cron) runs at launch.
-- A small read-only `/api/internal/...` surface on Nano EASM, served on `internal.nanoeasm.com` behind Cloudflare Access.
+- A small read-only `/api/internal/...` blueprint that agents call **even though they live in the same app** — same API discipline, no network boundary. This is the seam that prevents schema-coupling.
 - Cost budgets and runtime caps per agent.
 
 ### Out of scope (deferred to later phases)
@@ -41,70 +41,64 @@ The platform is **operational scaffolding for the founder**, not an autonomous b
 
 ### Hosting and isolation
 
-The platform runs on the **parent company site** infrastructure, fully isolated from Nano EASM at the operational level:
+The platform is **co-hosted inside Nano EASM** — same Flask backend, same Next.js frontend, same Postgres instance, same deploy pipeline. Isolation is enforced at the **discipline layer** rather than the infrastructure layer:
 
-- Separate Postgres instance (not a shared DB with a different schema).
-- Separate environment / secrets store.
-- Separate auth and session domain.
-- Separate API keys for every external service the agents touch (Anthropic, GitHub, GitLab, Resend, etc.). **Never reuse Nano EASM's keys.**
+- **Per-agent read-only API keys**: each agent holds its own bearer key issued through the existing API-key infrastructure, scoped to the new `/api/internal/...` read endpoints. Keys are stored alongside customer API keys in the existing `api_key` table but tagged `kind = 'agent'` and excluded from customer-visible listings.
+- **Agents reach data only via the API**: even though they run in the same Flask app, agent code does **not** touch SQLAlchemy models for Nano EASM customer data directly. They call `/api/internal/...` endpoints. This keeps the seam that prevents schema coupling, gives an audit trail, and allows future migration to separate hosting without a rewrite.
+- **Separate secrets for agent code paths**: `ANTHROPIC_API_KEY_AGENTS`, `GITHUB_TOKEN_AGENTS`, `RESEND_TOKEN_AGENTS` distinct from any customer-facing keys. Loaded only into agent-blueprint code paths.
+- **Bounded namespace**: agent code lives in `backend/app/agents/` (Flask blueprint) and `frontend/app/(authenticated)/admin/agents/` (admin UI). Agent concerns do not bleed into customer-facing modules.
+- **Admin UI gated by existing superadmin role**: the same `require_superadmin` decorator that protects `/admin/dashboard`, `/admin/users`, etc. protects `/admin/agents`. Returns 404 to non-superadmins, same as the existing admin pattern.
+- **Agent DB tables namespaced**: `agent_*` table prefix (`agent_memory`, `agent_thread`, `agent_message`, `agent_run`, `agent_task`, `team_memory`, `pending_action`). They live in the same Postgres instance but are clearly separated.
 
-This separation is load-bearing: a compromise of one system must not pivot into the other, and a Nano EASM schema change must not silently break agents.
+This is **not** infra-level isolation. The cost is honest: a compromise of Nano EASM admin gives an attacker access to agent secrets and memory; a Nano EASM schema migration that breaks the API contract will break agents until the API shim is updated. The mitigation is the API discipline above plus the strict approval queue. If/when the platform outgrows this — multi-user, external auditing, regulatory requirements — separate hosting can be revisited.
 
-### Network topology
+### Architecture diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  Parent company site (isolated infra)                           │
+│  Nano EASM (single deployment)                                  │
 │                                                                 │
-│  ┌──────────────────────────┐   ┌─────────────────────────────┐ │
-│  │ Admin UI (/admin/agents) │   │ Backend                     │ │
-│  │  - Agent profiles        │   │  - Agent runtime            │ │
-│  │  - "Run now" button      │◄──┤  - Approval queue           │ │
-│  │  - Threads view          │   │  - Scheduler (cron)         │ │
-│  │  - Approval queue        │   │  - Postgres (separate)      │ │
-│  │  - Memory viewer         │   │  - Cost / budget enforce    │ │
-│  │  - Recent runs / costs   │   │                             │ │
-│  └──────────────────────────┘   └─────────────────────────────┘ │
-│                                       │                         │
-│                                       │ CF Access Service Token │
-│                                       │  + bearer API key       │
-│                                       ▼                         │
-└──────────────────────┬──────────────────────────────────────────┘
-                       │
-                       │ HTTPS
-                       ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  internal.nanoeasm.com  (Cloudflare Access in front)            │
+│  Frontend (Next.js)                Backend (Flask)              │
+│  ─────────────────                ────────────────              │
+│  /admin/agents/...   ◄──────►    backend/app/agents/            │
+│   - profiles                       - routes.py (admin UI)       │
+│   - run now                        - runtime.py (agent runner)  │
+│   - threads                        - memory.py                  │
+│   - approval queue                 - approvals.py               │
+│   - memory viewer                  - scheduler.py               │
+│                                    - profiles/<name>/agent.md   │
 │                                                                 │
-│  Read-only /api/internal/... endpoints, scoped per agent:       │
-│   - GET /stats/weekly                                           │
-│   - GET /findings/recent                                        │
-│   - GET /contact-requests/recent                                │
-│   - GET /audit-log/recent                                       │
-│   - GET /scans/recent                                           │
+│                                          │ HTTP (in-process)    │
+│                                          ▼                      │
+│                                    /api/internal/... blueprint  │
+│                                          │                      │
+│                                          ▼                      │
+│                                    Nano EASM models             │
+│                                    (existing tables)            │
+│                                                                 │
+│  Shared Postgres                                                │
+│  ─────────────────                                              │
+│   • Existing Nano EASM tables                                   │
+│   • New agent_* tables (namespaced)                             │
 └─────────────────────────────────────────────────────────────────┘
 
 Outputs from agents → admin UI (drafts, threads, weekly digests).
-The platform's send service holds the Resend token; it sends:
+The platform's send service uses RESEND_TOKEN_AGENTS to send:
   • weekly-brief digests (auto, internal-only, recipient = founder)
   • approved customer-facing drafts (only after explicit founder approval)
-No agent holds a Resend token directly.
+No agent invokes Resend directly.
 ```
 
-### Cloudflare Access setup
+### Internal API surface
 
-`internal.nanoeasm.com` is fronted by Cloudflare Access:
+A new `/api/internal/...` Flask blueprint mounted under the main app. Access controls:
 
-- One Access application covers the whole subdomain.
-- Two policies on that application:
-  1. **User policy** — allows the founder's email (OTP / SSO).
-  2. **Service Token policy** — allows the agent platform's machine identity. Cloudflare issues `CF-Access-Client-Id` + `CF-Access-Client-Secret`; both are required headers on every agent → Nano EASM call.
-- Application-layer auth (a bearer API key per agent) sits **on top of** Cloudflare Access. CF Access answers "who can reach the endpoint?", the bearer key answers "what can they do once they reach it?". Both are required.
-- Each agent's bearer key is scoped (e.g. `read:findings`, `read:stats`) and audit-logged on the Nano EASM side via the existing audit log infrastructure.
+- Authentication via bearer API key with `kind = 'agent'` (validated by a new decorator `require_agent_key`).
+- Each agent's key has scopes (e.g. `read:findings`, `read:stats`, `read:audit_log`). Scope check on every endpoint.
+- Every call audit-logged with `agent_id`, scope, endpoint, status — using the existing `audit_log` table with `category = 'agent'`.
+- The blueprint is not exposed to public traffic in the marketing sense (no public docs, no /api-docs entry), but it is reachable on the same hostname. Defense rests on bearer-key + scope check.
 
-### Internal API surface (Nano EASM side)
-
-A new `/api/internal/...` blueprint on Nano EASM, mounted only on a vhost that resolves to `internal.nanoeasm.com`. Initial endpoints (read-only):
+Initial endpoints (read-only):
 
 | Endpoint | Purpose | Consumed by |
 |---|---|---|
@@ -114,11 +108,11 @@ A new `/api/internal/...` blueprint on Nano EASM, mounted only on a vhost that r
 | `GET /api/internal/audit-log/recent?category=` | Recent audit-log entries | Founder Ops |
 | `GET /api/internal/scans/recent` | Active + recent scan jobs | Security Analyst, Founder Ops |
 
-These are scoped read endpoints. **No internal-API write endpoints in Phase 1.** Any future write surface must be added with an explicit per-agent scope and an audit-log entry on every call.
+**No internal-API write endpoints in Phase 1.** Any future write surface must be added with an explicit per-agent scope and an audit-log entry on every call. Agent code in the same app must still call this API rather than touching customer-data models directly — that discipline is what keeps the seam intact.
 
 ## Agent roster
 
-Each agent's identity lives in `agents/<name>/agent.md` in the agent-platform repo, version-controlled. The file declares: name, role, system prompt, allowed tools, allowed secrets, hand-off allowlists, default cost cap, and external-write flag.
+Each agent's identity lives in `backend/app/agents/profiles/<name>/agent.md`, version-controlled in the Nano EASM repo. The file declares: name, role, system prompt, allowed tools, allowed secrets, hand-off allowlists, default cost cap, and external-write flag.
 
 | # | Agent | Owns | Default tools | Key secrets | External writes |
 |---|---|---|---|---|---|
@@ -131,7 +125,7 @@ Each agent's identity lives in `agents/<name>/agent.md` in the agent-platform re
 
 ### Skills underneath each agent
 
-Skills are the unit of repeatable work. Each skill is a `agents/<name>/skills/<skill>.md` file that contains a focused workflow checklist for one task type. Initial skill set:
+Skills are the unit of repeatable work. Each skill is a `backend/app/agents/profiles/<name>/skills/<skill>.md` file that contains a focused workflow checklist for one task type. Initial skill set:
 
 **Engineer**
 - `review-pr` — review a diff against project conventions and security checklist
@@ -389,25 +383,26 @@ This is the single biggest scope reduction: with hand-offs deferred, agents at l
 
 | Phase | Scope | Realistic effort |
 |---|---|---|
-| **1 — MVP** | 6 agent profiles + initial skill set, manual + scheduled runs, approval queue, memory tables, admin UI v1, Cloudflare Access setup, Nano EASM `/api/internal` read endpoints, cost/runtime caps | 2–3 weeks |
+| **1 — MVP** | 6 agent profiles + initial skill set, manual + scheduled runs, approval queue, memory tables (Alembic migration), admin UI v1, `/api/internal` read endpoints + agent-key auth, scheduler, cost/runtime caps | 1–2 weeks |
 | **2 — Workflows** | Hand-off queue, hand-off allowlist enforcement, durable workflow engine (Inngest or Trigger.dev only if justified), event-driven webhooks (critical-finding, support-reply), corresponding new skills | 2 weeks |
 | **3 — Polish** | Multi-agent threads, vector / semantic memory if memory grows past flat retrieval, workflow editor UI, cost dashboards, multi-user auth (when team grows) | 2 weeks |
 
-**Total to "fully scalable": 6–7 weeks of real engineering.** Phase 1 alone is daily-usable; Phases 2–3 only get built when Phase 1 has proved leverage.
+**Total to "fully scalable": 5–6 weeks of real engineering.** Phase 1 alone is daily-usable; Phases 2–3 only get built when Phase 1 has proved leverage.
 
 ### Phase 1 checklist (high level)
 
-- [ ] Provision Postgres on the parent company site (separate instance, not shared).
-- [ ] Create agent-platform repo with `agents/<name>/agent.md` for all 6 agents and the initial skills.
-- [ ] Build the run-an-agent backend endpoint: loads identity + memory + thread, calls Anthropic, streams response, persists to `agent_run` and `agent_message`.
-- [ ] Build the approval queue model and UI (Approve / Reject / Edit-and-approve, daily digest email).
-- [ ] Build the memory model (tables, retrieval, hygiene job).
-- [ ] Build the admin UI v1: agent list, agent profile, recent runs, approval queue, memory viewer, "Run now".
-- [ ] Stand up Cloudflare Access on `internal.nanoeasm.com`; create Service Token; document setup.
-- [ ] Add `/api/internal/...` read blueprint on Nano EASM with the five Phase-1 endpoints, mounted only on the `internal.nanoeasm.com` vhost.
-- [ ] Wire scheduler for the three weekly briefs.
-- [ ] Provision separate Anthropic, GitHub, Resend keys for the agent platform; never reuse Nano EASM keys.
-- [ ] Enforce per-agent cost / runtime / tool-call caps before any run starts.
+- [ ] Alembic migration for new `agent_*` tables (memory, thread, message, run, task, team_memory, pending_action) plus `kind` column on `api_key`.
+- [ ] Create `backend/app/agents/` blueprint with `routes.py`, `runtime.py`, `memory.py`, `approvals.py`, `scheduler.py`, and `profiles/<name>/agent.md` for all 6 agents and the initial skills.
+- [ ] Build the run-an-agent function: loads identity + memory + thread, calls Anthropic, streams response, persists to `agent_run` and `agent_message`. Enforces per-agent cost / runtime / tool-call caps before each call.
+- [ ] Build the approval queue model and admin UI (Approve / Reject / Edit-and-approve, daily 8 am digest email).
+- [ ] Build the memory retrieval logic (tag-matched top-N with confidence/recency tiebreaker) and the weekly hygiene job (APScheduler).
+- [ ] Build the admin UI under `frontend/app/(authenticated)/admin/agents/`: agent list, agent profile, recent runs, approval queue, memory viewer, "Run now".
+- [ ] Add `/api/internal/...` read blueprint with the five Phase-1 endpoints, gated by a new `require_agent_key` decorator (validates bearer key with `kind = 'agent'`, checks scope, audit-logs each call with `category = 'agent'`).
+- [ ] Wire APScheduler jobs for the three weekly briefs (Mon/Tue/Wed 08:00 founder timezone).
+- [ ] Provision separate `ANTHROPIC_API_KEY_AGENTS`, `GITHUB_TOKEN_AGENTS`, `RESEND_TOKEN_AGENTS` env vars; load them only into agent-blueprint code paths.
+- [ ] Generate one read-only agent API key per agent via the existing API-key flow; record in agent profile config.
+- [ ] Add the platform send service (uses `RESEND_TOKEN_AGENTS` for digest emails + post-approval customer drafts; agents never call Resend directly).
+- [ ] Smoke-test each agent with a manual prompt, verify approval queue + memory write flow end-to-end.
 
 ## Open questions / decisions deferred to implementation
 
@@ -416,23 +411,27 @@ This is the single biggest scope reduction: with hand-offs deferred, agents at l
 - **Initial `team_memory` seed**: ~10–30 facts on day one. Candidates: brand rules ("never use BoltEdge"), SOC2/ISO claim discipline, no-community-framing rule, current product status (free upgrades), AUD pricing context, Nano EASM URL, founder approval gates, current quarter priorities. Will be drafted at the start of Phase 1.
 - **`agent_task` shape**: a small internal task list for Founder Ops to write to (id, title, status, priority, agent_owner, due, created_at). Visible in the admin UI. Out of scope: integrating with Linear / Notion / Asana — that's Phase 2+ if needed.
 - **Voice tone calibration**: the Voice agent's system prompt needs deliberate iteration in week 1–2. Plan to A/B prompt variations against past outputs the founder considers "on-tone".
-- **Whether to use Claude Code subagents (`.claude/agents/`) for any of these.** Likely no — the agent platform is a separate runtime — but the Claude Code session itself remains where the founder writes/reviews code, and might benefit from one or two `.claude/agents/*.md` for in-session helpers (e.g. a `code-reviewer` subagent inside Claude Code). Out of scope for this spec.
+- **Whether to use Claude Code subagents (`.claude/agents/`) for any of these.** Likely no — the agent platform runs server-side as part of Nano EASM, not in Claude Code — but the Claude Code session itself remains where the founder writes/reviews code, and might benefit from one or two `.claude/agents/*.md` for in-session helpers (e.g. a `code-reviewer` subagent inside Claude Code). Out of scope for this spec.
 
 ## Risks
 
-1. **Build cost vs. revenue tension.** 6–7 weeks of internal tooling competes with Nano EASM revenue work. Mitigation: ship Phase 1 only; defer Phases 2–3 until Phase 1 proves leverage. Be willing to abandon the platform if the leverage isn't there.
+1. **Build cost vs. revenue tension.** 5–6 weeks of internal tooling competes with Nano EASM revenue work. Mitigation: ship Phase 1 only; defer Phases 2–3 until Phase 1 proves leverage. Be willing to abandon the platform if the leverage isn't there.
 
-2. **Approval queue friction.** The approval queue is the gate that keeps the founder in control. There will be daily temptation to relax it. Mitigation: relaxation must be **per action class**, never "agent X is now trusted." Every relaxation needs a written rationale committed alongside the change.
+2. **Co-hosted blast radius.** A compromise of Nano EASM admin gives the attacker access to agent secrets (Anthropic key, GitHub PAT, Resend token), agent memory, and the agent runtime. Mitigation: per-agent read-only API keys (no agent has Nano EASM write paths), strict approval queue on every external write, separate env-var namespace for agent secrets, agent UI under existing superadmin gate, all agent actions audit-logged. **Re-evaluate at Phase 3** — if the platform grows, regulatory scope changes, or external auditors get involved, separate hosting becomes the right move.
 
-3. **Voice consistency drift.** Voice is the most consequential agent — its tone shapes brand. Mitigation: review every draft for the first month even if otherwise auto-approvable; iterate the prompt deliberately; never bypass the queue for Voice outputs.
+3. **API discipline drift.** The "agents only touch the API, never the DB" rule is enforced socially, not architecturally — agent code in the same Flask app *could* import customer-data models. Mitigation: lint rule or import-graph check that fails CI if `backend/app/agents/` imports from any non-agent blueprint's models module; review checklist for new agent code; audit-log calls only happen on the API path so DB-bypass shows up as missing audit entries.
 
-4. **Memory pollution.** Hallucinated "facts" promoted to `agent_memory` can corrupt future runs. Mitigation: approval-gated writes, weekly hygiene job, low-confidence review surface, every memory has a `source` field for audit.
+4. **Approval queue friction.** The approval queue is the gate that keeps the founder in control. There will be daily temptation to relax it. Mitigation: relaxation must be **per action class**, never "agent X is now trusted." Every relaxation needs a written rationale committed alongside the change.
 
-5. **Scope creep on the agent platform itself.** It's a tool, not a product. Risk of building features for it that the founder doesn't actually use. Mitigation: every new feature must answer "which workflow that I run weekly does this support?" — speculative features are rejected.
+5. **Voice consistency drift.** Voice is the most consequential agent — its tone shapes brand. Mitigation: review every draft for the first month even if otherwise auto-approvable; iterate the prompt deliberately; never bypass the queue for Voice outputs.
 
-6. **Cloudflare and Anthropic dependency.** Both are vendor concentrations. Mitigation: tolerate it; the alternative (self-hosting a zero-trust proxy + LLM) is not a reasonable trade for a solo founder.
+6. **Memory pollution.** Hallucinated "facts" promoted to `agent_memory` can corrupt future runs. Mitigation: approval-gated writes, weekly hygiene job, low-confidence review surface, every memory has a `source` field for audit.
 
-7. **Cost runaway.** A misconfigured agent or runaway loop could burn Anthropic credits fast. Mitigation: per-agent monthly cap (hard), per-run wall-time + tool-call cap (hard), 80 % soft-cap email alert.
+7. **Scope creep on the agent platform itself.** It's a tool, not a product. Risk of building features for it that the founder doesn't actually use. Mitigation: every new feature must answer "which workflow that I run weekly does this support?" — speculative features are rejected.
+
+8. **Anthropic dependency.** Single LLM vendor. Mitigation: tolerate it; the alternative (multi-vendor abstraction) is premature for a solo-founder build.
+
+9. **Cost runaway.** A misconfigured agent or runaway loop could burn Anthropic credits fast. Mitigation: per-agent monthly cap (hard), per-run wall-time + tool-call cap (hard), 80 % soft-cap email alert.
 
 ## Success criteria
 
