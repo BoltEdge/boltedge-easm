@@ -5,6 +5,9 @@ import { useSearchParams } from "next/navigation";
 import { Loader2, Send, CheckCircle2, AlertTriangle } from "lucide-react";
 
 import { submitContactRequest } from "../lib/api";
+import TurnstileWidget from "./TurnstileWidget";
+
+const TURNSTILE_ENABLED = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 type Variant = "card" | "inline";
 type RequestType = "general" | "trial" | "demo";
@@ -59,11 +62,16 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
     | null
   >(null);
 
+  // Cloudflare Turnstile — fresh token per submission, bump key after each.
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [widgetKey, setWidgetKey] = useState(0);
+
   const canSubmit =
     name.trim().length > 0 &&
     email.trim().length > 0 &&
     message.trim().length > 0 &&
-    !submitting;
+    !submitting &&
+    (!TURNSTILE_ENABLED || !!turnstileToken);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -78,6 +86,7 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
         message: message.trim(),
         requestType,
         website,
+        turnstileToken: turnstileToken ?? undefined,
       });
       setResult({
         kind: "ok",
@@ -97,6 +106,8 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
       });
     } finally {
       setSubmitting(false);
+      setTurnstileToken(null);
+      setWidgetKey((k) => k + 1);
     }
   }
 
@@ -254,6 +265,15 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
           <span>{result.message}</span>
         </div>
+      )}
+
+      {TURNSTILE_ENABLED && (
+        <TurnstileWidget
+          key={widgetKey}
+          onVerify={setTurnstileToken}
+          onExpire={() => setTurnstileToken(null)}
+          onError={() => setTurnstileToken(null)}
+        />
       )}
 
       <button

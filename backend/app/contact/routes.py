@@ -18,6 +18,7 @@ from flask import Blueprint, request, jsonify
 
 from app.extensions import db
 from app.models import ContactRequest
+from app.utils.turnstile import verify_turnstile
 
 
 contact_bp = Blueprint("contact", __name__, url_prefix="/contact-requests")
@@ -119,6 +120,11 @@ def submit_contact_request():
                 ),
                 code="RATE_LIMITED",
             ), 429
+
+    # --- CAPTCHA verification (fail-open by default) ---------------------
+    ts_ok, ts_err = verify_turnstile(request)
+    if not ts_ok:
+        return jsonify(error=ts_err, code="TURNSTILE_FAILED"), 403
 
     # --- Persist ---------------------------------------------------------
     user_agent = request.headers.get("User-Agent", "")[:500] or None

@@ -63,7 +63,7 @@ export const CATEGORY_CONTENT: Record<CategorySlug, CategoryContent> = {
       "Vulnerabilities are the alerts most security teams reach for first — and they're the easiest to act on, because every CVE comes with a public advisory and a patch. Nano EASM identifies CVEs in services running on your discovered assets so you don't have to maintain a separate vulnerability scanner.",
     whatWeDetect: [
       "Critical and high-severity CVEs in web servers, application servers, message brokers, and databases.",
-      "Marquee CVEs that come up in real-world breach reports — Log4Shell, Spring4Shell, ProxyShell, CitrixBleed, MOVEit, and equivalents going back several years.",
+      "Notable CVEs that come up in real-world breach reports — Log4Shell, Spring4Shell, ProxyShell, CitrixBleed, MOVEit, and equivalents going back several years.",
       "Software versions that have reached end-of-life and no longer receive security patches.",
       "CVE chains where multiple weaknesses combine into a higher-impact exploit.",
     ],
@@ -155,7 +155,7 @@ export const CATEGORY_CONTENT: Record<CategorySlug, CategoryContent> = {
       "Credentials, API keys, and configuration files leak in three predictable places: a developer commits a .env file to a public repo; a misconfigured webserver exposes /.git/ or /backup.sql; or a third-party tool dumps your config somewhere indexable. Nano EASM checks all three.",
     whatWeDetect: [
       "Secrets in public code — API keys, tokens, and credentials matching 23 high-confidence patterns (AWS, GitHub PAT, Stripe, OpenAI, Anthropic, JWT, private keys, more).",
-      "Exposed sensitive paths on your assets — /.git/, /.env, /backup.sql, /phpinfo.php, /admin/, .DS_Store directory listings, and ~30 more.",
+      "Exposed sensitive paths on your assets — /.git/, /.env, /backup.sql, /phpinfo.php, /admin/, .DS_Store files, exposed directory listings, and ~30 more.",
       "Source-code references to your domain in public repositories on GitHub and GitLab, even when they don't contain secrets — useful for tracking shadow integrations.",
       "Configuration files exposed via misconfigured webservers — .htaccess, web.config, application.yml, etc.",
       "SSH keys, SSL private keys, and database dumps exposed at predictable URLs.",

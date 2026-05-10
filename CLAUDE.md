@@ -10,12 +10,24 @@ Nano EASM (nanoeasm.com) is an External Attack Surface Management platform. User
 - **Brand colours:** Dark theme with teal (#14b8a6) accent
 
 ## Current Product Status (v2 — April 2026)
-Nano EASM v2 is open-source and **free to use during community preview**. Plans still exist and control feature limits, but billing and payment are disabled. Key points:
+Nano EASM v2 is open-source and **currently free** — every paid plan is free to upgrade until further notice. Plans still exist and control feature limits, but billing and payment are disabled. Key points:
 
+- Do **not** describe the product as a "community edition", "community preview", or "community version" anywhere in code, copy, or docs. The accepted phrasing is "free upgrades until further notice" (or shortened equivalents like "currently free", "free to use")
 - Plans (Free, Starter, Professional, Enterprise Silver, Enterprise Gold, Custom) are **free upgrade tiers** — no payment is required
 - All pricing, payment, subscription, checkout, and trial wording is **hidden from the UI**
 - Plan limits and feature gates still enforce (assets, scans, team members, schedules, API keys, monitoring, deep discovery, webhooks)
 - Real billing can be re-enabled later via a feature flag — **do not remove billing code**
+- Customer base is **global** (APAC, USA, Europe, Africa, Australia) — do not pitch as Australia-only or use AU sovereignty as a primary differentiator. AUD pricing is a billing-currency choice, not a market scope statement.
+
+## Pending Redesigns (parked 2026-05-10)
+
+Brainstormed and agreed in principle but not yet specced or coded. Will be folded into a coordinated change later.
+
+1. **Plan model — monitor everything you have.** `monitored_assets` will equal `assets` for every tier (no separate sub-cap). Throughput cap: ~1/3 of an org's assets scannable per day, so a full inventory sweep cycles every ~3 days. Affects `PLAN_CONFIG` in `backend/app/billing/routes.py`, the `monitored_assets` enforcement at `backend/app/auth/permissions.py:271`, the settings/billing UI, and any pricing copy that references monitored counts.
+
+2. **Credit-based pricing.** Replaces `scans_per_month` with a credit pool. 1 scan = 1 credit (flat across Quick/Standard/Deep profiles). 1 discovery = 5 credits (~5× scan cost). Top-ups available (e.g., 500-pack, 2000-pack); no annual billing for now. Pool sizes per tier are still tunable — current `scans_per_month` numbers are the conservative floor. **Do not surface credit numbers in landing-page copy until billing is re-enabled** — they're cost-driven and will tune. Affects `PLAN_CONFIG`, `permissions.py` decorators, dashboard usage displays, the `/billing/plan` endpoint, and pricing copy.
+
+3. **"community" framing sweep.** Apply the no-community rule (above) across all existing files. ~12 files still contain `community preview` / `community edition` references: this `CLAUDE.md`, `STRIPE.md`, frontend landing + settings/billing pages, backend billing routes, stripe service, terms-of-use legal doc, several SDLC docs.
 
 ## Tech Stack
 
@@ -39,7 +51,7 @@ Nano EASM v2 is open-source and **free to use during community preview**. Plans 
 backend/app/
 ├── auth/           # JWT authentication, RBAC, permissions
 ├── assets/         # Asset CRUD + intelligence enrichment
-├── discovery/      # Asset discovery (11 modules: CT logs, DNS enum, Shodan, etc.)
+├── discovery/      # Asset discovery (12 modules: CT logs, DNS enum, Shodan, etc.)
 ├── scanner/        # Vulnerability scanning (9 engines + 13 analyzers)
 ├── findings/       # Vulnerability findings management
 ├── monitoring/     # Continuous monitoring + change detection
@@ -78,7 +90,7 @@ frontend/app/
 - All routes return JSON with consistent error format
 - Auth uses JWT tokens with role-based permissions (Viewer, Analyst, Admin, Owner)
 - Plan-based limits enforced via decorators in `auth/permissions.py`
-- Discovery uses an orchestrator pattern: `discovery/orchestrator.py` coordinates 11 modules
+- Discovery uses an orchestrator pattern: `discovery/orchestrator.py` coordinates 12 modules
 - Scanner uses an orchestrator pattern: `scanner/orchestrator.py` coordinates 9 engines → 13 analyzers
 - Finding templates defined in `scanner/templates.py` (335 templates as of May 2026 — many registered via helper builders, not inline `FindingTemplate(...)` calls; count via `len(_TEMPLATES)` after import, not by grep)
 - `models.py` is the single source of truth for all database tables
@@ -184,6 +196,9 @@ GET  /auth/announcements   — active announcements for this user's org (shown a
 - Block list checked on entry; blocked IPs get 403, rate-limited get 429
 - Both are logged with status `blocked` / `rate_limited`
 - Admin view at `/admin/quick-scans` shows log, top IPs (24h), and block list management
+- **Cloudflare Turnstile** gates `/quick-scan`, `/quick-discovery`, `/assistant/public-explain`, and `/contact-requests` (see `app/utils/turnstile.py`). Fail-open: a Cloudflare outage doesn't break the top-of-funnel — rate limit + IP block list remain in effect. When `TURNSTILE_SECRET_KEY` is unset (e.g., local dev), verification is skipped entirely.
+- IPs are reported correctly behind nginx because `app/__init__.py` wires `werkzeug.middleware.proxy_fix.ProxyFix(x_for=1, ...)` — `request.remote_addr` is the real client IP for rate-limit and block-list lookups.
+- Public-IP filter in `app/quick_scan/routes.py` `validate()` rejects loopback, link-local (incl. AWS metadata 169.254.169.254), private (RFC1918), and reserved ranges. Defense-in-depth: the engine path currently only queries Shodan's API by IP (no direct probes), but this filter prevents SSRF if anyone adds an active probe later.
 
 ### Announcement banners
 - Admin creates via `/admin/broadcast` — kind, optional body, optional target org, optional expiry
@@ -250,7 +265,7 @@ POST /billing/cancel      — cancel trial or subscription
 DELETE /billing/organization — delete org (owner only)
 ```
 
-### Plan tiers and limits *(updated May 2026 — repriced in AUD, Silver bumped to 10K assets, Gold bumped to 20K assets; Silver/Gold monthly cut to A$599 / A$999 for community-preview launch positioning)*
+### Plan tiers and limits *(updated May 2026 — repriced in AUD, Silver bumped to 10K assets, Gold bumped to 20K assets; Silver/Gold monthly cut to A$599 / A$999 for launch positioning. NOTE: see "Pending Redesigns" — plan model and `scans_per_month` will change to monitor-all + credit-pool semantics)*
 
 All prices are in **Australian dollars (AUD)**. Per-scan/per-discovery costs further down are in USD because Shodan and EC2 are USD-billed; AUD margin is computed at 1 USD ≈ 1.55 AUD.
 
@@ -334,10 +349,22 @@ GITLAB_TOKEN=<your gitlab PAT>
 #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 # Required for MFA enrolment. Rotating this key invalidates every enrolled MFA secret.
 MFA_SECRET_KEY=<fernet key>
+# Cloudflare Turnstile (CAPTCHA) — gates the four public endpoints
+# (/quick-scan, /quick-discovery, /assistant/public-explain, /contact-requests)
+# in addition to the existing per-IP rate limit + block list. When unset,
+# verify_turnstile() in app/utils/turnstile.py is a no-op — local dev works
+# without a Turnstile account. Production must set both this AND the
+# matching frontend NEXT_PUBLIC_TURNSTILE_SITE_KEY. Fail-open semantics
+# apply when Cloudflare itself is unreachable.
+TURNSTILE_SECRET_KEY=<cloudflare turnstile secret>
 
 # Frontend (.env.local)
 NEXT_PUBLIC_API_BASE_URL=http://localhost:5000/api
 NEXT_PUBLIC_ENABLE_BILLING=false
+# Cloudflare Turnstile site key — paired with TURNSTILE_SECRET_KEY on
+# the backend. When unset, the TurnstileWidget component renders nothing
+# and forms work without a token (matches the backend no-op behaviour).
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=<cloudflare turnstile site key>
 ```
 
 ## Running Locally

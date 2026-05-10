@@ -4,22 +4,39 @@ import re
 import socket
 import time
 import ipaddress
+from functools import wraps
 from typing import Any, Optional, Tuple
 
 from flask import Blueprint, request, jsonify
 
 from app.engine import run_unified_scan
+from app.utils.turnstile import verify_turnstile
 
 quick_scan_bp = Blueprint("quick_scan", __name__)
 
 ASSET_TYPES = {"domain", "ip"}
-EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def is_valid_ip(value: str) -> bool:
     try:
         ipaddress.ip_address(value)
         return True
+    except ValueError:
+        return False
+
+
+def _is_public_ip(value: str) -> bool:
+    """True if `value` is a routable public IP.
+
+    Rejects loopback, link-local (including AWS metadata 169.254.169.254),
+    private (RFC1918), unspecified, multicast, and reserved ranges, plus
+    IPv6 equivalents. Defense-in-depth: the engine path currently only
+    queries Shodan's API by IP (no direct probes), so private IPs can't
+    actually leak internal-network data today — but if any future detector
+    adds an active HTTP probe to the target, this filter prevents SSRF.
+    """
+    try:
+        return ipaddress.ip_address(value).is_global
     except ValueError:
         return False
 
@@ -56,7 +73,11 @@ def normalize_value(asset_type: str, value: Any) -> str:
 
 def validate(asset_type: str, value: str) -> Tuple[bool, Optional[str]]:
     if asset_type == "ip":
-        return (True, None) if is_valid_ip(value) else (False, "invalid IP address format")
+        if not is_valid_ip(value):
+            return False, "invalid IP address format"
+        if not _is_public_ip(value):
+            return False, "IP must be a public, routable address"
+        return True, None
     if asset_type == "domain":
         return (True, None) if is_valid_domain(value) else (False, "invalid domain format (domain only, no http/https/path)")
     return False, "type must be domain or ip"
@@ -105,7 +126,63 @@ def _log_scan(ip: str, user_agent: str, target: str, asset_type: str,
             pass
 
 
+def public_abuse_check(*, source: str, limit: int, label: str):
+    """Decorator: block-list + rate-limit guard for public endpoints.
+
+    Each public scan/discovery tool has its own QuickScanLog source bucket
+    so hitting the cap on one doesn't lock out the others. Rejects are
+    logged with status `blocked` / `rate_limited`; the decorated function
+    only runs for visitors that pass both checks.
+
+    Args:
+        source: QuickScanLog.source bucket name ("scan", "discovery").
+        limit:  Max requests per IP per hour for this bucket.
+        label:  Plural noun for the rate-limit error wording.
+    """
+    def deco(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            from datetime import datetime, timezone, timedelta
+            from app.models import BlockedIP, QuickScanLog
+
+            body = request.get_json(silent=True) or {}
+            ip = _get_ip()
+            ua = request.headers.get("User-Agent", "")
+            target = ((body.get("value") or body.get("domain") or "")[:200]) or "-"
+            asset_type = (body.get("type") or "-")[:32]
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+            block = BlockedIP.query.filter_by(ip_address=ip).first()
+            if block and (block.expires_at is None or block.expires_at > now):
+                _log_scan(ip=ip, user_agent=ua, target=target, asset_type=asset_type,
+                          source=source, status="blocked")
+                return jsonify(
+                    error="Your IP address has been blocked from using this service.",
+                    code="IP_BLOCKED",
+                ), 403
+
+            window_start = now - timedelta(hours=1)
+            recent = QuickScanLog.query.filter(
+                QuickScanLog.ip_address == ip,
+                QuickScanLog.source == source,
+                QuickScanLog.created_at >= window_start,
+                QuickScanLog.status.notin_(["blocked", "rate_limited"]),
+            ).count()
+            if recent >= limit:
+                _log_scan(ip=ip, user_agent=ua, target=target, asset_type=asset_type,
+                          source=source, status="rate_limited")
+                return jsonify(
+                    error=f"Too many {label}. You can run up to {limit} {label} per hour from this IP. Please try again later. Sign up for free for more {label}.",
+                    code="RATE_LIMITED",
+                ), 429
+
+            return fn(*args, **kwargs)
+        return wrapper
+    return deco
+
+
 @quick_scan_bp.post("/quick-scan")
+@public_abuse_check(source="scan", limit=5, label="scans")
 def quick_scan():
     body = request.get_json(silent=True) or {}
     asset_type = (body.get("type") or "").strip().lower()
@@ -120,39 +197,10 @@ def quick_scan():
     if not ok:
         return jsonify(error=err), 400
 
-    # ── Block list check ─────────────────────────────────────────
-    from app.extensions import db
-    from app.models import BlockedIP, QuickScanLog
-    from datetime import datetime, timezone
-
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-    block = BlockedIP.query.filter_by(ip_address=ip).first()
-    if block and (block.expires_at is None or block.expires_at > now):
-        _log_scan(ip=ip, user_agent=ua, target=value, asset_type=asset_type, status="blocked")
-        return jsonify(
-            error="Your IP address has been blocked from using this service.",
-            code="IP_BLOCKED",
-        ), 403
-
-    # ── Rate limit: max 5 scans per IP per hour ──────────────────
-    # Bucket is per-source (scan / discovery / explain) so hitting the
-    # cap on one tool doesn't lock out the others.
-    RATE_LIMIT = 5
-    from datetime import timedelta
-    window_start = now - timedelta(hours=1)
-    recent_count = QuickScanLog.query.filter(
-        QuickScanLog.ip_address == ip,
-        QuickScanLog.source == "scan",
-        QuickScanLog.created_at >= window_start,
-        QuickScanLog.status.notin_(["blocked", "rate_limited"]),
-    ).count()
-
-    if recent_count >= RATE_LIMIT:
-        _log_scan(ip=ip, user_agent=ua, target=value, asset_type=asset_type, status="rate_limited")
-        return jsonify(
-            error=f"Too many scans. You can run up to {RATE_LIMIT} scans per hour from this IP. Please try again later. Sign up for free for more scans.",
-            code="RATE_LIMITED",
-        ), 429
+    # ── CAPTCHA verification (fail-open by default) ──────────────────
+    ts_ok, ts_err = verify_turnstile(request)
+    if not ts_ok:
+        return jsonify(error=ts_err, code="TURNSTILE_FAILED"), 403
 
     t0 = time.monotonic()
     try:
@@ -261,6 +309,7 @@ def _run_quick_discovery(domain: str) -> dict:
 
 
 @quick_scan_bp.post("/quick-discovery")
+@public_abuse_check(source="discovery", limit=5, label="discoveries")
 def quick_discovery():
     body = request.get_json(silent=True) or {}
     domain_raw = normalize_value("domain", body.get("domain") or body.get("value") or "")
@@ -271,40 +320,10 @@ def quick_discovery():
     if not ok:
         return jsonify(error=err), 400
 
-    from app.extensions import db
-    from app.models import BlockedIP, QuickScanLog
-    from datetime import datetime, timezone, timedelta
-
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-
-    # Block list check
-    block = BlockedIP.query.filter_by(ip_address=ip).first()
-    if block and (block.expires_at is None or block.expires_at > now):
-        _log_scan(ip=ip, user_agent=ua, target=domain_raw, asset_type="domain",
-                  source="discovery", status="blocked")
-        return jsonify(
-            error="Your IP address has been blocked from using this service.",
-            code="IP_BLOCKED",
-        ), 403
-
-    # Rate limit: 5 discoveries per IP per hour. Independent of /quick-scan
-    # — hitting the scan cap shouldn't lock the visitor out of discovery.
-    RATE_LIMIT = 5
-    window_start = now - timedelta(hours=1)
-    recent_count = QuickScanLog.query.filter(
-        QuickScanLog.ip_address == ip,
-        QuickScanLog.source == "discovery",
-        QuickScanLog.created_at >= window_start,
-        QuickScanLog.status.notin_(["blocked", "rate_limited"]),
-    ).count()
-
-    if recent_count >= RATE_LIMIT:
-        _log_scan(ip=ip, user_agent=ua, target=domain_raw, asset_type="domain",
-                  source="discovery", status="rate_limited")
-        return jsonify(
-            error=f"Too many discoveries. You can run up to {RATE_LIMIT} discoveries per hour from this IP. Please try again later. Sign up for free for more discoveries.",
-            code="RATE_LIMITED",
-        ), 429
+    # ── CAPTCHA verification (fail-open by default) ──────────────────
+    ts_ok, ts_err = verify_turnstile(request)
+    if not ts_ok:
+        return jsonify(error=ts_err, code="TURNSTILE_FAILED"), 403
 
     t0 = time.monotonic()
     try:

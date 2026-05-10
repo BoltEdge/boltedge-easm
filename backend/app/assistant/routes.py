@@ -19,6 +19,7 @@ from app.auth.decorators import (
 )
 from app.audit.routes import log_audit
 from app.utils.display_id import resolve_id
+from app.utils.turnstile import verify_turnstile
 
 from .explainer import explain_finding, explain_unbound, _SAFE_EVIDENCE_KEYS
 from .alert_explainer import explain_alert
@@ -259,6 +260,11 @@ def public_explain():
             error=f"Too many explanation requests. You can run up to {_PUBLIC_EXPLAIN_RATE_LIMIT} per hour. Try again later.",
             code="RATE_LIMITED",
         ), 429
+
+    # ── CAPTCHA verification (fail-open by default) ──────────────────
+    ts_ok, ts_err = verify_turnstile(request)
+    if not ts_ok:
+        return jsonify(error=ts_err, code="TURNSTILE_FAILED"), 403
 
     # Whitelist details_json keys before substitution. Anything outside
     # _SAFE_EVIDENCE_KEYS is silently dropped — keeps accidental internal

@@ -48,6 +48,11 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
       MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      # ── Cloudflare Turnstile (CAPTCHA) ────────────────────────
+      # Verify_turnstile() is a no-op when this is unset, so leaving it
+      # blank in dev is fine. Production must set both this AND the
+      # frontend NEXT_PUBLIC_TURNSTILE_SITE_KEY.
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
       # ── Stripe ───────────────────────────────────────────────
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
@@ -77,6 +82,7 @@ services:
         NEXT_PUBLIC_MICROSOFT_OAUTH_ENABLED: ${NEXT_PUBLIC_MICROSOFT_OAUTH_ENABLED:-false}
         NEXT_PUBLIC_ENABLE_BILLING: ${NEXT_PUBLIC_ENABLE_BILLING:-false}
         NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
     container_name: easm-frontend
     restart: unless-stopped
     depends_on:

@@ -6,6 +6,9 @@ import { ArrowRight, Globe2 } from "lucide-react";
 
 import { publicQuickDiscover, type QuickDiscoveryResponse } from "../lib/api";
 import { friendlyScannerName } from "../lib/scanner-labels";
+import TurnstileWidget from "./TurnstileWidget";
+
+const TURNSTILE_ENABLED = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 type DiscoveryNormalized = { domain: string; counts: { ct: number; brute: number; subdomains: number; resolvedNames: number }; subdomains: string[]; apexIps: string[]; resolved: Record<string, string[]>; errors: Array<{ source: string; error: string }>; };
 
@@ -31,19 +34,29 @@ export default function QuickDiscoveryCard({ onActiveChange }: QuickDiscoveryCar
   const [error, setError] = useState<{ message: string; code?: string } | null>(null);
   const [result, setResult] = useState<DiscoveryNormalized | null>(null);
 
+  // Cloudflare Turnstile — fresh token per discovery, bump key after each.
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [widgetKey, setWidgetKey] = useState(0);
+
   useEffect(() => {
     onActiveChange?.(result !== null);
   }, [result, onActiveChange]);
 
   const placeholder = useMemo(() => mode === "org" ? "e.g., Acme Corp (coming soon)" : "e.g., example.com", [mode]);
-  const canRun = useMemo(() => !loading && mode !== "org" && normalizeDomainInput(value).length > 0, [loading, mode, value]);
+  const canRun = useMemo(
+    () => !loading && mode !== "org" && normalizeDomainInput(value).length > 0
+      && (!TURNSTILE_ENABLED || !!turnstileToken),
+    [loading, mode, value, turnstileToken],
+  );
 
   const onDiscover = async () => {
     if (!canRun) return;
     const domain = normalizeDomainInput(value);
     try {
       setLoading(true); setError(null); setResult(null);
-      const res: QuickDiscoveryResponse = await publicQuickDiscover(domain);
+      const res: QuickDiscoveryResponse = await publicQuickDiscover(domain, {
+        turnstileToken: turnstileToken ?? undefined,
+      });
       const status = String(res?.status ?? "").toLowerCase();
       if (status && status !== "completed") throw new Error(safeStr(res?.error) || safeStr(res?.details) || `Discovery status: ${status}`);
       setResult({
@@ -60,7 +73,11 @@ export default function QuickDiscoveryCard({ onActiveChange }: QuickDiscoveryCar
         code: e?.payload?.code,
       });
     }
-    finally { setLoading(false); }
+    finally {
+      setLoading(false);
+      setTurnstileToken(null);
+      setWidgetKey((k) => k + 1);
+    }
   };
 
   const topIpsText = useMemo(() => result?.apexIps?.length ? result.apexIps.join(", ") : "—", [result]);
@@ -77,6 +94,16 @@ export default function QuickDiscoveryCard({ onActiveChange }: QuickDiscoveryCar
           <select value={mode} onChange={(e) => setMode(e.target.value as any)} className="h-10 w-full rounded-lg border border-border bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"><option value="domain">Domain</option><option value="org" disabled>Org (soon)</option></select>
           <input type="text" placeholder={placeholder} value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") onDiscover(); }} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
         </div>
+        {TURNSTILE_ENABLED && (
+          <div className="mt-3">
+            <TurnstileWidget
+              key={widgetKey}
+              onVerify={setTurnstileToken}
+              onExpire={() => setTurnstileToken(null)}
+              onError={() => setTurnstileToken(null)}
+            />
+          </div>
+        )}
         <button onClick={onDiscover} disabled={!canRun} className={`w-full mt-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${!canRun ? "bg-muted text-muted-foreground cursor-not-allowed" : "bg-cyan-600 text-white hover:bg-cyan-600/90"}`}>{loading ? "Discovering…" : "Discover assets"}</button>
         <p className="mt-2 text-[11px] text-muted-foreground/60 text-center"><a href="/register" className="underline hover:text-muted-foreground">Sign in</a> to unlock deeper enumeration</p>
       </div>

@@ -78,6 +78,15 @@ def create_app() -> Flask:
 
     is_prod = _is_production()
 
+    # ── Proxy / forwarded headers ────────────────────────────────────
+    # Production runs behind nginx (one trusted hop). ProxyFix promotes
+    # X-Forwarded-For / -Proto / -Host to the canonical request fields,
+    # so framework-level helpers (request.remote_addr, request.is_secure)
+    # reflect the real client. Applied in dev too — a no-op when no proxy
+    # headers are present.
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+
     # ── Logging ──────────────────────────────────────────────────────
     if is_prod:
         logging.basicConfig(

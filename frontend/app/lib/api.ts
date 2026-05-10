@@ -879,6 +879,9 @@ type BackendQuickScanResponse = {
 export async function quickScanAsset(payload: {
   type: "domain" | "ip";
   value: string;
+  /** Cloudflare Turnstile token. Required in production; ignored when
+   *  TURNSTILE_SECRET_KEY is unset on the backend (e.g., local dev). */
+  turnstileToken?: string;
 }): Promise<QuickScanResponse> {
   const res = await apiFetch<BackendQuickScanResponse>(API.quickScan, {
     method: "POST",
@@ -1016,15 +1019,22 @@ export async function discoverDomainQuick(payload: {
   });
 }
 
-export async function publicQuickDiscover(domain: string): Promise<QuickDiscoveryResponse> {
+export async function publicQuickDiscover(
+  domain: string,
+  opts?: { turnstileToken?: string },
+): Promise<QuickDiscoveryResponse> {
   const res = await fetch(`${API_BASE_URL}/quick-discovery`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ domain }),
+    body: JSON.stringify({ domain, turnstileToken: opts?.turnstileToken }),
     cache: "no-store",
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.error || `Discovery failed (${res.status})`);
+  if (!res.ok) {
+    const err: any = new Error(data?.error || `Discovery failed (${res.status})`);
+    err.payload = data;
+    throw err;
+  }
   return data as QuickDiscoveryResponse;
 }
 
@@ -2141,6 +2151,8 @@ export async function submitContactRequest(payload: {
   requestType?: "general" | "trial" | "demo";
   /** Honeypot. Real users leave this empty; bots fill it. */
   website?: string;
+  /** Cloudflare Turnstile token. Required in production. */
+  turnstileToken?: string;
 }): Promise<{ message: string; requestId?: string }> {
   return apiFetch<any>("/contact-requests", {
     method: "POST",
@@ -2237,6 +2249,8 @@ export async function publicExplainFinding(payload: {
   findingType: PublicFindingType;
   assetValue?: string;
   detailsJson?: Record<string, unknown>;
+  /** Cloudflare Turnstile token. Required in production. */
+  turnstileToken?: string;
 }): Promise<{
   findingType: string;
   explanation: FindingExplanation;
@@ -2248,6 +2262,7 @@ export async function publicExplainFinding(payload: {
       finding_type: payload.findingType,
       asset_value: payload.assetValue || "",
       details_json: payload.detailsJson || {},
+      turnstileToken: payload.turnstileToken,
     }),
   });
 }

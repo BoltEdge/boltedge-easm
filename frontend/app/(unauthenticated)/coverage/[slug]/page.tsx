@@ -125,7 +125,7 @@ export default async function CategoryPage({ params }: { params: Promise<Params>
       <main className="pt-24 pb-20">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
           {/* Breadcrumb */}
-          <nav className="flex items-center gap-1.5 text-xs text-white/40 mb-6">
+          <nav className="flex items-center gap-1.5 text-xs text-white/55 mb-6">
             <Link href="/" className="hover:text-white transition-colors">Home</Link>
             <span className="text-white/20">/</span>
             <Link href="/coverage" className="hover:text-white transition-colors">Coverage</Link>
@@ -221,7 +221,7 @@ export default async function CategoryPage({ params }: { params: Promise<Params>
 
           {/* Cross-links to other categories — internal linking */}
           <div className="mt-16">
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-white/55 mb-4">
               Other coverage categories
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

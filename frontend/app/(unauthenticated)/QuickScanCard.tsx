@@ -10,6 +10,9 @@ import {
   type FindingExplanation,
   type PublicFindingType,
 } from "../lib/api";
+import TurnstileWidget from "./TurnstileWidget";
+
+const TURNSTILE_ENABLED = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 type Severity = "critical" | "high" | "medium" | "low" | "info";
 
@@ -174,7 +177,13 @@ export default function QuickScanCard({ onActiveChange }: QuickScanCardProps = {
   const [explanationLoading, setExplanationLoading] = useState(false);
   const [explanationError, setExplanationError] = useState<string | null>(null);
 
-  const canScan = value.trim().length > 0 && !loading;
+  // Cloudflare Turnstile — issues a fresh token per submission. Bumping
+  // widgetKey after each API call remounts the widget and triggers a new
+  // challenge (mostly invisible in managed mode).
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [widgetKey, setWidgetKey] = useState(0);
+
+  const canScan = value.trim().length > 0 && !loading && (!TURNSTILE_ENABLED || !!turnstileToken);
 
   const onScan = async () => {
     if (!canScan) return;
@@ -184,7 +193,11 @@ export default function QuickScanCard({ onActiveChange }: QuickScanCardProps = {
       setResult(null);
       setExplanation(null);
       setExplanationError(null);
-      const res = (await quickScanAsset({ type, value: value.trim() })) as QuickScanRawResponse;
+      const res = (await quickScanAsset({
+        type,
+        value: value.trim(),
+        turnstileToken: turnstileToken ?? undefined,
+      })) as QuickScanRawResponse;
       const rawCounts =
         (res?.risk?.counts as Record<string, number> | undefined) ??
         (res?.counts as Record<string, number> | undefined) ??
@@ -231,6 +244,10 @@ export default function QuickScanCard({ onActiveChange }: QuickScanCardProps = {
       });
     } finally {
       setLoading(false);
+      // The token is consumed by the verify call regardless of scan
+      // outcome — remount the widget for a fresh challenge.
+      setTurnstileToken(null);
+      setWidgetKey((k) => k + 1);
     }
   };
 
@@ -273,12 +290,15 @@ export default function QuickScanCard({ onActiveChange }: QuickScanCardProps = {
         findingType: ft as PublicFindingType,
         assetValue: result.assetValue,
         detailsJson: topFinding.details_json || {},
+        turnstileToken: turnstileToken ?? undefined,
       });
       setExplanation(res?.explanation ?? null);
     } catch (e: any) {
       setExplanationError(e?.message || "Could not load the explanation.");
     } finally {
       setExplanationLoading(false);
+      setTurnstileToken(null);
+      setWidgetKey((k) => k + 1);
     }
   };
 
@@ -320,6 +340,16 @@ export default function QuickScanCard({ onActiveChange }: QuickScanCardProps = {
             className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
+        {TURNSTILE_ENABLED && (
+          <div className="mt-3">
+            <TurnstileWidget
+              key={widgetKey}
+              onVerify={setTurnstileToken}
+              onExpire={() => setTurnstileToken(null)}
+              onError={() => setTurnstileToken(null)}
+            />
+          </div>
+        )}
         <button
           onClick={onScan}
           disabled={!canScan}
@@ -423,7 +453,8 @@ export default function QuickScanCard({ onActiveChange }: QuickScanCardProps = {
                   <button
                     type="button"
                     onClick={fetchExplanation}
-                    className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-teal-500/40 bg-teal-500/[0.08] px-3 py-2 text-[11px] font-semibold text-teal-300 hover:bg-teal-500/[0.14] hover:text-teal-200 transition-colors"
+                    disabled={TURNSTILE_ENABLED && !turnstileToken}
+                    className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-teal-500/40 bg-teal-500/[0.08] px-3 py-2 text-[11px] font-semibold text-teal-300 hover:bg-teal-500/[0.14] hover:text-teal-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     Explain with Nano EASM Assistant

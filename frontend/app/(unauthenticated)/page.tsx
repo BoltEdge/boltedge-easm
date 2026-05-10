@@ -54,6 +54,7 @@ import {
 } from "lucide-react";
 
 import LandingNav from "./LandingNav";
+import LandingFooter from "./LandingFooter";
 import QuickToolsSection from "./QuickToolsSection";
 import FadeInOnScroll from "./Fadeinonscroll";
 import AnimatedDashboard from "./AnimatedDashboard";
@@ -218,10 +219,11 @@ export default function UnauthenticatedHomePage() {
 
               <HeroItem>
                 <p className="mt-6 max-w-3xl text-base text-white/70 leading-7 sm:text-lg sm:leading-8">
-                  Nano EASM helps IT teams, security generalists, and small MSSPs move from
-                  one-off scanning to continuous external exposure management. Start with a
-                  domain, IP, or cloud asset — uncover exposed assets, scan for risk, monitor
-                  changes, prioritise what matters, and turn findings into clear next steps.
+                  Nano EASM helps IT teams, security generalists, and MSSPs move from
+                  one-off scanning to continuous external exposure management — uncover
+                  exposed assets, monitor changes, prioritise what matters, and turn
+                  findings into clear next steps. Try a real scan against your own
+                  domain — no signup, no card, no demo call.
                 </p>
               </HeroItem>
 
@@ -247,16 +249,19 @@ export default function UnauthenticatedHomePage() {
               <AnimatedDashboard />
             </HeroDashboard>
 
-            <HeroFadeIn delay={0.9} className="mt-10 text-center">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto">
+            <HeroFadeIn delay={0.9} className="mt-10">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto text-center">
                 {[
-                  "Free tier, no card",
-                  "Multi-tenant by default",
-                  "Public quick scan",
-                  "Plain-English findings",
-                ].map((label) => (
+                  { value: "5", label: "Detection categories" },
+                  { value: "23", label: "Secret formats" },
+                  { value: "12", label: "Discovery sources" },
+                  { value: "6", label: "Compliance frameworks" },
+                ].map(({ value, label }) => (
                   <div key={label}>
-                    <div className="text-sm font-semibold bg-gradient-to-r from-teal-400/80 to-cyan-400/70 bg-clip-text text-transparent">
+                    <div className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-teal-400/90 to-cyan-400/80 bg-clip-text text-transparent">
+                      {value}
+                    </div>
+                    <div className="mt-1 text-xs text-white/50 font-medium">
                       {label}
                     </div>
                   </div>
@@ -303,7 +308,7 @@ export default function UnauthenticatedHomePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {[
-                { icon: Radar, title: "Asset Discovery", desc: "Enumerate subdomains, IPs, and services from a root domain using multiple passive and active intelligence sources — all automated.", color: "from-cyan-500/20 to-cyan-500/5", iconColor: "text-cyan-400" },
+                { icon: Radar, title: "Find what you forgot you owned", desc: "Shadow IT, contractor leftovers, abandoned cloud assets. Add a root domain — 12 passive and active intelligence sources surface every subdomain, IP, and service across your external surface.", color: "from-cyan-500/20 to-cyan-500/5", iconColor: "text-cyan-400" },
                 { icon: Search, title: "Multi-Engine Scanning", desc: "Scan with 9 purpose-built engines across network, web, and certificate attack surfaces. Choose Quick, Standard, or Deep profiles — or schedule recurring scans.", color: "from-purple-500/20 to-purple-500/5", iconColor: "text-purple-400" },
                 { icon: KeyRound, title: "Leak & Secret Detection", desc: "Find leaked credentials and exposed config in public GitHub and GitLab code referencing your domain. Probe for exposed .env, .git, SSH keys, and SQL dumps. Recognises 23 secret formats including AWS keys, GitHub PATs, Stripe keys, and OpenAI tokens.", color: "from-orange-500/20 to-orange-500/5", iconColor: "text-orange-400" },
                 { icon: BarChart3, title: "Exposure Scoring", desc: "Quantified risk scores per asset and group with logarithmic severity weighting. Track score changes over time with trend analysis.", color: "from-amber-500/20 to-amber-500/5", iconColor: "text-amber-400" },
@@ -433,7 +438,7 @@ export default function UnauthenticatedHomePage() {
             </FadeInOnScroll>
 
             <FadeInOnScroll delay={150}>
-              <p className="mt-12 text-center text-xs text-white/30 max-w-3xl mx-auto leading-relaxed">
+              <p className="mt-12 text-center text-xs text-white/55 max-w-3xl mx-auto leading-relaxed">
                 Nano EASM focuses on the external exposure layer of CTEM — where unknown
                 internet-facing assets, exposed services, and changing risk often create the
                 first gaps teams need to close.
@@ -476,16 +481,16 @@ export default function UnauthenticatedHomePage() {
                   {/* Right: plan limit cards */}
                   <div className="w-full lg:w-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3 lg:min-w-[440px]">
                     {[
-                      { plan: "Free", detail: "2 assets · 5 scans/mo", color: "border-white/[0.06]" },
-                      { plan: "Starter", detail: "15 assets · 100 scans/mo", color: "border-white/[0.06]" },
-                      { plan: "Professional", detail: "100 assets · 1k scans/mo", color: "border-teal-500/20 bg-teal-500/[0.04]" },
-                      { plan: "Ent. Silver", detail: "5k assets · 6k scans/mo", color: "border-white/[0.06]" },
-                      { plan: "Ent. Gold", detail: "1k assets · 12k scans/mo · audit log", color: "border-white/[0.06]" },
-                    ].map(({ plan, detail, color }) => (
+                      { plan: "Free", detail: "2 assets", color: "border-white/[0.06]", pill: "Start here" },
+                      { plan: "Starter", detail: "15 assets", color: "border-white/[0.06]", pill: "Free ↗" },
+                      { plan: "Professional", detail: "100 assets", color: "border-teal-500/20 bg-teal-500/[0.04]", pill: "Free ↗" },
+                      { plan: "Ent. Silver", detail: "10k assets", color: "border-white/[0.06]", pill: "Free ↗" },
+                      { plan: "Ent. Gold", detail: "20k assets · audit log", color: "border-white/[0.06]", pill: "Free ↗" },
+                    ].map(({ plan, detail, color, pill }) => (
                       <div key={plan} className={`rounded-xl border ${color} bg-white/[0.02] px-4 py-3`}>
                         <div className="text-xs font-semibold text-white/70">{plan}</div>
-                        <div className="text-[11px] text-white/30 mt-0.5">{detail}</div>
-                        <div className="mt-1.5 text-[10px] font-semibold text-teal-400">Free ↗</div>
+                        <div className="text-[11px] text-white/55 mt-0.5">{detail}</div>
+                        <div className="mt-1.5 text-[10px] font-semibold text-teal-400">{pill}</div>
                       </div>
                     ))}
                   </div>
@@ -526,7 +531,7 @@ export default function UnauthenticatedHomePage() {
                     <div className="text-sm font-semibold text-white mb-1">{name}</div>
                     <div className="flex items-baseline gap-1 mb-1">
                       <span className="text-3xl font-bold text-white">{price}</span>
-                      {period && <span className="text-sm text-white/30">{period}</span>}
+                      {period && <span className="text-sm text-white/55">{period}</span>}
                     </div>
                     {annual && <div className="text-[11px] text-white/40 mb-1">{annual}</div>}
                     <p className="text-xs text-white/40 mb-5">{desc}</p>
@@ -622,95 +627,7 @@ export default function UnauthenticatedHomePage() {
       </main>
 
       {/* ================= FOOTER ================= */}
-      {/* Mirrors the top-nav grouping: Product / Resources / Trust.
-          Footer is the second-strongest internal-linking surface
-          (every page renders it), so the five coverage sub-pages get
-          a permanent home here too. */}
-      <footer className="border-t border-white/[0.06]">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
-            {/* Brand column */}
-            <div className="col-span-2 md:col-span-2">
-              <Link href="/" className="flex items-center gap-2.5">
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 32 32"
-                  fill="none"
-                  className="shrink-0"
-                  aria-hidden="true"
-                  focusable="false"
-                >
-                  <rect width="32" height="32" rx="7" fill="#0a0f1e"/>
-                  <path d="M17.5 4L9.5 17H14.5L13 28L21.5 14.5H16L17.5 4Z" fill="#14b8a6"/>
-                </svg>
-                <span className="text-sm font-semibold">
-                  Nano <span className="text-teal-400">EASM</span>
-                </span>
-              </Link>
-              <p className="mt-3 text-sm text-white/40 leading-relaxed max-w-xs">
-                External Attack Surface Management for modern security
-                teams. Discover, scan, monitor, prioritise.
-              </p>
-            </div>
-
-            {/* Product */}
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-4">Product</h4>
-              <ul className="space-y-2.5 text-sm">
-                <li><Link href="/#features" className="text-white/50 hover:text-white transition-colors">Capabilities</Link></li>
-                <li><Link href="/#how-it-works" className="text-white/50 hover:text-white transition-colors">How it works</Link></li>
-                <li><Link href="/coverage" className="text-white/50 hover:text-white transition-colors">Coverage</Link></li>
-                <li><Link href="/quick-scan" className="text-white/50 hover:text-white transition-colors">Quick Scan</Link></li>
-                {BILLING_ENABLED && (
-                  <li><Link href="/#pricing" className="text-white/50 hover:text-white transition-colors">Pricing</Link></li>
-                )}
-              </ul>
-            </div>
-
-            {/* Resources */}
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-4">Resources</h4>
-              <ul className="space-y-2.5 text-sm">
-                <li><Link href="/faq" className="text-white/50 hover:text-white transition-colors">FAQ</Link></li>
-                <li><Link href="/api-docs" className="text-white/50 hover:text-white transition-colors">API docs</Link></li>
-                <li><Link href="/resources/what-is-nano-easm" className="text-white/50 hover:text-white transition-colors">What is Nano EASM?</Link></li>
-                <li><Link href="/#contact" className="text-white/50 hover:text-white transition-colors">Contact</Link></li>
-              </ul>
-            </div>
-
-            {/* Trust */}
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-4">Trust</h4>
-              <ul className="space-y-2.5 text-sm">
-                <li><Link href="/terms-and-policies" className="text-white/50 hover:text-white transition-colors">All policies</Link></li>
-                <li><Link href="/terms-and-policies/terms-of-use" className="text-white/50 hover:text-white transition-colors">Terms of Use</Link></li>
-                <li><Link href="/terms-and-policies/privacy-policy" className="text-white/50 hover:text-white transition-colors">Privacy</Link></li>
-                <li><Link href="/terms-and-policies/security-scanning-authorisation" className="text-white/50 hover:text-white transition-colors">Scanning Authorisation</Link></li>
-                <li><Link href="/terms-and-policies/data-handling-retention" className="text-white/50 hover:text-white transition-colors">Data handling</Link></li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Coverage sub-page strip — cheap permanent internal links
-              to all five category pages, on every marketing page. */}
-          <div className="mt-10 pt-6 border-t border-white/[0.04]">
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-white/35">
-              <span className="font-semibold text-white/45">Detection coverage:</span>
-              <Link href="/coverage/vulnerabilities" className="hover:text-white/70 transition-colors">Vulnerabilities</Link>
-              <Link href="/coverage/service-exposure" className="hover:text-white/70 transition-colors">Service Exposure</Link>
-              <Link href="/coverage/data-leaks" className="hover:text-white/70 transition-colors">Data Leaks</Link>
-              <Link href="/coverage/misconfigurations" className="hover:text-white/70 transition-colors">Misconfigurations</Link>
-              <Link href="/coverage/security-hygiene" className="hover:text-white/70 transition-colors">Security Hygiene</Link>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/25">
-            <span>&copy; {new Date().getFullYear()} Nano EASM. All rights reserved.</span>
-            <span>Built for security teams in Australia 🇦🇺</span>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   );
 }

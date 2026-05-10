@@ -32,7 +32,9 @@
       "Bash(python *)",
       "Bash(where chrome *)",
       "Bash(where \"google-chrome\")",
-      "Bash(where \"msedge\")"
+      "Bash(where \"msedge\")",
+      "Bash(rm 'frontend/app/\\(unauthenticated\\)/quick-scan/[id]/page.tsx')",
+      "Bash(rmdir 'frontend/app/\\(unauthenticated\\)/quick-scan/[id]')"
     ]
   }
 }
