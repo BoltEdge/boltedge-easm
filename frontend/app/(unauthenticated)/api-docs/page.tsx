@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Key, ArrowUpRight } from "lucide-react";
 import LandingNav from "../LandingNav";
+import LandingFooter from "../LandingFooter";
 import { CodeBlock } from "./CodeBlock";
 
 const SITE_URL = "https://nanoeasm.com";
@@ -391,11 +392,11 @@ function EndpointCard({ ep }: { ep: Endpoint }) {
         <MethodPill method={ep.method} />
         <code className="font-mono text-sm text-white">{ep.path}</code>
       </div>
-      <p className="text-sm text-white/60">{ep.description}</p>
+      <p className="text-sm text-white/65">{ep.description}</p>
       {ep.curl && <CodeBlock>{ep.curl}</CodeBlock>}
       {ep.responseSnippet && (
         <details className="group">
-          <summary className="cursor-pointer text-xs text-white/40 hover:text-white/70 transition-colors">
+          <summary className="cursor-pointer text-xs text-white/55 hover:text-white/70 transition-colors">
             Sample response →
           </summary>
           <div className="mt-2">
@@ -421,7 +422,7 @@ export default function ApiDocsPage() {
           {/* ── Sticky TOC ── */}
           <aside className="hidden lg:block">
             <nav className="sticky top-24 space-y-1 text-sm">
-              <div className="text-[11px] uppercase tracking-wider text-white/30 font-semibold mb-2">
+              <div className="text-[11px] uppercase tracking-wider text-white/45 font-semibold mb-2">
                 Reference
               </div>
               {[
@@ -433,19 +434,19 @@ export default function ApiDocsPage() {
                 <a
                   key={s.id}
                   href={`#${s.id}`}
-                  className="block py-1.5 px-2 rounded text-white/55 hover:text-white hover:bg-white/[0.04] transition-colors"
+                  className="block py-1.5 px-2 rounded text-white/65 hover:text-white hover:bg-white/[0.04] transition-colors"
                 >
                   {s.label}
                 </a>
               ))}
-              <div className="text-[11px] uppercase tracking-wider text-white/30 font-semibold mt-5 mb-2">
+              <div className="text-[11px] uppercase tracking-wider text-white/45 font-semibold mt-5 mb-2">
                 Endpoints
               </div>
               {SECTIONS.map((s) => (
                 <a
                   key={s.id}
                   href={`#${s.id}`}
-                  className="block py-1.5 px-2 rounded text-white/55 hover:text-white hover:bg-white/[0.04] transition-colors"
+                  className="block py-1.5 px-2 rounded text-white/65 hover:text-white hover:bg-white/[0.04] transition-colors"
                 >
                   {s.title}
                 </a>
@@ -460,7 +461,7 @@ export default function ApiDocsPage() {
               <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">
                 API Reference
               </h1>
-              <p className="text-white/60 max-w-2xl">
+              <p className="text-white/65 max-w-2xl">
                 The Nano EASM REST API lets you manage assets, trigger scans, pull
                 findings, run discovery, manage monitoring alerts, and generate
                 reports — all the things you&apos;d wire into CI/CD, a SOAR, or a SIEM.
@@ -476,9 +477,9 @@ export default function ApiDocsPage() {
                 </Link>
                 <Link
                   href="/login"
-                  className="text-sm text-white/50 hover:text-white transition-colors"
+                  className="text-sm text-white/65 hover:text-white transition-colors"
                 >
-                  or sign in →
+                  Sign in first →
                 </Link>
               </div>
             </section>
@@ -486,12 +487,12 @@ export default function ApiDocsPage() {
             {/* Auth */}
             <section id="auth" className="space-y-4 scroll-mt-24">
               <h2 className="text-2xl font-semibold tracking-tight">Authentication</h2>
-              <p className="text-white/60">
+              <p className="text-white/65">
                 All API endpoints require an API key. Send it on every request as
                 the <code className="text-teal-300">X-API-Key</code> header.
               </p>
               <CodeBlock>{`curl -H "X-API-Key: ag_sk_..." ${BASE}/findings`}</CodeBlock>
-              <p className="text-white/60 text-sm">
+              <p className="text-white/65 text-sm">
                 You can also pass the key as a Bearer token if you prefer:
               </p>
               <CodeBlock>{`curl -H "Authorization: Bearer ag_sk_..." ${BASE}/findings`}</CodeBlock>
@@ -506,7 +507,7 @@ export default function ApiDocsPage() {
               </div>
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm">
                 <p className="font-semibold text-white mb-1">What API keys can&apos;t do</p>
-                <p className="text-white/55">
+                <p className="text-white/65">
                   For safety, account-credential and billing-state actions are not
                   callable with API keys: changing your password, inviting members,
                   changing roles, switching plans, or deleting your organization.
@@ -518,7 +519,7 @@ export default function ApiDocsPage() {
             {/* Errors */}
             <section id="errors" className="space-y-4 scroll-mt-24">
               <h2 className="text-2xl font-semibold tracking-tight">Errors</h2>
-              <p className="text-white/60">
+              <p className="text-white/65">
                 Errors are returned as JSON with an <code className="text-teal-300">error</code>{" "}
                 field and the appropriate HTTP status code.
               </p>
@@ -540,7 +541,7 @@ export default function ApiDocsPage() {
                     className="flex items-start gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2"
                   >
                     <code className="text-teal-300 font-mono text-xs shrink-0">{code}</code>
-                    <span className="text-white/60 text-sm">{msg}</span>
+                    <span className="text-white/65 text-sm">{msg}</span>
                   </div>
                 ))}
               </div>
@@ -549,7 +550,7 @@ export default function ApiDocsPage() {
             {/* Pagination */}
             <section id="pagination" className="space-y-4 scroll-mt-24">
               <h2 className="text-2xl font-semibold tracking-tight">Pagination</h2>
-              <p className="text-white/60">
+              <p className="text-white/65">
                 List endpoints accept <code className="text-teal-300">page</code>{" "}
                 (1-indexed) and <code className="text-teal-300">perPage</code>{" "}
                 (max 100). Responses include the total count.
@@ -574,7 +575,7 @@ export default function ApiDocsPage() {
                   <h2 className="text-2xl font-semibold tracking-tight">
                     {section.title}
                   </h2>
-                  <p className="text-white/60 mt-2 max-w-3xl">{section.blurb}</p>
+                  <p className="text-white/65 mt-2 max-w-3xl">{section.blurb}</p>
                 </div>
                 <div className="space-y-4">
                   {section.endpoints.map((ep, idx) => (
@@ -585,9 +586,10 @@ export default function ApiDocsPage() {
             ))}
 
             {/* Footer */}
-            <section className="pt-8 border-t border-white/[0.06] text-sm text-white/40">
-              Need something not in this list? The full UI runs on a JWT-only API
-              that mirrors most of the surface — drop us a note via the{" "}
+            <section className="pt-8 border-t border-white/[0.06] text-sm text-white/55">
+              Need an endpoint we haven&rsquo;t documented? Some surface is reachable
+              only via the session API used by the UI — let us know what you&rsquo;re
+              trying to do via the{" "}
               <a
                 href="/#contact"
                 className="text-teal-300 hover:text-teal-200"
@@ -599,6 +601,7 @@ export default function ApiDocsPage() {
           </main>
         </div>
       </div>
+      <LandingFooter />
     </div>
   );
 }
