@@ -206,12 +206,11 @@ of this policy. We will notify you of any such transfer.
 
 ## 7. International data transfers
 
-Although Nano EASM is based in Australia, our application and
-database are hosted on Amazon Web Services in the **United States
-(us-east-1)** region, and several of our sub-processors are also
-located in the US. This means personal data submitted to the
-Service is transferred outside Australia for storage and
-processing.
+Our application and database are hosted on Amazon Web Services in
+the **United States (us-east-1)** region, and several of our
+sub-processors are also located in the US. This means personal data
+submitted to the Service is transferred outside Australia (where
+Nano EASM is incorporated) for storage and processing.
 
 We rely on appropriate safeguards for these transfers, which may
 include:

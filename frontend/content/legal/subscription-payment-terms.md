@@ -3,6 +3,11 @@
 **Effective date:** 1 May 2026
 **Last updated:** 1 May 2026
 
+> **Current state:** every paid plan is free to upgrade until further
+> notice — no card required, no charges. The terms below describe the
+> financial relationship that applies once paid billing is active. They
+> become operative if and when we re-enable subscription billing.
+
 This document sets out the financial terms on which paid plans of
 the Service are provided. It is incorporated into the [Terms of
 Use](./terms-of-use.md). The [Refund & Cancellation Policy](./refund-cancellation-policy.md)

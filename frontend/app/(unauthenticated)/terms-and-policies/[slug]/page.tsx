@@ -17,6 +17,7 @@ import { ArrowLeft } from "lucide-react";
 import { marked } from "marked";
 
 import LandingNav from "../../LandingNav";
+import LandingFooter from "../../LandingFooter";
 import JsonLd from "../../JsonLd";
 
 const SITE_URL = "https://nanoeasm.com";
@@ -86,16 +87,48 @@ export default async function LegalDocPage({ params }: { params: Promise<{ slug:
   // styled title in the page header below.
   const stripped = raw!.replace(/^#\s+.+\n/, "").trim();
 
+  // Extract the "Last updated: <date>" line from the top of every doc
+  // so we can render it as a styled chip near the title rather than
+  // letting it sit as inline body text. Falls back to null if absent.
+  const lastUpdatedMatch = stripped.match(/^\*\*Last updated:\*\*\s+(.+)$/m);
+  const lastUpdated = lastUpdatedMatch ? lastUpdatedMatch[1].trim() : null;
+  const dateStripped = stripped
+    .replace(/^\*\*Last updated:\*\*\s+.+\n+/m, "")
+    .replace(/^---\s*\n/m, "") // drop the leading separator if it's now the first line
+    .trim();
+
   // Rewrite cross-doc relative links: `./privacy-policy.md` and
   // `./privacy-policy.md#anchor` become absolute URLs so they
   // navigate to the correct page (no `.md` 404s).
-  const linksFixed = stripped.replace(
+  const linksFixed = dateStripped.replace(
     /\]\(\.\/([a-z0-9-]+)\.md(#[^)]+)?\)/gi,
     "](/terms-and-policies/$1$2)",
   );
 
   marked.setOptions({ gfm: true, breaks: false });
   const html = await marked.parse(linksFixed);
+
+  const url = `${SITE_URL}/terms-and-policies/${slug}`;
+
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: meta.title,
+    description: `${meta.title} — part of the Nano EASM Terms and Policies.`,
+    url,
+    mainEntityOfPage: url,
+    inLanguage: "en-AU",
+    author: { "@type": "Organization", name: "Nano EASM", url: SITE_URL },
+    publisher: {
+      "@type": "Organization",
+      name: "Nano EASM",
+      url: SITE_URL,
+      logo: {
+        "@type": "ImageObject",
+        url: `${SITE_URL}/logo-on-dark.svg`,
+      },
+    },
+  };
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -117,26 +150,32 @@ export default async function LegalDocPage({ params }: { params: Promise<{ slug:
         "@type": "ListItem",
         position: 3,
         name: meta.title,
-        item: `${SITE_URL}/terms-and-policies/${slug}`,
+        item: url,
       },
     ],
   };
 
   return (
     <>
-      <JsonLd data={breadcrumbJsonLd} />
+      <JsonLd data={[articleJsonLd, breadcrumbJsonLd]} />
       <LandingNav />
 
       <main className="pt-24 pb-20">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <Link
             href="/terms-and-policies"
-            className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors mb-8"
+            className="inline-flex items-center gap-1.5 text-sm text-white/65 hover:text-white transition-colors mb-8"
           >
             <ArrowLeft className="w-4 h-4" />Back to Terms &amp; Policies
           </Link>
 
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">{meta.title}</h1>
+
+          {lastUpdated && (
+            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-[11px] text-white/65">
+              Last updated <span className="text-white/85 font-medium">{lastUpdated}</span>
+            </div>
+          )}
 
           <article
             className="legal-doc mt-8 text-[15px] leading-relaxed text-white/70"
@@ -144,6 +183,8 @@ export default async function LegalDocPage({ params }: { params: Promise<{ slug:
           />
         </div>
       </main>
+
+      <LandingFooter />
     </>
   );
 }

@@ -5,6 +5,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, FileText, ShieldAlert, Lock, RefreshCcw, ScanLine, Scale, CreditCard, Database } from "lucide-react";
 import LandingNav from "../LandingNav";
+import LandingFooter from "../LandingFooter";
+import JsonLd from "../JsonLd";
 
 const SITE_URL = "https://nanoeasm.com";
 
@@ -83,9 +85,51 @@ const DOCS = [
   },
 ];
 
+const PAGE_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  name: "Terms and Policies — Nano EASM",
+  description:
+    "Review Nano EASM terms, privacy, acceptable use, authorised scanning, subscription, refund, liability, and data handling policies.",
+  url: `${SITE_URL}/terms-and-policies`,
+  inLanguage: "en-AU",
+  isPartOf: { "@type": "WebSite", name: "Nano EASM", url: SITE_URL },
+};
+
+const ITEMLIST_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  name: "Nano EASM legal documents",
+  numberOfItems: 8,
+  itemListElement: [
+    "terms-of-use",
+    "privacy-policy",
+    "acceptable-use-policy",
+    "security-scanning-authorisation",
+    "subscription-payment-terms",
+    "refund-cancellation-policy",
+    "liability-limitation",
+    "data-handling-retention",
+  ].map((slug, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    url: `${SITE_URL}/terms-and-policies/${slug}`,
+  })),
+};
+
+const BREADCRUMB_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+    { "@type": "ListItem", position: 2, name: "Terms and Policies", item: `${SITE_URL}/terms-and-policies` },
+  ],
+};
+
 export default function LegalIndexPage() {
   return (
     <>
+      <JsonLd data={[PAGE_JSONLD, ITEMLIST_JSONLD, BREADCRUMB_JSONLD]} />
       <LandingNav />
 
       <main className="pt-24 pb-20">
@@ -98,7 +142,7 @@ export default function LegalIndexPage() {
           </Link>
 
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Terms &amp; Policies</h1>
-          <p className="mt-3 text-white/50 text-base max-w-2xl">
+          <p className="mt-3 text-white/65 text-base max-w-2xl">
             The terms and policies that govern your use of Nano EASM. We try to keep these
             short and readable. If anything is unclear, write to{" "}
             <a href="mailto:support@nanoeasm.com" className="text-teal-400 hover:text-teal-300">
@@ -111,7 +155,7 @@ export default function LegalIndexPage() {
               <Link
                 key={slug}
                 href={`/terms-and-policies/${slug}`}
-                className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 hover:bg-white/[0.04] hover:border-teal-500/30 transition-colors"
+                className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 transition-all hover:-translate-y-0.5 hover:bg-white/[0.04] hover:border-teal-500/30"
               >
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0">
@@ -119,19 +163,21 @@ export default function LegalIndexPage() {
                   </div>
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-white group-hover:text-teal-300 transition-colors">{title}</div>
-                    <div className="text-xs text-white/50 mt-1 leading-relaxed">{summary}</div>
+                    <div className="text-xs text-white/65 mt-1 leading-relaxed">{summary}</div>
                   </div>
                 </div>
               </Link>
             ))}
           </div>
 
-          <p className="mt-10 text-xs text-white/30">
+          <p className="mt-10 text-xs text-white/55">
             Last updated 1 May 2026. Material changes will be communicated in-product
             and by email to account holders.
           </p>
         </div>
       </main>
+
+      <LandingFooter />
     </>
   );
 }

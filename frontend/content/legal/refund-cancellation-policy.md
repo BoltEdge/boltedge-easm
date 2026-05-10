@@ -3,6 +3,11 @@
 **Effective date:** 1 May 2026
 **Last updated:** 1 May 2026
 
+> **Current state:** every paid plan is free to upgrade until further
+> notice — there is nothing to refund or cancel today. The terms below
+> describe how refunds and cancellations work once paid billing is
+> active.
+
 This Refund & Cancellation Policy is incorporated into the
 [Terms of Use](./terms-of-use.md) and the [Subscription & Payment
 Terms](./subscription-payment-terms.md). Capitalised terms have the
