@@ -1,14 +1,17 @@
 // app/(unauthenticated)/look-up-tools/ToolAccordionRow.tsx
 // One tool tile in the /look-up-tools grid. Visually mirrors the cards on
 // /coverage (icon in tinted square, accent name + description, "Run check"
-// hint). Click expands the card in place to show input + run button +
-// Turnstile widget + result panel — only one card open at a time.
+// hint). Click expands the card in place to show input + run + result.
+//
+// Cloudflare Turnstile is page-level (rendered by the parent ToolsAccordion)
+// — this component receives the current token via prop and notifies the
+// parent after consumption so the global widget can remount for a fresh
+// token.
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
 import { Loader2, ArrowRight } from "lucide-react";
 
-import TurnstileWidget from "../TurnstileWidget";
 import ToolResultView from "./ToolResultView";
 import type { ToolConfig } from "./tools-config";
 
@@ -19,15 +22,23 @@ type Props = {
   tool: ToolConfig;
   isOpen: boolean;
   onToggle: () => void;
+  /** Current page-level Turnstile token (or null if not yet issued). */
+  turnstileToken: string | null;
+  /** Tell the parent the token was consumed so it can remount the widget. */
+  onTokenConsumed: () => void;
 };
 
-export default function ToolAccordionRow({ tool, isOpen, onToggle }: Props) {
+export default function ToolAccordionRow({
+  tool,
+  isOpen,
+  onToggle,
+  turnstileToken,
+  onTokenConsumed,
+}: Props) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [widgetKey, setWidgetKey] = useState(0);
 
   // Collapsing the card clears state so reopening starts clean.
   useEffect(() => {
@@ -65,10 +76,9 @@ export default function ToolAccordionRow({ tool, isOpen, onToggle }: Props) {
       setError("Request failed. Please try again.");
     } finally {
       setLoading(false);
-      setTurnstileToken(null);
-      setWidgetKey((k) => k + 1);
+      onTokenConsumed();
     }
-  }, [canRun, input, tool.endpoint, tool.inputField, turnstileToken]);
+  }, [canRun, input, tool.endpoint, tool.inputField, turnstileToken, onTokenConsumed]);
 
   const Icon = tool.icon;
 
@@ -123,13 +133,10 @@ export default function ToolAccordionRow({ tool, isOpen, onToggle }: Props) {
             </button>
           </div>
 
-          {TURNSTILE_ENABLED && (
-            <TurnstileWidget
-              key={widgetKey}
-              onVerify={setTurnstileToken}
-              onExpire={() => setTurnstileToken(null)}
-              onError={() => setTurnstileToken(null)}
-            />
+          {TURNSTILE_ENABLED && !turnstileToken && (
+            <p className="text-[11px] text-white/40">
+              Waiting for verification — see the badge below the grid.
+            </p>
           )}
 
           {error && (
