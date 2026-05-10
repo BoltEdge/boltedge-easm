@@ -57,7 +57,7 @@ const TOP_NAV: NavTopItem[] = [
     ],
   },
   { kind: "link", href: "/terms-and-policies", label: "Trust" },
-  { kind: "link", href: "/#contact", label: "Contact" },
+  { kind: "link", href: "/contact", label: "Contact" },
 ];
 
 
