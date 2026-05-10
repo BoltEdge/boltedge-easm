@@ -33,6 +33,7 @@ const TOP_NAV: NavTopItem[] = [
       { href: "/#how-it-works", label: "How it works", description: "Discover → scan → score → monitor." },
       { href: "/coverage", label: "Coverage", description: "Every finding category we detect.", badge: "New" },
       { href: "/quick-scan", label: "Quick Scan", description: "Try a free scan, no signup." },
+      { href: "/quick-discovery", label: "Quick Discovery", description: "Find subdomains free, no signup." },
       { href: "/#pricing", label: "Pricing", description: "Plan tiers and limits.", billingOnly: true },
     ],
   },

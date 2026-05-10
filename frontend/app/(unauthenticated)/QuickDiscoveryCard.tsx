@@ -156,6 +156,16 @@ export default function QuickDiscoveryCard({ onActiveChange }: QuickDiscoveryCar
           {result && result.errors.length > 0 && (<div className="mt-3 rounded-lg border border-border bg-card/30 p-3"><div className="text-[10px] font-semibold text-foreground mb-1">Discovery errors</div><ul className="space-y-0.5 text-[10px] text-muted-foreground">{result.errors.slice(0, 10).map((e, idx) => <li key={`${e.source}-${idx}`} className="break-words"><span className="font-mono">{friendlyScannerName(e.source)}:</span> {e.error}</li>)}</ul></div>)}
         </div>
       </div>
+      {result && (
+        <div className="px-6 pb-4 -mt-1">
+          <Link
+            href="/quick-discovery"
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 transition-colors"
+          >
+            View full Discovery page <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
