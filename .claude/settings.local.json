@@ -34,7 +34,17 @@
       "Bash(where \"google-chrome\")",
       "Bash(where \"msedge\")",
       "Bash(rm 'frontend/app/\\(unauthenticated\\)/quick-scan/[id]/page.tsx')",
-      "Bash(rmdir 'frontend/app/\\(unauthenticated\\)/quick-scan/[id]')"
+      "Bash(rmdir 'frontend/app/\\(unauthenticated\\)/quick-scan/[id]')",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "PowerShell(New-Item *)",
+      "Bash(git -C \"C:/Users/iradu/Documents/projects/boltedge-easm\" add \"frontend/app/\\(unauthenticated\\)/quick-discovery/\" \"frontend/app/\\(unauthenticated\\)/QuickDiscoveryCard.tsx\" \"frontend/app/\\(unauthenticated\\)/LandingNav.tsx\")",
+      "Bash(git -C C:/Users/iradu/Documents/projects/boltedge-easm commit -m ' *)",
+      "Bash(git -C \"C:/Users/iradu/Documents/projects/boltedge-easm\" status --short)",
+      "Bash(Select-String \"tools/page|ToolsAccordion\")",
+      "Bash(git *)",
+      "Bash(grep -rn '\"/tools\"\\\\|`/tools`\\\\|href=\"/tools\"' \"C:/Users/iradu/Documents/projects/boltedge-easm/frontend/app/\\(unauthenticated\\)/\")"
     ]
   }
 }
