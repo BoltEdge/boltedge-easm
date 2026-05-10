@@ -37,7 +37,7 @@ export const metadata: Metadata = {
 // ────────────────────────────────────────────────────────────
 
 type Endpoint = {
-  method: "GET" | "POST" | "PATCH" | "DELETE";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string;
   description: string;
   curl?: string;
@@ -138,6 +138,55 @@ const SECTIONS: Section[] = [
     ],
   },
   {
+    id: "groups",
+    title: "Asset Groups",
+    blurb:
+      "Asset groups are the unit of organisation — every asset belongs to exactly one group, and many platform features (scheduled scans, monitors, group-level reports) are scoped at this layer.",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/groups",
+        description: "List all asset groups. Response includes per-group asset counts.",
+        curl: `curl ${HDR} ${BASE}/groups`,
+        responseSnippet: `[
+  {
+    "id": "1",
+    "name": "Production",
+    "assetCount": 24,
+    "createdAt": "2026-04-12T08:21:33"
+  }
+]`,
+      },
+      {
+        method: "POST",
+        path: "/groups",
+        description: "Create a new asset group.",
+        curl: `curl -X POST ${HDR} -H "Content-Type: application/json" \\
+  -d '{"name":"Staging"}' \\
+  ${BASE}/groups`,
+      },
+      {
+        method: "PATCH",
+        path: "/groups/<group_id>",
+        description: "Rename a group. Body: { name }.",
+        curl: `curl -X PATCH ${HDR} -H "Content-Type: application/json" \\
+  -d '{"name":"Pre-prod"}' \\
+  ${BASE}/groups/1`,
+      },
+      {
+        method: "DELETE",
+        path: "/groups/<group_id>",
+        description: "Delete a group. Assets must be moved or deleted first.",
+        curl: `curl -X DELETE ${HDR} ${BASE}/groups/1`,
+      },
+      {
+        method: "GET",
+        path: "/groups/<group_id>/summary",
+        description: "Group rollup — total/scanned assets, asset-type breakdown, recent scan stats.",
+      },
+    ],
+  },
+  {
     id: "scans",
     title: "Scans",
     blurb:
@@ -162,7 +211,7 @@ const SECTIONS: Section[] = [
         method: "GET",
         path: "/scan-jobs",
         description: "List recent scan jobs (paginated).",
-        curl: `curl ${HDR} "${BASE}/scan-jobs?status=running&limit=20"`,
+        curl: `curl ${HDR} "${BASE}/scan-jobs?status=running&perPage=20"`,
       },
       {
         method: "POST",
@@ -325,6 +374,49 @@ const SECTIONS: Section[] = [
     ],
   },
   {
+    id: "schedules",
+    title: "Scheduled Scans",
+    blurb:
+      "Recurring scans against an asset or asset group on a fixed cadence. Subject to your plan's scheduled-scan limit; analyst+ role required to create or modify.",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/scan-schedules",
+        description: "List all scan schedules in your organization.",
+        curl: `curl ${HDR} ${BASE}/scan-schedules`,
+      },
+      {
+        method: "POST",
+        path: "/scan-schedules",
+        description:
+          "Create a schedule. scheduleType: 'asset' | 'group'. Provide assetId or groupId accordingly.",
+        curl: `curl -X POST ${HDR} -H "Content-Type: application/json" \\
+  -d '{"scheduleType":"asset","assetId":42,"profile":"standard","frequencyDays":7}' \\
+  ${BASE}/scan-schedules`,
+      },
+      {
+        method: "PATCH",
+        path: "/scan-schedules/<schedule_id>",
+        description: "Update frequency, profile, or enabled state.",
+        curl: `curl -X PATCH ${HDR} -H "Content-Type: application/json" \\
+  -d '{"enabled":false}' \\
+  ${BASE}/scan-schedules/8`,
+      },
+      {
+        method: "DELETE",
+        path: "/scan-schedules/<schedule_id>",
+        description: "Delete a schedule (existing scan-job history is retained).",
+        curl: `curl -X DELETE ${HDR} ${BASE}/scan-schedules/8`,
+      },
+      {
+        method: "POST",
+        path: "/scan-schedules/<schedule_id>/run-now",
+        description: "Trigger the schedule immediately without waiting for the next cycle.",
+        curl: `curl -X POST ${HDR} ${BASE}/scan-schedules/8/run-now`,
+      },
+    ],
+  },
+  {
     id: "reports",
     title: "Reports",
     blurb:
@@ -362,6 +454,47 @@ const SECTIONS: Section[] = [
       },
     ],
   },
+  {
+    id: "audit-webhook",
+    title: "Audit Log Webhook",
+    blurb:
+      "Forward every audit-log event to a customer-configured HTTPS endpoint (typically a SIEM ingestion URL). HMAC-signed POST per event, idempotency key included. Plan-gated to tiers with audit_log = true (Enterprise Gold + Custom). Owner role required to set the URL or rotate the secret.",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/settings/audit-webhook",
+        description:
+          "Read the current configuration. Secret returned masked (whsec_…last4) — never the full value.",
+        curl: `curl ${HDR} ${BASE}/settings/audit-webhook`,
+      },
+      {
+        method: "PUT",
+        path: "/settings/audit-webhook",
+        description:
+          "Create or update the webhook. First save generates a signing secret server-side and returns the raw value once; pass { regenerateSecret: true } to rotate. Owner only.",
+        curl: `curl -X PUT ${HDR} -H "Content-Type: application/json" \\
+  -d '{"url":"https://siem.example.com/ingest","enabled":true}' \\
+  ${BASE}/settings/audit-webhook`,
+      },
+      {
+        method: "DELETE",
+        path: "/settings/audit-webhook",
+        description: "Disable and remove the webhook config. Existing delivery logs are retained.",
+      },
+      {
+        method: "POST",
+        path: "/settings/audit-webhook/test",
+        description:
+          "Fire a test event at the configured URL. Useful for verifying signature handling on the receiver side.",
+      },
+      {
+        method: "GET",
+        path: "/settings/audit-webhook/deliveries",
+        description:
+          "Recent delivery attempts with status code, duration, and error message. No retries today — failed deliveries are logged but not re-attempted.",
+      },
+    ],
+  },
 ];
 
 // ────────────────────────────────────────────────────────────
@@ -371,6 +504,7 @@ const SECTIONS: Section[] = [
 const METHOD_COLOR: Record<string, string> = {
   GET: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   POST: "bg-blue-500/15 text-blue-300 border-blue-500/30",
+  PUT: "bg-violet-500/15 text-violet-300 border-violet-500/30",
   PATCH: "bg-amber-500/15 text-amber-300 border-amber-500/30",
   DELETE: "bg-red-500/15 text-red-300 border-red-500/30",
 };
@@ -427,9 +561,11 @@ export default function ApiDocsPage() {
               </div>
               {[
                 { id: "intro", label: "Introduction" },
+                { id: "quickstart", label: "Quick start" },
                 { id: "auth", label: "Authentication" },
                 { id: "errors", label: "Errors" },
                 { id: "pagination", label: "Pagination" },
+                { id: "versioning", label: "Versioning" },
               ].map((s) => (
                 <a
                   key={s.id}
@@ -484,6 +620,26 @@ export default function ApiDocsPage() {
               </div>
             </section>
 
+            {/* Quick start */}
+            <section id="quickstart" className="space-y-4 scroll-mt-24">
+              <h2 className="text-2xl font-semibold tracking-tight">Quick start</h2>
+              <p className="text-white/65">
+                A 30-second working call. Generate an API key from{" "}
+                <Link href="/settings/api-keys" className="text-teal-300 hover:text-teal-200">
+                  Settings &rarr; API Keys
+                </Link>
+                , then list the assets in your organization:
+              </p>
+              <CodeBlock>{`curl -H "X-API-Key: ag_sk_..." ${BASE}/assets`}</CodeBlock>
+              <p className="text-white/65 text-sm">
+                Once that returns, the rest of the API works the same way — every
+                endpoint takes the same <code className="text-teal-300">X-API-Key</code>
+                {" "}header, returns JSON, and respects your plan's limits and your
+                key&rsquo;s role. Keep reading for auth detail, error shapes, and the
+                full endpoint list, or jump straight to a section in the left sidebar.
+              </p>
+            </section>
+
             {/* Auth */}
             <section id="auth" className="space-y-4 scroll-mt-24">
               <h2 className="text-2xl font-semibold tracking-tight">Authentication</h2>
@@ -533,7 +689,7 @@ export default function ApiDocsPage() {
                   ["403", "Permission denied (role or API_KEY_NOT_ALLOWED)"],
                   ["402", "Plan limit reached"],
                   ["404", "Resource not found"],
-                  ["429", "Rate-limited"],
+                  ["429", "Rate-limited — back off and retry"],
                   ["500", "Internal server error"],
                 ].map(([code, msg]) => (
                   <div
@@ -562,6 +718,24 @@ export default function ApiDocsPage() {
   "page": 2,
   "perPage": 50
 }`}</CodeBlock>
+            </section>
+
+            {/* Versioning */}
+            <section id="versioning" className="space-y-4 scroll-mt-24">
+              <h2 className="text-2xl font-semibold tracking-tight">Versioning &amp; stability</h2>
+              <p className="text-white/65">
+                The endpoints documented on this page are stable. We add new
+                endpoints, fields, and optional query parameters without notice;
+                we never remove or rename existing fields without first deprecating
+                them on the changelog and emailing organisation owners.
+              </p>
+              <p className="text-white/65 text-sm">
+                There is currently no version segment in the URL. If a breaking
+                change becomes necessary, it will land under <code className="text-teal-300">/api/v2/</code>{" "}
+                and the existing paths will keep working alongside it for at
+                least 12 months. Treat any endpoint not listed on this page as
+                internal — it may change without notice.
+              </p>
             </section>
 
             {/* Per-domain sections */}
