@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Loader2, Send, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Loader2, Send, CheckCircle2, AlertTriangle, ArrowRight } from "lucide-react";
 
 import { submitContactRequest } from "../lib/api";
 import TurnstileWidget from "./TurnstileWidget";
@@ -12,7 +13,7 @@ const TURNSTILE_ENABLED = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 type Variant = "card" | "inline";
 type RequestType = "general" | "trial" | "demo";
 
-const REQUEST_TYPES: Array<{ value: RequestType; label: string; placeholder: string }> = [
+const REQUEST_TYPES: Array<{ value: RequestType; label: string; placeholder: string; defaultSubject?: string }> = [
   {
     value: "general",
     label: "General enquiry",
@@ -23,14 +24,34 @@ const REQUEST_TYPES: Array<{ value: RequestType; label: string; placeholder: str
     label: "Free trial request",
     placeholder:
       "Tell us about your environment, what you'd like to scan, and roughly when you'd like to start. We'll review and get back to you with trial access.",
+    defaultSubject: "Trial request",
   },
   {
     value: "demo",
     label: "Demo request",
     placeholder:
       "What would you like to see in the demo? Any specific features or use cases? We'll suggest a few times.",
+    defaultSubject: "Demo request",
   },
 ];
+
+// Plan slugs accepted via ?plan=… so trial-button clicks pre-fill the
+// message with the plan the visitor was looking at. Keep keys lowercase
+// and lookup case-insensitively.
+const PLAN_LABELS: Record<string, string> = {
+  starter: "Starter",
+  professional: "Professional",
+  "enterprise-silver": "Enterprise Silver",
+  silver: "Enterprise Silver",
+  "enterprise-gold": "Enterprise Gold",
+  gold: "Enterprise Gold",
+  custom: "Custom",
+};
+
+function trialMessageFor(planLabel: string | null): string {
+  if (!planLabel) return "";
+  return `I'd like to trial the ${planLabel} plan.\n\nA bit about my environment: \nWhat I'd like to evaluate first: \nRough timeline: `;
+}
 
 export default function ContactForm({ variant = "card" }: { variant?: Variant }) {
   const searchParams = useSearchParams();
@@ -38,12 +59,21 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
     const t = searchParams?.get("type");
     return t === "trial" || t === "demo" ? t : "general";
   })();
+  const initialPlanLabel = ((): string | null => {
+    const slug = (searchParams?.get("plan") || "").trim().toLowerCase();
+    return PLAN_LABELS[slug] ?? null;
+  })();
 
   const [requestType, setRequestType] = useState<RequestType>(initialType);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [subject, setSubject] = useState("");
-  const [message, setMessage] = useState("");
+  const [subject, setSubject] = useState(() => {
+    const cfg = REQUEST_TYPES.find((r) => r.value === initialType);
+    return cfg?.defaultSubject ?? "";
+  });
+  const [message, setMessage] = useState(() =>
+    initialType === "trial" ? trialMessageFor(initialPlanLabel) : ""
+  );
   // Honeypot — real users never see or fill this. If it has a value on
   // submit, the backend silently drops the request as spam.
   const [website, setWebsite] = useState("");
@@ -51,8 +81,17 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
   // If the URL ?type= changes (back/forward navigation), keep the form in sync.
   useEffect(() => {
     const t = searchParams?.get("type");
-    if (t === "trial" || t === "demo") setRequestType(t);
-    else if (t === "general") setRequestType("general");
+    const next: RequestType = t === "trial" || t === "demo" ? t : "general";
+    setRequestType(next);
+    // Match the subject default to the new type — but only if the user
+    // hasn't started typing their own subject. Avoids clobbering edits.
+    setSubject((cur) => {
+      const prevDefaults = REQUEST_TYPES.map((r) => r.defaultSubject).filter(Boolean) as string[];
+      const userTyped = cur && !prevDefaults.includes(cur);
+      if (userTyped) return cur;
+      const cfg = REQUEST_TYPES.find((r) => r.value === next);
+      return cfg?.defaultSubject ?? "";
+    });
   }, [searchParams]);
 
   const [submitting, setSubmitting] = useState(false);
@@ -112,7 +151,7 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
   }
 
   const inputClass =
-    "w-full h-11 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-teal-500/40 focus:ring-2 focus:ring-teal-500/20 transition-all disabled:opacity-50";
+    "w-full h-11 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-teal-500/40 focus:ring-2 focus:ring-teal-500/20 transition-all disabled:opacity-50";
 
   // Success view
   if (result?.kind === "ok") {
@@ -122,21 +161,38 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
           <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
             <CheckCircle2 className="w-5 h-5 text-emerald-400" />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <h3 className="text-base font-semibold text-white">Message received</h3>
-            <p className="mt-1 text-sm text-white/60 leading-relaxed">{result.message}</p>
+            <p className="mt-1 text-sm text-white/65 leading-relaxed">{result.message}</p>
+            <p className="mt-1 text-sm text-white/65 leading-relaxed">
+              We&rsquo;ll reply within one business day from a real person.
+            </p>
             {result.requestId && (
-              <p className="mt-2 text-xs text-white/40">
-                Reference: <span className="font-mono text-white/60">{result.requestId}</span>
+              <p className="mt-2 text-xs text-white/55">
+                Reference: <span className="font-mono text-white/75">{result.requestId}</span>
               </p>
             )}
-            <button
-              type="button"
-              onClick={() => setResult(null)}
-              className="mt-4 text-xs text-teal-400 hover:text-teal-300 underline underline-offset-2"
-            >
-              Send another message
-            </button>
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setResult(null)}
+                className="text-teal-400 hover:text-teal-300 underline underline-offset-2"
+              >
+                Send another message
+              </button>
+              <Link
+                href="/faq"
+                className="inline-flex items-center gap-1 text-white/65 hover:text-white"
+              >
+                While you wait — read the FAQ <ArrowRight className="w-3 h-3" />
+              </Link>
+              <Link
+                href="/quick-scan"
+                className="inline-flex items-center gap-1 text-white/65 hover:text-white"
+              >
+                Try Quick Scan <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -168,7 +224,7 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
 
       {/* Request type — pill selector */}
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-white/50 block">What can we help with?</label>
+        <label className="text-xs font-medium text-white/65 block">What can we help with?</label>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {REQUEST_TYPES.map((opt) => (
             <button
@@ -190,7 +246,7 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-white/50 block">Your name</label>
+          <label className="text-xs font-medium text-white/65 block">Your name</label>
           <input
             className={inputClass}
             placeholder="Jane Smith"
@@ -206,7 +262,7 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
           )}
         </div>
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-white/50 block">Email</label>
+          <label className="text-xs font-medium text-white/65 block">Email</label>
           <input
             type="email"
             className={inputClass}
@@ -225,7 +281,7 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-white/50 block">
+        <label className="text-xs font-medium text-white/65 block">
           Subject <span className="text-white/30">(optional)</span>
         </label>
         <input
@@ -239,10 +295,10 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-white/50 block">Message</label>
+        <label className="text-xs font-medium text-white/65 block">Message</label>
         <textarea
           rows={5}
-          className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-teal-500/40 focus:ring-2 focus:ring-teal-500/20 transition-all resize-y disabled:opacity-50"
+          className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-teal-500/40 focus:ring-2 focus:ring-teal-500/20 transition-all resize-y disabled:opacity-50"
           placeholder={REQUEST_TYPES.find((t) => t.value === requestType)?.placeholder || "How can we help?"}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
@@ -268,12 +324,19 @@ export default function ContactForm({ variant = "card" }: { variant?: Variant })
       )}
 
       {TURNSTILE_ENABLED && (
-        <TurnstileWidget
-          key={widgetKey}
-          onVerify={setTurnstileToken}
-          onExpire={() => setTurnstileToken(null)}
-          onError={() => setTurnstileToken(null)}
-        />
+        <div className="space-y-1.5">
+          <TurnstileWidget
+            key={widgetKey}
+            onVerify={setTurnstileToken}
+            onExpire={() => setTurnstileToken(null)}
+            onError={() => setTurnstileToken(null)}
+          />
+          {!turnstileToken && (
+            <p className="text-[11px] text-white/55">
+              Waiting for verification — usually invisible, takes 1-2 seconds.
+            </p>
+          )}
+        </div>
       )}
 
       <button
