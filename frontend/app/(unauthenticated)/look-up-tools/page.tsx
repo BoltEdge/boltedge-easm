@@ -98,9 +98,9 @@ export default function ToolsPage() {
           </div>
         </section>
 
-        {/* ACCORDION */}
+        {/* TOOL GRID */}
         <section className="py-6 sm:py-8">
-          <div className="mx-auto max-w-3xl px-4 sm:px-6">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6">
             <ToolsAccordion />
           </div>
         </section>

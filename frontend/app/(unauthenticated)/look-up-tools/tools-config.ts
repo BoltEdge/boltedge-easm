@@ -1,7 +1,11 @@
-// app/(unauthenticated)/tools/tools-config.ts
-// Authoritative list of public lookup tools surfaced on /tools.
-// 9 entries; cert-hash is intentionally not in the displayed accordion
-// (niche, hash input is awkward for SEO). Endpoint stays callable.
+// app/(unauthenticated)/look-up-tools/tools-config.ts
+// Authoritative list of public lookup tools surfaced on /look-up-tools.
+// 9 entries; cert-hash is intentionally not in the displayed grid (niche,
+// hash input is awkward for SEO). Endpoint stays callable.
+//
+// Visual fields (`iconColor`, `tint`, `ring`) are full Tailwind class
+// strings rather than computed — Tailwind's compiler scans source files
+// for literal class names, so anything templated would be stripped.
 
 import type { ComponentType, SVGProps } from "react";
 import {
@@ -22,8 +26,13 @@ export type ToolConfig = {
   inputField: string;
   placeholder: string;
   icon: ComponentType<SVGProps<SVGSVGElement>>;
+  /** Tailwind text-* class for the icon + accent text. */
   iconColor: string;
-  /** Hidden from the visible accordion when true. Endpoint still callable. */
+  /** Tailwind bg-* class for the tinted card background + icon square. */
+  tint: string;
+  /** Tailwind border-* class for the card outline. */
+  ring: string;
+  /** Hidden from the visible grid when true. Endpoint still callable. */
   hidden?: boolean;
 };
 
@@ -38,7 +47,9 @@ export const TOOLS: ToolConfig[] = [
     inputField: "query",
     placeholder: "example.com / 8.8.8.8 / AS13335",
     icon: FileText,
-    iconColor: "text-rose-400",
+    iconColor: "text-rose-300",
+    tint: "bg-rose-500/[0.04]",
+    ring: "border-rose-500/20",
   },
   {
     id: "dns-lookup",
@@ -50,7 +61,9 @@ export const TOOLS: ToolConfig[] = [
     inputField: "domain",
     placeholder: "example.com",
     icon: Globe,
-    iconColor: "text-cyan-400",
+    iconColor: "text-cyan-300",
+    tint: "bg-cyan-500/[0.04]",
+    ring: "border-cyan-500/20",
   },
   {
     id: "email-security",
@@ -62,7 +75,9 @@ export const TOOLS: ToolConfig[] = [
     inputField: "domain",
     placeholder: "example.com",
     icon: Mail,
-    iconColor: "text-amber-400",
+    iconColor: "text-amber-300",
+    tint: "bg-amber-500/[0.04]",
+    ring: "border-amber-500/20",
   },
   {
     id: "header-check",
@@ -74,7 +89,9 @@ export const TOOLS: ToolConfig[] = [
     inputField: "domain",
     placeholder: "https://example.com or example.com",
     icon: Shield,
-    iconColor: "text-amber-400",
+    iconColor: "text-sky-300",
+    tint: "bg-sky-500/[0.04]",
+    ring: "border-sky-500/20",
   },
   {
     id: "cert-lookup",
@@ -86,7 +103,9 @@ export const TOOLS: ToolConfig[] = [
     inputField: "domain",
     placeholder: "example.com",
     icon: Lock,
-    iconColor: "text-emerald-400",
+    iconColor: "text-emerald-300",
+    tint: "bg-emerald-500/[0.04]",
+    ring: "border-emerald-500/20",
   },
   {
     id: "reverse-dns",
@@ -98,7 +117,9 @@ export const TOOLS: ToolConfig[] = [
     inputField: "ip",
     placeholder: "8.8.8.8",
     icon: RefreshCcw,
-    iconColor: "text-purple-400",
+    iconColor: "text-purple-300",
+    tint: "bg-purple-500/[0.04]",
+    ring: "border-purple-500/20",
   },
   {
     id: "sensitive-paths",
@@ -110,7 +131,9 @@ export const TOOLS: ToolConfig[] = [
     inputField: "domain",
     placeholder: "example.com",
     icon: FileSearch,
-    iconColor: "text-orange-400",
+    iconColor: "text-orange-300",
+    tint: "bg-orange-500/[0.04]",
+    ring: "border-orange-500/20",
   },
   {
     id: "github-leaks",
@@ -122,10 +145,12 @@ export const TOOLS: ToolConfig[] = [
     inputField: "domain",
     placeholder: "example.com",
     icon: Github,
-    iconColor: "text-pink-400",
+    iconColor: "text-pink-300",
+    tint: "bg-pink-500/[0.04]",
+    ring: "border-pink-500/20",
   },
   // Hidden — kept so the smart cert-lookup hash detection still has an
-  // endpoint to hit. Not surfaced on the accordion.
+  // endpoint to hit. Not surfaced on the grid.
   {
     id: "cert-hash",
     endpoint: "cert-hash",
@@ -136,7 +161,9 @@ export const TOOLS: ToolConfig[] = [
     inputField: "hash",
     placeholder: "sha256 hex",
     icon: Lock,
-    iconColor: "text-emerald-400",
+    iconColor: "text-emerald-300",
+    tint: "bg-emerald-500/[0.04]",
+    ring: "border-emerald-500/20",
     hidden: true,
   },
 ];
