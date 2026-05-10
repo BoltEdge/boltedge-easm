@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import LandingNav from "../LandingNav";
+import LandingFooter from "../LandingFooter";
 import FAQContent from "./FAQContent";
 import JsonLd from "../JsonLd";
 import { faqsToJsonLd } from "./faq-data";
@@ -58,7 +59,7 @@ export default function FAQPage() {
           </Link>
 
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Frequently Asked Questions</h1>
-          <p className="mt-3 text-white/50 text-base max-w-2xl leading-relaxed">
+          <p className="mt-3 text-white/65 text-base max-w-2xl leading-relaxed">
             Answers to common questions about Nano EASM, scanning authorisation, plans, data handling, and integrations.
           </p>
 
@@ -79,6 +80,8 @@ export default function FAQPage() {
           </div>
         </div>
       </main>
+
+      <LandingFooter />
     </>
   );
 }

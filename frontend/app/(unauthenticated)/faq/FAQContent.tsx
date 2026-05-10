@@ -44,7 +44,7 @@ function AccordionItem({ q, a, forceOpen }: FAQItem & { forceOpen: boolean }) {
         <span className="text-sm font-medium text-white">{q}</span>
         <ChevronDown className="w-4 h-4 text-white/40 shrink-0 transition-transform duration-200 group-open:rotate-180" />
       </summary>
-      <div className="px-5 pb-5 pt-1 text-sm text-white/60 leading-relaxed">
+      <div className="px-5 pb-5 pt-1 text-sm text-white/65 leading-relaxed">
         {a}
       </div>
     </details>
@@ -103,7 +103,7 @@ export default function FAQContent() {
       {totalMatches === 0 ? (
         <div className="mt-12 text-center py-12 rounded-xl border border-white/[0.06] bg-white/[0.02]">
           <p className="text-sm text-white/60">Nothing matches &ldquo;{trimmed}&rdquo;.</p>
-          <p className="mt-2 text-sm text-white/40">
+          <p className="mt-2 text-sm text-white/55">
             Try a different keyword, or{" "}
             <Link href="/#contact" className="text-teal-400 hover:text-teal-300">ask us directly</Link>.
           </p>

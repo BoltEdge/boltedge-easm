@@ -31,10 +31,8 @@ export const FAQS: Category[] = [
             Nano EASM is an{" "}
             <strong>External Attack Surface Management</strong> platform — a
             cybersecurity SaaS product that helps IT teams, security generalists, and
-            small MSSPs discover internet-facing assets, scan for risk, monitor
-            exposure changes, and prioritise remediation. (Not to be confused with the
-            similarly-named open-source Verilog assembler — Nano EASM is a security
-            platform for the modern web, not a hardware tool.)
+            MSSPs discover internet-facing assets, scan for risk, monitor exposure
+            changes, and prioritise remediation.
           </p>
         ),
       },
@@ -299,9 +297,9 @@ export const FAQS: Category[] = [
           <p>
             Trials are <strong>request-only</strong> — click <em>Request free trial</em> on
             any paid plan card and we&rsquo;ll review the request manually. If approved, the
-            requested plan is enabled on your organisation for a defined period at no charge.
-            No payment method is required during the trial. If you don&rsquo;t convert, your
-            organisation reverts to the Free plan when the trial ends.
+            requested plan is enabled at no charge for a defined period. No payment method
+            is needed. When the trial ends, your organisation reverts to Free unless you
+            switch to another tier.
           </p>
         ),
       },
@@ -309,10 +307,10 @@ export const FAQS: Category[] = [
         q: "What happens if I exceed my plan limits?",
         a: (
           <p>
-            You&rsquo;ll see a clear message in the app explaining which limit you hit. Most
-            actions are blocked rather than charged as overages — we don&rsquo;t want surprise
-            bills. To run more scans, monitor more assets, or invite more teammates, upgrade
-            to a higher plan. Plan changes mid-cycle are pro-rated automatically.
+            You&rsquo;ll see a clear message in the app explaining which limit you hit.
+            Actions are blocked rather than billed — we don&rsquo;t do overages. Upgrading
+            unlocks more scans, more monitored assets, and more team seats. Every paid tier
+            is currently free to switch into.
           </p>
         ),
       },
@@ -320,10 +318,10 @@ export const FAQS: Category[] = [
         q: "Can I upgrade or downgrade later?",
         a: (
           <p>
-            Yes, anytime. Open <strong>Settings &rarr; Billing &rarr; Manage billing</strong>.
-            Upgrades take effect immediately with pro-rated charges. Downgrades take effect
-            at the end of your current billing period — you keep your current limits until
-            then. There&rsquo;s no contract lock-in.
+            Yes, anytime — open <strong>Settings &rarr; Plans</strong> and pick the tier you
+            want. Every paid tier is free to upgrade into until further notice, and the
+            change takes effect immediately. When billing returns later, downgrades will
+            apply at the end of the billing period; there&rsquo;s no contract lock-in.
           </p>
         ),
       },
@@ -331,11 +329,10 @@ export const FAQS: Category[] = [
         q: "How do refunds and cancellations work?",
         a: (
           <p>
-            Cancellations take effect at the end of your current billing period — you keep
-            paid features until then, and your data isn&rsquo;t deleted. Subscription fees
-            are non-refundable for elapsed time, with exceptions for billing errors, material
-            service failures on our side, and where consumer law requires (e.g. Australian
-            Consumer Law guarantees). Full details in our{" "}
+            Plans are currently free to upgrade — there&rsquo;s nothing to refund or cancel.
+            Closing your account anytime keeps your data accessible until you delete it
+            manually. When billing returns, cancellations will take effect at the end of the
+            billing period and refund exceptions follow our{" "}
             <Link href="/terms-and-policies/refund-cancellation-policy" className="text-teal-400 hover:text-teal-300">Refund &amp; Cancellation Policy</Link>.
           </p>
         ),
@@ -363,11 +360,10 @@ export const FAQS: Category[] = [
         q: "Where is my data stored?",
         a: (
           <p>
-            On AWS in the United States (us-east-1 region). Although Nano EASM is based in
-            Australia, we host in the US for sub-processor availability and global
-            low-latency. International transfers are governed by the safeguards described in
-            our Privacy Policy. If you have a data-residency requirement, contact us — we can
-            discuss options under a custom contract.
+            On AWS in the United States (us-east-1 region) — chosen for sub-processor
+            availability and global low-latency. International transfers follow the
+            safeguards described in our Privacy Policy. If you have a data-residency
+            requirement, contact us — we can discuss options under a custom contract.
           </p>
         ),
       },
