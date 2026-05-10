@@ -9,7 +9,7 @@
 
 import type { ComponentType, SVGProps } from "react";
 import {
-  FileText, Globe, Mail, Shield, Lock, RefreshCcw, FileSearch, Github,
+  FileText, Globe, Mail, Shield, Lock, RefreshCcw, FileSearch, Github, Plug,
 } from "lucide-react";
 
 export type ToolInputKind = "domain" | "ip" | "url-or-domain" | "hash";
@@ -34,6 +34,10 @@ export type ToolConfig = {
   ring: string;
   /** Hidden from the visible grid when true. Endpoint still callable. */
   hidden?: boolean;
+  /** Surface the card on /look-up-tools as a sign-in teaser instead of an
+   *  input form. Use for tools that should be account-only on the public
+   *  surface (e.g. connectivity probes, leak search). */
+  authOnly?: boolean;
 };
 
 export const TOOLS: ToolConfig[] = [
@@ -122,6 +126,21 @@ export const TOOLS: ToolConfig[] = [
     ring: "border-purple-500/20",
   },
   {
+    id: "connectivity-check",
+    endpoint: "connectivity-check",
+    name: "Connectivity Check",
+    shortName: "Connectivity",
+    description: "TCP port reachability, latency, banner grabs, and TLS detection.",
+    inputKind: "domain",
+    inputField: "host",
+    placeholder: "example.com:443",
+    icon: Plug,
+    iconColor: "text-violet-300",
+    tint: "bg-violet-500/[0.04]",
+    ring: "border-violet-500/20",
+    authOnly: true,
+  },
+  {
     id: "sensitive-paths",
     endpoint: "sensitive-paths",
     name: "Sensitive Paths Probe",
@@ -134,6 +153,7 @@ export const TOOLS: ToolConfig[] = [
     iconColor: "text-orange-300",
     tint: "bg-orange-500/[0.04]",
     ring: "border-orange-500/20",
+    authOnly: true,
   },
   {
     id: "github-leaks",
@@ -148,6 +168,7 @@ export const TOOLS: ToolConfig[] = [
     iconColor: "text-pink-300",
     tint: "bg-pink-500/[0.04]",
     ring: "border-pink-500/20",
+    authOnly: true,
   },
   // Hidden — kept so the smart cert-lookup hash detection still has an
   // endpoint to hit. Not surfaced on the grid.

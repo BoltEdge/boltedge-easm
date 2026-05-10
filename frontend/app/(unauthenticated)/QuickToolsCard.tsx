@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 import TurnstileWidget from "./TurnstileWidget";
-import ToolResultView from "./tools/ToolResultView";
+import ToolResultView from "./look-up-tools/ToolResultView";
 
 const TURNSTILE_ENABLED = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
@@ -173,7 +173,7 @@ export default function QuickToolsCard({ onActiveChange }: QuickToolsCardProps =
             href="/look-up-tools"
             className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-teal-400 hover:text-teal-300 transition-colors"
           >
-            See all 8 tools <ArrowRight className="w-3 h-3" />
+            See all lookup tools <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
       )}
