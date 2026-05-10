@@ -11,6 +11,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, Globe2, Radar, Bell, ClipboardCheck, Bug, ShieldCheck, KeyRound, AlertTriangle } from "lucide-react";
 
 import LandingNav from "../../LandingNav";
+import LandingFooter from "../../LandingFooter";
 import JsonLd from "../../JsonLd";
 
 const SITE_URL = "https://nanoeasm.com";
@@ -21,12 +22,12 @@ export const dynamic = "force-static";
 export const metadata: Metadata = {
   title: "What is Nano EASM?",
   description:
-    "Nano EASM is a cybersecurity / External Attack Surface Management platform for IT teams, security generalists, and small MSSPs. Discover external assets, monitor exposure changes, and prioritise remediation.",
+    "Nano EASM is a cybersecurity / External Attack Surface Management platform for IT teams, security generalists, and MSSPs. Discover external assets, monitor exposure changes, and prioritise remediation.",
   alternates: { canonical: "/resources/what-is-nano-easm" },
   openGraph: {
     title: "What is Nano EASM? | Cybersecurity Platform",
     description:
-      "Nano EASM is a cybersecurity / External Attack Surface Management platform for IT teams and small MSSPs.",
+      "Nano EASM is a cybersecurity / External Attack Surface Management platform for IT teams and MSSPs.",
     url: PAGE_URL,
     type: "article",
     siteName: "Nano EASM",
@@ -36,7 +37,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "What is Nano EASM? | Cybersecurity Platform",
     description:
-      "External Attack Surface Management platform for IT teams and small MSSPs.",
+      "External Attack Surface Management platform for IT teams and MSSPs.",
   },
 };
 
@@ -45,7 +46,7 @@ const ARTICLE_JSONLD = {
   "@type": "Article",
   headline: "What is Nano EASM?",
   description:
-    "Nano EASM is a cybersecurity / External Attack Surface Management platform for IT teams, security generalists, and small MSSPs.",
+    "Nano EASM is a cybersecurity / External Attack Surface Management platform for IT teams, security generalists, and MSSPs.",
   url: PAGE_URL,
   mainEntityOfPage: PAGE_URL,
   author: { "@type": "Organization", name: "Nano EASM", url: SITE_URL },
@@ -97,7 +98,7 @@ export default function WhatIsNanoEasmPage() {
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors mb-8"
+            className="inline-flex items-center gap-1.5 text-sm text-white/65 hover:text-white transition-colors mb-8"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to home
@@ -106,10 +107,10 @@ export default function WhatIsNanoEasmPage() {
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
             What is Nano EASM?
           </h1>
-          <p className="mt-4 text-lg text-white/60 leading-relaxed">
+          <p className="mt-4 text-lg text-white/65 leading-relaxed">
             Nano EASM is a <strong className="text-white/80">cybersecurity SaaS platform</strong>{" "}
             for <strong className="text-white/80">External Attack Surface Management</strong>.
-            It helps IT teams, security generalists, and small MSSPs discover
+            It helps IT teams, security generalists, and MSSPs discover
             internet-facing assets, scan for risk, monitor exposure changes, and
             prioritise remediation — without juggling multiple tools.
           </p>
@@ -117,7 +118,7 @@ export default function WhatIsNanoEasmPage() {
           <h2 className="mt-12 text-2xl font-semibold tracking-tight">
             What does External Attack Surface Management mean?
           </h2>
-          <p className="mt-3 text-white/60 leading-relaxed">
+          <p className="mt-3 text-white/65 leading-relaxed">
             Your <em>external attack surface</em> is everything an attacker on the
             public internet can see and reach: domains, subdomains, IP ranges, exposed
             cloud services, certificates, third-party integrations. Most organisations
@@ -166,7 +167,7 @@ export default function WhatIsNanoEasmPage() {
                   <Icon className="w-4 h-4 text-teal-400" />
                 </div>
                 <h3 className="text-sm font-semibold text-white">{title}</h3>
-                <p className="mt-1.5 text-sm text-white/50 leading-relaxed">{blurb}</p>
+                <p className="mt-1.5 text-sm text-white/65 leading-relaxed">{blurb}</p>
               </div>
             ))}
           </div>
@@ -174,10 +175,9 @@ export default function WhatIsNanoEasmPage() {
           <h2 className="mt-10 text-2xl font-semibold tracking-tight">
             What Nano EASM detects
           </h2>
-          <p className="mt-3 text-white/60 leading-relaxed">
-            Every alert the platform raises falls into one of five categories. You
-            can toggle any of them on or off for your organisation, and override per
-            asset group — see the{" "}
+          <p className="mt-3 text-white/65 leading-relaxed">
+            Every alert the platform raises falls into one of five categories. Mute
+            the ones you don&rsquo;t care about, dial in the ones you do — see the{" "}
             <Link href="/coverage" className="text-teal-400 hover:underline">
               full coverage page
             </Link>{" "}
@@ -224,7 +224,7 @@ export default function WhatIsNanoEasmPage() {
                   <Icon className="w-4 h-4 text-teal-400" />
                   <h3 className="text-sm font-semibold text-white">{title}</h3>
                 </div>
-                <p className="text-sm text-white/55 leading-relaxed">{blurb}</p>
+                <p className="text-sm text-white/65 leading-relaxed">{blurb}</p>
               </div>
             ))}
           </div>
@@ -232,7 +232,7 @@ export default function WhatIsNanoEasmPage() {
           <h2 className="mt-10 text-2xl font-semibold tracking-tight">
             Who is Nano EASM for?
           </h2>
-          <ul className="mt-3 space-y-2 text-white/60 leading-relaxed list-disc pl-5">
+          <ul className="mt-3 space-y-2 text-white/65 leading-relaxed list-disc pl-5">
             <li>
               <strong className="text-white/80">IT teams</strong> at small and mid-size
               organisations who don&rsquo;t have a dedicated security operations
@@ -244,7 +244,7 @@ export default function WhatIsNanoEasmPage() {
               — instead of stitching three or four tools together.
             </li>
             <li>
-              <strong className="text-white/80">Small MSSPs</strong> managing multiple
+              <strong className="text-white/80">MSSPs</strong> managing multiple
               client environments who need separate workspaces, separate billing, and
               exportable reports per client.
             </li>
@@ -253,7 +253,7 @@ export default function WhatIsNanoEasmPage() {
           <h2 className="mt-10 text-2xl font-semibold tracking-tight">
             How is it different from a vulnerability scanner?
           </h2>
-          <p className="mt-3 text-white/60 leading-relaxed">
+          <p className="mt-3 text-white/65 leading-relaxed">
             A traditional vulnerability scanner needs you to tell it{" "}
             <em>what</em> to scan. EASM starts with the question{" "}
             <em>what do we have?</em> — discovering the assets first, then scanning
@@ -264,11 +264,11 @@ export default function WhatIsNanoEasmPage() {
           <h2 className="mt-10 text-2xl font-semibold tracking-tight">
             Get started
           </h2>
-          <p className="mt-3 text-white/60 leading-relaxed">
+          <p className="mt-3 text-white/65 leading-relaxed">
             Nano EASM has a Free plan with no payment details required — add up to two
             assets, run up to five scans a month, and see what your external attack
-            surface actually looks like. Upgrade tiers add more assets, monitoring,
-            scheduled scans, integrations, and team seats.
+            surface actually looks like. Every paid tier is also free to upgrade until
+            further notice — no card required.
           </p>
 
           <div className="mt-6 flex flex-col sm:flex-row gap-3">
@@ -294,6 +294,8 @@ export default function WhatIsNanoEasmPage() {
           </div>
         </div>
       </main>
+
+      <LandingFooter />
     </>
   );
 }
