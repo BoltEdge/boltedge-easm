@@ -170,7 +170,7 @@ export default function QuickToolsCard({ onActiveChange }: QuickToolsCardProps =
       {result && !tool.authOnly && (
         <div className="px-6 pb-4 -mt-1">
           <Link
-            href="/tools"
+            href="/look-up-tools"
             className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-teal-400 hover:text-teal-300 transition-colors"
           >
             See all 8 tools <ArrowRight className="w-3 h-3" />

@@ -1,4 +1,4 @@
-// app/(unauthenticated)/tools/page.tsx
+// app/(unauthenticated)/look-up-tools/page.tsx
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -17,11 +17,11 @@ const PAGE_DESCRIPTION =
 export const metadata: Metadata = {
   title: PAGE_TITLE,
   description: PAGE_DESCRIPTION,
-  alternates: { canonical: "/tools" },
+  alternates: { canonical: "/look-up-tools" },
   openGraph: {
     title: PAGE_TITLE,
     description: PAGE_DESCRIPTION,
-    url: `${SITE_URL}/tools`,
+    url: `${SITE_URL}/look-up-tools`,
     type: "website",
     siteName: "Nano EASM",
     locale: "en_AU",
@@ -38,7 +38,7 @@ const PAGE_JSONLD = {
   "@type": "WebPage",
   name: PAGE_TITLE,
   description: PAGE_DESCRIPTION,
-  url: `${SITE_URL}/tools`,
+  url: `${SITE_URL}/look-up-tools`,
   inLanguage: "en-AU",
   isPartOf: { "@type": "WebSite", name: "Nano EASM", url: SITE_URL },
 };
@@ -64,7 +64,7 @@ const BREADCRUMB_JSONLD = {
   "@type": "BreadcrumbList",
   itemListElement: [
     { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
-    { "@type": "ListItem", position: 2, name: "Free Tools", item: `${SITE_URL}/tools` },
+    { "@type": "ListItem", position: 2, name: "Free Tools", item: `${SITE_URL}/look-up-tools` },
   ],
 };
 
