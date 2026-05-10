@@ -104,36 +104,45 @@ const SECTIONS: Section[] = [
         method: "PATCH",
         path: "/assets/<asset_id>",
         description: "Update asset attributes (group, tags, criticality).",
+        curl: `curl -X PATCH ${HDR} -H "Content-Type: application/json" \\
+  -d '{"groupId":2,"criticality":"high"}' \\
+  ${BASE}/assets/42`,
       },
       {
         method: "DELETE",
         path: "/assets/<asset_id>",
         description: "Remove an asset. Findings tied to it are kept for history.",
+        curl: `curl -X DELETE ${HDR} ${BASE}/assets/42`,
       },
       {
         method: "GET",
         path: "/assets/<asset_id>/risk",
         description: "Composite risk score and severity breakdown for an asset.",
+        curl: `curl ${HDR} ${BASE}/assets/42/risk`,
       },
       {
         method: "GET",
         path: "/assets/<asset_id>/coverage",
         description: "Which scan profiles have run against the asset and when.",
+        curl: `curl ${HDR} ${BASE}/assets/42/coverage`,
       },
       {
         method: "GET",
         path: "/assets/<asset_id>/health",
         description: "Reachability + service status snapshot.",
+        curl: `curl ${HDR} ${BASE}/assets/42/health`,
       },
       {
         method: "GET",
         path: "/assets/<asset_id>/timeline",
         description: "Event timeline (scans, findings, status changes).",
+        curl: `curl ${HDR} ${BASE}/assets/42/timeline`,
       },
       {
         method: "GET",
         path: "/groups/<group_id>/assets",
         description: "List assets within a specific group.",
+        curl: `curl ${HDR} ${BASE}/groups/1/assets`,
       },
     ],
   },
@@ -183,6 +192,7 @@ const SECTIONS: Section[] = [
         method: "GET",
         path: "/groups/<group_id>/summary",
         description: "Group rollup — total/scanned assets, asset-type breakdown, recent scan stats.",
+        curl: `curl ${HDR} ${BASE}/groups/1/summary`,
       },
     ],
   },
@@ -217,11 +227,13 @@ const SECTIONS: Section[] = [
         method: "POST",
         path: "/scan-jobs/<job_id>/run",
         description: "Re-run a finished scan job (creates a new job, same config).",
+        curl: `curl -X POST ${HDR} ${BASE}/scan-jobs/917/run`,
       },
       {
         method: "DELETE",
         path: "/scan-jobs/<job_id>",
         description: "Delete a scan job and its findings (irreversible).",
+        curl: `curl -X DELETE ${HDR} ${BASE}/scan-jobs/917`,
       },
       {
         method: "GET",
@@ -263,6 +275,7 @@ const SECTIONS: Section[] = [
         method: "GET",
         path: "/findings/<finding_id>",
         description: "Full detail for a single finding incl. evidence + remediation.",
+        curl: `curl ${HDR} ${BASE}/findings/5510`,
       },
       {
         method: "PATCH",
@@ -306,16 +319,19 @@ const SECTIONS: Section[] = [
         method: "GET",
         path: "/discovery/jobs",
         description: "List discovery jobs (paginated).",
+        curl: `curl ${HDR} ${BASE}/discovery/jobs`,
       },
       {
         method: "GET",
         path: "/discovery/jobs/<job_id>",
         description: "Job detail incl. discovered subdomains, IPs, and modules used.",
+        curl: `curl ${HDR} ${BASE}/discovery/jobs/123`,
       },
       {
         method: "POST",
         path: "/discovery/jobs/<job_id>/cancel",
         description: "Cancel a running discovery job.",
+        curl: `curl -X POST ${HDR} ${BASE}/discovery/jobs/123/cancel`,
       },
       {
         method: "POST",
@@ -344,16 +360,23 @@ const SECTIONS: Section[] = [
         method: "POST",
         path: "/monitors",
         description: "Create a monitor for an asset or asset group.",
+        curl: `curl -X POST ${HDR} -H "Content-Type: application/json" \\
+  -d '{"assetId":42,"frequencyHours":24}' \\
+  ${BASE}/monitors`,
       },
       {
         method: "PATCH",
         path: "/monitors/<monitor_id>",
         description: "Update monitor frequency, scope, or enabled state.",
+        curl: `curl -X PATCH ${HDR} -H "Content-Type: application/json" \\
+  -d '{"enabled":false}' \\
+  ${BASE}/monitors/8`,
       },
       {
         method: "DELETE",
         path: "/monitors/<monitor_id>",
         description: "Remove a monitor.",
+        curl: `curl -X DELETE ${HDR} ${BASE}/monitors/8`,
       },
       {
         method: "GET",
@@ -365,11 +388,13 @@ const SECTIONS: Section[] = [
         method: "POST",
         path: "/monitors/alerts/<alert_id>/acknowledge",
         description: "Acknowledge an alert (tracks who/when).",
+        curl: `curl -X POST ${HDR} ${BASE}/monitors/alerts/3/acknowledge`,
       },
       {
         method: "POST",
         path: "/monitors/alerts/<alert_id>/resolve",
         description: "Mark an alert as resolved.",
+        curl: `curl -X POST ${HDR} ${BASE}/monitors/alerts/3/resolve`,
       },
     ],
   },
@@ -440,11 +465,13 @@ const SECTIONS: Section[] = [
         method: "GET",
         path: "/reports",
         description: "List reports (paginated).",
+        curl: `curl ${HDR} ${BASE}/reports`,
       },
       {
         method: "GET",
         path: "/reports/<report_id>",
         description: "Report metadata (status, type, scope).",
+        curl: `curl ${HDR} ${BASE}/reports/204`,
       },
       {
         method: "GET",
@@ -480,18 +507,21 @@ const SECTIONS: Section[] = [
         method: "DELETE",
         path: "/settings/audit-webhook",
         description: "Disable and remove the webhook config. Existing delivery logs are retained.",
+        curl: `curl -X DELETE ${HDR} ${BASE}/settings/audit-webhook`,
       },
       {
         method: "POST",
         path: "/settings/audit-webhook/test",
         description:
           "Fire a test event at the configured URL. Useful for verifying signature handling on the receiver side.",
+        curl: `curl -X POST ${HDR} ${BASE}/settings/audit-webhook/test`,
       },
       {
         method: "GET",
         path: "/settings/audit-webhook/deliveries",
         description:
           "Recent delivery attempts with status code, duration, and error message. No retries today — failed deliveries are logged but not re-attempted.",
+        curl: `curl ${HDR} ${BASE}/settings/audit-webhook/deliveries`,
       },
     ],
   },
