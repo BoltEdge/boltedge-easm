@@ -25,18 +25,37 @@ type QuickDiscoveryCardProps = {
   /** Notifies the parent when the card has results to show, so the page can
    *  expand the card to full width and tuck away the sibling tool cards. */
   onActiveChange?: (active: boolean) => void;
+  /** When provided alongside `onTokenConsumed`, the parent owns the
+   *  Turnstile widget — the card uses the parent's token, calls back
+   *  on consumption, and does not render its own widget. Standalone
+   *  pages omit these and the card manages Turnstile locally. */
+  turnstileToken?: string | null;
+  onTokenConsumed?: () => void;
 };
 
-export default function QuickDiscoveryCard({ onActiveChange }: QuickDiscoveryCardProps = {}) {
+export default function QuickDiscoveryCard({
+  onActiveChange,
+  turnstileToken: externalToken,
+  onTokenConsumed: externalConsume,
+}: QuickDiscoveryCardProps = {}) {
   const [mode, setMode] = useState<"domain" | "org">("domain");
   const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ message: string; code?: string } | null>(null);
   const [result, setResult] = useState<DiscoveryNormalized | null>(null);
 
-  // Cloudflare Turnstile — fresh token per discovery, bump key after each.
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  // Cloudflare Turnstile — when the parent manages it, use parent props.
+  // Otherwise fall back to local state and render our own widget.
+  const externalManaged = externalConsume != null;
+  const [localToken, setLocalToken] = useState<string | null>(null);
   const [widgetKey, setWidgetKey] = useState(0);
+  const turnstileToken = externalManaged ? externalToken ?? null : localToken;
+  const consumeToken = externalManaged
+    ? externalConsume
+    : () => {
+        setLocalToken(null);
+        setWidgetKey((k) => k + 1);
+      };
 
   useEffect(() => {
     onActiveChange?.(result !== null);
@@ -75,8 +94,7 @@ export default function QuickDiscoveryCard({ onActiveChange }: QuickDiscoveryCar
     }
     finally {
       setLoading(false);
-      setTurnstileToken(null);
-      setWidgetKey((k) => k + 1);
+      consumeToken();
     }
   };
 
@@ -94,13 +112,13 @@ export default function QuickDiscoveryCard({ onActiveChange }: QuickDiscoveryCar
           <select value={mode} onChange={(e) => setMode(e.target.value as any)} className="h-10 w-full rounded-lg border border-border bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"><option value="domain">Domain</option><option value="org" disabled>Org (soon)</option></select>
           <input type="text" placeholder={placeholder} value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") onDiscover(); }} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
         </div>
-        {TURNSTILE_ENABLED && (
+        {!externalManaged && TURNSTILE_ENABLED && (
           <div className="mt-3">
             <TurnstileWidget
               key={widgetKey}
-              onVerify={setTurnstileToken}
-              onExpire={() => setTurnstileToken(null)}
-              onError={() => setTurnstileToken(null)}
+              onVerify={setLocalToken}
+              onExpire={() => setLocalToken(null)}
+              onError={() => setLocalToken(null)}
             />
           </div>
         )}

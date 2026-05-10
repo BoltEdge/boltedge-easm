@@ -163,9 +163,21 @@ type QuickScanCardProps = {
   /** Notifies the parent when the card has results to show, so the page can
    *  expand the card to full width and tuck away the sibling tool cards. */
   onActiveChange?: (active: boolean) => void;
+  /** When provided alongside `onTokenConsumed`, the parent owns the
+   *  Turnstile widget — the card uses the parent's token, calls back
+   *  on consumption, and does not render its own widget. Used by
+   *  QuickToolsSection so all three landing-page cards share a single
+   *  widget. Standalone pages omit these and the card falls back to
+   *  managing Turnstile locally. */
+  turnstileToken?: string | null;
+  onTokenConsumed?: () => void;
 };
 
-export default function QuickScanCard({ onActiveChange }: QuickScanCardProps = {}) {
+export default function QuickScanCard({
+  onActiveChange,
+  turnstileToken: externalToken,
+  onTokenConsumed: externalConsume,
+}: QuickScanCardProps = {}) {
   const [type, setType] = useState<"domain" | "ip">("domain");
   const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
@@ -177,11 +189,19 @@ export default function QuickScanCard({ onActiveChange }: QuickScanCardProps = {
   const [explanationLoading, setExplanationLoading] = useState(false);
   const [explanationError, setExplanationError] = useState<string | null>(null);
 
-  // Cloudflare Turnstile — issues a fresh token per submission. Bumping
-  // widgetKey after each API call remounts the widget and triggers a new
-  // challenge (mostly invisible in managed mode).
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  // Cloudflare Turnstile — when the parent manages it (externalConsume is
+  // defined), use parent props. Otherwise fall back to local state and
+  // render our own widget below.
+  const externalManaged = externalConsume != null;
+  const [localToken, setLocalToken] = useState<string | null>(null);
   const [widgetKey, setWidgetKey] = useState(0);
+  const turnstileToken = externalManaged ? externalToken ?? null : localToken;
+  const consumeToken = externalManaged
+    ? externalConsume
+    : () => {
+        setLocalToken(null);
+        setWidgetKey((k) => k + 1);
+      };
 
   const canScan = value.trim().length > 0 && !loading && (!TURNSTILE_ENABLED || !!turnstileToken);
 
@@ -246,8 +266,7 @@ export default function QuickScanCard({ onActiveChange }: QuickScanCardProps = {
       setLoading(false);
       // The token is consumed by the verify call regardless of scan
       // outcome — remount the widget for a fresh challenge.
-      setTurnstileToken(null);
-      setWidgetKey((k) => k + 1);
+      consumeToken();
     }
   };
 
@@ -297,8 +316,7 @@ export default function QuickScanCard({ onActiveChange }: QuickScanCardProps = {
       setExplanationError(e?.message || "Could not load the explanation.");
     } finally {
       setExplanationLoading(false);
-      setTurnstileToken(null);
-      setWidgetKey((k) => k + 1);
+      consumeToken();
     }
   };
 
@@ -340,13 +358,13 @@ export default function QuickScanCard({ onActiveChange }: QuickScanCardProps = {
             className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
-        {TURNSTILE_ENABLED && (
+        {!externalManaged && TURNSTILE_ENABLED && (
           <div className="mt-3">
             <TurnstileWidget
               key={widgetKey}
-              onVerify={setTurnstileToken}
-              onExpire={() => setTurnstileToken(null)}
-              onError={() => setTurnstileToken(null)}
+              onVerify={setLocalToken}
+              onExpire={() => setLocalToken(null)}
+              onError={() => setLocalToken(null)}
             />
           </div>
         )}

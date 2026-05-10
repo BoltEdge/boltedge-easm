@@ -6,8 +6,11 @@ import FadeInOnScroll from "./Fadeinonscroll";
 import QuickScanCard from "./QuickScanCard";
 import QuickDiscoveryCard from "./QuickDiscoveryCard";
 import QuickToolsCard from "./QuickToolsCard";
+import TurnstileWidget from "./TurnstileWidget";
 
 type ActiveCard = "scan" | "discovery" | "tools" | null;
+
+const TURNSTILE_ENABLED = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 /**
  * QuickToolsSection — owns the layout for the three landing-page tool cards.
@@ -31,6 +34,19 @@ type ActiveCard = "scan" | "discovery" | "tools" | null;
 export default function QuickToolsSection() {
   const [activeCard, setActiveCard] = useState<ActiveCard>(null);
   const [nonce, setNonce] = useState(0);
+
+  // Page-level Turnstile state shared across all three cards. A single
+  // widget below the grid keeps the visible UI clean (one challenge
+  // surface, not three) and lets the token survive card switches —
+  // verify once, run any of the three tools while it's still alive
+  // (~5 minute Cloudflare lifetime). Cards that receive `onTokenConsumed`
+  // delegate to this parent and skip rendering their own widget.
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [widgetKey, setWidgetKey] = useState(0);
+  const consumeToken = useCallback(() => {
+    setTurnstileToken(null);
+    setWidgetKey((k) => k + 1);
+  }, []);
 
   // Memoised handlers — passing inline arrows would make each child's
   // onActiveChange effect re-run every render and notify falsely.
@@ -67,20 +83,50 @@ export default function QuickToolsSection() {
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 items-stretch">
         <div className={slotClass("scan")}>
           <FadeInOnScroll delay={100} className="h-full">
-            <QuickScanCard key={`scan-${nonce}`} onActiveChange={handleScanActive} />
+            <QuickScanCard
+              key={`scan-${nonce}`}
+              onActiveChange={handleScanActive}
+              turnstileToken={turnstileToken}
+              onTokenConsumed={consumeToken}
+            />
           </FadeInOnScroll>
         </div>
         <div className={slotClass("discovery")}>
           <FadeInOnScroll delay={200} className="h-full">
-            <QuickDiscoveryCard key={`discovery-${nonce}`} onActiveChange={handleDiscoveryActive} />
+            <QuickDiscoveryCard
+              key={`discovery-${nonce}`}
+              onActiveChange={handleDiscoveryActive}
+              turnstileToken={turnstileToken}
+              onTokenConsumed={consumeToken}
+            />
           </FadeInOnScroll>
         </div>
         <div className={slotClass("tools")}>
           <FadeInOnScroll delay={300} className="h-full">
-            <QuickToolsCard key={`tools-${nonce}`} onActiveChange={handleToolsActive} />
+            <QuickToolsCard
+              key={`tools-${nonce}`}
+              onActiveChange={handleToolsActive}
+              turnstileToken={turnstileToken}
+              onTokenConsumed={consumeToken}
+            />
           </FadeInOnScroll>
         </div>
       </div>
+
+      {TURNSTILE_ENABLED && (
+        <div className="mt-6 flex flex-col items-center gap-2">
+          <TurnstileWidget
+            key={widgetKey}
+            onVerify={setTurnstileToken}
+            onExpire={() => setTurnstileToken(null)}
+            onError={() => setTurnstileToken(null)}
+          />
+          <p className="text-[11px] text-white/40">
+            Verify once — token is good for the next tool you run.
+          </p>
+        </div>
+      )}
+
       {isActive && (
         <div className="mt-4 text-center text-[11px] text-white/40">
           Looking for something else?{" "}

@@ -64,15 +64,32 @@ type QuickToolsCardProps = {
   /** Notifies the parent when the card has results to show, so the page can
    *  expand the card to full width and tuck away the sibling tool cards. */
   onActiveChange?: (active: boolean) => void;
+  /** When provided alongside `onTokenConsumed`, the parent owns the
+   *  Turnstile widget — the card uses the parent's token, calls back
+   *  on consumption, and does not render its own widget. */
+  turnstileToken?: string | null;
+  onTokenConsumed?: () => void;
 };
 
-export default function QuickToolsCard({ onActiveChange }: QuickToolsCardProps = {}) {
+export default function QuickToolsCard({
+  onActiveChange,
+  turnstileToken: externalToken,
+  onTokenConsumed: externalConsume,
+}: QuickToolsCardProps = {}) {
   const [activeTool, setActiveTool] = useState<ToolId>("cert-lookup");
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const externalManaged = externalConsume != null;
+  const [localToken, setLocalToken] = useState<string | null>(null);
   const [widgetKey, setWidgetKey] = useState(0);
+  const turnstileToken = externalManaged ? externalToken ?? null : localToken;
+  const consumeToken = externalManaged
+    ? externalConsume
+    : () => {
+        setLocalToken(null);
+        setWidgetKey((k) => k + 1);
+      };
 
   const tool = TOOLS.find((t) => t.id === activeTool)!;
 
@@ -102,10 +119,9 @@ export default function QuickToolsCard({ onActiveChange }: QuickToolsCardProps =
     } catch { setResult({ error: "Request failed. Please try again." }); }
     finally {
       setLoading(false);
-      setTurnstileToken(null);
-      setWidgetKey((k) => k + 1);
+      consumeToken();
     }
-  }, [inputValue, activeTool, tool, turnstileToken]);
+  }, [inputValue, activeTool, tool, turnstileToken, consumeToken]);
 
   const emptyHint = (() => {
     if (tool.authOnly) return "";
@@ -149,12 +165,12 @@ export default function QuickToolsCard({ onActiveChange }: QuickToolsCardProps =
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
             </button>
           </div>
-          {TURNSTILE_ENABLED && (
+          {!externalManaged && TURNSTILE_ENABLED && (
             <TurnstileWidget
               key={widgetKey}
-              onVerify={setTurnstileToken}
-              onExpire={() => setTurnstileToken(null)}
-              onError={() => setTurnstileToken(null)}
+              onVerify={setLocalToken}
+              onExpire={() => setLocalToken(null)}
+              onError={() => setLocalToken(null)}
             />
           )}
         </div>
