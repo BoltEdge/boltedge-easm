@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import LandingNav from "../../LandingNav";
+import LandingFooter from "../../LandingFooter";
 import JsonLd from "../../JsonLd";
 import { ALL_SLUGS, CATEGORY_CONTENT, type CategorySlug } from "../category-content";
 
@@ -153,7 +154,7 @@ export default async function CategoryPage({ params }: { params: Promise<Params>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
             {content.headline}
           </h1>
-          <p className="mt-4 text-lg text-white/60 leading-relaxed">{content.intro}</p>
+          <p className="mt-4 text-lg text-white/65 leading-relaxed">{content.intro}</p>
 
           {/* What we detect */}
           <h2 className="mt-12 text-2xl font-semibold tracking-tight flex items-center gap-2">
@@ -189,7 +190,7 @@ export default async function CategoryPage({ params }: { params: Promise<Params>
                 className={`rounded-xl border ${accent.ring} ${accent.tint} p-5`}
               >
                 <h3 className={`text-sm font-semibold ${accent.text} mb-2`}>{s.title}</h3>
-                <p className="text-sm text-white/60 leading-relaxed">{s.body}</p>
+                <p className="text-sm text-white/65 leading-relaxed">{s.body}</p>
               </div>
             ))}
           </div>
@@ -197,7 +198,7 @@ export default async function CategoryPage({ params }: { params: Promise<Params>
           {/* CTA */}
           <div className="mt-16 rounded-xl border border-teal-500/20 bg-teal-500/[0.04] p-7 text-center">
             <h3 className="text-lg font-semibold text-white">Try it free against your domain</h3>
-            <p className="text-white/55 text-sm mt-2 max-w-xl mx-auto leading-relaxed">
+            <p className="text-white/65 text-sm mt-2 max-w-xl mx-auto leading-relaxed">
               Quick Scan runs the engines that surface {content.label.toLowerCase()}{" "}
               findings, plus the rest of the platform's coverage. No signup, no
               credit card, real results in under a minute.
@@ -211,12 +212,21 @@ export default async function CategoryPage({ params }: { params: Promise<Params>
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
-                href="/register"
+                href="/quick-discovery"
                 className="inline-flex items-center rounded-lg border border-white/20 bg-white/[0.04] px-5 py-2.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/[0.08] transition-colors"
               >
-                Get started free
+                Quick Discovery
+              </Link>
+              <Link
+                href="/look-up-tools"
+                className="inline-flex items-center rounded-lg border border-white/20 bg-white/[0.04] px-5 py-2.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/[0.08] transition-colors"
+              >
+                Free lookup tools
               </Link>
             </div>
+            <p className="text-xs text-white/40 mt-4">
+              Or <Link href="/register" className="text-teal-400 hover:text-teal-300 underline underline-offset-2">create a free account</Link> to scan your full inventory.
+            </p>
           </div>
 
           {/* Cross-links to other categories — internal linking */}
@@ -249,6 +259,8 @@ export default async function CategoryPage({ params }: { params: Promise<Params>
           </div>
         </div>
       </main>
+
+      <LandingFooter />
     </>
   );
 }

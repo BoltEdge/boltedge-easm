@@ -12,6 +12,7 @@ import {
   ArrowLeft, Bug, Globe2, KeyRound, AlertTriangle, ShieldCheck,
 } from "lucide-react";
 import LandingNav from "../LandingNav";
+import LandingFooter from "../LandingFooter";
 import JsonLd from "../JsonLd";
 // Auto-generated — do not edit by hand. Regenerate with:
 //   python backend/scripts/generate_catalogue.py
@@ -190,10 +191,9 @@ export default function CoveragePage() {
             <h1 className="text-3xl sm:text-5xl font-bold tracking-tight leading-tight">
               What Nano EASM <span className="text-teal-400">detects</span>
             </h1>
-            <p className="mt-4 text-white/60 text-base sm:text-lg max-w-2xl leading-relaxed">
-              Every alert the platform can raise falls into one of five
-              categories you can toggle independently for your organisation
-              — or per asset group.
+            <p className="mt-4 text-white/65 text-base sm:text-lg max-w-2xl leading-relaxed">
+              Five kinds of alert. Most teams only act on one or two —
+              the rest you can mute, route, or dial in once you sign up.
             </p>
           </div>
 
@@ -209,13 +209,13 @@ export default function CoveragePage() {
                 <Link
                   key={cat.id}
                   href={`/coverage/${slug}`}
-                  className={`group rounded-xl border ${visuals.ring} ${visuals.tint} p-6 transition-all hover:bg-white/[0.04]`}
+                  className={`group rounded-xl border ${visuals.ring} ${visuals.tint} p-6 transition-all hover:-translate-y-0.5 hover:bg-white/[0.04]`}
                 >
                   <div className={`w-11 h-11 rounded-lg flex items-center justify-center ${visuals.tint} border ${visuals.ring} mb-4`}>
                     <Icon className={`w-5 h-5 ${visuals.accent}`} />
                   </div>
                   <h3 className={`text-base font-semibold ${visuals.accent} mb-2`}>{cat.label}</h3>
-                  <p className="text-sm text-white/55 leading-relaxed">{cat.blurb}</p>
+                  <p className="text-sm text-white/65 leading-relaxed">{cat.blurb}</p>
                   <div className={`mt-4 text-xs font-medium ${visuals.accent} opacity-60 group-hover:opacity-100 transition-opacity`}>
                     Learn more →
                   </div>
@@ -227,7 +227,7 @@ export default function CoveragePage() {
           {/* CTA */}
           <div className="mt-16 rounded-xl border border-teal-500/20 bg-teal-500/[0.04] p-8 text-center">
             <h3 className="text-lg font-semibold text-white">Run a free quick scan</h3>
-            <p className="text-white/50 text-sm mt-2 max-w-xl mx-auto">
+            <p className="text-white/65 text-sm mt-2 max-w-xl mx-auto">
               Enter a domain, get a real result in under a minute — no signup,
               no credit card.
             </p>
@@ -248,6 +248,8 @@ export default function CoveragePage() {
           </div>
         </div>
       </main>
+
+      <LandingFooter />
     </>
   );
 }
