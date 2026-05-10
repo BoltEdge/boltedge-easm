@@ -16,6 +16,7 @@ def test_api_key_has_kind_column_with_default_customer():
 
 
 def test_api_key_kind_can_be_agent():
+    """Callers can explicitly set kind='agent' to tag an internal agent-platform key."""
     key = ApiKey(
         organization_id=1,
         user_id=1,

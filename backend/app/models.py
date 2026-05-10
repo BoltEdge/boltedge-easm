@@ -957,6 +957,9 @@ class ApiKey(db.Model):
     # Phase-1 agent platform: 'customer' for normal API keys, 'agent' for
     # internal agent platform keys (read-only scoped, hidden from
     # customer-facing listings).
+    # server_default uses db.text() (quoted literal) rather than a bare string
+    # so the DDL emitted is unambiguous across dialects; consistent with the
+    # Boolean-column convention elsewhere in this file.
     kind = db.Column(
         db.String(20), nullable=False,
         default="customer", server_default=db.text("'customer'"),
@@ -964,6 +967,8 @@ class ApiKey(db.Model):
     )
 
     def __init__(self, **kwargs):
+        # SQLAlchemy scalar default= is applied at flush, not at construction,
+        # so transient instances would have kind=None without this override.
         kwargs.setdefault("kind", "customer")
         super().__init__(**kwargs)
 
