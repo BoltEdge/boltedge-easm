@@ -85,7 +85,7 @@ export default function ToolAccordionRow({
 
   return (
     <div
-      className={`group rounded-xl border ${tool.ring} ${tool.tint} transition-all ${isOpen ? "ring-1 ring-white/[0.06]" : "hover:bg-white/[0.04]"}`}
+      className={`group rounded-xl border ${tool.ring} ${tool.tint} transition-all ${isOpen ? "ring-1 ring-white/[0.06] sm:col-span-2 lg:col-span-3" : "hover:bg-white/[0.04]"}`}
     >
       {/* Header — clickable area; whole card surface acts as toggle when collapsed */}
       <button

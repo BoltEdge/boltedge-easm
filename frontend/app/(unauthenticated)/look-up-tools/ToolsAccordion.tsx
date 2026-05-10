@@ -28,7 +28,7 @@ export default function ToolsAccordion() {
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 items-start">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-flow-row-dense gap-5 items-start">
         {VISIBLE_TOOLS.map((tool) => (
           <ToolAccordionRow
             key={tool.id}
