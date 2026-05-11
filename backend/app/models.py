@@ -81,6 +81,12 @@ class User(db.Model):
     # Stamped at enrol-confirm. Used for audit / "MFA active since" UI.
     mfa_enrolled_at = db.Column(db.DateTime, nullable=True)
 
+    # Per-user preferences blob. Currently holds:
+    #   showProvenanceTags: bool (default false)
+    # New keys are added without further migrations — see
+    # app.settings.routes.ALLOWED_PREF_KEYS for the allowlist.
+    prefs_json = db.Column(db.JSON, nullable=False, default=dict)
+
     created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
     updated_at = db.Column(db.DateTime, nullable=False, default=now_utc, onupdate=now_utc)
 
@@ -193,6 +199,13 @@ class Organization(db.Model):
     # Otherwise a JSON list like ["finding", "scan", "auth"].
     audit_webhook_categories = db.Column(db.JSON, nullable=True)
     audit_webhook_enabled = db.Column(db.Boolean, nullable=False, default=False)
+
+    # Default alert-scope for monitors in this org. When False (default),
+    # change-detection only fires `new_finding` MonitorAlerts for findings
+    # whose first_seen_at >= scan.started_at (truly new). When True, fires
+    # on recurrences too. Individual monitors can override via
+    # Monitor.alert_on_recurrence_override.
+    alert_on_recurrence = db.Column(db.Boolean, nullable=False, default=False)
 
     @property
     def is_trialing(self) -> bool:
@@ -438,6 +451,14 @@ class Finding(db.Model):
     resolved_at = db.Column(db.DateTime, nullable=True)
     resolved_by = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), nullable=True)
     resolved_reason = db.Column(db.String(500), nullable=True)
+
+    # Provenance: timestamp of the FIRST resolution this finding ever
+    # received. Never cleared — even if the row is later unresolved or
+    # the finding recurs on a later scan. Used to drive the
+    # 'resolved_before' provenance tag and to gate monitor recurrence
+    # alerts. Set once via app.findings.helpers.mark_resolved.
+    previously_resolved_at = db.Column(db.DateTime, nullable=True, index=True)
+
     # In Progress workflow
     in_progress = db.Column(db.Boolean, default=False)
     in_progress_at = db.Column(db.DateTime, nullable=True)
@@ -621,6 +642,10 @@ class Monitor(db.Model):
     next_check_at = db.Column(db.DateTime, nullable=True)
     # Per-asset scan tracking for group monitors: {str(asset_id): last_compared_scan_job_id}
     last_scan_job_ids = db.Column(db.JSON, nullable=True, default=dict)
+
+    # Override for Organization.alert_on_recurrence. NULL = inherit
+    # org default. True/False = explicit override for this monitor.
+    alert_on_recurrence_override = db.Column(db.Boolean, nullable=True, default=None)
 
     created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
     updated_at = db.Column(db.DateTime, nullable=False, default=now_utc, onupdate=now_utc)
