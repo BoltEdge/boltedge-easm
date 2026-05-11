@@ -29,6 +29,8 @@ export interface Monitor {
   alertCount?: number;
   openAlertCount?: number;
   createdAt?: string;
+  /** null = inherit org default; true = alert on new + recurrences; false = new only */
+  alertOnRecurrenceOverride?: boolean | null;
 }
 
 export interface MonitorAlert {

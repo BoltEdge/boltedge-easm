@@ -17,6 +17,7 @@ import {
   getMonitorSettings, updateMonitorSettings,
 } from "../_lib";
 import type { MonitorSettings } from "../_lib";
+import { getOrganizationSettings, updateOrganizationSettings } from "../../../lib/api";
 
 export default function MonitoringSettingsPage() {
   const [settings, setSettings] = useState<MonitorSettings | null>(null);
@@ -25,10 +26,15 @@ export default function MonitoringSettingsPage() {
   const [newEmail, setNewEmail] = useState("");
   const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
-  const { hasFeature, canDo, planLabel, billing } = useOrg();
+  // Org-level alert scope
+  const [alertOnRecurrence, setAlertOnRecurrence] = useState<boolean>(false);
+  const [savingAlertScope, setSavingAlertScope] = useState(false);
+
+  const { hasFeature, canDo, planLabel, billing, role } = useOrg();
   const planLimit = usePlanLimit();
   const hasMonitoring = hasFeature("monitoring");
   const canEdit = canDo("edit_monitors");
+  const canEditAlertScope = role === "owner" || role === "admin";
   const monitoringFrequency = billing?.limits?.monitoringFrequency || "every_2_days";
 
   useEffect(() => {
@@ -36,6 +42,13 @@ export default function MonitoringSettingsPage() {
       getMonitorSettings().then((s) => setSettings(s)).catch(() => {}).finally(() => setLoading(false));
     } else { setLoading(false); }
   }, [hasMonitoring]);
+
+  // Load org-level alert scope default
+  useEffect(() => {
+    getOrganizationSettings().then((org: any) => {
+      setAlertOnRecurrence(!!org?.alertOnRecurrence);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!banner) return;
@@ -54,6 +67,18 @@ export default function MonitoringSettingsPage() {
       if (isPlanError(e)) planLimit.handle(e.planError);
       else setBanner({ kind: "err", text: e?.message || "Failed." });
     } finally { setSaving(false); }
+  }
+
+  async function handleAlertScopeChange(value: boolean) {
+    setAlertOnRecurrence(value);
+    if (!canEditAlertScope) return;
+    try {
+      setSavingAlertScope(true);
+      await updateOrganizationSettings({ alertOnRecurrence: value });
+      setBanner({ kind: "ok", text: "Alert scope updated." });
+    } catch {
+      setBanner({ kind: "err", text: "Failed to update alert scope." });
+    } finally { setSavingAlertScope(false); }
   }
 
   function addEmail() {
@@ -337,6 +362,60 @@ export default function MonitoringSettingsPage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Alert scope */}
+            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5 space-y-4">
+              <div>
+                <div className="text-sm font-semibold text-white flex items-center gap-2">
+                  Alert scope (default)
+                  {savingAlertScope && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
+                </div>
+                <p className="mt-1 text-xs text-white/65 leading-relaxed">
+                  Default for all monitors in this organisation. Individual monitors
+                  can override this from their own settings.
+                </p>
+              </div>
+              <label className={cn("flex items-start gap-3", canEditAlertScope ? "cursor-pointer" : "cursor-default opacity-70")}>
+                <input
+                  type="radio"
+                  name="alert-scope"
+                  className="mt-1"
+                  checked={!alertOnRecurrence}
+                  disabled={!canEditAlertScope}
+                  onChange={() => handleAlertScopeChange(false)}
+                />
+                <div>
+                  <div className="text-sm text-white">Alert on new findings only</div>
+                  <div className="text-xs text-white/65 mt-0.5">
+                    Quiet by default. Recurring findings (seen in any earlier scan)
+                    won&apos;t fire a fresh alert.
+                  </div>
+                </div>
+              </label>
+              <label className={cn("flex items-start gap-3", canEditAlertScope ? "cursor-pointer" : "cursor-default opacity-70")}>
+                <input
+                  type="radio"
+                  name="alert-scope"
+                  className="mt-1"
+                  checked={!!alertOnRecurrence}
+                  disabled={!canEditAlertScope}
+                  onChange={() => handleAlertScopeChange(true)}
+                />
+                <div>
+                  <div className="text-sm text-white">Alert on new findings + recurrences</div>
+                  <div className="text-xs text-white/65 mt-0.5">
+                    Chatty. Every detection that wasn&apos;t in the previous scan fires
+                    an alert — including regressions of previously-resolved findings.
+                  </div>
+                </div>
+              </label>
+              {!canEditAlertScope && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Info className="w-3.5 h-3.5 shrink-0" />
+                  Only owners and admins can change this setting.
+                </p>
+              )}
             </div>
 
             {/* Plan info */}

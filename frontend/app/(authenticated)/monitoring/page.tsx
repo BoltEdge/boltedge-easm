@@ -494,6 +494,7 @@ function CreateMonitorDialog({ open, onOpenChange, monitoringFrequency, setBanne
   const [selAssetId, setSelAssetId] = useState("");
   const [monitorTypes, setMonitorTypes] = useState<string[]>(["all"]);
   const [creating, setCreating] = useState(false);
+  const [alertOverride, setAlertOverride] = useState<boolean | null>(null);
 
   // When opening in edit mode, hydrate the form from the monitor.
   // Avoid running this in create mode, which would clobber user input.
@@ -503,12 +504,14 @@ function CreateMonitorDialog({ open, onOpenChange, monitoringFrequency, setBanne
       setMonitorTypes(editingMonitor.monitorTypes && editingMonitor.monitorTypes.length > 0 ? editingMonitor.monitorTypes : ["all"]);
       const isGroup = !!(editingMonitor.groupId || editingMonitor.group_id);
       setTargetType(isGroup ? "group" : "asset");
+      setAlertOverride(editingMonitor.alertOnRecurrenceOverride ?? null);
     } else {
       // Fresh open in create mode — reset to defaults.
       setMonitorTypes(["all"]);
       setSelGroupId("");
       setSelAssetId("");
       setTargetType("asset");
+      setAlertOverride(null);
     }
   }, [open, editingMonitor]);
 
@@ -537,7 +540,7 @@ function CreateMonitorDialog({ open, onOpenChange, monitoringFrequency, setBanne
     if (isEdit && editingMonitor) {
       try {
         setCreating(true);
-        await updateMonitor(editingMonitor.id, { monitorTypes });
+        await updateMonitor(editingMonitor.id, { monitorTypes, alertOnRecurrenceOverride: alertOverride });
         setBanner({ kind: "ok", text: "Monitor updated." });
         onOpenChange(false);
         onCreated();
@@ -681,6 +684,33 @@ function CreateMonitorDialog({ open, onOpenChange, monitoringFrequency, setBanne
               })}
             </div>
           </div>
+
+          {/* Alert scope override (edit mode only) */}
+          {isEdit && (
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-white/65">Alert scope</label>
+              <select
+                value={
+                  alertOverride === null || alertOverride === undefined
+                    ? "inherit"
+                    : alertOverride
+                      ? "recurrences"
+                      : "new_only"
+                }
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const next =
+                    v === "inherit" ? null : v === "recurrences" ? true : false;
+                  setAlertOverride(next);
+                }}
+                className="w-full h-9 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-sm text-white"
+              >
+                <option value="inherit">Use organisation default</option>
+                <option value="new_only">Alert on new findings only</option>
+                <option value="recurrences">Alert on new findings + recurrences</option>
+              </select>
+            </div>
+          )}
 
           {/* Frequency info */}
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border text-xs text-muted-foreground">

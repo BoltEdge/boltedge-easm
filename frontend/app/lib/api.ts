@@ -1307,6 +1307,7 @@ export async function getOrganizationSettings(): Promise<any> {
 export async function updateOrganizationSettings(payload: {
   name?: string;
   country?: string;
+  alertOnRecurrence?: boolean;
 }): Promise<any> {
   return apiFetch<any>("/settings/organization", {
     method: "PATCH",
