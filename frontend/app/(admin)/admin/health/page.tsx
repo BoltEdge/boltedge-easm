@@ -57,6 +57,15 @@ type ProbeRollup = {
   items: ProbeItem[];
 };
 
+type RecentFailure = {
+  kind: "scan" | "discovery";
+  id: string;
+  target: string;
+  organizationName: string;
+  message: string;
+  finishedAt: string | null;
+};
+
 function StatusPill({ status }: { status: StatusKind }) {
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.healthy;
   const Icon = cfg.icon;
@@ -290,6 +299,7 @@ export default function AdminHealth() {
   const externalApis: ProbeRollup | undefined = data?.externalApis;
   const schedulers: ProbeItem[] = data?.schedulers ?? [];
   const systemItems: ProbeItem[] = data?.system?.items ?? [];
+  const recentFailures: RecentFailure[] = errors.recentFailures ?? [];
 
   return (
     <div className="space-y-5">
@@ -375,7 +385,7 @@ export default function AdminHealth() {
           </Card>
 
           {/* Error rate */}
-          <Card title="Errors — Last 24h" icon={Activity}>
+          <Card title="Errors — Last 3 Days" icon={Activity}>
             <Row
               label="Error rate"
               value={`${errors.errorRatePct ?? 0}%`}
@@ -383,10 +393,10 @@ export default function AdminHealth() {
                 (errors.errorRatePct ?? 0) > 20 ? "text-red-400" :
                 (errors.errorRatePct ?? 0) > 5 ? "text-amber-400" : "text-emerald-400"
               }
-              sub={`${(errors.failedScans24h ?? 0) + (errors.failedDiscovery24h ?? 0)} failed of ${errors.completedJobs24h ?? 0} completed`}
+              sub={`${(errors.failedScans3d ?? 0) + (errors.failedDiscovery3d ?? 0)} failed of ${errors.completedJobs3d ?? 0} completed`}
             />
-            <Row label="Failed scans" value={errors.failedScans24h ?? 0} valueClass={(errors.failedScans24h ?? 0) > 0 ? "text-red-400" : "text-white"} />
-            <Row label="Failed discovery" value={errors.failedDiscovery24h ?? 0} valueClass={(errors.failedDiscovery24h ?? 0) > 0 ? "text-red-400" : "text-white"} />
+            <Row label="Failed scans" value={errors.failedScans3d ?? 0} valueClass={(errors.failedScans3d ?? 0) > 0 ? "text-red-400" : "text-white"} />
+            <Row label="Failed discovery" value={errors.failedDiscovery3d ?? 0} valueClass={(errors.failedDiscovery3d ?? 0) > 0 ? "text-red-400" : "text-white"} />
           </Card>
 
           {/* Platform totals */}
@@ -423,6 +433,63 @@ export default function AdminHealth() {
           {/* External APIs */}
           <ProbeCard title="External APIs" icon={Plug} rollup={externalApis} />
 
+        </div>
+      )}
+
+      {/* Recent failure details — full width below the summary grid */}
+      {!loading && data && (
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <XCircle className="w-4 h-4 text-red-400" />
+              <h3 className="text-sm font-semibold text-white">
+                Recent Failures
+                <span className="ml-2 text-[10px] font-normal text-white/40">
+                  Last 3 days · showing {recentFailures.length}{recentFailures.length === 50 ? "+" : ""}
+                </span>
+              </h3>
+            </div>
+          </div>
+          {recentFailures.length === 0 ? (
+            <div className="text-xs text-white/30 py-2">
+              No failed scans or discovery jobs in the last 3 days.
+            </div>
+          ) : (
+            <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
+              {recentFailures.map((f) => (
+                <div
+                  key={`${f.kind}:${f.id}`}
+                  className="flex items-start gap-3 py-2 px-2 rounded-md hover:bg-white/[0.02] border-b border-white/[0.04] last:border-0"
+                >
+                  <span
+                    className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded border flex-shrink-0 ${
+                      f.kind === "scan"
+                        ? "bg-red-500/10 text-red-300 border-red-500/20"
+                        : "bg-fuchsia-500/10 text-fuchsia-300 border-fuchsia-500/20"
+                    }`}
+                  >
+                    {f.kind}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 text-xs text-white/80">
+                      <span className="font-mono truncate" title={f.target}>{f.target}</span>
+                      <span className="text-white/30">·</span>
+                      <span className="text-white/50 truncate" title={f.organizationName}>{f.organizationName}</span>
+                    </div>
+                    <div
+                      className="text-[11px] text-red-300/80 mt-0.5 break-words"
+                      title={f.message}
+                    >
+                      {f.message}
+                    </div>
+                    <div className="text-[10px] text-white/30 mt-0.5">
+                      {timeAgo(f.finishedAt)} · {f.kind === "scan" ? "scan" : "discovery"} {f.id}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

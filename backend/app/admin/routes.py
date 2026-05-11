@@ -2119,6 +2119,7 @@ def platform_health():
 
     now = _now_utc()
     cutoff_24h = now - timedelta(hours=24)
+    cutoff_3d  = now - timedelta(days=3)
     cutoff_7d  = now - timedelta(days=7)
 
     # ── Uptime ────────────────────────────────────────────────────
@@ -2156,19 +2157,68 @@ def platform_health():
     running_scans   = ScanJob.query.filter(ScanJob.status == "running").count()
     pending_disc    = DiscoveryJob.query.filter(DiscoveryJob.status.in_(["pending", "running"])).count()
 
-    # ── Error rates (last 24h) ────────────────────────────────────
-    failed_scans_24h = ScanJob.query.filter(
-        ScanJob.status == "failed", ScanJob.finished_at >= cutoff_24h).count()
-    failed_disc_24h  = DiscoveryJob.query.filter(
-        DiscoveryJob.status == "failed", DiscoveryJob.completed_at >= cutoff_24h).count()
-    completed_scans_24h = ScanJob.query.filter(
-        ScanJob.status == "completed", ScanJob.finished_at >= cutoff_24h).count()
-    completed_disc_24h  = DiscoveryJob.query.filter(
+    # ── Error rates (last 3 days) ─────────────────────────────────
+    failed_scans_3d = ScanJob.query.filter(
+        ScanJob.status == "failed", ScanJob.finished_at >= cutoff_3d).count()
+    failed_disc_3d  = DiscoveryJob.query.filter(
+        DiscoveryJob.status == "failed", DiscoveryJob.completed_at >= cutoff_3d).count()
+    completed_scans_3d = ScanJob.query.filter(
+        ScanJob.status == "completed", ScanJob.finished_at >= cutoff_3d).count()
+    completed_disc_3d  = DiscoveryJob.query.filter(
         DiscoveryJob.status.in_(["completed", "partial"]),
-        DiscoveryJob.completed_at >= cutoff_24h).count()
+        DiscoveryJob.completed_at >= cutoff_3d).count()
 
-    total_jobs_24h = failed_scans_24h + failed_disc_24h + completed_scans_24h + completed_disc_24h
-    error_rate_pct = round((failed_scans_24h + failed_disc_24h) / total_jobs_24h * 100, 1) if total_jobs_24h else 0.0
+    total_jobs_3d = failed_scans_3d + failed_disc_3d + completed_scans_3d + completed_disc_3d
+    error_rate_pct = round((failed_scans_3d + failed_disc_3d) / total_jobs_3d * 100, 1) if total_jobs_3d else 0.0
+
+    # ── Recent failure details (last 3 days) ──────────────────────
+    # Surface the actual error_message so a superadmin can diagnose
+    # without having to query the DB. Capped at 50 most-recent rows
+    # across both job kinds so a pathological burst can't bloat the
+    # response. Asset/target identifies the work; org name identifies
+    # the tenant impacted.
+    failed_scan_rows = (
+        db.session.query(ScanJob, Asset, Organization)
+        .join(Asset, ScanJob.asset_id == Asset.id)
+        .join(Organization, Asset.organization_id == Organization.id)
+        .filter(ScanJob.status == "failed", ScanJob.finished_at >= cutoff_3d)
+        .order_by(ScanJob.finished_at.desc())
+        .limit(50)
+        .all()
+    )
+    failed_disc_rows = (
+        db.session.query(DiscoveryJob, Organization)
+        .join(Organization, DiscoveryJob.organization_id == Organization.id)
+        .filter(DiscoveryJob.status == "failed", DiscoveryJob.completed_at >= cutoff_3d)
+        .order_by(DiscoveryJob.completed_at.desc())
+        .limit(50)
+        .all()
+    )
+
+    def _iso_utc(dt):
+        return dt.isoformat() + "Z" if dt else None
+
+    recent_failures = []
+    for sj, asset, org in failed_scan_rows:
+        recent_failures.append({
+            "kind": "scan",
+            "id": sj.public_id or str(sj.id),
+            "target": asset.value,
+            "organizationName": org.name,
+            "message": sj.error_message or "(no error message recorded)",
+            "finishedAt": _iso_utc(sj.finished_at),
+        })
+    for dj, org in failed_disc_rows:
+        recent_failures.append({
+            "kind": "discovery",
+            "id": dj.public_id or str(dj.id),
+            "target": dj.target,
+            "organizationName": org.name,
+            "message": dj.error_message or "(no error message recorded)",
+            "finishedAt": _iso_utc(dj.completed_at),
+        })
+    recent_failures.sort(key=lambda r: r["finishedAt"] or "", reverse=True)
+    recent_failures = recent_failures[:50]
 
     # ── Platform totals ───────────────────────────────────────────
     from app.models import Finding
@@ -2264,10 +2314,11 @@ def platform_health():
             "activeDiscovery": pending_disc,
         },
         errors={
-            "failedScans24h": failed_scans_24h,
-            "failedDiscovery24h": failed_disc_24h,
-            "completedJobs24h": completed_scans_24h + completed_disc_24h,
+            "failedScans3d": failed_scans_3d,
+            "failedDiscovery3d": failed_disc_3d,
+            "completedJobs3d": completed_scans_3d + completed_disc_3d,
             "errorRatePct": error_rate_pct,
+            "recentFailures": recent_failures,
         },
         platform={
             "totalOrgs": total_orgs,
