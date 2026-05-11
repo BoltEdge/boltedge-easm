@@ -74,6 +74,34 @@ function engineList(profile: ScanProfile): string[] {
   return features;
 }
 
+/** Plan-usage hint — only renders when org context has both billing
+ *  usage and a finite scansPerMonth cap. Designed to slot inside the
+ *  "What you'll get" card without forcing a layout shift when data
+ *  isn't available. */
+function ScansThisMonthHint() {
+  const { billing } = useOrg();
+  const used = billing?.usage?.scansThisMonth;
+  const limit = billing?.limits?.scansPerMonth;
+  if (used == null || limit == null) return null;
+  if (limit === -1) return null; // unlimited — no need to surface
+  const remaining = Math.max(0, limit - used);
+  const pct = Math.round((used / limit) * 100);
+  const warn = remaining <= 5 || pct >= 90;
+  return (
+    <div className={cn(
+      "mt-3 pt-3 border-t flex items-center justify-between gap-3 text-[11px]",
+      warn ? "border-amber-500/20" : "border-primary/15",
+    )}>
+      <span className={cn(warn ? "text-amber-300" : "text-muted-foreground")}>
+        <span className="font-semibold text-foreground tabular-nums">{used.toLocaleString()}</span>
+        <span className="text-muted-foreground"> / {limit.toLocaleString()} scans used this month</span>
+        {warn && <span className="ml-2 text-amber-400">· nearly out</span>}
+      </span>
+      <span className="text-muted-foreground tabular-nums">{remaining.toLocaleString()} left</span>
+    </div>
+  );
+}
+
 function ProfileCard({ profile, selected, onSelect }: { profile: ScanProfile; selected: boolean; onSelect: () => void }) {
   const meta = getProfileMeta(profile);
   const Icon = meta.icon;
@@ -482,6 +510,42 @@ export default function InitiateScanPage() {
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#00b8d4]/5 border border-[#00b8d4]/20 text-xs text-muted-foreground">
                 <Info className="w-3.5 h-3.5 text-[#00b8d4] shrink-0" />
                 Scanning all <span className="font-semibold text-foreground">{assets.length}</span> asset{assets.length !== 1 ? "s" : ""} in <span className="font-semibold text-foreground">{selectedGroupName}</span>
+              </div>
+            )}
+
+            {/* "What you'll get" preview — only when the user has both a
+                profile and a target ready. Avoids surprises right before
+                the click that starts the work. */}
+            {selectedProfile && (selAssetId || (selGroupId && canBulk && assets.length > 0)) && (
+              <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Info className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-semibold text-primary uppercase tracking-wider">What you'll get</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Profile</div>
+                    <div className="text-foreground font-medium">{selectedProfile.name}</div>
+                    <div className="text-muted-foreground text-[11px] mt-0.5">{getProfileMeta(selectedProfile).depth}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Expected duration</div>
+                    <div className="text-foreground font-medium flex items-center gap-1.5"><Timer className="w-3 h-3" />{getProfileMeta(selectedProfile).duration}</div>
+                    <div className="text-muted-foreground text-[11px] mt-0.5">{selAssetId ? "per asset" : `× ${assets.length} assets`}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Engines</div>
+                    <div className="text-foreground font-medium">{engineList(selectedProfile).length} engines run</div>
+                    <div className="text-muted-foreground text-[11px] mt-0.5 truncate" title={engineList(selectedProfile).join(", ")}>
+                      {engineList(selectedProfile).slice(0, 3).join(", ")}
+                      {engineList(selectedProfile).length > 3 && ` +${engineList(selectedProfile).length - 3} more`}
+                    </div>
+                  </div>
+                </div>
+                {/* Plan-usage hint — only renders when org context has
+                    billing data and a finite scan cap. Helps customers
+                    see they're about to use up their monthly budget. */}
+                <ScansThisMonthHint />
               </div>
             )}
 

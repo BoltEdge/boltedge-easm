@@ -99,11 +99,17 @@ export default function ScanJobsPage() {
     } finally { setDeleting(false); }
   }
 
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
   const filtered = useMemo(() => {
-    if (!searchFilter.trim()) return jobs;
-    const s = searchFilter.toLowerCase();
-    return jobs.filter((j) => (j.assetValue || "").toLowerCase().includes(s) || (j.groupName || "").toLowerCase().includes(s) || (j.profileName || "").toLowerCase().includes(s) || j.status.toLowerCase().includes(s));
-  }, [jobs, searchFilter]);
+    let result = jobs;
+    if (statusFilter !== "all") result = result.filter((j) => j.status === statusFilter);
+    if (searchFilter.trim()) {
+      const s = searchFilter.toLowerCase();
+      result = result.filter((j) => (j.assetValue || "").toLowerCase().includes(s) || (j.groupName || "").toLowerCase().includes(s) || (j.profileName || "").toLowerCase().includes(s));
+    }
+    return result;
+  }, [jobs, searchFilter, statusFilter]);
 
   const stats = useMemo(() => ({
     total: jobs.length,
@@ -112,6 +118,55 @@ export default function ScanJobsPage() {
     completed: jobs.filter((j) => j.status === "completed").length,
     failed: jobs.filter((j) => j.status === "failed").length,
   }), [jobs]);
+
+  // Failure-rate warning — surfaces when the failed-to-finished ratio
+  // crosses 15%. The threshold is intentionally low: customers should
+  // notice systemic failures (bad creds, API outage, plan throttle)
+  // before they bury themselves in re-runs.
+  const failureRate = useMemo(() => {
+    const finished = stats.completed + stats.failed;
+    if (finished === 0) return 0;
+    return Math.round((stats.failed / finished) * 100);
+  }, [stats]);
+  const showFailureWarning = failureRate >= 15 && stats.failed >= 3;
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const failedJobs = useMemo(() => jobs.filter((j) => j.status === "failed"), [jobs]);
+  const selectedFailed = useMemo(
+    () => failedJobs.filter((j) => selectedIds.has(String(j.id))),
+    [failedJobs, selectedIds]
+  );
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function selectAllFailed() {
+    setSelectedIds(new Set(failedJobs.map((j) => String(j.id))));
+  }
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+  async function deleteSelectedFailed() {
+    if (selectedFailed.length === 0) return;
+    if (!confirm(`Delete ${selectedFailed.length} failed scan job${selectedFailed.length === 1 ? "" : "s"}? This removes the jobs from history; assets are untouched.`)) return;
+    let ok = 0, err = 0;
+    for (const job of selectedFailed) {
+      try { await deleteScanJob(String(job.id)); ok++; }
+      catch { err++; }
+    }
+    setJobs((p) => p.filter((j) => !(j.status === "failed" && selectedIds.has(String(j.id)))));
+    setSelectedIds(new Set());
+    setBanner({
+      kind: err === 0 ? "ok" : "err",
+      text: err === 0
+        ? `Deleted ${ok} failed scan${ok === 1 ? "" : "s"}.`
+        : `Deleted ${ok}, ${err} failed to delete.`,
+    });
+  }
 
   return (
     <main className="flex-1 overflow-y-auto bg-background">
@@ -136,23 +191,105 @@ export default function ScanJobsPage() {
           <div className={cn("rounded-xl border px-4 py-3 text-sm", banner.kind === "ok" ? "border-[#10b981]/30 bg-[#10b981]/10 text-[#b7f7d9]" : "border-red-500/30 bg-red-500/10 text-red-200")}>{banner.text}</div>
         )}
 
-        {/* Stats */}
-        <div className="flex items-center gap-6 bg-card border border-border rounded-xl px-6 py-4">
-          <div className="flex items-center gap-2"><span className="text-2xl font-bold text-foreground">{stats.total}</span><span className="text-xs text-muted-foreground">Total</span></div>
-          <div className="w-px h-8 bg-border" />
-          <div className="flex items-center gap-2"><Loader2 className="w-4 h-4 text-[#00b8d4]" /><span className="text-2xl font-bold text-[#00b8d4]">{stats.running}</span><span className="text-xs text-muted-foreground">Running</span></div>
-          <div className="w-px h-8 bg-border" />
-          <div className="flex items-center gap-2"><Clock className="w-4 h-4 text-[#ffcc00]" /><span className="text-2xl font-bold text-[#ffcc00]">{stats.queued}</span><span className="text-xs text-muted-foreground">Queued</span></div>
-          <div className="w-px h-8 bg-border" />
-          <div className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-[#10b981]" /><span className="text-2xl font-bold text-[#10b981]">{stats.completed}</span><span className="text-xs text-muted-foreground">Completed</span></div>
-          <div className="w-px h-8 bg-border" />
-          <div className="flex items-center gap-2"><XCircle className="w-4 h-4 text-red-400" /><span className="text-2xl font-bold text-red-400">{stats.failed}</span><span className="text-xs text-muted-foreground">Failed</span></div>
+        {/* Stats — compact chip row instead of the previous full-bleed
+            5-card layout. Same data, ~1/3 the vertical space, and
+            clickable to filter by that status. */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {[
+            { key: "all",       label: "Total",     value: stats.total,     icon: Activity,     color: "text-foreground",    activeBg: "bg-foreground/10 border-foreground/30" },
+            { key: "running",   label: "Running",   value: stats.running,   icon: Loader2,      color: "text-[#00b8d4]",     activeBg: "bg-[#00b8d4]/10 border-[#00b8d4]/40", spin: true },
+            { key: "queued",    label: "Queued",    value: stats.queued,    icon: Clock,        color: "text-[#ffcc00]",     activeBg: "bg-[#ffcc00]/10 border-[#ffcc00]/40" },
+            { key: "completed", label: "Completed", value: stats.completed, icon: CheckCircle2, color: "text-[#10b981]",     activeBg: "bg-[#10b981]/10 border-[#10b981]/40" },
+            { key: "failed",    label: "Failed",    value: stats.failed,    icon: XCircle,      color: "text-red-400",       activeBg: "bg-red-500/10 border-red-500/40" },
+          ].map(({ key, label, value, icon: Icon, color, activeBg, spin }) => {
+            const active = statusFilter === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setStatusFilter(key)}
+                className={cn(
+                  "inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm transition-colors",
+                  active ? activeBg : "border-border bg-card/40 hover:bg-card/60"
+                )}
+              >
+                <Icon className={cn("w-3.5 h-3.5", color, spin && value > 0 && "animate-spin")} />
+                <span className={cn("font-bold tabular-nums", color)}>{value}</span>
+                <span className="text-muted-foreground">{label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Toolbar */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="relative flex-1 max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Search jobs..." value={searchFilter} onChange={(e) => setSearchFilter(e.target.value)} className="pl-9" /></div>
-          <Button variant="ghost" size="sm" onClick={load} className="text-primary hover:bg-primary/10"><RefreshCcw className="w-4 h-4 mr-2" />Refresh</Button>
+        {/* High-failure-rate warning — surfaces only when something looks
+            systemically wrong (>=15% failure rate AND >=3 failures). */}
+        {showFailureWarning && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/[0.05] px-4 py-3 flex items-start gap-3">
+            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-red-200">
+                <span className="font-semibold">{failureRate}% failure rate</span> across {stats.completed + stats.failed} finished scans
+                <span className="text-red-300/70"> · this is unusually high — check the failure reasons below or contact support.</span>
+              </p>
+            </div>
+            <button
+              onClick={() => setStatusFilter("failed")}
+              className="shrink-0 text-xs font-medium text-red-300 hover:text-red-200 underline underline-offset-2"
+            >
+              Show failed only →
+            </button>
+          </div>
+        )}
+
+        {/* Bulk-action bar — surfaces when one or more failed scans are
+            selected. Lives above the toolbar so it doesn't shift table
+            rows when it appears/disappears. */}
+        {selectedIds.size > 0 && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/[0.05] px-4 py-3 flex items-center gap-3 flex-wrap">
+            <span className="text-sm text-foreground">
+              <span className="font-semibold">{selectedFailed.length}</span> failed scan{selectedFailed.length === 1 ? "" : "s"} selected
+            </span>
+            <div className="flex-1" />
+            <Button variant="outline" size="sm" onClick={clearSelection} className="border-border text-foreground hover:bg-accent">
+              Clear
+            </Button>
+            <Button size="sm" onClick={deleteSelectedFailed} className="bg-red-500 hover:bg-red-600 text-white">
+              <Trash2 className="w-3 h-3 mr-1.5" />Delete {selectedFailed.length} selected
+            </Button>
+          </div>
+        )}
+
+        {/* Toolbar — search + status dropdown (mirror of the chip row for
+            keyboard / accessibility users) + select-all-failed shortcut +
+            refresh. */}
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-2 flex-1 min-w-0 max-w-2xl">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Search by asset, group, or profile..." value={searchFilter} onChange={(e) => setSearchFilter(e.target.value)} className="pl-9" />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-10 rounded-md border border-border bg-input-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="all">All statuses</option>
+              <option value="running">Running</option>
+              <option value="queued">Queued</option>
+              <option value="completed">Completed</option>
+              <option value="failed">Failed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            {failedJobs.length > 0 && statusFilter === "failed" && selectedIds.size === 0 && (
+              <Button variant="outline" size="sm" onClick={selectAllFailed} className="border-border text-foreground hover:bg-accent">
+                Select all failed ({failedJobs.length})
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={load} className="border-border text-foreground hover:bg-accent">
+              <RefreshCcw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Table */}
@@ -162,6 +299,7 @@ export default function ScanJobsPage() {
           ) : (
             <div className="overflow-x-auto"><table className="w-full">
               <thead className="bg-muted/30"><tr>
+                <th className="w-10 p-4"></th>
                 <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Status</th>
                 <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Asset</th>
                 <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Profile</th>
@@ -174,8 +312,20 @@ export default function ScanJobsPage() {
                 {filtered.map((job) => {
                   const StatusIcon = jobStatusIcon(job.status);
                   const pm = getProfileMetaByName(job.profileName);
+                  const isFailed = job.status === "failed";
                   return (
                     <tr key={job.id} className="hover:bg-accent/30 transition-colors">
+                      <td className="p-4 align-top pt-5">
+                        {isFailed && canDelete && (
+                          <input
+                            type="checkbox"
+                            aria-label="Select failed scan"
+                            checked={selectedIds.has(String(job.id))}
+                            onChange={() => toggleSelected(String(job.id))}
+                            className="rounded border-border bg-background text-primary focus:ring-primary/40 cursor-pointer"
+                          />
+                        )}
+                      </td>
                       <td className="p-4">
                         <span className={cn("inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-semibold", jobStatusBadge(job.status))}>
                           <StatusIcon className={cn("w-3 h-3", job.status === "running" && "animate-spin")} />{job.status}

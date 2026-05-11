@@ -52,6 +52,24 @@ function frequencyLabel(sch: ScanSchedule): string {
   return `${sch.frequency} at ${sch.timeOfDay} UTC`;
 }
 
+// Convert "HH:MM" UTC to the browser's local timezone for an inline hint
+// next to the UTC label. Customer in Sydney shouldn't have to do the math.
+function localTimeFromUtc(utcTime: string): string {
+  try {
+    const [h, m] = utcTime.split(":").map(Number);
+    if (isNaN(h) || isNaN(m)) return "";
+    const d = new Date();
+    d.setUTCHours(h, m, 0, 0);
+    const local = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
+    // Short timezone abbreviation. May fall back to GMT+N on some browsers — both readable.
+    const tz = new Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
+      .formatToParts(d).find((p) => p.type === "timeZoneName")?.value || "";
+    return `${local}${tz ? ` ${tz}` : ""}`;
+  } catch {
+    return "";
+  }
+}
+
 /* ── Create Schedule Modal ── */
 
 function ScheduleModal({ open, onOpenChange, groups, profiles, setBanner, onCreated, planLimit }: {
@@ -245,7 +263,7 @@ export default function SchedulesPage() {
 
         <div className="flex items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Search..." value={searchFilter} onChange={(e) => setSearchFilter(e.target.value)} className="pl-9" /></div>
-          <Button variant="ghost" size="sm" onClick={load} className="text-primary hover:bg-primary/10"><RefreshCcw className="w-4 h-4 mr-2" />Refresh</Button>
+          <Button variant="outline" size="sm" onClick={load} className="border-border text-foreground hover:bg-accent"><RefreshCcw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />Refresh</Button>
         </div>
 
         <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -285,9 +303,41 @@ export default function SchedulesPage() {
                       </td>
                       <td className="p-4"><div className="flex flex-col gap-0.5"><div className="flex items-center gap-2"><span className="font-mono text-sm text-foreground">{sch.scheduleType === "group" ? (sch.groupName || `Group #${sch.groupId}`) : (sch.assetValue || `Asset #${sch.assetId}`)}</span><span className={cn("px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase", sch.scheduleType === "group" ? "bg-[#00b8d4]/10 text-[#00b8d4]" : "bg-primary/10 text-primary")}>{sch.scheduleType}</span></div>{sch.name && <span className="text-xs text-primary/70 italic">{sch.name}</span>}</div></td>
                       <td className="p-4"><div className="flex items-center gap-2"><div className={cn("w-6 h-6 rounded flex items-center justify-center", pm.bg)}><PI className={cn("w-3.5 h-3.5", pm.color)} /></div><span className="text-sm text-foreground">{sch.profileName || "Default"}</span></div></td>
-                      <td className="p-4"><span className="text-sm text-foreground flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-muted-foreground" />{frequencyLabel(sch)}</span></td>
-                      <td className="p-4"><span className="text-sm text-muted-foreground">{sch.enabled ? formatWhen(sch.nextRunAt) : "-"}</span></td>
-                      <td className="p-4"><span className="text-sm text-muted-foreground">{timeAgo(sch.lastRunAt)}</span></td>
+                      <td className="p-4">
+                        <span className="text-sm text-foreground flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-muted-foreground" />{frequencyLabel(sch)}
+                        </span>
+                        {/* Local-time hint next to UTC — Sydney/LA/London users shouldn't have to do the math. */}
+                        {sch.timeOfDay && (
+                          <div className="text-[11px] text-muted-foreground/70 mt-0.5 ml-5">
+                            = {localTimeFromUtc(sch.timeOfDay)} local
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-4"><span className="text-sm text-muted-foreground">{sch.enabled ? formatWhen(sch.nextRunAt) : "—"}</span></td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          {sch.lastRunAt && (
+                            <span
+                              className={cn(
+                                "w-1.5 h-1.5 rounded-full flex-shrink-0",
+                                sch.lastScanJobId ? "bg-emerald-400" : "bg-amber-400"
+                              )}
+                              title={sch.lastScanJobId ? "Last run produced a scan job" : "Last run had no job recorded"}
+                            />
+                          )}
+                          <span className="text-sm text-muted-foreground">{timeAgo(sch.lastRunAt)}</span>
+                          {sch.lastScanJobId && (
+                            <a
+                              href={`/scan-jobs/${sch.lastScanJobId}`}
+                              className="text-[11px] text-primary hover:opacity-80"
+                              title="View the most recent scan job triggered by this schedule"
+                            >
+                              view →
+                            </a>
+                          )}
+                        </div>
+                      </td>
                       {hasActions && (
                         <td className="p-4"><div className="flex items-center justify-end gap-2">
                           {canRunNow && <Button size="sm" variant="outline" onClick={() => handleRunNow(sch)} className="border-primary/50 text-primary hover:bg-primary/10"><Play className="w-3 h-3 mr-1" />Run Now</Button>}
@@ -301,6 +351,58 @@ export default function SchedulesPage() {
             </table></div>
           )}
         </div>
+
+        {/* Upcoming runs hint — fills the void below the table with a
+            short list of the next few fires across all active schedules,
+            sorted soonest-first. Only renders when there's something to
+            show. */}
+        {(() => {
+          const now = Date.now();
+          const upcoming = schedules
+            .filter((s) => s.enabled && s.nextRunAt)
+            .map((s) => {
+              const t = new Date(s.nextRunAt!).getTime();
+              return { sch: s, when: t, msAway: t - now };
+            })
+            .filter((u) => !isNaN(u.when))
+            .sort((a, b) => a.when - b.when)
+            .slice(0, 5);
+          if (upcoming.length === 0) return null;
+          return (
+            <div className="bg-card border border-border rounded-xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-[#00b8d4]" />
+                  <h3 className="text-sm font-semibold text-foreground">Upcoming runs</h3>
+                </div>
+                <span className="text-[11px] text-muted-foreground">Next {upcoming.length} across all schedules</span>
+              </div>
+              <div className="space-y-2">
+                {upcoming.map(({ sch, when, msAway }) => {
+                  const target = sch.scheduleType === "group" ? (sch.groupName || `Group #${sch.groupId}`) : (sch.assetValue || `Asset #${sch.assetId}`);
+                  const inMin = Math.round(msAway / 60000);
+                  const relative = inMin < 1 ? "soon" :
+                    inMin < 60 ? `in ${inMin}m` :
+                    inMin < 1440 ? `in ${Math.round(inMin / 60)}h` :
+                    `in ${Math.round(inMin / 1440)}d`;
+                  return (
+                    <div key={sch.id} className="flex items-center justify-between gap-3 py-1.5 text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#00b8d4] flex-shrink-0" />
+                        <span className="font-mono text-foreground truncate">{target}</span>
+                        <span className="text-muted-foreground/70 truncate">· {sch.profileName || "Default"}</span>
+                      </div>
+                      <span className="text-muted-foreground tabular-nums flex-shrink-0">
+                        {new Date(when).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        <span className="ml-2 text-[#00b8d4]">{relative}</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
           <DialogContent className="bg-card border-border text-foreground sm:max-w-[440px]">
