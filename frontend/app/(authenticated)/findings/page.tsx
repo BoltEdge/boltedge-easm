@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   AlertTriangle, Search, Loader2, Download, EyeOff, Eye,
   CheckSquare, Square, X, ChevronDown, ChevronLeft, ChevronRight,
@@ -42,6 +43,26 @@ function formatDate(d?: any) {
   else dt = d instanceof Date ? d : new Date(d);
   if (isNaN(dt.getTime())) return "\u2014";
   return dt.toLocaleString();
+}
+
+/** Relative time for recent moments, absolute (Mon DD) for older. The
+ *  full timestamp is available on hover via title attribute, so power
+ *  users keep precision while the common-case reader sees "2h ago". */
+function formatRelativeOrDate(d?: any): { display: string; full: string } {
+  if (!d) return { display: "\u2014", full: "" };
+  let dt: Date;
+  if (typeof d === "string" && !d.endsWith("Z") && !d.includes("+")) dt = new Date(d + "Z");
+  else dt = d instanceof Date ? d : new Date(d);
+  if (isNaN(dt.getTime())) return { display: "\u2014", full: "" };
+  const sec = Math.floor((Date.now() - dt.getTime()) / 1000);
+  const full = dt.toLocaleString();
+  if (sec < 60) return { display: "just now", full };
+  if (sec < 3600) return { display: `${Math.floor(sec / 60)}m ago`, full };
+  if (sec < 86400) return { display: `${Math.floor(sec / 3600)}h ago`, full };
+  const days = Math.floor(sec / 86400);
+  if (days < 7) return { display: `${days}d ago`, full };
+  // 7d+ \u2192 absolute date so the eye can scan dates instead of doing math
+  return { display: dt.toLocaleDateString(undefined, { month: "short", day: "numeric" }), full };
 }
 
 function getSeverity(f: any): SeverityKey {
@@ -144,12 +165,12 @@ const STATUS_TABS: { key: StatusKey; label: string; icon: React.ComponentType<{ 
   { key: "all",           label: "All",            icon: Eye },
 ];
 
-const STATUS_BADGE_CONFIG: Record<string, { label: string; class: string }> = {
-  open:          { label: "OPEN",          class: "text-red-300 bg-red-500/10 border-red-500/20" },
-  in_progress:   { label: "IN PROGRESS",   class: "text-blue-300 bg-blue-500/10 border-blue-500/20" },
-  accepted_risk: { label: "ACCEPTED RISK", class: "text-amber-300 bg-amber-500/10 border-amber-500/20" },
-  suppressed:    { label: "SUPPRESSED",    class: "text-zinc-300 bg-zinc-500/10 border-zinc-500/20" },
-  resolved:      { label: "RESOLVED",      class: "text-emerald-300 bg-emerald-500/10 border-emerald-500/20" },
+const STATUS_BADGE_CONFIG: Record<string, { label: string; class: string; dot: string }> = {
+  open:          { label: "Open",          class: "text-red-300 bg-red-500/10 border-red-500/20",          dot: "bg-red-400" },
+  in_progress:   { label: "In progress",   class: "text-blue-300 bg-blue-500/10 border-blue-500/20",       dot: "bg-blue-400 animate-pulse" },
+  accepted_risk: { label: "Accepted risk", class: "text-amber-300 bg-amber-500/10 border-amber-500/20",    dot: "bg-amber-400" },
+  suppressed:    { label: "Suppressed",    class: "text-zinc-300 bg-zinc-500/10 border-zinc-500/20",       dot: "bg-zinc-400" },
+  resolved:      { label: "Resolved",      class: "text-emerald-300 bg-emerald-500/10 border-emerald-500/20", dot: "bg-emerald-400" },
 };
 
 // Bulk action options — what you can do with selected findings
@@ -239,6 +260,10 @@ export default function FindingsPage() {
   // severity-first, but users hitting this page after a fresh scan want
   // to see what just landed, not re-litigate yesterday's criticals.
   const [sortBy, setSortBy] = useState<"recent" | "severity">("recent");
+  // Group-by — purely a display concern; filters still apply globally.
+  // "none" keeps the original flat table; "asset" / "category" insert
+  // section header rows between findings.
+  const [groupBy, setGroupBy] = useState<"none" | "asset" | "category">("none");
   const [sinceFilter, setSinceFilter] = useState<"all" | "24h" | "7d" | "30d" | "90d">("all");
   // Provenance filter — mirrors the pill priorities (resolved_before > new
   // > seen_before). Independent of the showProvenanceTags display pref so
@@ -253,6 +278,37 @@ export default function FindingsPage() {
   // Detail dialog
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selected, setSelected] = useState<Finding | null>(null);
+
+  // Deep-link: open the dialog for ?focus=<findingId> on mount and keep
+  // the URL in sync so customers can copy/share a link to a specific
+  // finding. The findings list is paginated; if the focused finding isn't
+  // in the current page yet, we leave the param in the URL and let it
+  // resolve once that page loads (the dialog will open then).
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const focusId = searchParams?.get("focus") || null;
+  // Tracks whether we've already auto-opened from the URL — prevents the
+  // dialog from re-opening every time the findings list refreshes.
+  const autoOpenedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusId || autoOpenedRef.current === focusId) return;
+    const match = findings.find((f: any) => String(f.id) === focusId);
+    if (match) {
+      autoOpenedRef.current = focusId;
+      setSelected(match);
+      setDetailsOpen(true);
+    }
+  }, [focusId, findings]);
+
+  function setFocusInUrl(id: string | null) {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set("focus", id);
+    else url.searchParams.delete("focus");
+    // replaceState avoids a history entry per open/close — feels like a
+    // small navigation cost otherwise.
+    window.history.replaceState({}, "", url.toString());
+  }
 
   // Bulk status-change dialog
   const [bulkActionOpen, setBulkActionOpen] = useState(false);
@@ -530,30 +586,30 @@ export default function FindingsPage() {
           </div>
         )}
 
-        {/* ── Dashboard Summary ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {/* ── Dashboard Summary — compact chip row replaces the previous
+              6-card grid. Same data, ~1/3 the vertical space; clicking a
+              chip applies that filter. */}
+        <div className="flex items-center gap-2 flex-wrap">
           {[
-            { key: "total",    label: "Total",       value: total,                          icon: AlertTriangle, color: "text-foreground", bg: "bg-card",            border: "border-border",          onClick: () => { setStatusFilter("all"); setSeverityFilter("all"); } },
-            { key: "open",     label: "Open",        value: statusCounts.open || 0,         icon: AlertCircle,   color: "text-red-300",    bg: "bg-red-500/10",      border: "border-red-500/20",      onClick: () => setStatusFilter("open") },
-            { key: "critical", label: "Critical",    value: severityCounts.critical || 0,   icon: AlertCircle,   color: "text-red-300",    bg: "bg-red-500/10",      border: "border-red-500/20",      onClick: () => { setSeverityFilter("critical"); setStatusFilter("open"); } },
-            { key: "high",     label: "High",        value: severityCounts.high || 0,       icon: AlertTriangle, color: "text-orange-300", bg: "bg-orange-500/10",   border: "border-orange-500/20",   onClick: () => { setSeverityFilter("high"); setStatusFilter("open"); } },
-            { key: "medium",   label: "Medium",      value: severityCounts.medium || 0,     icon: AlertTriangle, color: "text-yellow-300", bg: "bg-yellow-500/10",   border: "border-yellow-500/20",   onClick: () => { setSeverityFilter("medium"); setStatusFilter("open"); } },
-            { key: "resolved", label: "Resolved",    value: statusCounts.resolved || 0,     icon: CheckCircle2,  color: "text-emerald-300",bg: "bg-emerald-500/10",  border: "border-emerald-500/20",  onClick: () => setStatusFilter("resolved") },
-          ].map(({ key, label, value, icon: Icon, color, bg, border, onClick }) => (
+            { key: "total",    label: "Total",    value: total,                          icon: AlertTriangle, color: "text-foreground",  activeBg: "bg-foreground/10 border-foreground/30",  onClick: () => { setStatusFilter("all"); setSeverityFilter("all"); }, isActive: statusFilter === "all" && severityFilter === "all" },
+            { key: "open",     label: "Open",     value: statusCounts.open || 0,         icon: AlertCircle,   color: "text-red-300",     activeBg: "bg-red-500/10 border-red-500/40",        onClick: () => setStatusFilter("open"), isActive: statusFilter === "open" && severityFilter === "all" },
+            { key: "critical", label: "Critical", value: severityCounts.critical || 0,   icon: AlertCircle,   color: "text-red-300",     activeBg: "bg-red-500/10 border-red-500/40",        onClick: () => { setSeverityFilter("critical"); setStatusFilter("open"); }, isActive: severityFilter === "critical" },
+            { key: "high",     label: "High",     value: severityCounts.high || 0,       icon: AlertTriangle, color: "text-orange-300",  activeBg: "bg-orange-500/10 border-orange-500/40",  onClick: () => { setSeverityFilter("high"); setStatusFilter("open"); }, isActive: severityFilter === "high" },
+            { key: "medium",   label: "Medium",   value: severityCounts.medium || 0,     icon: AlertTriangle, color: "text-yellow-300",  activeBg: "bg-yellow-500/10 border-yellow-500/40",  onClick: () => { setSeverityFilter("medium"); setStatusFilter("open"); }, isActive: severityFilter === "medium" },
+            { key: "resolved", label: "Resolved", value: statusCounts.resolved || 0,     icon: CheckCircle2,  color: "text-emerald-300", activeBg: "bg-emerald-500/10 border-emerald-500/40", onClick: () => setStatusFilter("resolved"), isActive: statusFilter === "resolved" },
+          ].map(({ key, label, value, icon: Icon, color, activeBg, onClick, isActive }) => (
             <button
               key={key}
               type="button"
               onClick={onClick}
               className={cn(
-                "text-left rounded-xl border p-4 transition-all hover:scale-[1.02] active:scale-[0.98]",
-                bg, border,
+                "inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm transition-colors",
+                isActive ? activeBg : "border-border bg-card/40 hover:bg-card/60",
               )}
             >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
-                <Icon className={cn("w-4 h-4", color)} />
-              </div>
-              <div className={cn("text-2xl font-bold", color)}>{value}</div>
+              <Icon className={cn("w-3.5 h-3.5", color)} />
+              <span className={cn("font-bold tabular-nums", color)}>{value}</span>
+              <span className="text-muted-foreground">{label}</span>
             </button>
           ))}
         </div>
@@ -660,39 +716,7 @@ export default function FindingsPage() {
           </div>
         )}
 
-        {/* ── Compliance Framework Filter ── */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground mr-1">
-            <ShieldCheck className="w-3.5 h-3.5 inline-block mr-1" />Framework:
-          </span>
-          <select
-            value={frameworkFilter}
-            onChange={(e) => setFrameworkFilter(e.target.value)}
-            className={cn(
-              "h-8 rounded-md border px-2 text-xs font-medium transition-all outline-none",
-              frameworkFilter === "all"
-                ? "bg-card text-muted-foreground border-border hover:border-primary/30"
-                : "bg-primary/15 text-primary border-primary/30",
-            )}
-          >
-            <option value="all">All frameworks</option>
-            <option value="owasp_asvs">OWASP ASVS 4.0</option>
-            <option value="cis_v8">CIS Controls v8</option>
-            <option value="nist_csf">NIST CSF v2.0</option>
-            <option value="pci_dss_4">PCI-DSS 4.0</option>
-            <option value="soc2">SOC 2 (TSC)</option>
-            <option value="iso_27001">ISO/IEC 27001:2022</option>
-          </select>
-          {frameworkFilter !== "all" && (
-            <span className="text-[10px] text-muted-foreground/80 italic">
-              showing findings that map to {frameworkFilter === "soc2" || frameworkFilter === "iso_27001"
-                ? "this framework via NIST cross-walk (verify with auditor)"
-                : "this framework"}
-            </span>
-          )}
-        </div>
-
-        {/* ── Search + Group Filter ── */}
+        {/* ── Search + Group Filter (Framework filter consolidated into this row) ── */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full sm:max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -750,6 +774,25 @@ export default function FindingsPage() {
               <option value="resolved_before">Resolved before</option>
             </select>
             <select
+              value={frameworkFilter}
+              onChange={(e) => setFrameworkFilter(e.target.value)}
+              className={cn(
+                "h-10 rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40",
+                frameworkFilter === "all"
+                  ? "border-border bg-background text-foreground"
+                  : "border-primary/30 bg-primary/10 text-primary",
+              )}
+              title="Map findings to a compliance framework (SOC 2 / ISO 27001 via NIST cross-walk)"
+            >
+              <option value="all">All frameworks</option>
+              <option value="owasp_asvs">OWASP ASVS 4.0</option>
+              <option value="cis_v8">CIS Controls v8</option>
+              <option value="nist_csf">NIST CSF v2.0</option>
+              <option value="pci_dss_4">PCI-DSS 4.0</option>
+              <option value="soc2">SOC 2 (TSC)</option>
+              <option value="iso_27001">ISO/IEC 27001:2022</option>
+            </select>
+            <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
               className="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/40"
@@ -757,6 +800,21 @@ export default function FindingsPage() {
             >
               <option value="recent">Most recent</option>
               <option value="severity">By severity</option>
+            </select>
+            <select
+              value={groupBy}
+              onChange={(e) => setGroupBy(e.target.value as typeof groupBy)}
+              className={cn(
+                "h-10 rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40",
+                groupBy === "none"
+                  ? "border-border bg-background text-foreground"
+                  : "border-primary/30 bg-primary/10 text-primary",
+              )}
+              title="Group findings in the table by asset or category"
+            >
+              <option value="none">No grouping</option>
+              <option value="asset">Group by asset</option>
+              <option value="category">Group by category</option>
             </select>
             <button
               type="button"
@@ -769,6 +827,16 @@ export default function FindingsPage() {
             </button>
           </div>
         </div>
+
+        {/* SOC 2 / ISO 27001 cross-walk reminder — only when one of those
+            frameworks is selected. Keeps the legal-disclaimer copy near the
+            data, not buried in a tooltip. */}
+        {(frameworkFilter === "soc2" || frameworkFilter === "iso_27001") && (
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground/80 italic">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Showing findings mapped to this framework via NIST cross-walk — verify with your auditor.
+          </div>
+        )}
 
         {/* ── Bulk Actions Bar ── */}
         {canEdit && someSelected && (
@@ -847,31 +915,65 @@ export default function FindingsPage() {
                   </td>
                 </tr>
               )}
-              {findings.map((f: any) => {
-                const id = String(f.id);
-                const sev = getSeverity(f);
-                const cat = getCategory(f);
-                const catCfg = CATEGORY_CONFIG[cat] || CATEGORY_CONFIG.other;
-                const title = f.title || f.finding || f.name || "Finding";
-                const assetValue = f.assetValue ?? f.asset_value ?? "\u2014";
-                const gid = String(f.groupId ?? f.group_id ?? "");
-                const gname = f.groupName ?? "\u2014";
-                const detectedAt = f.detectedAt ?? f.detected_at ?? f.createdAt ?? null;
-                const status: string = f.status || "open";
-                const isSelected = selectedIds.has(id);
-                const hasRemediation = Boolean(f.remediation || f.details?._remediation);
-                const statusBadge = STATUS_BADGE_CONFIG[status];
-                const isCloud = cat === "cloud";
-                const cloudSub = isCloud ? getCloudSubType(f) : null;
+              {(() => {
+                // When groupBy != "none", insert a section header row whenever
+                // the group key changes. We rely on the findings array already
+                // being sorted (recent/severity); within each group, the same
+                // sort order applies. Simpler than re-sorting in a derived memo.
+                let lastGroupKey: string | null = null;
+                return findings.flatMap((f: any) => {
+                  const id = String(f.id);
+                  const sev = getSeverity(f);
+                  const cat = getCategory(f);
+                  const catCfg = CATEGORY_CONFIG[cat] || CATEGORY_CONFIG.other;
+                  const title = f.title || f.finding || f.name || "Finding";
+                  const assetValue = f.assetValue ?? f.asset_value ?? "\u2014";
+                  const gid = String(f.groupId ?? f.group_id ?? "");
+                  const gname = f.groupName ?? "\u2014";
+                  const detectedAt = f.detectedAt ?? f.detected_at ?? f.createdAt ?? null;
+                  const status: string = f.status || "open";
+                  const isSelected = selectedIds.has(id);
+                  const hasRemediation = Boolean(f.remediation || f.details?._remediation);
+                  const statusBadge = STATUS_BADGE_CONFIG[status];
+                  const isCloud = cat === "cloud";
+                  const cloudSub = isCloud ? getCloudSubType(f) : null;
 
-                return (
+                  // Decide whether to emit a group header before this row
+                  const groupKey = groupBy === "asset" ? assetValue
+                    : groupBy === "category" ? (catCfg.label || "Other")
+                    : null;
+                  const headerRow = (groupKey != null && groupKey !== lastGroupKey)
+                    ? (
+                      <tr key={`group-${groupKey}-${id}`} className="bg-muted/30 border-y border-border">
+                        <td colSpan={canEdit ? 8 : 7} className="px-4 py-2 text-xs font-semibold text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            {groupBy === "asset" ? (
+                              <>
+                                <Tag className="w-3.5 h-3.5" />
+                                <span className="text-foreground font-mono">{groupKey}</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className={cn("inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px]", catCfg.color)}>
+                                  {groupKey}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                    : null;
+                  lastGroupKey = groupKey;
+                  return [headerRow, (
                   <tr
                     key={id}
                     className={cn(
-                      "hover:bg-accent/30 transition-colors cursor-pointer",
+                      "group hover:bg-accent/40 hover:border-l-2 hover:border-l-primary transition-all cursor-pointer",
                       (status !== "open" && status !== "in_progress") && "opacity-60",
                     )}
-                    onClick={() => { setSelected(f); setDetailsOpen(true); }}
+                    onClick={() => { setSelected(f); setDetailsOpen(true); setFocusInUrl(id); }}
+                    title="Click to see finding details, evidence, and recommendations"
                   >
                     {canEdit && (
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -910,7 +1012,8 @@ export default function FindingsPage() {
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-1 items-start">
                         {statusBadge && (
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusBadge.class}`}>
+                          <span className={`inline-flex items-center gap-1.5 text-[10px] px-1.5 py-0.5 rounded border ${statusBadge.class}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${statusBadge.dot}`} />
                             {statusBadge.label}
                           </span>
                         )}
@@ -944,11 +1047,15 @@ export default function FindingsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {formatDate(detectedAt)}
+                      {(() => {
+                        const { display, full } = formatRelativeOrDate(detectedAt);
+                        return <span title={full || undefined}>{display}</span>;
+                      })()}
                     </td>
                   </tr>
-                );
-              })}
+                )];
+                });
+              })()}
               {findings.length === 0 && !loading && (
                 <tr>
                   <td
@@ -1015,6 +1122,7 @@ export default function FindingsPage() {
                 if (!o) {
                   setSelected(null);
                   setDetailsOpen(false);
+                  setFocusInUrl(null);
                 }
               }}
               finding={selected as any}
