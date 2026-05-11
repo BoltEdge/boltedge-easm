@@ -304,7 +304,7 @@ export default function FindingsPage() {
     try {
       const params = new URLSearchParams();
       if (severityFilter !== "all") params.set("severity", severityFilter);
-      if (categoryFilter !== "all") params.set("category", categoryFilter);
+      if (categoryFilter !== "all") params.set("customer_category", categoryFilter);
       if (frameworkFilter !== "all") params.set("framework", frameworkFilter);
       if (groupFilter !== "all") params.set("group_id", groupFilter);
       if (assetFilter !== "all") params.set("asset_id", assetFilter);
@@ -327,7 +327,7 @@ export default function FindingsPage() {
       setFindings(data.findings || data);
       setTotal(data.total ?? (data.findings || data).length);
       setSeverityCounts(data.severityCounts || {});
-      setCategoryCounts(data.categoryCounts || {});
+      setCategoryCounts(data.customerCategoryCounts || {});
       setStatusCounts(data.statusCounts || {});
       setSelectedIds(new Set());
     } catch (e: any) {
@@ -436,7 +436,7 @@ export default function FindingsPage() {
   async function handleExport() {
     const params = new URLSearchParams();
     if (severityFilter !== "all") params.set("severity", severityFilter);
-    if (categoryFilter !== "all") params.set("category", categoryFilter);
+    if (categoryFilter !== "all") params.set("customer_category", categoryFilter);
     if (frameworkFilter !== "all") params.set("framework", frameworkFilter);
     if (groupFilter !== "all") params.set("group_id", groupFilter);
     if (assetFilter !== "all") params.set("asset_id", assetFilter);
@@ -611,7 +611,11 @@ export default function FindingsPage() {
           ))}
         </div>
 
-        {/* ── Category Quick Filters ── */}
+        {/* ── Category Quick Filters (customer-facing taxonomy) ──
+            Mirrors the 5 categories surfaced on the public /coverage
+            page plus an "Other" catch-all for anything outside the
+            template registry. Counts come from the backend's
+            customerCategoryCounts roll-up. */}
         {(Object.keys(categoryCounts).length > 0 || categoryFilter !== "all") && (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-muted-foreground mr-1">
@@ -628,26 +632,31 @@ export default function FindingsPage() {
             >
               All ({totalCategoryCount})
             </button>
-            {Object.entries(categoryCounts)
-              .sort(([, a], [, b]) => b - a)
-              .map(([cat, count]) => {
-                const cfg = CATEGORY_CONFIG[cat] || CATEGORY_CONFIG.other;
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => setCategoryFilter(cat)}
-                    className={cn(
-                      "px-2.5 py-1 rounded-md border text-xs font-medium transition-all",
-                      categoryFilter === cat
-                        ? cfg.color
-                        : "bg-card text-muted-foreground border-border hover:border-primary/30",
-                    )}
-                  >
-                    {cat === "cloud" && <Cloud className="w-3 h-3 inline-block mr-1 -mt-0.5" />}
-                    {cfg.label} ({count})
-                  </button>
-                );
-              })}
+            {([
+              { id: "vulnerabilities",   label: "Vulnerabilities",   color: "bg-red-500/15 text-red-300 border-red-500/30" },
+              { id: "service_exposure",  label: "Service Exposure",  color: "bg-amber-500/15 text-amber-300 border-amber-500/30" },
+              { id: "data_leaks",        label: "Data Leaks",        color: "bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30" },
+              { id: "misconfigurations", label: "Misconfigurations", color: "bg-orange-500/15 text-orange-300 border-orange-500/30" },
+              { id: "security_hygiene",  label: "Security Hygiene",  color: "bg-teal-500/15 text-teal-300 border-teal-500/30" },
+              { id: "other",             label: "Other",             color: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30" },
+            ] as const).map(({ id, label, color }) => {
+              const count = categoryCounts[id] || 0;
+              if (count === 0 && categoryFilter !== id) return null;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setCategoryFilter(id)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md border text-xs font-medium transition-all",
+                    categoryFilter === id
+                      ? color
+                      : "bg-card text-muted-foreground border-border hover:border-primary/30",
+                  )}
+                >
+                  {label} ({count})
+                </button>
+              );
+            })}
           </div>
         )}
 

@@ -35,6 +35,22 @@ from app.extensions import db
 from app.models import Finding, Asset, AssetGroup
 from app.auth.decorators import require_auth, allow_api_key, current_user_id, current_organization_id
 from app.auth.permissions import require_role, require_permission
+from app.scanner.templates import (
+    _INTERNAL_TO_CUSTOMER as _FINDING_INTERNAL_TO_CUSTOMER,
+    CUSTOMER_CATEGORY_IDS as _FINDING_CUSTOMER_CATEGORY_IDS,
+)
+
+# Inverse of _INTERNAL_TO_CUSTOMER for filter translation:
+# customer_category -> list of internal Finding.category values.
+# Built once at import time; never mutated. "other" is implicit — any
+# finding whose category isn't in this map (or is NULL) falls there.
+_CUSTOMER_TO_INTERNAL_CATEGORIES: dict[str, list[str]] = {}
+for _internal, _customer in _FINDING_INTERNAL_TO_CUSTOMER.items():
+    _CUSTOMER_TO_INTERNAL_CATEGORIES.setdefault(_customer, []).append(_internal)
+
+# All internal categories that the validator accepts on a template. Used
+# to identify "other" (= anything not in this set) for filter + counts.
+_KNOWN_INTERNAL_CATEGORIES: list[str] = list(_FINDING_INTERNAL_TO_CUSTOMER.keys())
 from app.audit.routes import log_audit
 from app.utils.display_id import resolve_id
 from app.findings.helpers import mark_resolved, derive_provenance
@@ -358,6 +374,7 @@ def list_findings():
     # Query params
     severity = request.args.get("severity")
     category = request.args.get("category")
+    customer_category = request.args.get("customer_category")  # all | vulnerabilities | service_exposure | data_leaks | misconfigurations | security_hygiene | other
     group_id = request.args.get("group_id")
     asset_id = request.args.get("asset_id")
     search = request.args.get("q", "").strip()
@@ -379,6 +396,28 @@ def list_findings():
     if category and category != "all":
         if hasattr(Finding, "category"):
             query = query.filter(Finding.category == category)
+
+    # Customer-category filter — maps the 5 customer-facing categories
+    # (vulnerabilities / service_exposure / data_leaks / misconfigurations
+    # / security_hygiene) and the catch-all "other" to the underlying
+    # internal Finding.category values via _CUSTOMER_TO_INTERNAL_CATEGORIES.
+    if customer_category and customer_category != "all":
+        if hasattr(Finding, "category"):
+            if customer_category == "other":
+                query = query.filter(
+                    or_(
+                        Finding.category.is_(None),
+                        ~Finding.category.in_(_KNOWN_INTERNAL_CATEGORIES),
+                    )
+                )
+            else:
+                internals = _CUSTOMER_TO_INTERNAL_CATEGORIES.get(customer_category)
+                if internals:
+                    query = query.filter(Finding.category.in_(internals))
+                else:
+                    # Unknown customer_category — return empty rather than
+                    # silently ignore.
+                    query = query.filter(False)
 
     # Compliance framework filter — keep findings whose CWE maps to the
     # requested framework, plus findings without a CWE whose category
@@ -546,6 +585,16 @@ def list_findings():
                 key = "other"
             category_counts[key] = category_counts.get(key, 0) + int(cnt)
 
+    # Roll the internal-category counts up into customer-category counts
+    # so the UI can render the 5 + 1 customer-facing filter chips.
+    customer_category_counts: dict[str, int] = {cid: 0 for cid in _FINDING_CUSTOMER_CATEGORY_IDS}
+    customer_category_counts["other"] = 0
+    for cat_val, cnt in (category_counts.items() if isinstance(category_counts, dict) else []):
+        target = _FINDING_INTERNAL_TO_CUSTOMER.get(cat_val, "other")
+        if target not in customer_category_counts:
+            customer_category_counts[target] = 0
+        customer_category_counts[target] += int(cnt)
+
     # Status counts (all findings, respecting group + search filters)
     status_base = _base_query(org_id)
     if group_id and group_id != "all":
@@ -582,6 +631,7 @@ def list_findings():
         perPage=per_page,
         severityCounts=severity_counts,
         categoryCounts=category_counts,
+        customerCategoryCounts=customer_category_counts,
         statusCounts=status_counts,
     ), 200
 
