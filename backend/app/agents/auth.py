@@ -11,7 +11,6 @@ from typing import Callable
 
 from flask import request, g, jsonify
 
-from app.extensions import db
 from app.models import ApiKey
 
 

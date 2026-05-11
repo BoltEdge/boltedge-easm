@@ -1,6 +1,5 @@
-from flask import Flask, jsonify
+from flask import jsonify
 from app.agents.auth import require_agent_key
-from app.extensions import db
 from app.models import ApiKey
 import hashlib
 
