@@ -24,10 +24,14 @@ depends_on = None
 
 
 def upgrade():
-    # Add previously_resolved_at to finding
+    # Add previously_resolved_at to finding. The index is created via an
+    # explicit op.execute below so it's IF NOT EXISTS-safe (idempotent
+    # across partial reruns). Do NOT also pass index=True on the Column
+    # here — Alembic auto-creates the index in that case and we'd race
+    # the explicit create.
     op.add_column(
         'finding',
-        sa.Column('previously_resolved_at', sa.DateTime(), nullable=True, index=True),
+        sa.Column('previously_resolved_at', sa.DateTime(), nullable=True),
     )
 
     # Add prefs_json to user
@@ -48,10 +52,12 @@ def upgrade():
         sa.Column('alert_on_recurrence_override', sa.Boolean(), nullable=True),
     )
 
-    op.create_index(
-        "ix_finding_previously_resolved_at",
-        "finding",
-        ["previously_resolved_at"],
+    # Idempotent index create: a partial earlier run (or the previous
+    # version of this file that had index=True on the Column) may have
+    # already created this index. IF NOT EXISTS keeps reruns safe.
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_finding_previously_resolved_at "
+        "ON finding (previously_resolved_at)"
     )
 
     # Backfill: every existing finding that has a resolved_at gets that
@@ -66,7 +72,7 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_index("ix_finding_previously_resolved_at", table_name="finding")
+    op.execute("DROP INDEX IF EXISTS ix_finding_previously_resolved_at")
     op.drop_column('finding', 'previously_resolved_at')
     op.drop_column('user', 'prefs_json')
     op.drop_column('organization', 'alert_on_recurrence')
