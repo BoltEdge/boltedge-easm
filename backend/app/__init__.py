@@ -46,6 +46,8 @@ from app.scan_jobs.compare import compare_bp
 from app.audit import audit_bp
 from app.tools import tools_bp
 from app.admin import admin_bp
+from app.agents.routes import bp as agents_admin_bp
+from app.agents.internal_routes import bp as agents_internal_bp
 import re
 
 error_logger = logging.getLogger("app.errors")
@@ -193,6 +195,8 @@ def create_app() -> Flask:
     app.register_blueprint(audit_bp)
     app.register_blueprint(tools_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(agents_admin_bp)
+    app.register_blueprint(agents_internal_bp)
 
     # ── Global Error Handlers ────────────────────────────────────────
     # Return clean JSON for all errors — never expose tracebacks to users.
