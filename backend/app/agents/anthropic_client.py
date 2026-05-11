@@ -1,0 +1,98 @@
+"""Anthropic API client wrapper with cost tracking and a fake for tests.
+
+Production code uses `RealAnthropicClient`. Tests use `FakeAnthropicClient`
+injected via the `client` parameter on `runtime.run_agent`. There is one
+manual smoke test (later) that exercises the real client end-to-end.
+"""
+from __future__ import annotations
+import dataclasses
+import os
+import time
+
+# Prices in USD per 1M tokens. Update when Anthropic pricing changes.
+PRICING = {
+    "claude-opus-4-7":   {"input": 15.00, "output": 75.00},
+    "claude-sonnet-4-6": {"input":  3.00, "output": 15.00},
+    "claude-haiku-4-5-20251001": {"input": 0.80, "output": 4.00},
+}
+
+
+@dataclasses.dataclass(frozen=True)
+class LlmCall:
+    model: str
+    system: str
+    messages: list[dict]
+    max_tokens: int = 4096
+
+
+@dataclasses.dataclass(frozen=True)
+class LlmResult:
+    text: str
+    input_tokens: int
+    output_tokens: int
+    cost_usd: float | None
+    stop_reason: str
+    duration_ms: int
+
+
+def compute_cost_usd(model: str, input_tokens: int, output_tokens: int) -> float | None:
+    p = PRICING.get(model)
+    if not p:
+        return None
+    return (input_tokens * p["input"] + output_tokens * p["output"]) / 1_000_000
+
+
+class RealAnthropicClient:
+    def __init__(self, api_key: str | None = None):
+        import anthropic  # local import — keeps test imports cheap
+        self._client = anthropic.Anthropic(
+            api_key=api_key or os.environ["ANTHROPIC_API_KEY_AGENTS"],
+        )
+
+    def call(self, call: LlmCall) -> LlmResult:
+        start = time.monotonic()
+        msg = self._client.messages.create(
+            model=call.model,
+            system=call.system,
+            messages=call.messages,
+            max_tokens=call.max_tokens,
+        )
+        dur = int((time.monotonic() - start) * 1000)
+        text = "".join(
+            block.text for block in msg.content
+            if getattr(block, "type", "") == "text"
+        )
+        cost = compute_cost_usd(
+            call.model, msg.usage.input_tokens, msg.usage.output_tokens,
+        )
+        return LlmResult(
+            text=text,
+            input_tokens=msg.usage.input_tokens,
+            output_tokens=msg.usage.output_tokens,
+            cost_usd=cost,
+            stop_reason=msg.stop_reason or "unknown",
+            duration_ms=dur,
+        )
+
+
+class FakeAnthropicClient:
+    """Deterministic stub for tests. Echoes the canned text and reports
+    realistic-looking token counts (proportional to lengths)."""
+
+    def __init__(self, canned_text: str = "ok"):
+        self._text = canned_text
+
+    def call(self, call: LlmCall) -> LlmResult:
+        # Rough token estimate: 1 token ≈ 4 chars.
+        in_tok = max(1, sum(len(m.get("content", "")) for m in call.messages) // 4
+                       + len(call.system) // 4)
+        out_tok = max(1, len(self._text) // 4)
+        cost = compute_cost_usd(call.model, in_tok, out_tok)
+        return LlmResult(
+            text=self._text,
+            input_tokens=in_tok,
+            output_tokens=out_tok,
+            cost_usd=cost,
+            stop_reason="end_turn",
+            duration_ms=1,
+        )
