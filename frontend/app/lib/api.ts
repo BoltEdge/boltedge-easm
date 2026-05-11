@@ -1518,6 +1518,26 @@ export async function getMySettings(): Promise<any> {
   return apiFetch<any>("/settings/me");
 }
 
+// ── User preferences ──────────────────────────────────────────
+export type UserPreferences = {
+  showProvenanceTags: boolean;
+};
+
+export async function getPreferences(): Promise<UserPreferences> {
+  const res = await apiFetch<any>("/settings/preferences");
+  return { showProvenanceTags: Boolean(res?.showProvenanceTags) };
+}
+
+export async function patchPreferences(
+  patch: Partial<UserPreferences>
+): Promise<UserPreferences> {
+  const res = await apiFetch<any>("/settings/preferences", {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+  return { showProvenanceTags: Boolean(res?.showProvenanceTags) };
+}
+
 // ────────────────────────────────────────────────────────────
 // Reports (M11)
 // ────────────────────────────────────────────────────────────

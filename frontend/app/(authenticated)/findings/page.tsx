@@ -13,6 +13,8 @@ import type { AssetGroup, Finding } from "../../types";
 import { getGroups, getAllAssets, apiFetch, escalateFinding, bulkEscalateFindings, API_BASE_URL } from "../../lib/api";
 import { getAccessToken } from "../../lib/auth";
 import { useOrg } from "../contexts/OrgContext";
+import ProvenanceTag, { type Provenance } from "../_components/ProvenanceTag";
+import { usePreferences } from "../../lib/usePreferences";
 
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
@@ -204,6 +206,7 @@ export default function FindingsPage() {
   const { canDo } = useOrg();
   const canEdit = canDo("edit_findings");
   const canExport = canDo("export_scan_results");
+  const { prefs, update: updatePrefs } = usePreferences();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -520,7 +523,15 @@ export default function FindingsPage() {
               {total} finding{total === 1 ? "" : "s"} detected
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-white/65 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={prefs.showProvenanceTags}
+                onChange={(e) => updatePrefs({ showProvenanceTags: e.target.checked })}
+              />
+              Show provenance tags
+            </label>
             {canExport && (
               <Button variant="outline" onClick={handleExport} className="gap-2">
                 <Download className="w-4 h-4" />Export CSV
@@ -917,6 +928,9 @@ export default function FindingsPage() {
                               >
                                 Still detected
                               </span>
+                            )}
+                            {prefs.showProvenanceTags && (
+                              <ProvenanceTag value={(f.provenance as Provenance) ?? null} />
                             )}
                             {hasRemediation && (
                               <span title="Remediation available">

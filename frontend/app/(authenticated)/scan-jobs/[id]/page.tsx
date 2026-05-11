@@ -13,6 +13,8 @@ import { Button } from "../../../ui/button";
 import { Input } from "../../../ui/input";
 import { SeverityBadge } from "../../../SeverityBadge";
 import { FindingDetailsDialog } from "../../../FindingDetailsDialog";
+import ProvenanceTag, { type Provenance } from "../../_components/ProvenanceTag";
+import { usePreferences } from "../../../lib/usePreferences";
 
 import type { Finding } from "../../../types";
 
@@ -184,6 +186,8 @@ export default function ScanJobDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const jobId = params.id;
+
+  const { prefs } = usePreferences();
 
   const [job, setJob] = useState<any>(null);
   const [findings, setFindings] = useState<any[]>([]);
@@ -838,6 +842,9 @@ export default function ScanJobDetailPage() {
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="text-foreground font-medium truncate" title={title}>{title}</span>
+                                {prefs.showProvenanceTags && (
+                                  <ProvenanceTag value={(f.provenance as Provenance) ?? null} />
+                                )}
                                 {hasRemediation && <span title="Remediation available"><Wrench className="w-3.5 h-3.5 text-emerald-400 shrink-0" /></span>}
                               </div>
                               {f.summary && <div className="text-xs text-muted-foreground mt-0.5 truncate">{f.summary}</div>}
