@@ -230,6 +230,15 @@ export default function IntegrationsPage() {
 function ConnectionsTab({ integrations, onRefresh, notify }: { integrations: Integration[]; onRefresh: () => void; notify: (kind: "ok" | "err", text: string) => void }) {
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  // Pre-select a type when the user clicks one of the popular quick-add cards.
+  // Falls back to the form's default when null.
+  const [prefilledType, setPrefilledType] = useState<string | null>(null);
+
+  function openAdd(type: string | null) {
+    setEditId(null);
+    setPrefilledType(type);
+    setShowAdd(true);
+  }
 
   return (
     <div>
@@ -238,7 +247,7 @@ function ConnectionsTab({ integrations, onRefresh, notify }: { integrations: Int
           {integrations.length === 0 ? "No integrations configured yet." : `${integrations.length} integration${integrations.length === 1 ? "" : "s"} configured`}
         </p>
         <button
-          onClick={() => { setShowAdd(true); setEditId(null); }}
+          onClick={() => openAdd(null)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
         >
           <Plus className="w-4 h-4" />
@@ -250,8 +259,9 @@ function ConnectionsTab({ integrations, onRefresh, notify }: { integrations: Int
       {showAdd && (
         <IntegrationForm
           existing={editId ? integrations.find((i) => i.id === editId) : undefined}
-          onClose={() => { setShowAdd(false); setEditId(null); }}
-          onSaved={() => { setShowAdd(false); setEditId(null); onRefresh(); }}
+          prefilledType={prefilledType || undefined}
+          onClose={() => { setShowAdd(false); setEditId(null); setPrefilledType(null); }}
+          onSaved={() => { setShowAdd(false); setEditId(null); setPrefilledType(null); onRefresh(); }}
           notify={notify}
         />
       )}
@@ -275,13 +285,53 @@ function ConnectionsTab({ integrations, onRefresh, notify }: { integrations: Int
           <Plug className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
           <p className="text-muted-foreground mb-4">Connect your first integration to start receiving notifications.</p>
           <button
-            onClick={() => setShowAdd(true)}
+            onClick={() => openAdd(null)}
             className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
           >
             Add Integration
           </button>
         </div>
       )}
+
+      {/* Popular integrations — quick-add cards. Renders when at least
+          one integration exists OR the user hasn't pressed Add yet.
+          Hidden once the user has connected one of each common type. */}
+      {(() => {
+        const installedTypes = new Set(integrations.map((i) => i.type));
+        const popular = INTEGRATION_TYPES.filter((t) => !installedTypes.has(t.value));
+        if (popular.length === 0 || showAdd) return null;
+        return (
+          <div className={cn("mt-6", integrations.length === 0 && "hidden")}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                Add another destination
+              </h3>
+              <span className="text-[11px] text-muted-foreground/60">One click pre-fills the type</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {popular.map((t) => {
+                const Icon = t.icon;
+                return (
+                  <button
+                    key={t.value}
+                    onClick={() => openAdd(t.value)}
+                    className="group/quick flex flex-col items-start gap-2 p-3 rounded-lg border border-border bg-card/40 hover:bg-card/70 hover:border-primary/40 text-left transition-all"
+                  >
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: `${t.color}20` }}
+                    >
+                      <Icon className="w-4 h-4" style={{ color: t.color }} />
+                    </div>
+                    <div className="text-sm font-medium text-foreground">{t.label}</div>
+                    <div className="text-[11px] text-muted-foreground leading-snug line-clamp-2">{t.description}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -462,11 +512,11 @@ function IntegrationCard({ integration, onEdit, onRefresh, notify }: { integrati
 // Integration Form (Add / Edit)
 // ═══════════════════════════════════════════════════════════════
 
-function IntegrationForm({ existing, onClose, onSaved, notify }: { existing?: Integration; onClose: () => void; onSaved: () => void; notify: (kind: "ok" | "err", text: string) => void }) {
+function IntegrationForm({ existing, prefilledType, onClose, onSaved, notify }: { existing?: Integration; prefilledType?: string; onClose: () => void; onSaved: () => void; notify: (kind: "ok" | "err", text: string) => void }) {
   const isEdit = !!existing;
   const { hasFeature } = useOrg();
   const webhooksAllowed = hasFeature("webhooks");
-  const [type, setType] = useState(existing?.type || "");
+  const [type, setType] = useState(existing?.type || prefilledType || "");
   const [name, setName] = useState(existing?.name || "");
   const [config, setConfig] = useState<Record<string, any>>(existing?.config || {});
   const [saving, setSaving] = useState(false);

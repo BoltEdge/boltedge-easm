@@ -327,19 +327,35 @@ export default function BillingPage() {
   function UsageBar({ label, current, limit }: { label: string; current: number; limit: number }) {
     const isUnlimited = limit === -1;
     const pct = isUnlimited ? 10 : Math.min((current / limit) * 100, 100);
-    const isNear = !isUnlimited && pct >= 80;
+    const isNear = !isUnlimited && pct >= 80 && !isUnlimited;
     const isAt = !isUnlimited && current >= limit;
+    const remaining = isUnlimited ? null : Math.max(0, limit - current);
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">{label}</span>
-          <span className={cn("font-medium", isAt ? "text-red-400" : isNear ? "text-amber-400" : "text-foreground")}>
+          <span className={cn("font-medium tabular-nums", isAt ? "text-red-400" : isNear ? "text-amber-400" : "text-foreground")}>
             {current} / {isUnlimited ? "∞" : limit}
           </span>
         </div>
+        {/* When the bar is genuinely at zero, render a baseline so the
+            bar doesn't look like a render bug. */}
         <div className="h-2 bg-muted rounded-full overflow-hidden">
-          <div className={cn("h-full rounded-full transition-all", isAt ? "bg-red-500" : isNear ? "bg-amber-500" : "bg-primary")} style={{ width: `${pct}%` }} />
+          <div className={cn("h-full rounded-full transition-all", isAt ? "bg-red-500" : isNear ? "bg-amber-500" : "bg-primary")} style={{ width: `${current === 0 && !isUnlimited ? 0.5 : pct}%` }} />
         </div>
+        {/* Limit-reached / nearing-limit hint — only when actionable, so
+            the row doesn't grow on healthy metrics. Inline link to the
+            plan picker further down the page. */}
+        {isAt && (
+          <a href="#available-plans" className="inline-flex items-center gap-1 text-[11px] text-red-300 hover:text-red-200">
+            Limit reached — upgrade to add more →
+          </a>
+        )}
+        {!isAt && isNear && remaining != null && (
+          <p className="text-[11px] text-amber-400/85">
+            {remaining} left at this tier
+          </p>
+        )}
       </div>
     );
   }
@@ -498,6 +514,7 @@ export default function BillingPage() {
         </div>
 
         {/* Available Plans */}
+        <div id="available-plans" />
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-1">Available Plans</h2>
           {!BILLING_ENABLED && (

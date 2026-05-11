@@ -198,7 +198,22 @@ export default function ApiKeysPage() {
                             <span className="text-sm font-medium text-foreground">{k.name}</span>
                           </div>
                         </td>
-                        <td className="p-4"><code className="text-xs text-muted-foreground font-mono">{k.keyPrefix}•••••••••</code></td>
+                        <td className="p-4">
+                          <div className="inline-flex items-center gap-2 group/key">
+                            <code className="text-xs text-muted-foreground font-mono">{k.keyPrefix}•••••••••</code>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(k.keyPrefix);
+                                setBanner({ kind: "ok", text: `Copied prefix ${k.keyPrefix} — useful for log correlation. The full key is only shown at generation.` });
+                              }}
+                              title="Copy prefix to clipboard — the full key is only available when first generated"
+                              className="opacity-0 group-hover/key:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </td>
                         <td className="p-4 text-sm text-muted-foreground">
                           {formatDate(k.createdAt)}<br />
                           <span className="text-xs">by {k.createdBy}</span>
@@ -259,6 +274,55 @@ export default function ApiKeysPage() {
             )}
           </div>
         )}
+
+        {/* Quick-start panel — fills the empty space below the table with
+            an example curl snippet and a security reminder. Renders even
+            when no keys exist (it tells you what to do once you create one). */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="rounded-xl border border-border bg-card/40 p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Key className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Quick start</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+              Pass your key in the <code className="text-foreground/80 font-mono bg-muted/30 px-1 rounded">X-API-Key</code> header on every request.
+            </p>
+            <pre className="bg-muted/30 rounded-lg p-3 text-[11px] font-mono text-foreground/85 overflow-x-auto border border-border">
+{`curl -H "X-API-Key: ag_sk_..." \\
+  https://nanoeasm.com/api/assets`}
+            </pre>
+            <a
+              href="/api-docs"
+              className="inline-flex items-center gap-1 text-xs text-primary hover:opacity-80 mt-3"
+            >
+              See full API reference →
+            </a>
+          </div>
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Key className="w-4 h-4 text-amber-300" />
+              <h3 className="text-sm font-semibold text-foreground">Key handling reminders</h3>
+            </div>
+            <ul className="space-y-2 text-xs text-muted-foreground leading-relaxed">
+              <li className="flex items-start gap-2">
+                <span className="text-amber-300 mt-0.5">·</span>
+                <span>The full key is shown <span className="text-foreground/85">only once</span> at generation. We store a hash; lose it and you must generate a new one.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-300 mt-0.5">·</span>
+                <span>Use the <span className="text-foreground/85">prefix</span> (e.g. <code className="font-mono bg-muted/30 px-1 rounded">ag_sk_Bbm9K</code>) for log correlation — safe to share.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-300 mt-0.5">·</span>
+                <span>Revoke immediately if a key is exposed — old key stops working within seconds.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-300 mt-0.5">·</span>
+                <span>Prefer short expiries (30–90 days) for CI/CD; longer keys go in secret managers, not source.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
 
         {/* Create Dialog */}
         <Dialog

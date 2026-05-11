@@ -201,7 +201,7 @@ export default function SecurityPage() {
   }
 
   return (
-    <div className="p-6 sm:p-8 max-w-3xl space-y-6">
+    <div className="p-6 sm:p-8 max-w-5xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <Shield className="w-5 h-5 text-teal-400" />
@@ -210,6 +210,52 @@ export default function SecurityPage() {
         <p className="mt-1 text-sm text-white/40">
           Manage two-factor authentication for your account.
         </p>
+      </div>
+
+      {/* Top-level security overview strip — at-a-glance state for all the
+          checks that contribute to account security. Currently 2FA is the
+          only one we manage in-app; the others are surfaced for awareness
+          and link out to where they're configured. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          {
+            label: "Two-factor auth",
+            state: status?.mfaEnabled ? "On" : "Off",
+            tone: status?.mfaEnabled ? "ok" : "warn",
+            sub: status?.mfaEnabled ? "TOTP enrolled" : "Not enrolled",
+          },
+          {
+            label: "Recovery key",
+            state: status?.recoveryKeyAvailable ? "Set" : "Not set",
+            tone: status?.recoveryKeyAvailable ? "ok" : (status?.mfaEnabled ? "warn" : "muted"),
+            sub: status?.recoveryKeyAvailable ? "1 single-use code stored locally" : "Generate when prompted",
+          },
+          {
+            label: "Password",
+            state: status?.hasPassword ? "Set" : "OAuth only",
+            tone: "muted",
+            sub: status?.hasPassword ? "Email + password sign-in" : "Google / Microsoft sign-in",
+          },
+          {
+            label: "Active sessions",
+            state: "1",
+            tone: "muted",
+            sub: "This device · session management coming soon",
+          },
+        ].map(({ label, state, tone, sub }) => {
+          const toneClass = tone === "ok"
+            ? "text-emerald-300 bg-emerald-500/10 border-emerald-500/20"
+            : tone === "warn"
+              ? "text-amber-300 bg-amber-500/10 border-amber-500/20"
+              : "text-white/70 bg-white/[0.04] border-white/[0.08]";
+          return (
+            <div key={label} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+              <div className="text-[10px] uppercase tracking-wider text-white/40 font-semibold mb-2">{label}</div>
+              <span className={`inline-block px-2 py-0.5 rounded border text-xs font-semibold ${toneClass}`}>{state}</span>
+              <p className="text-[11px] text-white/40 mt-2 leading-relaxed">{sub}</p>
+            </div>
+          );
+        })}
       </div>
 
       {error && (

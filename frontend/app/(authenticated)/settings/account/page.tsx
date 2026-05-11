@@ -532,19 +532,23 @@ export default function AccountPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground block">Industry</label>
+                  <label className="text-sm font-medium text-foreground block">
+                    Industry
+                    {!orgIndustry && <span className="ml-1 text-[10px] font-normal text-muted-foreground/60">(optional)</span>}
+                  </label>
                   <select
                     value={orgIndustry}
                     onChange={(e) => setOrgIndustry(e.target.value)}
                     disabled={!canEditOrg}
                     className={cn(
-                      "w-full h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground",
+                      "w-full h-10 rounded-md border border-border bg-background px-3 text-sm",
+                      orgIndustry ? "text-foreground" : "text-muted-foreground/60",
                       !canEditOrg && "opacity-60 cursor-not-allowed"
                     )}
                   >
-                    <option value="">Select industry...</option>
+                    <option value="">Pick one to help us tailor scan defaults</option>
                     {INDUSTRY_OPTIONS.map((ind) => (
-                      <option key={ind} value={ind}>{ind}</option>
+                      <option key={ind} value={ind} className="text-foreground">{ind}</option>
                     ))}
                   </select>
                 </div>
@@ -552,7 +556,10 @@ export default function AccountPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-foreground block">Company Size</label>
+                  <label className="text-sm font-medium text-foreground block">
+                    Company Size
+                    {!orgSize && <span className="ml-1 text-[10px] font-normal text-muted-foreground/60">(optional)</span>}
+                  </label>
                   <div className="relative">
                     <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <select
@@ -560,12 +567,15 @@ export default function AccountPage() {
                       onChange={(e) => setOrgSize(e.target.value)}
                       disabled={!canEditOrg}
                       className={cn(
-                        "w-full h-10 rounded-md border border-border bg-background pl-9 pr-3 text-sm text-foreground appearance-none",
+                        "w-full h-10 rounded-md border border-border bg-background pl-9 pr-3 text-sm appearance-none",
+                        orgSize ? "text-foreground" : "text-muted-foreground/60",
                         !canEditOrg && "opacity-60 cursor-not-allowed"
                       )}
                     >
                       {SIZE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        <option key={opt.value} value={opt.value} className="text-foreground">
+                          {opt.value === "" ? "Pick one for capacity recommendations" : opt.label}
+                        </option>
                       ))}
                     </select>
                   </div>
