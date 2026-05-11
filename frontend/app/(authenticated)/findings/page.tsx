@@ -820,8 +820,8 @@ export default function FindingsPage() {
                   </th>
                 )}
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase w-[100px]">Severity</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase w-[140px]">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Finding</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase w-[140px]">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase w-[110px]">Category</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase w-[180px]">Asset</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase w-[140px]">Group</th>
@@ -877,18 +877,6 @@ export default function FindingsPage() {
                       <SeverityBadge severity={sev} />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-col gap-1 items-start">
-                        {statusBadge && (
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusBadge.class}`}>
-                            {statusBadge.label}
-                          </span>
-                        )}
-                        {prefs.showProvenanceTags && (
-                          <ProvenanceTag value={(f.provenance as Provenance) ?? null} />
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         {isCloud && <CloudSubIcon subType={cloudSub} />}
                         <div className="min-w-0">
@@ -908,6 +896,18 @@ export default function FindingsPage() {
                             </div>
                           )}
                         </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-1 items-start">
+                        {statusBadge && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusBadge.class}`}>
+                            {statusBadge.label}
+                          </span>
+                        )}
+                        {prefs.showProvenanceTags && (
+                          <ProvenanceTag value={(f.provenance as Provenance) ?? null} />
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3">
