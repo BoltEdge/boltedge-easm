@@ -394,7 +394,12 @@ export default function AssetDetailPage() {
                   {groupName && <span>Group: <Link href={`/groups/${groupId}`} className="text-primary hover:underline">{groupName}</Link></span>}
                 </div>
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
-                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Criticality</span>
+                  <span
+                    className="text-[11px] uppercase tracking-wide text-muted-foreground"
+                    title={canEditAsset ? "Click a tier to change this asset's criticality" : undefined}
+                  >
+                    Criticality{canEditAsset && <span className="ml-1 text-muted-foreground/60 normal-case lowercase">· click to change</span>}
+                  </span>
                   <CriticalitySelector
                     value={asset.criticality}
                     onChange={handleCriticalityChange}
@@ -408,10 +413,18 @@ export default function AssetDetailPage() {
           <div className="flex items-center gap-2">
             {canScan && (
               <div className="flex items-center gap-2">
-                <select value={selectedProfileId} onChange={(e) => setSelectedProfileId(e.target.value)}
-                  className="h-9 rounded-md border border-border bg-background px-2 text-xs text-foreground outline-none">
-                  {profiles.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+                {/* Profile selector — labelled and visually distinct from the
+                    Scan button so they don't read as one wide pill. */}
+                <div className="flex items-center gap-1.5 h-9 rounded-md border border-border bg-card px-2.5">
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Profile</span>
+                  <select
+                    value={selectedProfileId}
+                    onChange={(e) => setSelectedProfileId(e.target.value)}
+                    className="h-7 bg-transparent text-xs text-foreground outline-none cursor-pointer"
+                  >
+                    {profiles.map((p: any) => <option key={p.id} value={p.id} className="bg-card">{p.name}</option>)}
+                  </select>
+                </div>
                 <Button onClick={handleScan} disabled={scanning || isRunning} className="bg-[#00b8d4] hover:bg-[#00b8d4]/90">
                   {scanning || isRunning ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Scanning...</> : <><Play className="w-4 h-4 mr-2" />Scan</>}
                 </Button>
@@ -419,7 +432,7 @@ export default function AssetDetailPage() {
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-9 w-9 p-0"><MoreVertical className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" className="h-9 w-9 p-0" title="More actions"><MoreVertical className="w-4 h-4" /></Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => { setEditValue(asset.value || ""); setEditLabel(asset.label || ""); setEditOpen(true); }}>Edit asset</DropdownMenuItem>
@@ -462,39 +475,17 @@ export default function AssetDetailPage() {
           </div>
         )}
 
-        {/* Stats cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="text-xs text-muted-foreground mb-1">Risk Level</div>
-            {risk ? (
-              <div className="flex items-center gap-2">
-                <SeverityBadge severity={risk.maxSeverity || "info"} />
-                <span className="text-sm text-muted-foreground">{risk.openFindings || 0} findings</span>
-              </div>
-            ) : (
-              <div className="text-sm text-muted-foreground">{lastScan ? "Clean" : "Not scanned"}</div>
-            )}
-          </div>
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="text-xs text-muted-foreground mb-1">Total Findings</div>
-            <div className="text-2xl font-bold text-foreground">{findings.length}</div>
-          </div>
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="text-xs text-muted-foreground mb-1">Scan History</div>
-            <div className="text-2xl font-bold text-foreground">{scanJobs.length}</div>
-            <div className="text-xs text-muted-foreground">{completedScanCount} completed</div>
-          </div>
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="text-xs text-muted-foreground mb-1">Last Scan</div>
-            <div className="text-sm font-semibold text-foreground">{timeAgo(lastScanTime)}</div>
-          </div>
-        </div>
-
-        {/* Severity breakdown */}
+        {/* The previous 4-card "Risk Level / Total Findings / Scan History /
+            Last Scan" strip was removed — every value duplicates what
+            AssetOverviewPanel already shows above. Severity breakdown moved
+            into a compact strip below since the panel doesn't include it. */}
         {risk && risk.bySeverity && (
           <div className="bg-card border border-border rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Finding Severity Breakdown</h3>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-foreground">Finding Severity Breakdown</h3>
+              <span className="text-xs text-muted-foreground">{risk.openFindings || 0} open · {findings.length} total</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
               {(["critical", "high", "medium", "low", "info"] as SeverityKey[]).map((sev) => {
                 const count = risk.bySeverity[sev] || 0;
                 if (count === 0) return null;
@@ -568,25 +559,46 @@ export default function AssetDetailPage() {
                 <tbody className="divide-y divide-border">
                   {scanJobs.slice(0, 10).map((job) => {
                     const SIcon = jobStatusIcon(job.status);
+                    // Surface error_message on failed scans so customers can
+                    // self-diagnose without checking admin/health. Rendered
+                    // as a stretched secondary row underneath the main one.
+                    const failureMsg = job.status === "failed"
+                      ? ((job as any).errorMessage || (job as any).error_message || (job as any).message || null)
+                      : null;
                     return (
-                      <tr key={job.id} className="hover:bg-accent/30 transition-colors">
-                        <td className="p-4">
-                          <span className={cn("inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-semibold", jobStatusBadge(job.status))}>
-                            <SIcon className={cn("w-3 h-3", job.status === "running" && "animate-spin")} />{job.status}
-                          </span>
-                        </td>
-                        <td className="p-4 text-sm text-muted-foreground">{job.profileName || "—"}</td>
-                        <td className="p-4 text-sm text-muted-foreground">{formatDate(job.startedAt || job.createdAt)}</td>
-                        <td className="p-4 text-sm text-muted-foreground">{job.finishedAt ? formatDate(job.finishedAt) : job.status === "running" ? "In progress…" : "—"}</td>
-                        <td className="p-4 text-right">
-                          {job.status === "completed" && (
-                            <Button size="sm" variant="outline" onClick={() => router.push(`/scan-jobs/${job.id}`)}
-                              className="border-primary/50 text-primary hover:bg-primary/10">
-                              <ExternalLink className="w-3 h-3 mr-1" />View Results
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
+                      <React.Fragment key={job.id}>
+                        <tr className="hover:bg-accent/30 transition-colors">
+                          <td className="p-4">
+                            <span className={cn("inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-semibold", jobStatusBadge(job.status))}>
+                              <SIcon className={cn("w-3 h-3", job.status === "running" && "animate-spin")} />{job.status}
+                            </span>
+                          </td>
+                          <td className="p-4 text-sm text-muted-foreground">{job.profileName || "—"}</td>
+                          <td className="p-4 text-sm text-muted-foreground">{formatDate(job.startedAt || job.createdAt)}</td>
+                          <td className="p-4 text-sm text-muted-foreground">{job.finishedAt ? formatDate(job.finishedAt) : job.status === "running" ? "In progress…" : "—"}</td>
+                          <td className="p-4 text-right">
+                            {job.status === "completed" && (
+                              <Button size="sm" variant="outline" onClick={() => router.push(`/scan-jobs/${job.id}`)}
+                                className="border-primary/50 text-primary hover:bg-primary/10">
+                                <ExternalLink className="w-3 h-3 mr-1" />View Results
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                        {failureMsg && (
+                          <tr className="bg-red-500/[0.03]">
+                            <td colSpan={5} className="px-4 pb-3 pt-0">
+                              <div className="flex items-start gap-2 text-xs text-red-300/85 rounded-md border border-red-500/20 bg-red-500/[0.04] px-3 py-2">
+                                <XCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                                <div>
+                                  <span className="font-medium text-red-300">Failure reason:</span>{" "}
+                                  <span className="text-red-300/85 break-words">{failureMsg}</span>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>

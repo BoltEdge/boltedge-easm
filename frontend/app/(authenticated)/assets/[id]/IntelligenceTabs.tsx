@@ -200,10 +200,10 @@ function TechTab({ data }: { data: IntelligenceData }) {
             </div>
             <div className="divide-y divide-border">
               {techs.map((t, i) => (
-                <div key={`${t.name}-${i}`} className="px-4 py-3 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                <div key={`${t.name}-${i}`} className="px-4 py-3 flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-semibold text-foreground">{t.name}</span>
                         {t.version && (
                           <span className="text-xs font-mono text-muted-foreground bg-accent rounded px-1.5 py-0.5">{t.version}</span>
@@ -214,16 +214,25 @@ function TechTab({ data }: { data: IntelligenceData }) {
                           </span>
                         )}
                       </div>
+                      {/* Inline metadata line — was three disjointed right-side
+                          pills (port / source / severity). Combining as a
+                          single muted sentence reads as one piece of info
+                          instead of three competing chips. */}
+                      <div className="text-[11px] text-muted-foreground mt-1 flex items-center flex-wrap gap-x-1.5">
+                        {t.source && <span>detected via <span className="text-foreground/70">{friendlyScannerName(t.source)}</span></span>}
+                        {t.port != null && (
+                          <>
+                            {t.source && <span className="text-muted-foreground/50">·</span>}
+                            <span>on port <span className="text-foreground/70 font-mono">:{t.port}</span></span>
+                          </>
+                        )}
+                      </div>
                       {t.eolMessage && (
                         <p className="text-xs text-red-300/80 mt-0.5">{t.eolMessage}</p>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    {t.port && (
-                      <span className="text-xs text-muted-foreground font-mono">:{t.port}</span>
-                    )}
-                    <span className="text-[10px] text-muted-foreground bg-accent rounded px-1.5 py-0.5">{friendlyScannerName(t.source)}</span>
+                  <div className="shrink-0 mt-0.5">
                     <SeverityBadge severity={t.severity} />
                   </div>
                 </div>

@@ -286,6 +286,74 @@ export default function Page() {
           action={{ label: "View all assets at once", href: "/assets/all" }}
         />
 
+        {/* Org-wide summary strip — derived from the same group records the
+            grid below renders. Gives the page weight when only a handful of
+            groups exist (otherwise the page was 1 row + a viewport of void). */}
+        {(() => {
+          const totals = groups.reduce(
+            (acc, g: any) => {
+              const f = g.findings || {};
+              acc.assets += (g.domainCount || 0) + (g.ipCount || 0) + (g.emailCount || 0) + (g.cloudCount || 0);
+              acc.findings += f.total || 0;
+              acc.critHigh += (f.critical || 0) + (f.high || 0);
+              const t = g.lastScanAt ? new Date(g.lastScanAt + (g.lastScanAt.endsWith("Z") || g.lastScanAt.includes("+") ? "" : "Z")).getTime() : 0;
+              if (t > acc.lastScan) acc.lastScan = t;
+              return acc;
+            },
+            { assets: 0, findings: 0, critHigh: 0, lastScan: 0 },
+          );
+          const stats = [
+            {
+              label: "Total assets",
+              value: totals.assets.toLocaleString(),
+              sub: `across ${groups.length} group${groups.length !== 1 ? "s" : ""}`,
+              icon: Layers,
+              color: "text-primary",
+              bg: "bg-primary/10",
+            },
+            {
+              label: "Open findings",
+              value: totals.findings.toLocaleString(),
+              sub: totals.critHigh > 0 ? `${totals.critHigh.toLocaleString()} need attention` : "nothing urgent",
+              icon: AlertTriangle,
+              color: totals.findings === 0 ? "text-emerald-400" : "text-amber-400",
+              bg: totals.findings === 0 ? "bg-emerald-500/10" : "bg-amber-500/10",
+            },
+            {
+              label: "Critical + High",
+              value: totals.critHigh.toLocaleString(),
+              sub: totals.critHigh > 0 ? "address first" : "all clear",
+              icon: Shield,
+              color: totals.critHigh > 0 ? "text-red-400" : "text-emerald-400",
+              bg: totals.critHigh > 0 ? "bg-red-500/10" : "bg-emerald-500/10",
+            },
+            {
+              label: "Last scan",
+              value: totals.lastScan ? timeAgo(new Date(totals.lastScan).toISOString()) : "Never",
+              sub: totals.lastScan ? "any group" : "run one to start",
+              icon: Clock,
+              color: "text-cyan-400",
+              bg: "bg-cyan-500/10",
+            },
+          ];
+          return (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              {stats.map(({ label, value, sub, icon: Icon, color, bg }) => (
+                <div key={label} className="rounded-2xl border border-border bg-card/40 p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center", bg)}>
+                      <Icon className={cn("h-4 w-4", color)} />
+                    </div>
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
+                  </div>
+                  <div className={cn("text-3xl font-bold tabular-nums", color)}>{value}</div>
+                  <p className="text-xs text-muted-foreground mt-1">{sub}</p>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
         {/* Search */}
         <div className="flex items-center justify-between gap-3 mb-6">
           <div className="relative w-full max-w-lg">

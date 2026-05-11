@@ -766,14 +766,35 @@ export default function AssetGroupDetailsPage() {
           </table>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>Showing {Math.min(visibleCount, filteredAssets.length)} of {filteredAssets.length}</span>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setVisibleCount((c) => Math.min(c + PAGE_SIZE, filteredAssets.length))} disabled={!canViewMore}>View more</Button>
-            <Button variant="outline" size="sm" onClick={() => setVisibleCount(filteredAssets.length)} disabled={filteredAssets.length <= PAGE_SIZE}>View all</Button>
+        {/* Footer — only render pagination when there's more to show than
+            currently visible. Two buttons named "View more" and "View all"
+            sitting side-by-side, both disabled when total ≤ page size, was
+            confusing — one button covers the case cleanly. */}
+        {filteredAssets.length > PAGE_SIZE && (
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span>Showing {Math.min(visibleCount, filteredAssets.length)} of {filteredAssets.length}</span>
+            <div className="flex items-center gap-2">
+              {canViewMore && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setVisibleCount((c) => Math.min(c + PAGE_SIZE, filteredAssets.length))}
+                >
+                  Load {Math.min(PAGE_SIZE, filteredAssets.length - visibleCount)} more
+                </Button>
+              )}
+              {canViewMore && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setVisibleCount(filteredAssets.length)}
+                >
+                  Show all ({filteredAssets.length})
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ═══════════════════════════════════════════════════════ */}
