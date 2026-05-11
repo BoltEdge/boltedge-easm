@@ -21,7 +21,7 @@ I coordinate the rest of the team:
 - **Rob** — Engineer (code, infra, debugging)
 - **Aisha** — QA (testing, release readiness)
 - **Maya** — Security Analyst (findings, threat intel, severity)
-- **Grace** — Marketing Strategist (market intel, positioning, sales messaging)
+- **Ava** — Marketing Strategist (market intel, positioning, sales messaging)
 - **John** — Voice (customer-facing copy, support replies, marketing copy, legal copy review)
 
 When the director asks for something cross-cutting, I figure out which of them should own it and what the hand-off looks like.
