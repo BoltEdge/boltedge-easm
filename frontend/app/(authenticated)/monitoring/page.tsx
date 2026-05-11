@@ -281,30 +281,21 @@ function OverviewTab({ monitors, loading, onRefresh, setBanner, monitoringFreque
         )}
       </div>
 
-      {/* Stats bar */}
-      <div className="flex items-center gap-6 bg-card border border-border rounded-xl px-6 py-4">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl font-bold text-foreground">{stats.total}</span>
-          <span className="text-xs text-muted-foreground">Monitors</span>
-        </div>
-        <div className="w-px h-8 bg-border" />
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
-          <span className="text-2xl font-bold text-[#10b981]">{stats.active}</span>
-          <span className="text-xs text-muted-foreground">Active</span>
-        </div>
-        <div className="w-px h-8 bg-border" />
-        <div className="flex items-center gap-2">
-          <Pause className="w-4 h-4 text-muted-foreground" />
-          <span className="text-2xl font-bold text-muted-foreground">{stats.paused}</span>
-          <span className="text-xs text-muted-foreground">Paused</span>
-        </div>
-        <div className="w-px h-8 bg-border" />
-        <div className="flex items-center gap-2">
-          <BellRing className="w-4 h-4 text-red-400" />
-          <span className="text-2xl font-bold text-red-400">{stats.openAlerts}</span>
-          <span className="text-xs text-muted-foreground">Open Alerts</span>
-        </div>
+      {/* Stats bar — compact chip row replaces the previous full-width
+          separator strip. Same data, less weight. */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {[
+          { label: "Monitors",     value: stats.total,      icon: Eye,          color: "text-foreground" },
+          { label: "Active",       value: stats.active,     icon: CheckCircle2, color: "text-[#10b981]" },
+          { label: "Paused",       value: stats.paused,     icon: Pause,        color: "text-muted-foreground" },
+          { label: "Open alerts",  value: stats.openAlerts, icon: BellRing,     color: "text-red-400" },
+        ].map(({ label, value, icon: Icon, color }) => (
+          <div key={label} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-card/40 text-sm">
+            <Icon className={cn("w-3.5 h-3.5", color)} />
+            <span className={cn("font-bold tabular-nums", color)}>{value}</span>
+            <span className="text-muted-foreground">{label}</span>
+          </div>
+        ))}
       </div>
 
       {/* Monitors table */}

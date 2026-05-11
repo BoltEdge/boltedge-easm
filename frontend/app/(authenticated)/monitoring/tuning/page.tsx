@@ -62,6 +62,8 @@ export default function TuningPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchFilter, setSearchFilter] = useState("");
+  const [actionFilter, setActionFilter] = useState<"all" | "suppress" | "downgrade" | "upgrade" | "snooze">("all");
+  const [stateFilter, setStateFilter] = useState<"all" | "active" | "inactive">("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<TuningRule | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -108,16 +110,33 @@ export default function TuningPage() {
   }
 
   const filtered = useMemo(() => {
-    if (!searchFilter.trim()) return rules;
-    const q = searchFilter.toLowerCase();
-    return rules.filter((r) =>
-      (r.templateId || "").toLowerCase().includes(q) ||
-      (r.assetValue || "").toLowerCase().includes(q) ||
-      (r.assetPattern || "").toLowerCase().includes(q) ||
-      (r.serviceName || "").toLowerCase().includes(q) ||
-      (r.reason || "").toLowerCase().includes(q)
-    );
-  }, [rules, searchFilter]);
+    let result = rules;
+    if (actionFilter !== "all") result = result.filter((r) => r.action === actionFilter);
+    if (stateFilter !== "all") {
+      const wantEnabled = stateFilter === "active";
+      result = result.filter((r) => Boolean(r.enabled) === wantEnabled);
+    }
+    if (searchFilter.trim()) {
+      const q = searchFilter.toLowerCase();
+      result = result.filter((r) =>
+        (r.templateId || "").toLowerCase().includes(q) ||
+        (r.assetValue || "").toLowerCase().includes(q) ||
+        (r.assetPattern || "").toLowerCase().includes(q) ||
+        (r.serviceName || "").toLowerCase().includes(q) ||
+        (r.reason || "").toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [rules, searchFilter, actionFilter, stateFilter]);
+
+  const counts = useMemo(() => ({
+    total: rules.length,
+    active: rules.filter((r) => r.enabled).length,
+    suppress: rules.filter((r) => r.action === "suppress").length,
+    downgrade: rules.filter((r) => r.action === "downgrade").length,
+    upgrade: rules.filter((r) => r.action === "upgrade").length,
+    snooze: rules.filter((r) => r.action === "snooze").length,
+  }), [rules]);
 
   if (!hasMonitoring) {
     return (
@@ -169,10 +188,68 @@ export default function TuningPage() {
             )}
           </div>
 
-          {/* Search */}
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Search rules..." value={searchFilter} onChange={(e) => setSearchFilter(e.target.value)} className="pl-9" />
+          {/* "How tuning works" hint — visible when no rules exist OR
+              after a user has fewer than 3 rules. Goes away once they're
+              fluent. Fills what would otherwise be a near-empty viewport. */}
+          {rules.length < 3 && (
+            <div className="rounded-xl border border-border bg-card/40 p-5">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                How tuning works
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                {[
+                  { label: "Suppress", color: "bg-red-500/10 text-red-300 border-red-500/30", body: "Hide future alerts matching this rule. Use when a finding is a known false positive." },
+                  { label: "Downgrade", color: "bg-[#ffcc00]/10 text-[#ffcc00] border-[#ffcc00]/30", body: "Lower the severity of matching findings. Useful for accepted-but-tracked risks." },
+                  { label: "Upgrade", color: "bg-[#ff8800]/10 text-[#ff8800] border-[#ff8800]/30", body: "Raise the severity of matching findings — fold them into your most-urgent queue." },
+                  { label: "Snooze", color: "bg-[#00b8d4]/10 text-[#00b8d4] border-[#00b8d4]/30", body: "Mute alerts until a specific date. The rule turns off automatically when the snooze expires." },
+                ].map(({ label, color, body }) => (
+                  <div key={label} className="rounded-lg border border-border/60 bg-muted/10 p-3">
+                    <span className={cn("inline-block px-2 py-0.5 rounded text-[10px] font-semibold border mb-2", color)}>{label}</span>
+                    <p className="text-muted-foreground leading-relaxed">{body}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Filter row — search + action type + state. */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative flex-1 min-w-[200px] max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Search rules..." value={searchFilter} onChange={(e) => setSearchFilter(e.target.value)} className="pl-9" />
+            </div>
+            <select
+              value={actionFilter}
+              onChange={(e) => setActionFilter(e.target.value as typeof actionFilter)}
+              className={cn(
+                "h-10 rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40",
+                actionFilter === "all"
+                  ? "border-border bg-background text-foreground"
+                  : "border-primary/30 bg-primary/10 text-primary",
+              )}
+              title="Filter rules by action"
+            >
+              <option value="all">All actions ({counts.total})</option>
+              <option value="suppress">Suppress ({counts.suppress})</option>
+              <option value="downgrade">Downgrade ({counts.downgrade})</option>
+              <option value="upgrade">Upgrade ({counts.upgrade})</option>
+              <option value="snooze">Snooze ({counts.snooze})</option>
+            </select>
+            <select
+              value={stateFilter}
+              onChange={(e) => setStateFilter(e.target.value as typeof stateFilter)}
+              className={cn(
+                "h-10 rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40",
+                stateFilter === "all"
+                  ? "border-border bg-background text-foreground"
+                  : "border-primary/30 bg-primary/10 text-primary",
+              )}
+              title="Filter by rule state"
+            >
+              <option value="all">All states</option>
+              <option value="active">Active ({counts.active})</option>
+              <option value="inactive">Inactive ({counts.total - counts.active})</option>
+            </select>
           </div>
 
           {/* Rules list */}
@@ -263,13 +340,26 @@ export default function TuningPage() {
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           {canEdit && (
-                            <button type="button" onClick={() => handleToggle(rule)}>
-                              {rule.enabled ? <ToggleRight className="w-6 h-6 text-[#10b981]" /> : <ToggleLeft className="w-6 h-6 text-muted-foreground" />}
+                            <button
+                              type="button"
+                              onClick={() => handleToggle(rule)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-background hover:bg-accent transition-colors"
+                              title={rule.enabled ? "Pause this rule — it will stop matching new alerts" : "Resume this rule"}
+                            >
+                              {rule.enabled
+                                ? <><ToggleRight className="w-4 h-4 text-[#10b981]" /><span className="text-xs font-medium text-[#10b981]">Active</span></>
+                                : <><ToggleLeft className="w-4 h-4 text-muted-foreground" /><span className="text-xs font-medium text-muted-foreground">Paused</span></>}
                             </button>
                           )}
                           {canDelete && (
-                            <Button size="sm" variant="outline" onClick={() => setDeleteTarget(rule)} className="border-red-500/50 text-red-500 hover:bg-red-500/10">
-                              <Trash2 className="w-3 h-3" />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setDeleteTarget(rule)}
+                              title="Delete this rule — previously-suppressed findings will reappear"
+                              className="border-red-500/40 text-red-400 hover:bg-red-500/10"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           )}
                         </div>
