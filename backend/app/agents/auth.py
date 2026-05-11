@@ -46,6 +46,20 @@ def require_agent_key(scope: str) -> Callable:
 
             g.agent_api_key = key
             g.agent_id = key.name  # convention: ApiKey.name == agent_id
+
+            # Audit-log the call so every agent API request surfaces in
+            # /admin/audit-log alongside all other platform events.
+            from app.audit.routes import log_audit  # local import avoids cycles
+            log_audit(
+                organization_id=key.organization_id,
+                user_email=f"agent:{key.name}",
+                action=f"{request.method} {request.path}",
+                category="agent",
+                description=f"Agent API call — scope={scope}",
+                metadata={"key_id": key.id, "scope": scope,
+                          "remote_addr": request.remote_addr},
+            )
+
             return fn(*args, **kwargs)
 
         return wrapper

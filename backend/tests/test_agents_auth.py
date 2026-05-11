@@ -85,3 +85,32 @@ def test_agent_key_missing_scope_rejected(app, client, db_session, test_org, tes
     resp = client.get("/_test_internal5",
                        headers={"Authorization": f"Bearer {raw}"})
     assert resp.status_code == 403
+
+
+def test_successful_call_writes_audit_log(app, client, db_session, test_org, test_user):
+    from app.models import AuditLog
+    import uuid
+
+    raw = "nk_agent_" + uuid.uuid4().hex + uuid.uuid4().hex[:8]
+    db_session.add(ApiKey(
+        organization_id=test_org.id, user_id=test_user.id, name="founder-ops",
+        key_prefix="nk_agent_",
+        key_hash=_sha256(raw),
+        kind="agent", scopes=["read:stats"],
+    ))
+    db_session.flush()
+
+    @app.route("/_test_audit")
+    @require_agent_key(scope="read:stats")
+    def view():
+        return jsonify(ok=True)
+
+    before = db_session.query(AuditLog).count()
+    resp = client.get("/_test_audit",
+                       headers={"Authorization": f"Bearer {raw}"})
+    assert resp.status_code == 200
+    after = db_session.query(AuditLog).count()
+    assert after == before + 1
+
+    last = db_session.query(AuditLog).order_by(AuditLog.id.desc()).first()
+    assert last.category == "agent"
