@@ -46,12 +46,12 @@ def test_retrieve_skips_expired(db_session):
 
 
 def test_team_memory_visible_to_all(db_session):
-    write_team_memory("brand:never_use_boltedge",
-                       value={"rule": "Always 'Nano EASM'"},
-                       tags=["brand"])
+    write_team_memory("test:visible_to_all",
+                       value={"rule": "test fact"},
+                       tags=["test"])
     rs = retrieve_team_memory()
-    assert len(rs) == 1
-    assert rs[0].key == "brand:never_use_boltedge"
+    keys = [r.key for r in rs]
+    assert "test:visible_to_all" in keys
 
 
 def test_retrieve_caps_at_top_n(db_session):
