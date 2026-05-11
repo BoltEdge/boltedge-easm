@@ -1,7 +1,7 @@
 """agent_platform_phase1
 
 Revision ID: e903d172a1a7
-Revises: n2d3e4f5a6b7
+Revises: p4f5a6b7c8d9
 Create Date: 2026-05-11 11:27:55.930172
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'e903d172a1a7'
-down_revision = 'n2d3e4f5a6b7'
+down_revision = 'p4f5a6b7c8d9'
 branch_labels = None
 depends_on = None
 
