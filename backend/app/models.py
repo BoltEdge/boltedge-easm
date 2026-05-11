@@ -1812,7 +1812,7 @@ class AgentMemory(db.Model):
     confidence = db.Column(db.Numeric(3, 2), nullable=False,
                            default=1.00, server_default=db.text("1.00"))
     created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
-    updated_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    updated_at = db.Column(db.DateTime, nullable=False, default=now_utc, onupdate=now_utc)
     expires_at = db.Column(db.DateTime, nullable=True, index=True)
     superseded_by_id = db.Column(db.BigInteger,
                                  db.ForeignKey("agent_memory.id"),
@@ -1840,7 +1840,7 @@ class TeamMemory(db.Model):
     tags = db.Column(db.JSON, nullable=False, default=list,
                      server_default=db.text("'[]'::json"))
     created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
-    updated_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    updated_at = db.Column(db.DateTime, nullable=False, default=now_utc, onupdate=now_utc)
 
 
 class AgentThread(db.Model):
@@ -1907,7 +1907,14 @@ class AgentTask(db.Model):
     agent_owner = db.Column(db.String(64), nullable=True)
     due_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
-    updated_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    updated_at = db.Column(db.DateTime, nullable=False, default=now_utc, onupdate=now_utc)
+
+    def __init__(self, **kwargs):
+        # SQLAlchemy scalar default= is applied at flush, not at construction,
+        # so transient instances would have status/priority=None without this override.
+        kwargs.setdefault("status", "pending")
+        kwargs.setdefault("priority", 3)
+        super().__init__(**kwargs)
 
 
 class PendingAction(db.Model):

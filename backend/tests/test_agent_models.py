@@ -54,6 +54,13 @@ def test_agent_task_fields():
     assert t.title == "Ship walking skeleton"
 
 
+def test_agent_task_uses_default_status_and_priority():
+    """Transient AgentTask(title=...) defaults status='pending', priority=3."""
+    t = AgentTask(title="No defaults specified")
+    assert t.status == "pending"
+    assert t.priority == 3
+
+
 def test_pending_action_fields():
     p = PendingAction(
         agent_id="founder-ops",
