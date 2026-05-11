@@ -35,6 +35,7 @@ from app.auth.decorators import require_auth, allow_api_key, current_user_id, cu
 from app.auth.permissions import require_role, check_limit, check_scan_profile
 from app.utils.display_id import resolve_id
 from app.audit.routes import log_audit
+from app.findings.helpers import derive_provenance
 
 logger = logging.getLogger(__name__)
 
@@ -707,4 +708,6 @@ def list_job_findings(job_id: str):
         # CWE-driven compliance framework mappings (same shape as the
         # /findings endpoint). Drives the "Maps to" panel in the UI.
         "compliance": _compliance_for(f),
+        # Provenance tag -- "new" | "seen_before" | "resolved_before"
+        "provenance": derive_provenance(f),
     } for f in rows]), 200

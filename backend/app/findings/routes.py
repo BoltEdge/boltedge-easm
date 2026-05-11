@@ -37,6 +37,7 @@ from app.auth.decorators import require_auth, allow_api_key, current_user_id, cu
 from app.auth.permissions import require_role, require_permission
 from app.audit.routes import log_audit
 from app.utils.display_id import resolve_id
+from app.findings.helpers import mark_resolved, derive_provenance
 
 # Finding event logging for historical trending
 try:
@@ -155,10 +156,7 @@ def _set_status(f: Finding, new_status: str, uid: int, notes: str | None = None,
     _clear_all_status_flags(f)
 
     if new_status == "resolved":
-        f.resolved = True
-        f.resolved_at = now
-        f.resolved_by = uid
-        f.resolved_reason = notes
+        mark_resolved(f, uid, notes)
 
     elif new_status == "accepted_risk":
         f.accepted_risk = True
@@ -299,6 +297,8 @@ def finding_to_ui(f: Finding) -> dict:
         "compliance": _lookup_compliance(
             getattr(f, "cwe", None), getattr(f, "category", None),
         ),
+        # Provenance tag -- "new" | "seen_before" | "resolved_before"
+        "provenance": derive_provenance(f),
     }
 
     return result
