@@ -146,6 +146,7 @@ def _monitor_to_ui(m: Monitor) -> dict:
         "nextCheckAt": m.next_check_at.isoformat() if m.next_check_at else None,
         "openAlertCount": open_alerts,
         "createdAt": m.created_at.isoformat() if m.created_at else None,
+        "alertOnRecurrenceOverride": m.alert_on_recurrence_override,
     }
 
 

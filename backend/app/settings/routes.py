@@ -92,6 +92,7 @@ def get_organization():
         isActive=org.is_active,
         createdAt=org.created_at.isoformat() if org.created_at else None,
         currentUserRole=user_role,
+        alertOnRecurrence=bool(org.alert_on_recurrence),
     ), 200
 
 

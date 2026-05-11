@@ -48,6 +48,12 @@ def upgrade():
         sa.Column('alert_on_recurrence_override', sa.Boolean(), nullable=True),
     )
 
+    op.create_index(
+        "ix_finding_previously_resolved_at",
+        "finding",
+        ["previously_resolved_at"],
+    )
+
     # Backfill: every existing finding that has a resolved_at gets that
     # timestamp copied to previously_resolved_at, so the UI tags them
     # correctly on first page load after deploy. Findings that have
@@ -60,6 +66,7 @@ def upgrade():
 
 
 def downgrade():
+    op.drop_index("ix_finding_previously_resolved_at", table_name="finding")
     op.drop_column('finding', 'previously_resolved_at')
     op.drop_column('user', 'prefs_json')
     op.drop_column('organization', 'alert_on_recurrence')
