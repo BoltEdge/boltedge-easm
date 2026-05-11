@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
   Radar, Search, FolderPlus, Check, Clock, RefreshCcw, Trash2,
-  Info, Loader2, ArrowLeft, EyeOff, Eye, Play, Download,
+  Info, Loader2, ArrowLeft, EyeOff, Eye, Play, Download, XCircle,
 } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
@@ -395,48 +395,119 @@ export default function DiscoveryPage() {
           <DiscoverySchedulesTab />
         ) : (
         <div className="space-y-6">
+          {/* ── Discovery stats strip — fills the previously-empty top of the
+                page when only a few historical jobs exist. Derived from the
+                jobs list already loaded; no extra API call. */}
+          {(() => {
+            const total = jobs.length;
+            const completed = jobs.filter((j) => j.status === "completed" || j.status === "partial");
+            const totalNew = jobs.reduce((s, j) => s + (j.newAssets || 0), 0);
+            const totalFound = jobs.reduce((s, j) => s + (j.totalFound || 0), 0);
+            const avgNew = completed.length > 0 ? Math.round(totalNew / completed.length) : 0;
+            const lastJob = jobs[0]; // already ordered newest-first by the API
+            const stats = [
+              { label: "Discoveries run", value: total.toLocaleString(), sub: `${completed.length} completed` },
+              { label: "Assets discovered", value: totalFound.toLocaleString(), sub: `${totalNew.toLocaleString()} new to inventory` },
+              { label: "Avg new per run", value: avgNew.toLocaleString(), sub: completed.length ? "across completed runs" : "no data yet" },
+              { label: "Last discovery", value: lastJob ? timeAgo(lastJob.startedAt || lastJob.createdAt) : "Never", sub: lastJob ? lastJob.target : "run one to start" },
+            ];
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {stats.map(({ label, value, sub }) => (
+                  <div key={label} className="rounded-2xl border border-border bg-card/40 p-5">
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">{label}</div>
+                    <div className="text-3xl font-bold text-foreground tabular-nums">{value}</div>
+                    <p className="text-xs text-muted-foreground mt-1 truncate" title={sub}>{sub}</p>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
           {/* ── Input Card ── */}
           <div className="bg-card border border-[#00b8d4]/20 rounded-xl p-6">
-            <div className="flex items-center justify-between gap-4 mb-4">
-              <div className="flex items-center gap-2">
-                <Search className="w-5 h-5 text-[#00b8d4]" />
-                <h2 className="text-lg font-semibold text-foreground">Discover Assets</h2>
-              </div>
-              <Button variant="outline" onClick={refreshJobs} className="border-border text-foreground hover:bg-accent">
-                <RefreshCcw className="w-4 h-4 mr-2" />Refresh
-              </Button>
+            <div className="flex items-center gap-2 mb-4">
+              <Search className="w-5 h-5 text-[#00b8d4]" />
+              <h2 className="text-lg font-semibold text-foreground">Discover Assets</h2>
             </div>
             {canRun ? (
-              <div className="space-y-3">
-                <div className="grid md:grid-cols-[160px_140px_1fr_auto] gap-3">
-                  <select value={targetType} onChange={(e) => setTargetType(e.target.value as any)}
-                    className="h-10 w-full rounded-md px-3 bg-input-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-                    <option value="domain">Domain</option>
-                    <option value="ip">IP Address</option>
-                    <option value="cidr">CIDR Range (Starter+)</option>
-                    <option value="asn">ASN (Starter+)</option>
-                  </select>
-                  <select value={scanDepth} onChange={(e) => setScanDepth(e.target.value as any)}
-                    className="h-10 w-full rounded-md px-3 bg-input-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-                    <option value="standard">Standard</option>
-                    <option value="deep">Deep (Starter+)</option>
-                  </select>
-                  <Input placeholder={
-                    targetType === "domain" ? "example.com" :
-                    targetType === "ip" ? "52.1.2.3" :
-                    targetType === "cidr" ? "192.168.1.0/24" :
-                    targetType === "asn" ? "AS13335" :
-                    "Acme Corporation"
-                  } value={targetValue}
-                    onChange={(e) => setTargetValue(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleDiscover()} />
-                  <Button onClick={handleDiscover} disabled={launching || !targetValue.trim()} className="bg-[#00b8d4] hover:bg-[#00b8d4]/90 whitespace-nowrap">
+              <div className="space-y-4">
+                {/* Labelled inputs — each with an explicit label so the row
+                    reads as a form, not a row of dropdowns with no headings. */}
+                <div className="grid md:grid-cols-[160px_140px_1fr_auto] gap-3 items-end">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Target type</Label>
+                    <select value={targetType} onChange={(e) => setTargetType(e.target.value as any)}
+                      className="h-10 w-full rounded-md px-3 bg-input-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                      <option value="domain">Domain</option>
+                      <option value="ip">IP Address</option>
+                      <option value="cidr">CIDR Range (Starter+)</option>
+                      <option value="asn">ASN (Starter+)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Depth</Label>
+                    <select value={scanDepth} onChange={(e) => setScanDepth(e.target.value as any)}
+                      className="h-10 w-full rounded-md px-3 bg-input-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                      <option value="standard">Standard</option>
+                      <option value="deep">Deep (Starter+)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                      {targetType === "domain" ? "Domain" :
+                       targetType === "ip" ? "IP address" :
+                       targetType === "cidr" ? "CIDR range" :
+                       "ASN"}
+                    </Label>
+                    <Input placeholder={
+                      targetType === "domain" ? "example.com" :
+                      targetType === "ip" ? "52.1.2.3" :
+                      targetType === "cidr" ? "192.168.1.0/24" :
+                      targetType === "asn" ? "AS13335" :
+                      "Acme Corporation"
+                    } value={targetValue}
+                      onChange={(e) => setTargetValue(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleDiscover()} />
+                  </div>
+                  <Button onClick={handleDiscover} disabled={launching || !targetValue.trim()} className="bg-[#00b8d4] hover:bg-[#00b8d4]/90 whitespace-nowrap h-10">
                     {launching ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting...</> : <><Radar className="w-4 h-4 mr-2" />Discover</>}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {scanDepth === "standard" && "Standard discovery checks ~300 common subdomains using CT logs, DNS, and passive OSINT sources."}
-                  {scanDepth === "deep" && "Deep discovery runs 1,300+ subdomain checks and extended reconnaissance. Takes longer but finds more."}
-                </p>
+
+                {/* Depth comparison — shows both options side-by-side so the
+                    user doesn't have to flip the dropdown to read about each. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div
+                    className={cn(
+                      "rounded-lg border px-3 py-2.5 transition-colors cursor-pointer",
+                      scanDepth === "standard"
+                        ? "border-[#00b8d4]/40 bg-[#00b8d4]/[0.06]"
+                        : "border-border bg-muted/10 hover:border-border/80"
+                    )}
+                    onClick={() => setScanDepth("standard")}
+                  >
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-foreground font-semibold">Standard</span>
+                      <span className="text-[10px] text-muted-foreground">~3 min · ~300 names</span>
+                    </div>
+                    <p className="text-muted-foreground leading-relaxed">CT logs, DNS, passive OSINT. Fast first pass — finds the obvious stuff.</p>
+                  </div>
+                  <div
+                    className={cn(
+                      "rounded-lg border px-3 py-2.5 transition-colors cursor-pointer",
+                      scanDepth === "deep"
+                        ? "border-[#00b8d4]/40 bg-[#00b8d4]/[0.06]"
+                        : "border-border bg-muted/10 hover:border-border/80"
+                    )}
+                    onClick={() => setScanDepth("deep")}
+                  >
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-foreground font-semibold">Deep <span className="text-[10px] font-normal text-muted-foreground">Starter+</span></span>
+                      <span className="text-[10px] text-muted-foreground">~10 min · 1,300+ names</span>
+                    </div>
+                    <p className="text-muted-foreground leading-relaxed">Everything Standard does, plus brute-force enumeration and extended recon. Slower but finds more.</p>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="flex items-center gap-2 px-3 py-3 rounded-lg bg-muted/10 border border-border text-sm text-muted-foreground">
@@ -512,6 +583,7 @@ export default function DiscoveryPage() {
           {!viewingJob && <JobsList
             jobs={jobs} loading={loadingJobs}
             onView={handleViewJob} onDelete={handleDelete}
+            onRefresh={refreshJobs}
           />}
 
           {/* Add to Inventory Dialog (two-step) */}
@@ -898,17 +970,69 @@ function JobDetailView({ job, filteredAssets, typeCounts, allTags, tagFilter, se
   );
 }
 
-function JobsList({ jobs, loading, onView, onDelete }: {
+function JobsList({ jobs, loading, onView, onDelete, onRefresh }: {
   jobs: DiscoveryJob[]; loading: boolean;
   onView: (id: number) => void; onDelete: (id: number, e?: React.MouseEvent) => void;
+  onRefresh: () => void;
 }) {
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchText, setSearchText] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    return jobs.filter((j) => {
+      if (statusFilter !== "all" && j.status !== statusFilter) return false;
+      if (q && !j.target.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [jobs, statusFilter, searchText]);
+
+  // Show depth in title case to match the form ("Standard" / "Deep") instead
+  // of the historical UPPER. Less shouty.
+  function prettyDepth(d: string | null | undefined): string {
+    if (!d) return "Standard";
+    return d.charAt(0).toUpperCase() + d.slice(1).toLowerCase();
+  }
+
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <div className="p-6 border-b border-border flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-          <Clock className="w-5 h-5 text-[#00b8d4]" />Discovery History
-        </h2>
-        <span className="text-xs text-muted-foreground">{loading ? "Loading..." : `${jobs.length} job(s)`}</span>
+      <div className="p-6 border-b border-border flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <Clock className="w-5 h-5 text-[#00b8d4]" />Discovery History
+          </h2>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-muted/30 text-muted-foreground border border-border">
+            {loading ? "Loading…" : `${filtered.length}${filtered.length !== jobs.length ? ` of ${jobs.length}` : ""} job${jobs.length === 1 ? "" : "s"}`}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search target…"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className="pl-8 h-9 w-44"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-9 rounded-md border border-border bg-input-background px-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="all">All statuses</option>
+            <option value="completed">Completed</option>
+            <option value="partial">Partial</option>
+            <option value="running">Running</option>
+            <option value="pending">Pending</option>
+            <option value="failed">Failed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <Button variant="outline" size="sm" onClick={onRefresh} title="Reload discovery history"
+            className="border-border text-foreground hover:bg-accent">
+            <RefreshCcw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
+          </Button>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -917,40 +1041,86 @@ function JobsList({ jobs, loading, onView, onDelete }: {
               <th className="text-left p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Target</th>
               <th className="text-left p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
               <th className="text-left p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Depth</th>
-              <th className="text-left p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Found</th>
-              <th className="text-left p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">New</th>
+              <th className="text-left p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider" title="Total subdomains/IPs the discovery surfaced">
+                Found <Info className="inline w-3 h-3 ml-0.5 text-muted-foreground/40" />
+              </th>
+              <th className="text-left p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider" title="Subset of Found that aren't already in your inventory">
+                New <Info className="inline w-3 h-3 ml-0.5 text-muted-foreground/40" />
+              </th>
               <th className="text-left p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Started</th>
               <th className="text-right p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {jobs.map((job) => (
-              <tr key={job.id} onClick={() => onView(job.id)} className="cursor-pointer hover:bg-accent/30 transition-colors">
-                <td className="p-4">
-                  <span className="font-mono text-sm text-foreground">{job.target}</span>
-                  <span className="ml-2 text-xs text-muted-foreground uppercase">{job.targetType.replace("_", " ")}</span>
-                </td>
-                <td className="p-4"><StatusBadge status={job.status} /></td>
-                <td className="p-4">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-muted/30 text-muted-foreground">
-                    {job.scanDepth || "standard"}
-                  </span>
-                </td>
-                <td className="p-4 text-foreground font-semibold">{job.totalFound}</td>
-                <td className="p-4 text-[#00b8d4] font-semibold">{job.newAssets}</td>
-                <td className="p-4 text-xs text-muted-foreground">{timeAgo(job.startedAt || job.createdAt)}</td>
-                <td className="p-4">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onView(job.id); }}
-                      className="border-border text-foreground hover:bg-accent">Details</Button>
-                    {job.status !== "running" && job.status !== "pending" && (
-                      <Button size="sm" variant="outline" onClick={(e) => onDelete(job.id, e)}
-                        className="border-red-500/30 text-red-400 hover:bg-red-500/10"><Trash2 className="w-3 h-3" /></Button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {filtered.map((job) => {
+              const hasNew = job.newAssets > 0 && (job.status === "completed" || job.status === "partial");
+              const failureMsg = job.status === "failed" ? job.errorMessage : null;
+              return (
+                <React.Fragment key={job.id}>
+                  <tr onClick={() => onView(job.id)} className="cursor-pointer hover:bg-accent/30 transition-colors">
+                    <td className="p-4">
+                      <span className="font-mono text-sm text-foreground">{job.target}</span>
+                      <span className="ml-2 text-xs text-muted-foreground uppercase">{job.targetType.replace("_", " ")}</span>
+                    </td>
+                    <td className="p-4"><StatusBadge status={job.status} /></td>
+                    <td className="p-4">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-muted/30 text-muted-foreground">
+                        {prettyDepth(job.scanDepth)}
+                      </span>
+                    </td>
+                    <td className="p-4 text-foreground font-semibold tabular-nums">{job.totalFound}</td>
+                    <td className="p-4 text-[#00b8d4] font-semibold tabular-nums">{job.newAssets}</td>
+                    <td className="p-4 text-xs text-muted-foreground">{timeAgo(job.startedAt || job.createdAt)}</td>
+                    <td className="p-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => { e.stopPropagation(); onView(job.id); }}
+                          className={cn(
+                            hasNew
+                              ? "border-[#00b8d4]/40 text-[#00b8d4] hover:bg-[#00b8d4]/10"
+                              : "border-border text-foreground hover:bg-accent"
+                          )}
+                          title={hasNew ? `Review ${job.newAssets} new asset${job.newAssets !== 1 ? "s" : ""} and import to inventory` : "View discovery details"}
+                        >
+                          {hasNew ? `Review ${job.newAssets} new →` : "Details"}
+                        </Button>
+                        {job.status !== "running" && job.status !== "pending" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => onDelete(job.id, e)}
+                            title="Delete this discovery job (does not remove imported assets)"
+                            className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  {failureMsg && (
+                    <tr className="bg-red-500/[0.03]">
+                      <td colSpan={7} className="px-4 pb-3 pt-0">
+                        <div className="flex items-start gap-2 text-xs text-red-300/85 rounded-md border border-red-500/20 bg-red-500/[0.04] px-3 py-2">
+                          <XCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-medium text-red-300">Failure reason:</span>{" "}
+                            <span className="text-red-300/85 break-words">{failureMsg}</span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+            {!loading && filtered.length === 0 && jobs.length > 0 && (
+              <tr><td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">
+                No discovery jobs match your filters.
+              </td></tr>
+            )}
             {!loading && jobs.length === 0 && (
               <tr><td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">
                 No discovery jobs yet. Enter a target above to get started.

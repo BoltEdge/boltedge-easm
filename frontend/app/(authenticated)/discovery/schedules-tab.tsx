@@ -177,15 +177,46 @@ export default function DiscoverySchedulesTab() {
       </div>
 
       {schedules.length === 0 ? (
-        <div className="bg-card border border-border rounded-xl p-12 text-center">
-          <Calendar className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-          <h3 className="text-foreground font-semibold mb-1">No schedules yet</h3>
-          <p className="text-sm text-muted-foreground mb-4">Create a schedule to automatically discover new assets on a recurring basis.</p>
-          {canManage && (
-            <Button onClick={() => { resetForm(); setCreateOpen(true); }} className="bg-[#00b8d4] hover:bg-[#00b8d4]/90">
-              <Plus className="w-4 h-4 mr-2" />Create First Schedule
-            </Button>
-          )}
+        <div className="bg-card border border-border rounded-xl p-10 sm:p-12">
+          <div className="max-w-2xl mx-auto text-center">
+            <Calendar className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+            <h3 className="text-foreground font-semibold mb-1">No schedules yet</h3>
+            <p className="text-sm text-muted-foreground mb-6">Create a schedule to automatically discover new assets on a recurring basis.</p>
+            {canManage && (
+              <Button onClick={() => { resetForm(); setCreateOpen(true); }} className="bg-[#00b8d4] hover:bg-[#00b8d4]/90">
+                <Plus className="w-4 h-4 mr-2" />Create First Schedule
+              </Button>
+            )}
+          </div>
+
+          {/* "How it works" hint — populates the otherwise-empty viewport so
+              the page doesn't read as "nothing here". Three short steps cover
+              the typical mental model: pick target, set cadence, auto-import. */}
+          <div className="mt-10 max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+            {[
+              {
+                step: "01",
+                title: "Pick a target",
+                body: "Domain, IP, CIDR, or ASN — the same inputs as one-shot discoveries.",
+              },
+              {
+                step: "02",
+                title: "Set a cadence",
+                body: "Daily, weekly, or monthly. Each fire runs a fresh discovery from scratch.",
+              },
+              {
+                step: "03",
+                title: "New assets land",
+                body: "Anything previously-unseen gets surfaced — import to an asset group with one click.",
+              },
+            ].map(({ step, title, body }) => (
+              <div key={step} className="rounded-lg border border-border bg-muted/10 p-4">
+                <div className="text-[10px] font-semibold text-[#00b8d4] uppercase tracking-wider mb-1">{step}</div>
+                <div className="text-sm font-medium text-foreground mb-1">{title}</div>
+                <p className="text-xs text-muted-foreground leading-relaxed">{body}</p>
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
