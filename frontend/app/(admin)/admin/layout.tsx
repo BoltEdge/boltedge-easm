@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   LayoutDashboard, Building2, Users, LogOut, ShieldAlert, ScrollText,
   ScanLine, Megaphone, HeartPulse, ShieldBan, MessageSquare, CreditCard,
-  ChevronDown, ArrowLeft, FileSearch,
+  ChevronDown, ArrowLeft, FileSearch, Bot,
 } from "lucide-react";
 
 // The admin nav is grouped by what the operator is *trying to do*, not
@@ -65,6 +65,13 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Platform Health",
     items: [
       { href: "/admin/health", label: "Health", icon: HeartPulse },
+    ],
+  },
+  {
+    id: "agents",
+    label: "Agent Platform",
+    items: [
+      { href: "/admin/agents", label: "Agents", icon: Bot },
     ],
   },
   {

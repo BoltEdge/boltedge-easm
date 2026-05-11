@@ -2606,3 +2606,94 @@ export async function getAdminWebhookLog(params?: {
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   return apiFetch<Paginated<AdminWebhookLogEntry>>(`/admin/billing/webhook-log${suffix}`);
 }
+
+// ────────────────────────────────────────────────────────────
+// Agent platform — admin API
+// ────────────────────────────────────────────────────────────
+
+export type AgentSummary = {
+  name: string;
+  display_name: string;
+  external_writes: boolean;
+  cost_cap_monthly_usd: number;
+  default_model: string;
+};
+
+export async function getAgents(): Promise<AgentSummary[]> {
+  const j = await apiFetch<{ agents: AgentSummary[] }>("/admin/agents");
+  return j.agents;
+}
+
+export type AgentRunSummary = {
+  id: number;
+  skill: string | null;
+  status: string;
+  cost_usd: number | null;
+  started_at: string;
+  duration_ms: number | null;
+};
+
+export type AgentThreadSummary = {
+  id: number;
+  title: string | null;
+  created_at: string;
+  message_count: number;
+};
+
+export type AgentDetail = {
+  name: string;
+  display_name: string;
+  system_prompt: string;
+  allowed_tools: string[];
+  external_writes: boolean;
+  cost_cap_monthly_usd: number;
+  default_model: string;
+  runs: AgentRunSummary[];
+  threads: AgentThreadSummary[];
+};
+
+export async function getAgent(name: string): Promise<AgentDetail> {
+  return apiFetch<AgentDetail>(`/admin/agents/${encodeURIComponent(name)}`);
+}
+
+export async function runAgent(
+  name: string,
+  prompt: string,
+  opts: { skill?: string; memory_tags?: string[]; thread_id?: number } = {},
+): Promise<unknown> {
+  return apiFetch<unknown>(`/admin/agents/${encodeURIComponent(name)}/run`, {
+    method: "POST",
+    body: JSON.stringify({ prompt, ...opts }),
+  });
+}
+
+export type PendingActionRow = {
+  id: number;
+  agent_id: string;
+  action_type: string;
+  target: string | null;
+  payload: unknown;
+  rationale: string | null;
+  skill: string | null;
+  proposed_at: string;
+  expires_at: string;
+};
+
+export async function getPendingApprovals(): Promise<PendingActionRow[]> {
+  const j = await apiFetch<{ pending: PendingActionRow[] }>("/admin/agents/approvals");
+  return j.pending;
+}
+
+export async function approveAction(id: number, edited_payload?: unknown): Promise<unknown> {
+  return apiFetch<unknown>(`/admin/agents/approvals/${id}/approve`, {
+    method: "POST",
+    body: JSON.stringify({ edited_payload }),
+  });
+}
+
+export async function rejectAction(id: number, note?: string): Promise<unknown> {
+  return apiFetch<unknown>(`/admin/agents/approvals/${id}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });
+}
