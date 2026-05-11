@@ -970,6 +970,8 @@ class ApiKey(db.Model):
         # SQLAlchemy scalar default= is applied at flush, not at construction,
         # so transient instances would have kind=None without this override.
         kwargs.setdefault("kind", "customer")
+        # JSON callable default= (list) also doesn't fire on transient instances.
+        kwargs.setdefault("scopes", [])
         super().__init__(**kwargs)
 
     created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
