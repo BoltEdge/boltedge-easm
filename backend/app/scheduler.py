@@ -18,6 +18,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 logger = logging.getLogger("scheduler")
@@ -376,6 +377,18 @@ def _persist_findings(job, asset, result, db):
             db.session.add(f)
 
 
+def _run_monday_weekly_summary():
+    """Phase-1 scheduled job: Founder Ops weekly summary, Monday 08:00."""
+    from app.agents.skills.weekly_summary import run_weekly_summary
+    try:
+        run_weekly_summary(send=True)
+    except Exception as e:
+        # Never propagate — APScheduler should keep running. The failure
+        # is captured in agent_run.status='failed' by run_agent itself.
+        import logging
+        logging.getLogger("agents").exception("weekly_summary failed: %s", e)
+
+
 def init_scheduler(app):
     """Initialize and start the background scheduler."""
     global _scheduler
@@ -400,6 +413,16 @@ def init_scheduler(app):
         name="Check for due scan schedules",
         replace_existing=True,
         max_instances=1,  # Prevent overlapping runs
+    )
+
+    # Founder Ops weekly summary — every Monday at 08:00 UTC
+    _scheduler.add_job(
+        func=_run_monday_weekly_summary,
+        trigger=CronTrigger(day_of_week="mon", hour=8, minute=0),
+        id="agents.founder_ops.weekly_summary",
+        name="Founder Ops weekly summary (Monday 08:00 UTC)",
+        replace_existing=True,
+        max_instances=1,
     )
 
     _scheduler.start()
