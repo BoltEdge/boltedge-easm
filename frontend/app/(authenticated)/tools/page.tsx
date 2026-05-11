@@ -170,6 +170,52 @@ const BUILTIN_PRESETS: WorkspacePreset[] = [
 ];
 
 const PRESETS_STORAGE_KEY = "asm_lookup_presets_v1";
+const AUTH_DISCLAIMER_DISMISSED_KEY = "asm_lookup_auth_disclaimer_dismissed_v1";
+
+/** Single-line authorisation reminder. Dismissable after first ack —
+ *  stored in localStorage so it doesn't nag returning users. */
+function AuthorisationDisclaimer() {
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(AUTH_DISCLAIMER_DISMISSED_KEY) === "1";
+  });
+  if (dismissed) return null;
+  return (
+    <div className="px-4 py-1.5 border-b border-white/[0.04] bg-amber-500/[0.03] flex items-center gap-2 text-[11px] text-amber-300/80 shrink-0">
+      <AlertCircle size={11} className="shrink-0" />
+      <span className="flex-1">
+        Some tools (port checks, exposed-path scanning, header probes) reach out to the target from Nano EASM infrastructure. Only run them against assets you&apos;re authorised to test.
+      </span>
+      <button
+        type="button"
+        onClick={() => {
+          try { window.localStorage.setItem(AUTH_DISCLAIMER_DISMISSED_KEY, "1"); } catch {}
+          setDismissed(true);
+        }}
+        className="text-amber-300/70 hover:text-amber-300 transition-colors px-1.5"
+        title="Got it — don't show this banner again on this device"
+      >
+        Got it
+      </button>
+    </div>
+  );
+}
+
+/** Discovery hint strip below the workspace header — explains the
+ *  primary interactions so a new user isn't lost on a blank canvas. */
+function KeyboardHintStrip() {
+  return (
+    <div className="hidden md:flex px-4 py-1 border-b border-white/[0.04] items-center gap-3 text-[10px] text-white/30 shrink-0">
+      <span><strong className="text-white/55 font-medium">Drag</strong> a tool from the sidebar</span>
+      <span className="text-white/15">·</span>
+      <span><strong className="text-white/55 font-medium">Type or paste a target</strong> at the top (one shared input)</span>
+      <span className="text-white/15">·</span>
+      <span><strong className="text-white/55 font-medium">Run All</strong> to fire every panel against it</span>
+      <span className="text-white/15">·</span>
+      <span><strong className="text-white/55 font-medium">Presets</strong> save common bundles</span>
+    </div>
+  );
+}
 
 function loadUserPresets(): WorkspacePreset[] {
   if (typeof window === "undefined") return [];
@@ -1107,10 +1153,17 @@ function AddToolDropdown({ onAdd, disabled }: { onAdd: (toolId: ToolId) => void;
                 {expandedCat === cat && (
                   <div className="pb-1">
                     {catTools.map((tool) => (
-                      <button key={tool.id} onClick={() => { onAdd(tool.id); setOpen(false); setExpandedCat(null); }}
-                        className="w-full flex items-center gap-2 px-5 py-1.5 text-left hover:bg-white/[0.06] transition-colors group">
-                        <div className={cn("h-5 w-5 rounded flex items-center justify-center shrink-0", tool.iconBg, tool.color)}>{tool.icon}</div>
-                        <span className="text-[11px] text-[#64748b] group-hover:text-white truncate transition-colors">{tool.name}</span>
+                      <button
+                        key={tool.id}
+                        onClick={() => { onAdd(tool.id); setOpen(false); setExpandedCat(null); }}
+                        title={tool.description}
+                        className="w-full flex items-start gap-2 px-5 py-2 text-left hover:bg-white/[0.06] transition-colors group"
+                      >
+                        <div className={cn("h-5 w-5 rounded flex items-center justify-center shrink-0 mt-0.5", tool.iconBg, tool.color)}>{tool.icon}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[11px] text-[#94a3b8] group-hover:text-white truncate transition-colors">{tool.name}</div>
+                          <div className="text-[10px] text-[#475569] group-hover:text-[#64748b] truncate transition-colors">{tool.description}</div>
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -2023,17 +2076,17 @@ export default function ToolsPage() {
           </button>
         </div>
 
-        {/* Active-scan disclaimer (#8). Subtle, single-line; it's a
-            reminder, not a wall. Tools that probe targets actively
-            (port scan, exposed paths, header probe) do reach out from
-            our infra to the target. Users should only point them at
-            assets they're authorised to test. */}
-        <div className="px-4 py-1.5 border-b border-white/[0.04] bg-amber-500/[0.03] flex items-center gap-2 text-[11px] text-amber-300/80 shrink-0">
-          <AlertCircle size={11} className="shrink-0" />
-          <span>
-            Some tools (port checks, exposed-path scanning, header probes) reach out to the target from Nano EASM infrastructure. Only run them against assets you're authorised to test.
-          </span>
-        </div>
+        {/* Active-scan disclaimer (#8). Dismissable after first ack —
+            stored in localStorage so it doesn't nag returning users.
+            Tools that probe targets actively (port scan, exposed paths,
+            header probe) do reach out from our infra to the target;
+            users should only point them at assets they're authorised
+            to test. */}
+        <AuthorisationDisclaimer />
+        {/* Keyboard-shortcut hints — light single-line strip. Shown
+            once dismissed; otherwise the disclaimer line above carries
+            the visual weight. */}
+        <KeyboardHintStrip />
 
         {alertBanner && (
           <div className={cn(

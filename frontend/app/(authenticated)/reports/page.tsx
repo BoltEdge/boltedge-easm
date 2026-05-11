@@ -37,6 +37,33 @@ function formatDate(iso: string | null): string {
   }
 }
 
+/** Relative time for recent moments, absolute (Mon DD, YYYY) for older
+ *  than 7 days. Returns both the display string and the full timestamp
+ *  for hover via title. */
+function formatRelativeOrDate(iso: string | null): { display: string; full: string } {
+  if (!iso) return { display: "—", full: "" };
+  try {
+    const dt = new Date(iso);
+    if (isNaN(dt.getTime())) return { display: iso, full: iso };
+    const sec = Math.floor((Date.now() - dt.getTime()) / 1000);
+    const full = dt.toLocaleString("en-US", {
+      month: "short", day: "numeric", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+    if (sec < 60) return { display: "just now", full };
+    if (sec < 3600) return { display: `${Math.floor(sec / 60)}m ago`, full };
+    if (sec < 86400) return { display: `${Math.floor(sec / 3600)}h ago`, full };
+    const days = Math.floor(sec / 86400);
+    if (days < 7) return { display: `${days}d ago`, full };
+    return {
+      display: dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      full,
+    };
+  } catch {
+    return { display: iso, full: iso };
+  }
+}
+
 function formatFileSize(bytes: number | null): string {
   if (!bytes) return "—";
   if (bytes < 1024) return `${bytes} B`;
@@ -104,8 +131,13 @@ function severityDot(sev: string, count: number) {
     info: "bg-slate-400",
   };
   if (count === 0) return null;
+  const sevLabel = sev.charAt(0).toUpperCase() + sev.slice(1);
   return (
-    <span key={sev} className="inline-flex items-center gap-1 text-xs text-white/50">
+    <span
+      key={sev}
+      className="inline-flex items-center gap-1 text-xs text-white/50"
+      title={`${count} ${sevLabel} finding${count === 1 ? "" : "s"}`}
+    >
       <span className={`w-2 h-2 rounded-full ${colors[sev] || "bg-slate-400"}`} />
       {count}
     </span>
@@ -380,6 +412,7 @@ export default function ReportsPage() {
   const [filterScope, setFilterScope] = useState<string>("all");
   const [filterTemplate, setFilterTemplate] = useState<string>("all");
   const [filterGroupId, setFilterGroupId] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
 
   // Dialog
   const [showGenerate, setShowGenerate] = useState(false);
@@ -400,16 +433,22 @@ export default function ReportsPage() {
       if (filterScope !== "all") params.scope = filterScope;
       if (filterTemplate !== "all") params.template = filterTemplate;
       if (filterGroupId !== "all") params.groupId = filterGroupId;
+      if (filterStatus !== "all") params.status = filterStatus;
 
       const res = await getReports(params);
-      setReports(res.reports);
-      setTotal(res.total);
+      // Apply status filter client-side as a fallback if the API ignores the
+      // `status` param (no backend change needed to enable the UX).
+      const filteredReports = filterStatus !== "all"
+        ? res.reports.filter((r) => r.status === filterStatus)
+        : res.reports;
+      setReports(filteredReports);
+      setTotal(filterStatus !== "all" ? filteredReports.length : res.total);
     } catch (e: any) {
       setError(e?.message || "Failed to load reports");
     } finally {
       setLoading(false);
     }
-  }, [page, filterScope, filterTemplate, filterGroupId]);
+  }, [page, filterScope, filterTemplate, filterGroupId, filterStatus]);
 
   const fetchGroups = useCallback(async () => {
     try {
@@ -592,9 +631,26 @@ export default function ReportsPage() {
           </div>
         )}
 
-        {(filterScope !== "all" || filterTemplate !== "all" || filterGroupId !== "all") && (
+        {/* Status filter — useful once customers accumulate reports
+            with mixed states (Ready / Generating / Failed). */}
+        <div className="relative">
+          <select
+            value={filterStatus}
+            onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+            className="appearance-none bg-white/5 border border-white/10 rounded-lg px-4 py-2 pr-9 text-sm text-white focus:outline-none focus:ring-1 focus:ring-teal-500"
+          >
+            <option value="all" className="bg-[#0f1729]">All Statuses</option>
+            <option value="ready" className="bg-[#0f1729]">Ready</option>
+            <option value="generating" className="bg-[#0f1729]">Generating</option>
+            <option value="pending" className="bg-[#0f1729]">Pending</option>
+            <option value="failed" className="bg-[#0f1729]">Failed</option>
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+        </div>
+
+        {(filterScope !== "all" || filterTemplate !== "all" || filterGroupId !== "all" || filterStatus !== "all") && (
           <button
-            onClick={() => { setFilterScope("all"); setFilterTemplate("all"); setFilterGroupId("all"); setPage(1); }}
+            onClick={() => { setFilterScope("all"); setFilterTemplate("all"); setFilterGroupId("all"); setFilterStatus("all"); setPage(1); }}
             className="text-xs text-white/40 hover:text-white/60 transition-colors"
           >
             Clear filters
@@ -692,7 +748,10 @@ export default function ReportsPage() {
                       )}
                     </td>
                     <td className="px-5 py-4">
-                      <div className="text-sm text-white/60">{formatDate(r.generatedAt || r.createdAt)}</div>
+                      {(() => {
+                        const { display, full } = formatRelativeOrDate(r.generatedAt || r.createdAt);
+                        return <div className="text-sm text-white/60" title={full || undefined}>{display}</div>;
+                      })()}
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-1">

@@ -69,17 +69,21 @@ function scoreBg(score: number): string {
 // DELTA BADGE
 // ════════════════════════════════════════════════════════════════
 
-function DeltaBadge({ delta, inverse = false }: { delta: TrendDelta | null | undefined; inverse?: boolean }) {
+function DeltaBadge({ delta, inverse = false, periodDays }: { delta: TrendDelta | null | undefined; inverse?: boolean; periodDays?: number }) {
+  const periodLabel = periodDays ? `vs prev ${periodDays}d` : "vs prev period";
   if (!delta || delta.direction === "flat") {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-white/25">
-        <Minus className="w-3 h-3" /> 0%
+      <span className="inline-flex items-center gap-1 text-xs text-white/30" title={`No change ${periodLabel}`}>
+        <Minus className="w-3 h-3" /> No change
       </span>
     );
   }
   const isGood = inverse ? delta.direction === "up" : delta.direction === "down";
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-semibold ${isGood ? "text-emerald-400" : "text-red-400"}`}>
+    <span
+      className={`inline-flex items-center gap-1 text-xs font-semibold ${isGood ? "text-emerald-400" : "text-red-400"}`}
+      title={`${delta.direction === "up" ? "Up" : "Down"} ${Math.abs(delta.percent)}% ${periodLabel}`}
+    >
       {delta.direction === "up" ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
       {delta.percent > 0 ? "+" : ""}{delta.percent}%
     </span>
@@ -319,7 +323,42 @@ function ActivityChart({ data }: { data: TrendSnapshot[] }) {
 
 function MTTRChart({ data }: { data: TrendSnapshot[] }) {
   const filtered = data.filter((s) => s.mttrHours !== null && s.mttrHours !== undefined);
-  if (filtered.length < 2) return <EmptyChart message="Not enough MTTR data yet — resolve some findings to see this chart" />;
+
+  // No real MTTR data yet → render an educational sample chart that
+  // makes the "what you'll see" obvious. The dim sample line trends
+  // downward (good direction), and severity-targeted markers indicate
+  // what reasonable industry-typical MTTR targets look like.
+  if (filtered.length < 2) {
+    const yScale = buildYScale(120); // hours
+    const samplePoints = [110, 95, 92, 80, 72, 60, 55, 48, 50, 42].map((y, i, arr) => ({
+      x: PAD.left + (i / (arr.length - 1)) * INNER_W,
+      y: yScale(y),
+    }));
+    const linePath = `M${samplePoints.map((p) => `${p.x},${p.y}`).join(" L")}`;
+    const areaPath = `M${PAD.left},${yScale(0)} L${samplePoints.map((p) => `${p.x},${p.y}`).join(" L")} L${PAD.left + INNER_W},${yScale(0)} Z`;
+    return (
+      <div className="relative">
+        <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} className="w-full opacity-30" preserveAspectRatio="xMidYMid meet">
+          <YAxis max={120} />
+          {/* Industry-typical target lines — purely illustrative. */}
+          <line x1={PAD.left} x2={CHART_W - PAD.right} y1={yScale(72)} y2={yScale(72)} stroke="rgba(239,68,68,0.4)" strokeDasharray="3 3" />
+          <text x={CHART_W - PAD.right - 4} y={yScale(72) - 4} textAnchor="end" fill="rgba(239,68,68,0.6)" fontSize={9}>Critical target: 72h</text>
+          <line x1={PAD.left} x2={CHART_W - PAD.right} y1={yScale(48)} y2={yScale(48)} stroke="rgba(249,115,22,0.4)" strokeDasharray="3 3" />
+          <text x={CHART_W - PAD.right - 4} y={yScale(48) - 4} textAnchor="end" fill="rgba(249,115,22,0.6)" fontSize={9}>High target: 48h</text>
+          <path d={areaPath} fill="rgba(139,92,246,0.08)" />
+          <path d={linePath} fill="none" stroke={MTTR_COLOR} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <div className="bg-[#0f1729]/85 border border-white/10 rounded-lg px-4 py-3 text-center max-w-xs">
+            <p className="text-sm text-white/80 font-medium">Sample preview</p>
+            <p className="text-xs text-white/50 mt-1 leading-relaxed">
+              Resolve a few findings to see your real MTTR. Targets shown are typical for security teams.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const xScale = buildXScale(filtered);
   const maxVal = Math.max(...filtered.map((s) => s.mttrHours || 0), 1);
@@ -468,6 +507,32 @@ export default function TrendingPage() {
   const current = summary?.current;
   const deltas = summary?.deltas;
 
+  // Export the currently-loaded snapshots as a CSV the user can drop into
+  // a board / compliance report. No backend round-trip — uses the data
+  // already in memory.
+  function exportCsv() {
+    if (snapshots.length === 0) return;
+    const header = [
+      "date", "exposureScore", "totalFindings", "critical", "high",
+      "medium", "low", "newFindings", "resolvedFindings", "mttrHours", "assetCount",
+    ];
+    const rows = snapshots.map((s) => header.map((k) => {
+      const v = (s as any)[k];
+      if (v === null || v === undefined) return "";
+      return String(v);
+    }));
+    const csv = [header.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `nano-easm-trend-${days}d-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-6">
       {/* Banner */}
@@ -488,14 +553,30 @@ export default function TrendingPage() {
           <h1 className="text-2xl font-bold text-white">Security Trending</h1>
           <p className="text-sm text-white/50 mt-1">
             Track your security posture over time. Are things getting better or worse?
+            {!loading && snapshots.length > 0 && (
+              <span className="text-white/30">
+                {" "}· Deltas compare against the previous {days}-day window.
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {snapshots.length > 0 && (
+            <button
+              onClick={exportCsv}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border border-white/10 text-white/60 hover:text-white/80 hover:bg-white/5 transition-colors"
+              title="Download the currently-loaded snapshots as CSV for compliance / board reports"
+            >
+              <BarChart3 className="w-4 h-4" />
+              Export CSV
+            </button>
+          )}
           {isAdmin && (
             <>
               <button
                 onClick={() => handleGenerateSnapshot()}
                 disabled={snapshotLoading}
+                title="Capture the current security posture as a new data point in the trend. Run this after a big remediation push or scan to lock the change into history."
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border border-white/10 text-white/60 hover:text-white/80 hover:bg-white/5 transition-colors disabled:opacity-50"
               >
                 {snapshotLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
@@ -504,6 +585,7 @@ export default function TrendingPage() {
               <button
                 onClick={() => handleGenerateSnapshot(30)}
                 disabled={snapshotLoading}
+                title="Reconstruct the last 30 days of snapshots from your existing scan history. One-time bootstrap for orgs that started tracking recently."
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border border-white/10 text-white/60 hover:text-white/80 hover:bg-white/5 transition-colors disabled:opacity-50"
               >
                 {snapshotLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <BarChart3 className="w-4 h-4" />}
@@ -595,7 +677,7 @@ export default function TrendingPage() {
             <div className={`rounded-xl border border-white/5 p-4 ${current ? scoreBg(current.exposureScore) : "bg-[#0f1729]/60"}`}>
               <div className="flex items-center justify-between mb-2">
                 <Shield className={`w-4 h-4 ${current ? scoreColor(current.exposureScore) : "text-white/30"}`} />
-                <DeltaBadge delta={deltas?.exposureScore} />
+                <DeltaBadge delta={deltas?.exposureScore} periodDays={days} />
               </div>
               <div className={`text-2xl font-bold ${current ? scoreColor(current.exposureScore) : "text-white/30"}`}>
                 {current?.exposureScore ?? "—"}
@@ -607,7 +689,7 @@ export default function TrendingPage() {
             <div className="bg-[#0f1729]/60 border border-white/5 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
                 <AlertTriangle className="w-4 h-4 text-white/40" />
-                <DeltaBadge delta={deltas?.totalFindings} />
+                <DeltaBadge delta={deltas?.totalFindings} periodDays={days} />
               </div>
               <div className="text-2xl font-bold text-white">{current?.totalFindings ?? "—"}</div>
               <div className="text-xs text-white/40 mt-1">Total Findings</div>
@@ -617,7 +699,7 @@ export default function TrendingPage() {
             <div className="bg-[#0f1729]/60 border border-white/5 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                <DeltaBadge delta={deltas?.critical} />
+                <DeltaBadge delta={deltas?.critical} periodDays={days} />
               </div>
               <div className="text-2xl font-bold text-red-400">{current?.critical ?? "—"}</div>
               <div className="text-xs text-white/40 mt-1">Critical</div>
@@ -627,7 +709,7 @@ export default function TrendingPage() {
             <div className="bg-[#0f1729]/60 border border-white/5 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
-                <DeltaBadge delta={deltas?.high} />
+                <DeltaBadge delta={deltas?.high} periodDays={days} />
               </div>
               <div className="text-2xl font-bold text-orange-400">{current?.high ?? "—"}</div>
               <div className="text-xs text-white/40 mt-1">High</div>
@@ -646,7 +728,7 @@ export default function TrendingPage() {
             <div className="bg-[#0f1729]/60 border border-white/5 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
                 <Layers className="w-4 h-4 text-white/40" />
-                <DeltaBadge delta={deltas?.assetCount} inverse />
+                <DeltaBadge delta={deltas?.assetCount} periodDays={days} inverse />
               </div>
               <div className="text-2xl font-bold text-white">{current?.assetCount ?? "—"}</div>
               <div className="text-xs text-white/40 mt-1">Assets</div>
