@@ -535,7 +535,7 @@ export default function FindingsPage() {
                 checked={prefs.showProvenanceTags}
                 onChange={(e) => updatePrefs({ showProvenanceTags: e.target.checked })}
               />
-              Show provenance tags
+              Show recurrence tags
             </label>
             {canExport && (
               <Button variant="outline" onClick={handleExport} className="gap-2">
@@ -774,9 +774,9 @@ export default function FindingsPage() {
               value={provenanceFilter}
               onChange={(e) => setProvenanceFilter(e.target.value as typeof provenanceFilter)}
               className="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/40"
-              title="Filter by finding provenance"
+              title="Filter by finding recurrence"
             >
-              <option value="all">All provenance</option>
+              <option value="all">All recurrence</option>
               <option value="new">New only</option>
               <option value="seen_before">Seen before</option>
               <option value="resolved_before">Resolved before</option>

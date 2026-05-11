@@ -22,7 +22,7 @@ export default function PreferencesPage() {
             onChange={(e) => update({ showProvenanceTags: e.target.checked })}
           />
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-white">Show provenance tags on findings</div>
+            <div className="text-sm font-semibold text-white">Show recurrence tags on findings</div>
             <div className="mt-1 text-xs text-white/65 leading-relaxed">
               Adds a small pill next to each finding — NEW for first detections,
               SEEN BEFORE for recurrences, RESOLVED BEFORE for regressions of
