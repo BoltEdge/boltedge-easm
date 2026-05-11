@@ -95,11 +95,16 @@ def _check_asset(
     Compare the latest scan vs the previously seen scan for a single asset.
     Mutates job_ids[str(asset_id)] with the new last-seen job ID.
     """
-    from app.models import Asset, Finding, MonitorAlert, ScanJob
+    from app.models import Asset, Finding, MonitorAlert, Organization, ScanJob
+    from app.monitoring.helpers import should_alert_on_recurrence
 
     asset = Asset.query.get(asset_id)
     if not asset:
         return []
+
+    org = Organization.query.get(org_id)
+    if org is None:
+        return []  # defensive — shouldn't happen
 
     # Find the most recent completed scan for this asset
     latest_job = (
@@ -156,6 +161,16 @@ def _check_asset(
     # New findings
     for fk, finding in current_map.items():
         if fk in prev_map:
+            continue
+        # Recurrence gate: if this finding was first seen before the
+        # current scan started, it's not truly new — only fire if the
+        # monitor (or org default) opted in to recurrence alerts.
+        is_recurrence = bool(
+            finding.first_seen_at
+            and latest_job.started_at
+            and finding.first_seen_at < latest_job.started_at
+        )
+        if is_recurrence and not should_alert_on_recurrence(monitor, org):
             continue
         generate, tuning = should_alert(finding, asset, org_id, rules=tuning_rules)
         _record_rule_application(tuning)
