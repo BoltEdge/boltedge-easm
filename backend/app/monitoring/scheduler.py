@@ -299,6 +299,7 @@ def _trigger_monitor_scan(monitor) -> None:
             asset_id=asset.id,
             status="queued",
             profile_id=profile.id if profile else None,
+            initiator="monitor",
         )
         db.session.add(job)
         db.session.flush()

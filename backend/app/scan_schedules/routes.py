@@ -355,6 +355,7 @@ def run_schedule_now(schedule_id):
                 status="queued",
                 profile_id=schedule.profile_id,
                 schedule_id=schedule.id,
+                initiator="scheduled",
             )
             db.session.add(job)
             db.session.flush()
@@ -371,6 +372,7 @@ def run_schedule_now(schedule_id):
             status="queued",
             profile_id=schedule.profile_id,
             schedule_id=schedule.id,
+            initiator="scheduled",
         )
         db.session.add(job)
         db.session.flush()

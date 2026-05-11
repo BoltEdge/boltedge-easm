@@ -153,6 +153,7 @@ def _execute_schedule(schedule, db):
                     status="queued",
                     profile_id=schedule.profile_id,
                     schedule_id=schedule.id,
+                    initiator="scheduled",
                 )
                 db.session.add(job)
                 db.session.flush()
@@ -171,6 +172,7 @@ def _execute_schedule(schedule, db):
                 status="queued",
                 profile_id=schedule.profile_id,
                 schedule_id=schedule.id,
+                initiator="scheduled",
             )
             db.session.add(job)
             db.session.flush()

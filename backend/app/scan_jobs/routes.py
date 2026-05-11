@@ -78,6 +78,7 @@ def scanjob_to_ui(j: ScanJob) -> dict:
         "startedAt": j.started_at.isoformat() if j.started_at else None,
         "finishedAt": j.finished_at.isoformat() if j.finished_at else None,
         "error": j.error_message,
+        "initiator": j.initiator or "manual",
     }
 
 

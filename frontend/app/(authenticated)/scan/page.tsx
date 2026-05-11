@@ -165,6 +165,7 @@ export default function ScanJobsPage() {
                 <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Status</th>
                 <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Asset</th>
                 <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Profile</th>
+                <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Initiator</th>
                 <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Started</th>
                 <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Completed</th>
                 <th className="text-right p-4 text-sm font-semibold text-muted-foreground">Actions</th>
@@ -187,6 +188,24 @@ export default function ScanJobsPage() {
                       </td>
                       <td className="p-4"><div className="flex flex-col gap-0.5"><span className="font-mono text-sm text-foreground">{job.assetValue || `Asset #${job.assetId}`}</span>{job.groupName && <span className="text-xs text-muted-foreground">{job.groupName}</span>}</div></td>
                       <td className="p-4">{job.profileName ? <span className={cn("px-2 py-0.5 rounded text-xs font-semibold", pm.bg, pm.color)}>{job.profileName}</span> : <span className="text-xs text-muted-foreground">-</span>}</td>
+                      <td className="p-4">
+                        {(() => {
+                          const init = (job as any).initiator || "manual";
+                          const styles: Record<string, string> = {
+                            manual:    "bg-zinc-500/15 text-zinc-300 border-zinc-500/30",
+                            monitor:   "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
+                            scheduled: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
+                          };
+                          const labels: Record<string, string> = {
+                            manual: "Manual", monitor: "Monitor", scheduled: "Scheduled",
+                          };
+                          return (
+                            <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border", styles[init] || styles.manual)}>
+                              {labels[init] || init}
+                            </span>
+                          );
+                        })()}
+                      </td>
                       <td className="p-4"><span className="text-sm text-muted-foreground">{formatWhen(job.startedAt || job.createdAt)}</span></td>
                       <td className="p-4"><span className="text-sm text-muted-foreground">{job.finishedAt ? formatWhen(job.finishedAt) : job.status === "running" ? "In progress..." : "-"}</span></td>
                       <td className="p-4"><div className="flex items-center justify-end gap-2">

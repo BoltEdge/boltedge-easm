@@ -385,6 +385,13 @@ class ScanJob(db.Model):
     schedule_id = db.Column(db.Integer, db.ForeignKey("scan_schedule.id", ondelete="SET NULL"), nullable=True)
     scan_engines = db.Column(db.JSON, nullable=True)  # Track which engines were used
 
+    # Who/what created this scan job. One of: "manual" (default — user
+    # clicked Scan now), "monitor" (monitoring scheduler re-scanned an
+    # asset on its monitoring cadence), "scheduled" (a ScanSchedule fired
+    # via APScheduler or the run-now endpoint). Set at job creation; never
+    # changes afterwards. Surfaced in the scan jobs list column.
+    initiator = db.Column(db.String(20), nullable=False, default="manual")
+
     # Relationships
     asset = db.relationship(
         "Asset",
