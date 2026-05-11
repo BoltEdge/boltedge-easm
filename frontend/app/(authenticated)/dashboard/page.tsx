@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 import {
-  ResponsiveContainer, PieChart, Pie, Cell, Tooltip,
+  ResponsiveContainer, Tooltip,
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
 } from "recharts";
 
@@ -73,12 +73,37 @@ function ExposureGauge({ score, label, color }: { score: number; label: string; 
   const circumference = Math.PI * radius; // half circle
   const offset = circumference - (score / 100) * circumference;
 
+  // Needle angle: -90deg (left) at score 0, +90deg (right) at score 100.
+  const needleAngle = -90 + (score / 100) * 180;
+
   return (
     <div className="flex flex-col items-center">
-      <svg width="140" height="80" viewBox="0 0 140 80">
+      <svg width="160" height="92" viewBox="0 0 160 92">
+        {/* Tick marks at 0/25/50/75/100 — drawn as short radials so the
+            gauge reads as a calibrated dial rather than a half-loaded arc. */}
+        {[0, 25, 50, 75, 100].map((tick) => {
+          const angle = (-180 + (tick / 100) * 180) * (Math.PI / 180);
+          const cx = 80;
+          const cy = 78;
+          const innerR = radius - 14;
+          const outerR = radius - 4;
+          const x1 = cx + innerR * Math.cos(angle);
+          const y1 = cy + innerR * Math.sin(angle);
+          const x2 = cx + outerR * Math.cos(angle);
+          const y2 = cy + outerR * Math.sin(angle);
+          return (
+            <line
+              key={tick}
+              x1={x1} y1={y1} x2={x2} y2={y2}
+              stroke="rgba(148,163,184,0.25)"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+            />
+          );
+        })}
         {/* Background arc */}
         <path
-          d="M 10 70 A 54 54 0 0 1 130 70"
+          d="M 20 78 A 54 54 0 0 1 140 78"
           fill="none"
           stroke="rgba(148,163,184,0.15)"
           strokeWidth={stroke}
@@ -86,7 +111,7 @@ function ExposureGauge({ score, label, color }: { score: number; label: string; 
         />
         {/* Score arc */}
         <path
-          d="M 10 70 A 54 54 0 0 1 130 70"
+          d="M 20 78 A 54 54 0 0 1 140 78"
           fill="none"
           stroke={color}
           strokeWidth={stroke}
@@ -95,8 +120,19 @@ function ExposureGauge({ score, label, color }: { score: number; label: string; 
           strokeDashoffset={offset}
           style={{ transition: "stroke-dashoffset 1s ease-out" }}
         />
+        {/* End-of-arc dot — anchors the eye on the current value */}
+        <circle
+          cx={80 + radius * Math.cos((needleAngle - 90) * (Math.PI / 180))}
+          cy={78 + radius * Math.sin((needleAngle - 90) * (Math.PI / 180))}
+          r={4.5}
+          fill={color}
+          style={{ filter: `drop-shadow(0 0 4px ${color})` }}
+        />
+        {/* 0 / 100 endpoint labels for orientation */}
+        <text x="20" y="90" fill="rgba(148,163,184,0.45)" fontSize="9" textAnchor="middle">0</text>
+        <text x="140" y="90" fill="rgba(148,163,184,0.45)" fontSize="9" textAnchor="middle">100</text>
       </svg>
-      <div className="-mt-12 text-center">
+      <div className="-mt-10 text-center">
         <div className="text-3xl font-bold text-foreground">{score}</div>
         <div className="text-xs font-semibold" style={{ color }}>{label}</div>
       </div>
@@ -243,7 +279,16 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [recentAlerts, setRecentAlerts] = useState<any[]>([]);
   const [onboarding, setOnboarding] = useState<OnboardingProgress | null>(null);
+  const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null);
+  const [tick, setTick] = useState(0); // re-render every minute to update "x ago" label
   const planLimit = usePlanLimit();
+
+  // Tick once a minute so the "Updated Xm ago" timestamp stays fresh without
+  // hammering the API. Cheap — only re-renders one span.
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const loadDashboard = useCallback(async (isRefresh = false) => {
     try {
@@ -268,14 +313,28 @@ export default function DashboardPage() {
         })(),
       ]);
 
-      if (summary.status === "fulfilled") setData(summary.value);
-      else {
+      if (summary.status === "fulfilled") {
+        setData(summary.value);
+        setLastRefreshAt(Date.now());
+      } else {
         const err = summary.reason;
         if (isPlanError(err)) planLimit.handle(err.planError);
         else setError(err?.message || "Failed to load dashboard");
       }
     } finally { setLoading(false); setRefreshing(false); }
   }, [planLimit]);
+
+  const freshnessLabel = useMemo(() => {
+    void tick; // re-read on each tick
+    if (!lastRefreshAt) return null;
+    const sec = Math.floor((Date.now() - lastRefreshAt) / 1000);
+    if (sec < 30) return "Updated just now";
+    if (sec < 60) return `Updated ${sec}s ago`;
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `Updated ${min}m ago`;
+    const hr = Math.floor(min / 60);
+    return `Updated ${hr}h ago`;
+  }, [lastRefreshAt, tick]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadDashboard(); }, []);
@@ -447,7 +506,7 @@ export default function DashboardPage() {
     <div className="flex-1 overflow-y-auto bg-background">
       <div className="p-6 lg:p-8 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="mb-8 flex items-start justify-between">
+        <div className="mb-8 flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
               <LayoutDashboard className="h-6 w-6 text-primary" />
@@ -457,11 +516,19 @@ export default function DashboardPage() {
               Real-time overview of your attack surface and security posture
             </p>
           </div>
-          <Button variant="outline" onClick={() => loadDashboard(true)} disabled={refreshing}
-            className="border-border text-foreground hover:bg-accent">
-            <RefreshCcw className={cn("w-4 h-4 mr-2", refreshing && "animate-spin")} />
-            {refreshing ? "Refreshing…" : "Refresh"}
-          </Button>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {freshnessLabel && (
+              <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {freshnessLabel}
+              </div>
+            )}
+            <Button variant="outline" onClick={() => loadDashboard(true)} disabled={refreshing}
+              className="border-border text-foreground hover:bg-accent">
+              <RefreshCcw className={cn("w-4 h-4 mr-2", refreshing && "animate-spin")} />
+              {refreshing ? "Refreshing…" : "Refresh"}
+            </Button>
+          </div>
         </div>
 
         {onboarding && !onboarding.isComplete && (
@@ -519,7 +586,7 @@ export default function DashboardPage() {
 
         {/* ═══ Row 2: Severity Breakdown + Trend ═══ */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Severity donut */}
+          {/* Severity stacked bar */}
           <Panel title="Findings by Severity" icon={<Shield className="w-4 h-4 text-primary" />}>
             {pieData.length === 0 ? (
               <div className="h-[280px] flex flex-col items-center justify-center text-muted-foreground">
@@ -527,41 +594,62 @@ export default function DashboardPage() {
                 <p className="text-sm">No open findings</p>
                 <p className="text-xs text-muted-foreground">Run a scan to check your assets</p>
               </div>
-            ) : (
-              <>
-                <div className="h-[240px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Tooltip content={<ChartTooltip />} />
-                      <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={65} outerRadius={100} paddingAngle={3} strokeWidth={0}>
-                        {pieData.map((e) => <Cell key={e.key} fill={SEV_COLORS[e.key]} />)}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                {/* Custom legend — severity order */}
-                <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2">
-                  {pieData.map((e) => (
-                    <div key={e.key} className="flex items-center gap-1.5 text-xs">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: SEV_COLORS[e.key] }} />
-                      <span style={{ color: "rgba(226,232,240,0.85)" }}>{e.name}</span>
+            ) : (() => {
+              // Stacked-bar replaces the old donut. A donut at this dataset
+              // (~83% high) reads as a near-solid orange ring — proportion
+              // is hard to see. A proportional bar shows the ratio clearly
+              // and frees vertical space for per-severity breakdown rows.
+              const total = pieData.reduce((s, e) => s + e.value, 0);
+              return (
+                <div className="space-y-5 py-2">
+                  {/* Big number */}
+                  <div className="flex items-baseline gap-3">
+                    <div className="text-4xl font-bold text-foreground tabular-nums">{total}</div>
+                    <div className="text-sm text-muted-foreground">open findings</div>
+                  </div>
+
+                  {/* Proportional stacked bar */}
+                  <div className="space-y-2">
+                    <div className="flex h-3 rounded-full overflow-hidden bg-muted/20 gap-px">
+                      {pieData.map((e) => {
+                        const pct = total ? (e.value / total) * 100 : 0;
+                        return (
+                          <div
+                            key={e.key}
+                            className="h-full transition-all hover:brightness-125"
+                            style={{ width: `${pct}%`, backgroundColor: SEV_COLORS[e.key] }}
+                            title={`${e.name}: ${e.value} (${pct.toFixed(1)}%)`}
+                          />
+                        );
+                      })}
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Per-severity rows */}
+                  <div className="space-y-2">
+                    {SEV_ORDER.map((k) => {
+                      const count = findings.bySeverity?.[k] || 0;
+                      if (!count) return null;
+                      const pct = total ? (count / total) * 100 : 0;
+                      return (
+                        <div key={k} className="flex items-center gap-3 text-sm">
+                          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: SEV_COLORS[k] }} />
+                          <span className="text-foreground capitalize w-20">{k}</span>
+                          <div className="flex-1 h-1 rounded-full bg-muted/20 overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{ width: `${pct}%`, backgroundColor: SEV_COLORS[k] }}
+                            />
+                          </div>
+                          <span className="text-foreground font-semibold tabular-nums w-10 text-right">{count}</span>
+                          <span className="text-muted-foreground text-xs tabular-nums w-12 text-right">{pct.toFixed(1)}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                {/* Severity pills */}
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {SEV_ORDER.map((k) => {
-                    const count = findings.bySeverity?.[k] || 0;
-                    if (!count) return null;
-                    return (
-                      <span key={k} className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border", SEV_BG[k])}>
-                        {prettySev(k)}: {count}
-                      </span>
-                    );
-                  })}
-                </div>
-              </>
-            )}
+              );
+            })()}
           </Panel>
 
           {/* Findings trend — area chart */}
@@ -616,8 +704,8 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 {topRisky.slice(0, 5).map((a: any, i: number) => (
                   <Link key={a.assetId || i} href={`/assets/${a.assetId}`}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-border bg-background/10 hover:bg-background/20 transition-colors group">
-                    <div className="h-7 w-7 rounded-lg border border-border bg-background/30 flex items-center justify-center text-xs text-muted-foreground font-semibold">
+                    className="flex items-center gap-3 p-3 rounded-xl border border-border bg-background/10 hover:bg-background/25 hover:border-border/80 transition-all group">
+                    <div className="h-7 w-7 rounded-lg border border-border bg-background/30 flex items-center justify-center text-xs text-muted-foreground font-semibold group-hover:text-foreground group-hover:border-primary/30 transition-colors">
                       {i + 1}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -627,7 +715,7 @@ export default function DashboardPage() {
                       <span className="text-xs text-muted-foreground capitalize">{a.type} · {a.openFindings} finding{a.openFindings !== 1 ? "s" : ""}</span>
                     </div>
                     <SeverityBadge severity={a.maxSeverity} />
-                    <ArrowUpRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowUpRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                   </Link>
                 ))}
               </div>
@@ -635,163 +723,214 @@ export default function DashboardPage() {
           </Panel>
 
           {/* Recent Activity */}
-          <Panel title="Recent Activity" icon={<Activity className="w-4 h-4 text-cyan-400" />}>
-            <div className="space-y-1">
-              {/* Recent alerts */}
-              {recentAlerts.slice(0, 3).map((alert: any) => (
-                <Link key={alert.id} href="/monitoring"
-                  className="flex items-start gap-3 p-3 rounded-xl hover:bg-background/15 transition-colors">
-                  <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <BellRing className="w-4 h-4 text-red-400" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm text-foreground truncate">{alert.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <SeverityBadge severity={alert.severity || "info"} />
-                      {alert.assetValue && <span className="text-xs text-muted-foreground font-mono">{alert.assetValue}</span>}
-                      <span className="text-xs text-muted-foreground">· {timeAgo(alert.createdAt)}</span>
-                    </div>
-                  </div>
+          <Panel title="Recent Activity" icon={<Activity className="w-4 h-4 text-cyan-400" />}
+            action={
+              (recentAlerts.length > 0 || recentJobs.length > 0) ? (
+                <Link href="/monitoring" className="text-xs text-primary flex items-center gap-1 hover:opacity-80">
+                  View all<ArrowUpRight className="w-3.5 h-3.5" />
                 </Link>
-              ))}
-
-              {/* Recent scan jobs */}
-              {recentJobs.slice(0, 3).map((j: any) => (
-                <Link key={j.id} href="/scan"
-                  className="flex items-start gap-3 p-3 rounded-xl hover:bg-background/15 transition-colors">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Zap className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm text-foreground truncate">{j.assetValue || `Asset #${j.assetId}`}</p>
-                      <ScanStatusBadge status={j.status} />
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {j.status === "completed" ? "Scan completed" : j.status === "running" ? "Scan in progress" : `Scan ${j.status}`}
-                      {j.timeStarted && ` · ${timeAgo(j.timeStarted)}`}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-
-              {recentAlerts.length === 0 && recentJobs.length === 0 && (
-                <div className="py-8 text-center">
-                  <Activity className="w-10 h-10 text-muted-foreground/20 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No recent activity</p>
-                  <p className="text-xs text-muted-foreground">Run a scan or set up monitoring to see activity here</p>
+              ) : undefined
+            }>
+            {recentAlerts.length === 0 && recentJobs.length === 0 ? (
+              <div className="py-8 text-center">
+                <Activity className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground mb-1">No recent activity</p>
+                <p className="text-xs text-muted-foreground mb-4 max-w-[260px] mx-auto">
+                  Alerts, scan completions, and discoveries will appear here as your monitors run.
+                </p>
+                <div className="flex items-center justify-center gap-2">
+                  <Link href="/scan/initiate" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:opacity-80">
+                    <Play className="w-3 h-3" />Run a scan
+                  </Link>
+                  <span className="text-muted-foreground/40">·</span>
+                  <Link href="/monitoring" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:opacity-80">
+                    <Eye className="w-3 h-3" />Set up monitoring
+                  </Link>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Alerts group */}
+                {recentAlerts.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5 px-1">
+                      <BellRing className="w-3 h-3 text-red-400/70" />
+                      <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Monitoring alerts</span>
+                    </div>
+                    <div className="space-y-1">
+                      {recentAlerts.slice(0, 3).map((alert: any) => (
+                        <Link key={alert.id} href="/monitoring"
+                          className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-background/20 transition-colors group">
+                          <div className="h-8 w-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                            <BellRing className="w-4 h-4 text-red-400" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-foreground truncate">{alert.title}</p>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <SeverityBadge severity={alert.severity || "info"} />
+                              {alert.assetValue && <span className="text-xs text-muted-foreground font-mono">{alert.assetValue}</span>}
+                              <span className="text-xs text-muted-foreground">· {timeAgo(alert.createdAt)}</span>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Scan jobs group */}
+                {recentJobs.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5 px-1">
+                      <Zap className="w-3 h-3 text-primary/70" />
+                      <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Recent scans</span>
+                    </div>
+                    <div className="space-y-1">
+                      {recentJobs.slice(0, 3).map((j: any) => (
+                        <Link key={j.id} href="/scan"
+                          className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-background/20 transition-colors group">
+                          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                            <Zap className="w-4 h-4 text-primary" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm text-foreground truncate font-mono">{j.assetValue || `Asset #${j.assetId}`}</p>
+                              <ScanStatusBadge status={j.status} />
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {j.status === "completed" ? "Scan completed" : j.status === "running" ? "Scan in progress" : `Scan ${j.status}`}
+                              {j.timeStarted && ` · ${timeAgo(j.timeStarted)}`}
+                            </span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </Panel>
         </div>
 
-        {/* ═══ Row 4: Cloud Assets + Asset Distribution + Scan Coverage + Quick Actions ═══ */}
+        {/* ═══ Row 4: Cloud Assets (optional) + Asset Coverage (merged) + Quick Actions ═══ */}
         <div className={cn(
           "grid grid-cols-1 gap-6",
-          cloudAssets ? "lg:grid-cols-4" : "lg:grid-cols-3",
+          cloudAssets ? "lg:grid-cols-3" : "lg:grid-cols-2",
         )}>
           {/* Cloud Assets — only renders when cloud data exists */}
           <CloudSummaryCard cloudAssets={cloudAssets} />
 
-          {/* Asset Distribution */}
-          <Panel title="Asset Breakdown" icon={<Layers className="w-4 h-4 text-primary" />}>
-            <div className="space-y-3">
-              {Object.entries(dist).filter(([, v]) => (v as number) > 0).map(([type, count]) => {
-                const pct = assets.total ? Math.round(((count as number) / assets.total) * 100) : 0;
-                return (
-                  <div key={type}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm text-foreground capitalize">{type}</span>
-                      <span className="text-sm font-semibold text-foreground">{count as number}</span>
+          {/* Asset Coverage — merged Asset Breakdown + Scan Coverage. Used to
+              be two side-by-side panels; combined here so a single card tells
+              the "what assets do I have, and have they been scanned?" story. */}
+          <Panel title="Asset Coverage" icon={<Layers className="w-4 h-4 text-primary" />}
+            action={
+              <span className={cn(
+                "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold border",
+                coveragePct >= 80
+                  ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/20"
+                  : coveragePct >= 50
+                    ? "bg-amber-500/10 text-amber-300 border-amber-500/20"
+                    : "bg-red-500/10 text-red-300 border-red-500/20"
+              )}>
+                <ShieldAlert className="w-3 h-3" />
+                {coveragePct}% scanned
+              </span>
+            }>
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-5 items-center">
+              {/* Distribution rows */}
+              <div className="space-y-3 min-w-0">
+                {Object.entries(dist).filter(([, v]) => (v as number) > 0).map(([type, count]) => {
+                  const pct = assets.total ? Math.round(((count as number) / assets.total) * 100) : 0;
+                  return (
+                    <div key={type}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm text-foreground capitalize">{type}</span>
+                        <span className="text-sm font-semibold text-foreground tabular-nums">{count as number}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted/30 overflow-hidden">
+                        <div className="h-full rounded-full bg-primary/60 transition-all" style={{ width: `${pct}%` }} />
+                      </div>
                     </div>
-                    <div className="h-2 rounded-full bg-muted/30 overflow-hidden">
-                      <div className="h-full rounded-full bg-primary/60 transition-all" style={{ width: `${pct}%` }} />
-                    </div>
+                  );
+                })}
+                {Object.values(dist).every((v) => !v) && (
+                  <p className="text-sm text-muted-foreground">No assets yet</p>
+                )}
+              </div>
+
+              {/* Coverage ring — sized smaller than before; lives inline so
+                  it doesn't claim a whole separate panel anymore. */}
+              <div className="flex flex-col items-center sm:pl-3 sm:border-l sm:border-border">
+                <div className="relative w-24 h-24">
+                  <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+                    <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(148,163,184,0.15)" strokeWidth="10" />
+                    <circle cx="60" cy="60" r="50" fill="none"
+                      stroke={coveragePct >= 80 ? "#10b981" : coveragePct >= 50 ? "#eab308" : "#ef4444"}
+                      strokeWidth="10" strokeLinecap="round"
+                      strokeDasharray={`${Math.PI * 100}`}
+                      strokeDashoffset={`${Math.PI * 100 * (1 - coveragePct / 100)}`}
+                      style={{ transition: "stroke-dashoffset 1s ease-out" }} />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xl font-bold text-foreground tabular-nums">{coveragePct}%</span>
                   </div>
-                );
-              })}
-              {Object.values(dist).every((v) => !v) && (
-                <p className="text-sm text-muted-foreground">No assets yet</p>
-              )}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-2 text-center max-w-[120px]">
+                  {coveragePct < 100
+                    ? `${assets.total - Math.round(assets.total * scans.coverage)} never scanned`
+                    : "All scanned"}
+                </p>
+              </div>
             </div>
+
             <div className="mt-4 pt-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
               <span>{scans.active || 0} active scan{scans.active !== 1 ? "s" : ""}</span>
               <Link href="/scan/initiate" className="text-primary hover:opacity-80 flex items-center gap-1">
-                <Play className="w-3 h-3" />Start scan
+                <Play className="w-3 h-3" />
+                {coveragePct < 100 ? "Scan unscanned assets" : "Start scan"}
               </Link>
             </div>
           </Panel>
 
-          {/* Scan Coverage */}
-          <Panel title="Scan Coverage" icon={<ShieldAlert className="w-4 h-4 text-amber-400" />}>
-            <div className="flex flex-col items-center py-4">
-              <div className="relative w-28 h-28">
-                <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-                  <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(148,163,184,0.15)" strokeWidth="10" />
-                  <circle cx="60" cy="60" r="50" fill="none"
-                    stroke={coveragePct >= 80 ? "#10b981" : coveragePct >= 50 ? "#eab308" : "#ef4444"}
-                    strokeWidth="10" strokeLinecap="round"
-                    strokeDasharray={`${Math.PI * 100}`}
-                    strokeDashoffset={`${Math.PI * 100 * (1 - coveragePct / 100)}`}
-                    style={{ transition: "stroke-dashoffset 1s ease-out" }} />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-foreground">{coveragePct}%</span>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-3 text-center">
-                {coveragePct < 100
-                  ? <>{assets.total - Math.round(assets.total * scans.coverage)} asset{assets.total - Math.round(assets.total * scans.coverage) !== 1 ? "s" : ""} never scanned</>
-                  : "All assets have been scanned"}
-              </p>
-            </div>
-            {coveragePct < 100 && (
-              <div className="pt-3 border-t border-border">
-                <Link href="/scan/initiate" className="flex items-center justify-center gap-2 text-xs text-primary hover:opacity-80">
-                  <Play className="w-3 h-3" />Scan unscanned assets
-                </Link>
-              </div>
-            )}
-          </Panel>
-
-          {/* Quick Actions */}
+          {/* Quick Actions — 2x2 grid replaces vertical stack. Same content,
+              half the height, easier to scan at a glance. */}
           <Panel title="Quick Actions" icon={<Zap className="w-4 h-4 text-amber-400" />}>
-            <div className="space-y-2">
-              <Link href="/discovery" className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-background/15 transition-colors">
+            <div className="grid grid-cols-2 gap-2">
+              <Link href="/discovery" className="flex flex-col gap-2 p-3 rounded-xl border border-border hover:bg-background/15 hover:border-cyan-500/30 transition-colors">
                 <div className="h-9 w-9 rounded-lg bg-cyan-500/10 flex items-center justify-center">
                   <Globe className="w-5 h-5 text-cyan-400" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">Run Discovery</p>
-                  <p className="text-xs text-muted-foreground">Find new assets in your attack surface</p>
+                  <p className="text-[11px] text-muted-foreground leading-snug">Find new assets in your surface</p>
                 </div>
               </Link>
-              <Link href="/scan/initiate" className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-background/15 transition-colors">
+              <Link href="/scan/initiate" className="flex flex-col gap-2 p-3 rounded-xl border border-border hover:bg-background/15 hover:border-primary/30 transition-colors">
                 <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Play className="w-5 h-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">Start Scan</p>
-                  <p className="text-xs text-muted-foreground">Scan assets for vulnerabilities</p>
+                  <p className="text-[11px] text-muted-foreground leading-snug">Scan assets for vulnerabilities</p>
                 </div>
               </Link>
-              <Link href="/monitoring" className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-background/15 transition-colors">
+              <Link href="/monitoring" className="flex flex-col gap-2 p-3 rounded-xl border border-border hover:bg-background/15 hover:border-emerald-500/30 transition-colors">
                 <div className="h-9 w-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
                   <Eye className="w-5 h-5 text-emerald-400" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">Set Up Monitoring</p>
-                  <p className="text-xs text-muted-foreground">Get alerts when things change</p>
+                  <p className="text-[11px] text-muted-foreground leading-snug">Get alerts when things change</p>
                 </div>
               </Link>
-              <Link href="/findings" className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-background/15 transition-colors">
+              <Link href="/findings" className="flex flex-col gap-2 p-3 rounded-xl border border-border hover:bg-background/15 hover:border-red-500/30 transition-colors">
                 <div className="h-9 w-9 rounded-lg bg-red-500/10 flex items-center justify-center">
                   <Search className="w-5 h-5 text-red-400" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">View Findings</p>
-                  <p className="text-xs text-muted-foreground">{findings.open || 0} open findings to review</p>
+                  <p className="text-[11px] text-muted-foreground leading-snug">{findings.open || 0} open to review</p>
                 </div>
               </Link>
             </div>

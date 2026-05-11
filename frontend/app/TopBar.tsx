@@ -3,8 +3,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ChevronDown, Sparkles, UserCircle, LogOut } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { ChevronDown, Sparkles, UserCircle, LogOut, Search, Zap } from "lucide-react";
 import { isLoggedIn, logout } from "./lib/auth";
 import { useOrg } from "./(authenticated)/contexts/OrgContext";
 import { BILLING_ENABLED } from "./lib/billing-config";
@@ -134,18 +134,80 @@ function UserMenu() {
   );
 }
 
+/** Search input shown in the authenticated TopBar. Enter routes to the
+ *  Assets page with the query pre-filled — the most useful first-hop for
+ *  "I want to find X". Cmd/Ctrl-K focuses the input from anywhere. */
+function GlobalSearch() {
+  const router = useRouter();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [value, setValue] = useState("");
+  const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const q = value.trim();
+    if (!q) return;
+    router.push(`/assets?q=${encodeURIComponent(q)}`);
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="relative w-full max-w-md">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="Search assets, findings…"
+        aria-label="Search"
+        className="w-full h-9 pl-9 pr-14 rounded-lg border border-border bg-background/40 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary/40 focus:bg-background/60 transition-colors"
+      />
+      <kbd className="hidden md:inline-flex absolute right-2 top-1/2 -translate-y-1/2 items-center px-1.5 py-0.5 rounded border border-border bg-muted/20 text-[10px] text-muted-foreground font-mono pointer-events-none">
+        {isMac ? "⌘K" : "Ctrl K"}
+      </kbd>
+    </form>
+  );
+}
+
 /** Rendered inside OrgProvider (authenticated pages) — safe to call useOrg() */
 function AuthTopBarContent() {
   const { organization, planLabel, isTrialing, trialDaysRemaining } = useOrg();
 
   return (
     <>
-      <div className="flex items-center">
+      <div className="flex items-center flex-shrink-0">
         <BrandLogo />
       </div>
-      <div className="flex items-center gap-4">
+
+      {/* Middle: global search — sits in the previously-empty horizontal void */}
+      <div className="flex-1 flex items-center justify-center px-6 max-w-2xl mx-auto">
+        <GlobalSearch />
+      </div>
+
+      <div className="flex items-center gap-3 flex-shrink-0">
+        {/* Scan now — the single most-likely action from anywhere in the app */}
+        <Link
+          href="/scan/initiate"
+          className="hidden md:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-sm font-medium border border-primary/20 transition-colors"
+          title="Start a new scan"
+        >
+          <Zap className="w-3.5 h-3.5" />
+          <span className="hidden lg:inline">Scan now</span>
+        </Link>
+
         {organization && (
-          <div className="flex flex-col items-end">
+          <div className="hidden sm:flex flex-col items-end">
             <span className="text-sm text-muted-foreground font-medium">{organization.name}</span>
             <div className="flex items-center gap-1.5">
               {planLabel && (
