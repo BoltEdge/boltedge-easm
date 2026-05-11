@@ -1790,4 +1790,147 @@ class HealthCheckResult(db.Model):
         UniqueConstraint("kind", "name", name="uq_health_kind_name"),
     )
 
-    
+
+# ─────────────────────────────────────────────────────────────────────
+# Phase-1 internal agent platform — see
+# docs/superpowers/specs/2026-05-10-internal-agent-platform-design.md
+# ─────────────────────────────────────────────────────────────────────
+
+
+class AgentMemory(db.Model):
+    """Per-agent operational memory. Isolated by agent_id."""
+
+    __tablename__ = "agent_memory"
+
+    id = db.Column(db.BigInteger, primary_key=True)
+    agent_id = db.Column(db.String(64), nullable=False, index=True)
+    key = db.Column(db.String(255), nullable=False)
+    value = db.Column(db.JSON, nullable=False)
+    tags = db.Column(db.JSON, nullable=False, default=list,
+                     server_default=db.text("'[]'::json"))
+    source = db.Column(db.String(40), nullable=False)  # user-told|inferred|api-fetched
+    confidence = db.Column(db.Numeric(3, 2), nullable=False,
+                           default=1.00, server_default=db.text("1.00"))
+    created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    updated_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    expires_at = db.Column(db.DateTime, nullable=True, index=True)
+    superseded_by_id = db.Column(db.BigInteger,
+                                 db.ForeignKey("agent_memory.id"),
+                                 nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("agent_id", "key", name="uq_agent_memory_agent_key"),
+    )
+
+    def __init__(self, **kwargs):
+        # SQLAlchemy scalar default= is applied at flush, not at construction,
+        # so transient instances would have confidence=None without this override.
+        kwargs.setdefault("confidence", 1.00)
+        super().__init__(**kwargs)
+
+
+class TeamMemory(db.Model):
+    """Universal facts visible to every agent. Founder writes only."""
+
+    __tablename__ = "team_memory"
+
+    id = db.Column(db.BigInteger, primary_key=True)
+    key = db.Column(db.String(255), nullable=False, unique=True)
+    value = db.Column(db.JSON, nullable=False)
+    tags = db.Column(db.JSON, nullable=False, default=list,
+                     server_default=db.text("'[]'::json"))
+    created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    updated_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+
+
+class AgentThread(db.Model):
+    __tablename__ = "agent_thread"
+
+    id = db.Column(db.BigInteger, primary_key=True)
+    agent_id = db.Column(db.String(64), nullable=False, index=True)
+    title = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    archived_at = db.Column(db.DateTime, nullable=True)
+
+    messages = db.relationship(
+        "AgentMessage",
+        backref="thread",
+        cascade="all, delete-orphan",
+        order_by="AgentMessage.created_at",
+    )
+
+
+class AgentMessage(db.Model):
+    __tablename__ = "agent_message"
+
+    id = db.Column(db.BigInteger, primary_key=True)
+    thread_id = db.Column(db.BigInteger,
+                          db.ForeignKey("agent_thread.id", ondelete="CASCADE"),
+                          nullable=False, index=True)
+    role = db.Column(db.String(20), nullable=False)  # user|assistant|tool
+    content = db.Column(db.JSON, nullable=False)
+    tokens_used = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+
+
+class AgentRun(db.Model):
+    """Immutable execution trace of one agent invocation."""
+
+    __tablename__ = "agent_run"
+
+    id = db.Column(db.BigInteger, primary_key=True)
+    agent_id = db.Column(db.String(64), nullable=False, index=True)
+    skill = db.Column(db.String(100), nullable=True)
+    thread_id = db.Column(db.BigInteger,
+                          db.ForeignKey("agent_thread.id"), nullable=True)
+    input = db.Column(db.JSON, nullable=False)
+    output = db.Column(db.JSON, nullable=True)
+    tool_calls = db.Column(db.JSON, nullable=True)
+    status = db.Column(db.String(30), nullable=False)  # success|failed|timeout|over-budget
+    error = db.Column(db.Text, nullable=True)
+    cost_usd = db.Column(db.Numeric(8, 4), nullable=True)
+    duration_ms = db.Column(db.Integer, nullable=True)
+    started_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    finished_at = db.Column(db.DateTime, nullable=True)
+
+
+class AgentTask(db.Model):
+    """Internal task list — Founder Ops writes; admin UI displays."""
+
+    __tablename__ = "agent_task"
+
+    id = db.Column(db.BigInteger, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), nullable=False, default="pending")
+    priority = db.Column(db.Integer, nullable=False, default=3)
+    agent_owner = db.Column(db.String(64), nullable=True)
+    due_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    updated_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+
+
+class PendingAction(db.Model):
+    """Approval queue. Every memory write / external output / code PR
+    queues here until the founder approves, rejects, or it expires."""
+
+    __tablename__ = "pending_action"
+
+    id = db.Column(db.BigInteger, primary_key=True)
+    agent_id = db.Column(db.String(64), nullable=False, index=True)
+    skill = db.Column(db.String(100), nullable=True)
+    action_type = db.Column(db.String(40), nullable=False, index=True)
+    # action_type: memory-write | team-memory-write | external-output |
+    #              code-pr | integration-write | nano-easm-write
+    target = db.Column(db.String(255), nullable=True)
+    payload = db.Column(db.JSON, nullable=False)
+    rationale = db.Column(db.Text, nullable=True)
+    proposed_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    expires_at = db.Column(db.DateTime, nullable=False)  # default proposed_at + 7d set in code
+    decided_at = db.Column(db.DateTime, nullable=True)
+    decision = db.Column(db.String(30), nullable=True)
+    # decision: approved | rejected | edited-and-approved | expired
+    decided_by = db.Column(db.String(255), nullable=True)
+    decision_note = db.Column(db.Text, nullable=True)
+    run_id = db.Column(db.BigInteger,
+                       db.ForeignKey("agent_run.id"), nullable=True)
