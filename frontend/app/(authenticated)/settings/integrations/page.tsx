@@ -301,7 +301,7 @@ function ConnectionsTab({ integrations, onRefresh, notify }: { integrations: Int
         const popular = INTEGRATION_TYPES.filter((t) => !installedTypes.has(t.value));
         if (popular.length === 0 || showAdd) return null;
         return (
-          <div className={cn("mt-6", integrations.length === 0 && "hidden")}>
+          <div className={`mt-6${integrations.length === 0 ? " hidden" : ""}`}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                 Add another destination
