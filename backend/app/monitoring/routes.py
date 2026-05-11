@@ -510,6 +510,10 @@ def update_monitor(monitor_id: str):
             monitor.monitor_types = types
             changes["monitorTypes"] = {"old": old_types, "new": types}
 
+    if "alertOnRecurrenceOverride" in data:
+        v = data["alertOnRecurrenceOverride"]
+        monitor.alert_on_recurrence_override = None if v is None else bool(v)
+
     monitor.updated_at = _now()
     db.session.commit()
 

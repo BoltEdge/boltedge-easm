@@ -49,6 +49,11 @@ from app.audit.routes import log_audit
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
 
+# Top-level keys the API will accept inside User.prefs_json. Anything
+# else in the request body is silently dropped. Keep this list small —
+# every new key needs a UI surface that reads/writes it.
+ALLOWED_PREF_KEYS = {"showProvenanceTags"}
+
 
 def now_utc():
     return datetime.now(timezone.utc).replace(tzinfo=None)
@@ -122,6 +127,9 @@ def update_organization():
         if website and not website.startswith(("http://", "https://")):
             website = "https://" + website
         org.website = website or None
+
+    if "alertOnRecurrence" in body:
+        org.alert_on_recurrence = bool(body["alertOnRecurrence"])
 
     log_audit(
         organization_id=org_id,
@@ -1419,3 +1427,38 @@ def list_audit_webhook_deliveries():
         .all()
     )
     return jsonify(deliveries=[_delivery_to_ui(d) for d in rows]), 200
+
+
+# =========================================================
+# USER PREFERENCES
+# =========================================================
+
+@settings_bp.get("/preferences")
+@require_auth
+def get_preferences():
+    """Return the current user's preferences blob."""
+    user = User.query.get(current_user_id())
+    if not user:
+        return jsonify(error="User not found"), 404
+    prefs = dict(user.prefs_json or {})
+    # Apply v1 defaults so the frontend never sees undefined keys.
+    prefs.setdefault("showProvenanceTags", False)
+    return jsonify(prefs), 200
+
+
+@settings_bp.patch("/preferences")
+@require_auth
+def patch_preferences():
+    """Merge allowed keys from the request body into the user's prefs."""
+    user = User.query.get(current_user_id())
+    if not user:
+        return jsonify(error="User not found"), 404
+    body = request.get_json(silent=True) or {}
+    merged = dict(user.prefs_json or {})
+    for k, v in body.items():
+        if k in ALLOWED_PREF_KEYS:
+            merged[k] = v
+    user.prefs_json = merged
+    db.session.commit()
+    merged.setdefault("showProvenanceTags", False)
+    return jsonify(merged), 200
