@@ -317,7 +317,6 @@ export default function UnauthenticatedHomePage() {
                 { icon: FileText, title: "Reports & Trending", desc: "Generate executive summaries and full technical PDF reports with embedded charts. Schedule weekly or monthly report delivery.", color: "from-blue-500/20 to-blue-500/5", iconColor: "text-blue-400" },
                 { icon: Webhook, title: "Integrations", desc: "Connect to Slack, Jira, PagerDuty, email, and custom webhooks. Create notification rules that auto-fire on critical findings or exposure thresholds.", color: "from-indigo-500/20 to-indigo-500/5", iconColor: "text-indigo-400" },
                 { icon: Code2, title: "API & Automation", desc: "Full REST API with scoped API keys. Automate asset onboarding, trigger scans, pull findings, and integrate with your existing security toolchain.", color: "from-sky-500/20 to-sky-500/5", iconColor: "text-sky-400" },
-                { icon: ShieldCheck, title: "Enterprise Controls", desc: "Role-based access (Viewer, Analyst, Admin, Owner), full audit log of every action, team management, and tiered plan controls.", color: "from-teal-500/20 to-teal-500/5", iconColor: "text-teal-400" },
               ].map(({ icon: Icon, title, desc, color, iconColor }, idx) => (
                 <FadeInOnScroll key={title} delay={idx * 80}>
                   <div className="group relative rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all duration-300 h-full">
@@ -333,6 +332,44 @@ export default function UnauthenticatedHomePage() {
                 </FadeInOnScroll>
               ))}
             </div>
+
+            {/* Enterprise Controls — promoted to a full-width strip so it
+                doesn't sit as an orphan in the 3-col grid above, and so
+                the team/audit-log story gets its own breathing room. */}
+            <FadeInOnScroll delay={100}>
+              <div className="mt-5 group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 sm:p-7 hover:border-white/[0.12] hover:bg-white/[0.04] transition-all duration-300">
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-teal-500/[0.08] via-teal-500/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="relative flex flex-col lg:flex-row lg:items-center gap-6">
+                  <div className="flex items-start gap-4 lg:max-w-md flex-shrink-0">
+                    <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-teal-500/10 text-teal-400 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+                      <ShieldCheck className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-semibold text-teal-400/80 uppercase tracking-wider mb-1">Team & governance</div>
+                      <h3 className="text-base font-semibold text-white">Enterprise Controls</h3>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-5 flex-1 text-xs text-white/55">
+                    <div>
+                      <div className="text-white/80 font-medium mb-0.5">Role-based access</div>
+                      <div className="leading-relaxed">Viewer, Analyst, Admin, Owner — scoped per workspace.</div>
+                    </div>
+                    <div>
+                      <div className="text-white/80 font-medium mb-0.5">Full audit log</div>
+                      <div className="leading-relaxed">Every action recorded, exportable, SIEM-streamable.</div>
+                    </div>
+                    <div>
+                      <div className="text-white/80 font-medium mb-0.5">Team management</div>
+                      <div className="leading-relaxed">Invite, role-promote, suspend, and offboard members.</div>
+                    </div>
+                    <div>
+                      <div className="text-white/80 font-medium mb-0.5">Tiered plan controls</div>
+                      <div className="leading-relaxed">Asset, scan, and monitor limits enforced per plan.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </FadeInOnScroll>
 
             {/* Coverage CTA — links to /coverage so customers can see
                 the five categories of detection grouped under each
@@ -373,22 +410,28 @@ export default function UnauthenticatedHomePage() {
               </div>
             </FadeInOnScroll>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-              {[
-                { step: "01", title: "Discover", desc: "Add a root domain. We enumerate subdomains, IPs, services, and certificates across your entire external surface.", icon: Globe2 },
-                { step: "02", title: "Scan & Score", desc: "Run automated scans with multiple engines. Every finding is categorized, scored, and enriched with remediation guidance.", icon: Zap },
-                { step: "03", title: "Monitor & Alert", desc: "Set up continuous monitors with configurable frequency. Get alerts in Slack, PagerDuty, Jira, or email when things change.", icon: Bell },
-                { step: "04", title: "Remediate & Report", desc: "Track findings through your workflow. Generate PDF reports for stakeholders. Watch your exposure score drop over time.", icon: TrendingUp },
-              ].map(({ step, title, desc, icon: Icon }, idx) => (
-                <FadeInOnScroll key={step} delay={idx * 120}>
-                  <div className="relative">
-                    <div className="text-5xl font-bold text-white/[0.04] mb-4">{step}</div>
-                    <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-teal-500/10 text-teal-400 mb-4"><Icon className="h-5 w-5" /></div>
-                    <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-                    <p className="text-sm text-white/55 leading-relaxed">{desc}</p>
-                  </div>
-                </FadeInOnScroll>
-              ))}
+            <div className="relative">
+              {/* Connecting line — sits behind the icon row so the four
+                  steps read as a single visual flow rather than four
+                  detached blocks. Hidden on mobile where the steps stack. */}
+              <div className="hidden lg:block absolute top-[88px] left-[12.5%] right-[12.5%] h-px bg-gradient-to-r from-transparent via-teal-500/30 to-transparent pointer-events-none" />
+              <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                {[
+                  { step: "01", title: "Discover", desc: "Add a root domain. We enumerate subdomains, IPs, services, and certificates across your entire external surface.", icon: Globe2 },
+                  { step: "02", title: "Scan & Score", desc: "Run automated scans with multiple engines. Every finding is categorized, scored, and enriched with remediation guidance.", icon: Zap },
+                  { step: "03", title: "Monitor & Alert", desc: "Set up continuous monitors with configurable frequency. Get alerts in Slack, PagerDuty, Jira, or email when things change.", icon: Bell },
+                  { step: "04", title: "Remediate & Report", desc: "Track findings through your workflow. Generate PDF reports for stakeholders. Watch your exposure score drop over time.", icon: TrendingUp },
+                ].map(({ step, title, desc, icon: Icon }, idx) => (
+                  <FadeInOnScroll key={step} delay={idx * 120}>
+                    <div className="relative">
+                      <div className="text-5xl font-bold text-white/[0.06] mb-4">{step}</div>
+                      <div className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-teal-500/30 bg-[#060b18] text-teal-400 mb-4"><Icon className="h-5 w-5" /></div>
+                      <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+                      <p className="text-sm text-white/55 leading-relaxed">{desc}</p>
+                    </div>
+                  </FadeInOnScroll>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -452,48 +495,59 @@ export default function UnauthenticatedHomePage() {
         <section className="py-16 sm:py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <FadeInOnScroll>
-              <div className="relative overflow-hidden rounded-3xl border border-teal-500/20 bg-gradient-to-br from-teal-500/[0.06] via-[#060b18] to-[#060b18] px-8 py-14 sm:px-16">
+              <div className="relative overflow-hidden rounded-3xl border border-teal-500/20 bg-gradient-to-br from-teal-500/[0.06] via-[#060b18] to-[#060b18] px-8 py-12 sm:px-12 sm:py-14">
                 <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute top-0 right-0 w-[400px] h-[300px] bg-teal-500/[0.05] rounded-full blur-3xl" />
+                  <div className="absolute top-0 right-0 w-[500px] h-[400px] bg-teal-500/[0.05] rounded-full blur-3xl" />
                 </div>
-                <div className="relative flex flex-col lg:flex-row items-center lg:items-start gap-10">
-                  {/* Left: badge + text */}
-                  <div className="flex-1 text-center lg:text-left">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-teal-500/30 bg-teal-500/[0.08] px-3 py-1 mb-5">
-                      <span className="relative flex h-2 w-2">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal-400 opacity-75" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-teal-400" />
-                      </span>
-                      <span className="text-xs font-semibold text-teal-400 tracking-wide">Free to use</span>
-                    </div>
-                    <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                      Start free,<br /><span className="text-white/50">scale when ready</span>
-                    </h2>
-                    <p className="mt-4 text-base text-white/55 max-w-lg">
-                      Start on the Free plan with no payment details required. Upgrade for higher limits as your environment grows.
-                    </p>
-                    <div className="mt-8 flex flex-col sm:flex-row items-center lg:items-start gap-3">
-                      <Link href="/register" className="group inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/30 hover:bg-teal-500 transition-all">
-                        Create free account <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                      </Link>
-                    </div>
+                <div className="relative text-center mb-10">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-teal-500/30 bg-teal-500/[0.08] px-3 py-1 mb-5">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal-400 opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-teal-400" />
+                    </span>
+                    <span className="text-xs font-semibold text-teal-400 tracking-wide">Free to use</span>
                   </div>
-                  {/* Right: plan limit cards */}
-                  <div className="w-full lg:w-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3 lg:min-w-[440px]">
-                    {[
-                      { plan: "Free", detail: "2 assets", color: "border-white/[0.06]", pill: "Start here" },
-                      { plan: "Starter", detail: "15 assets", color: "border-white/[0.06]", pill: "Free ↗" },
-                      { plan: "Professional", detail: "100 assets", color: "border-teal-500/20 bg-teal-500/[0.04]", pill: "Free ↗" },
-                      { plan: "Ent. Silver", detail: "10k assets", color: "border-white/[0.06]", pill: "Free ↗" },
-                      { plan: "Ent. Gold", detail: "20k assets · audit log", color: "border-white/[0.06]", pill: "Free ↗" },
-                    ].map(({ plan, detail, color, pill }) => (
-                      <div key={plan} className={`rounded-xl border ${color} bg-white/[0.02] px-4 py-3`}>
-                        <div className="text-xs font-semibold text-white/70">{plan}</div>
-                        <div className="text-[11px] text-white/55 mt-0.5">{detail}</div>
-                        <div className="mt-1.5 text-[10px] font-semibold text-teal-400">{pill}</div>
-                      </div>
-                    ))}
-                  </div>
+                  <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                    Start free, <span className="text-white/50">scale when ready</span>
+                  </h2>
+                  <p className="mt-4 text-base text-white/55 max-w-xl mx-auto">
+                    Start on the Free plan with no payment details required. Every paid tier is free to upgrade to — your environment, your limits.
+                  </p>
+                </div>
+
+                {/* 5 plan tiles laid out as a single horizontal step-up so the
+                    progression Free → Starter → Pro → Silver → Gold reads as
+                    a ladder, not a cramped right-side panel. */}
+                <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+                  {[
+                    { plan: "Free", detail: "2 assets", pill: "Start here", featured: false },
+                    { plan: "Starter", detail: "15 assets", pill: "Free ↗", featured: false },
+                    { plan: "Professional", detail: "100 assets", pill: "Free ↗", featured: true },
+                    { plan: "Ent. Silver", detail: "10k assets", pill: "Free ↗", featured: false },
+                    { plan: "Ent. Gold", detail: "20k assets · audit log", pill: "Free ↗", featured: false },
+                  ].map(({ plan, detail, pill, featured }) => (
+                    <div
+                      key={plan}
+                      className={`rounded-xl border px-4 py-4 flex flex-col gap-1.5 transition-all ${
+                        featured
+                          ? "border-teal-500/30 bg-teal-500/[0.05] shadow-md shadow-teal-900/10"
+                          : "border-white/[0.08] bg-white/[0.02] hover:border-white/[0.16] hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      <div className="text-sm font-semibold text-white">{plan}</div>
+                      <div className="text-[12px] text-white/55 leading-snug">{detail}</div>
+                      <div className="mt-auto pt-1 text-[10px] font-semibold text-teal-400 uppercase tracking-wide">{pill}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="relative mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <Link href="/register" className="group inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/30 hover:bg-teal-500 transition-all">
+                    Create free account <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                  <Link href="/login" className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-3 text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-all">
+                    Sign in
+                  </Link>
                 </div>
               </div>
             </FadeInOnScroll>
@@ -580,34 +634,9 @@ export default function UnauthenticatedHomePage() {
         </section>
         )}
 
-        {/* ================= FINAL CTA ================= */}
-        <section className="py-16 sm:py-20">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <FadeInOnScroll>
-              <div className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-gradient-to-br from-[#0d1a2e] to-[#0a1121] px-8 py-16 text-center sm:px-16">
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-teal-500/[0.06] rounded-full blur-3xl" />
-                </div>
-                <div className="relative">
-                  <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                    Start securing your<span className="bg-gradient-to-r from-teal-400/80 to-cyan-400/70 bg-clip-text text-transparent"> attack surface</span>
-                  </h2>
-                  <p className="mt-4 text-base text-white/55 max-w-lg mx-auto">Join security teams using Nano EASM to discover, scan, and continuously monitor their external exposure.</p>
-                  <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-                    <Link href="/register" className="group inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/30 hover:bg-teal-500 transition-all">
-                      Create free account<ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                    </Link>
-                    <Link href="/login" className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-3 text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-all">Sign in</Link>
-                  </div>
-                </div>
-              </div>
-            </FadeInOnScroll>
-          </div>
-        </section>
-
         {/* ================= CONTACT ================= */}
         <section id="contact" className="py-16 sm:py-20 border-t border-white/[0.04]">
-          <div className="mx-auto max-w-3xl px-4 sm:px-6">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6">
             <FadeInOnScroll>
               <div className="text-center mb-10">
                 <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">Get in touch</span>
@@ -617,11 +646,57 @@ export default function UnauthenticatedHomePage() {
                 </p>
               </div>
             </FadeInOnScroll>
-            <FadeInOnScroll delay={100}>
-              <Suspense fallback={<div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 text-sm text-white/55">Loading…</div>}>
-                <ContactForm />
-              </Suspense>
-            </FadeInOnScroll>
+
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8 items-start">
+              {/* Form — wider column on desktop */}
+              <FadeInOnScroll delay={100} className="lg:col-span-3">
+                <Suspense fallback={<div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 text-sm text-white/55">Loading…</div>}>
+                  <ContactForm />
+                </Suspense>
+              </FadeInOnScroll>
+
+              {/* Support sidecar — fills the right side instead of leaving
+                  visual void around a narrow centred form. */}
+              <FadeInOnScroll delay={200} className="lg:col-span-2">
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Bell className="w-4 h-4 text-teal-400" />
+                      <h3 className="text-sm font-semibold text-white">Response time</h3>
+                    </div>
+                    <p className="text-xs text-white/55 leading-relaxed">
+                      One business day on weekdays. Enterprise & demo requests are routed straight to a human, not a ticket queue.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <ShieldCheck className="w-4 h-4 text-teal-400" />
+                      <h3 className="text-sm font-semibold text-white">Already a customer?</h3>
+                    </div>
+                    <p className="text-xs text-white/55 leading-relaxed mb-3">
+                      Sign in and reach support from inside the app — your org context is included automatically.
+                    </p>
+                    <Link href="/login" className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-400 hover:text-teal-300">
+                      Open the app <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
+
+                  <div className="rounded-2xl border border-teal-500/20 bg-teal-500/[0.04] p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Zap className="w-4 h-4 text-teal-400" />
+                      <h3 className="text-sm font-semibold text-white">Want to skip the form?</h3>
+                    </div>
+                    <p className="text-xs text-white/55 leading-relaxed mb-3">
+                      Run a real scan against your own domain right now — no signup, no card, no demo call.
+                    </p>
+                    <a href="#try-it" className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-400 hover:text-teal-300">
+                      Try it now <ArrowRight className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+              </FadeInOnScroll>
+            </div>
           </div>
         </section>
       </main>

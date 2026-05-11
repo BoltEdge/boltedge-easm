@@ -581,7 +581,7 @@ export default function ApiDocsPage() {
     <div className="min-h-screen bg-[#060b18] text-white">
       <LandingNav />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-16">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 pt-24 pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-10">
           {/* ── Sticky TOC ── */}
           <aside className="hidden lg:block">

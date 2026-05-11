@@ -112,8 +112,13 @@ export default function FAQContent() {
         <div className="mt-8 space-y-10">
           {filtered.map((category) => {
             const Icon = category.icon;
+            const slug = category.title
+              .toLowerCase()
+              .replace(/&/g, "and")
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/(^-|-$)/g, "");
             return (
-              <section key={category.title}>
+              <section key={category.title} id={slug} className="scroll-mt-24">
                 <h2 className="flex items-center gap-2.5 text-lg font-semibold text-white mb-3">
                   <span className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center">
                     <Icon className="w-3.5 h-3.5 text-teal-400" />

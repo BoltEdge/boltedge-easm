@@ -222,15 +222,16 @@ function RegisterPageInner() {
       <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-teal-500/[0.08] via-[#060b18] to-cyan-500/[0.05]" />
         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-cyan-500/[0.06] rounded-full blur-[100px]" />
+        <div className="absolute top-1/4 left-0 w-[300px] h-[300px] bg-teal-500/[0.04] rounded-full blur-[100px]" />
         <div
-          className="absolute inset-0 opacity-[0.02]"
+          className="absolute inset-0 opacity-[0.025]"
           style={{
             backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
             backgroundSize: "40px 40px",
           }}
         />
 
-        <div className="relative flex flex-col justify-between p-12 w-full">
+        <div className="relative flex flex-col p-12 w-full">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5">
             <BoltIcon size={32} />
@@ -240,25 +241,62 @@ function RegisterPageInner() {
           </Link>
 
           {/* Value prop */}
-          <div className="max-w-sm">
-            <h2 className="text-2xl font-bold leading-tight tracking-tight">
-              Start securing your attack surface
-              <span className="block text-white/40 font-normal text-lg mt-1">in minutes, not months</span>
-            </h2>
+          <div className="flex-1 flex flex-col justify-center max-w-md">
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-teal-500/20 bg-teal-500/[0.06] px-3 py-1 mb-5">
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+              <span className="text-[10px] font-medium text-teal-400/75 uppercase tracking-wider">Free to use</span>
+            </div>
 
-            <div className="mt-8 space-y-4">
-              {[
-                "Discover subdomains and exposed assets",
-                "Scan for vulnerabilities continuously",
-                "Track remediation with full audit trail",
-              ].map((item) => (
-                <div key={item} className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-teal-500/15 flex items-center justify-center shrink-0">
-                    <div className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+            <h2 className="text-3xl font-bold leading-tight tracking-tight">
+              Start managing your<br />
+              <span className="bg-gradient-to-r from-teal-400/80 via-cyan-400/70 to-teal-500/80 bg-clip-text text-transparent">attack surface</span>
+            </h2>
+            <p className="mt-3 text-sm text-white/55 leading-relaxed max-w-sm">
+              Discover subdomains, scan for vulnerabilities, and monitor exposure changes — all from one workspace.
+            </p>
+
+            {/* What you get on signup */}
+            <div className="mt-7 rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur p-5 shadow-2xl shadow-black/30">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-[10px] text-white/35 uppercase tracking-wider font-medium">What you get instantly</div>
+                <div className="text-[10px] text-emerald-300/80 font-medium">Free tier</div>
+              </div>
+              <div className="space-y-2.5">
+                {[
+                  { label: "Asset discovery", detail: "12 sources" },
+                  { label: "Vulnerability scanning", detail: "9 engines" },
+                  { label: "Leak detection", detail: "GitHub + GitLab" },
+                  { label: "Plain-English remediation", detail: "auto-generated" },
+                ].map((it) => (
+                  <div key={it.label} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-white/75">
+                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-teal-500/15">
+                        <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+                      </span>
+                      {it.label}
+                    </div>
+                    <span className="text-[11px] text-white/35">{it.detail}</span>
                   </div>
-                  <span className="text-sm text-white/50">{item}</span>
-                </div>
-              ))}
+                ))}
+              </div>
+            </div>
+
+            {/* Trust strip */}
+            <div className="mt-7 flex items-stretch gap-5 text-[10px] text-white/45 uppercase tracking-wider">
+              <div>
+                <div className="text-xl font-semibold text-white/85 normal-case tracking-normal">5</div>
+                <div className="mt-0.5">Detection categories</div>
+              </div>
+              <div className="w-px bg-white/10" />
+              <div>
+                <div className="text-xl font-semibold text-white/85 normal-case tracking-normal">23</div>
+                <div className="mt-0.5">Secret formats</div>
+              </div>
+              <div className="w-px bg-white/10" />
+              <div>
+                <div className="text-xl font-semibold text-white/85 normal-case tracking-normal">6</div>
+                <div className="mt-0.5">Compliance frameworks</div>
+              </div>
             </div>
           </div>
 

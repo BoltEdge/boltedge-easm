@@ -104,9 +104,9 @@ export default function QuickScanPage() {
           </div>
         </section>
 
-        {/* ================= WHAT'S COVERED ================= */}
+        {/* ================= WHAT'S COVERED + UPGRADE (merged) ================= */}
         <section className="py-12 sm:py-16">
-          <div className="mx-auto max-w-3xl px-4 sm:px-6">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6">
             <div className="text-center mb-10">
               <span className="text-xs font-semibold text-teal-400 uppercase tracking-widest">What&apos;s covered</span>
               <h2 className="mt-3 text-2xl sm:text-3xl font-bold tracking-tight">
@@ -119,11 +119,12 @@ export default function QuickScanPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="rounded-xl border border-teal-500/20 bg-teal-500/[0.04] p-5">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+              {/* Included */}
+              <div className="lg:col-span-2 rounded-xl border border-teal-500/20 bg-teal-500/[0.04] p-5">
                 <h3 className="text-sm font-semibold text-teal-300 mb-3 flex items-center gap-2">
                   <Check className="w-4 h-4" />
-                  Included
+                  Included in Quick Scan
                 </h3>
                 <ul className="space-y-2 text-sm text-white/70 leading-relaxed">
                   <li>Open ports + services across up to 5 IPs</li>
@@ -132,60 +133,38 @@ export default function QuickScanPage() {
                   <li>No signup, no card, no follow-up email</li>
                 </ul>
               </div>
-              <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
-                <h3 className="text-sm font-semibold text-white/80 mb-3 flex items-center gap-2">
-                  <X className="w-4 h-4 text-white/50" />
-                  Free account adds
-                </h3>
-                <ul className="space-y-2 text-sm text-white/55 leading-relaxed">
-                  <li>Continuous monitoring with alerts</li>
-                  <li>Leak detection across GitHub &amp; GitLab</li>
-                  <li>Subdomain &amp; shadow-asset discovery</li>
-                  <li>Saved results, scheduled scans, reports</li>
-                </ul>
-              </div>
-            </div>
 
-            <p className="mt-8 text-center text-sm text-white/55">
-              See the full list of what we detect on the{" "}
-              <Link href="/coverage" className="text-teal-400 hover:text-teal-300 underline underline-offset-2">
-                coverage page
-              </Link>
-              .
-            </p>
-          </div>
-        </section>
-
-        {/* ================= FINAL CTA ================= */}
-        <section className="py-12 sm:py-16">
-          <div className="mx-auto max-w-3xl px-4 sm:px-6">
-            <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0d1a2e] to-[#0a1121] px-8 py-12 text-center sm:px-12">
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] h-[200px] bg-teal-500/[0.06] rounded-full blur-3xl" />
-              </div>
-              <div className="relative">
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                  Want more than
-                  <span className="bg-gradient-to-r from-teal-400/80 to-cyan-400/70 bg-clip-text text-transparent"> a snapshot?</span>
-                </h2>
-                <p className="mt-3 text-base text-white/55 max-w-lg mx-auto">
-                  Continuous monitoring, leak detection across GitHub and GitLab,
-                  scheduled scans, and alerts when things change. Free to start.
-                </p>
-                <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-3">
-                  <Link
-                    href="/register"
-                    className="group inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/30 hover:bg-teal-500 transition-all"
-                  >
-                    Create free account
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                  </Link>
-                  <Link
-                    href="/coverage"
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/[0.06] transition-all"
-                  >
-                    See coverage
-                  </Link>
+              {/* Upgrade CTA — replaces the standalone "Want more?" band */}
+              <div className="lg:col-span-3 relative overflow-hidden rounded-xl border border-white/[0.08] bg-gradient-to-br from-[#0d1a2e] to-[#0a1121] p-5">
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute top-0 right-0 w-[300px] h-[200px] bg-teal-500/[0.06] rounded-full blur-3xl" />
+                </div>
+                <div className="relative">
+                  <h3 className="text-sm font-semibold text-white/80 mb-3 flex items-center gap-2">
+                    <X className="w-4 h-4 text-white/50" />
+                    Free account adds
+                  </h3>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm text-white/65 leading-relaxed mb-5">
+                    <li className="flex items-start gap-1.5"><span className="text-teal-400/60 mt-0.5">+</span>Continuous monitoring &amp; alerts</li>
+                    <li className="flex items-start gap-1.5"><span className="text-teal-400/60 mt-0.5">+</span>GitHub &amp; GitLab leak detection</li>
+                    <li className="flex items-start gap-1.5"><span className="text-teal-400/60 mt-0.5">+</span>Subdomain &amp; shadow-asset discovery</li>
+                    <li className="flex items-start gap-1.5"><span className="text-teal-400/60 mt-0.5">+</span>Saved results, scheduled scans, reports</li>
+                  </ul>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                    <Link
+                      href="/register"
+                      className="group inline-flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-teal-900/30 hover:bg-teal-500 transition-all"
+                    >
+                      Create free account
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                    </Link>
+                    <Link
+                      href="/coverage"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-5 py-2.5 text-sm font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"
+                    >
+                      See full coverage
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>

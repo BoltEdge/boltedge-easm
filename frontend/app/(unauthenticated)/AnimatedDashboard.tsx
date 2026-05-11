@@ -123,7 +123,7 @@ export default function AnimatedDashboard() {
       </div>
 
       {/* ── Content ── */}
-      <div className="p-6 grid grid-cols-12 gap-4 overflow-hidden" style={{ height: 500 }}>
+      <div className="p-6 grid grid-cols-12 gap-4 overflow-hidden" style={{ height: 460 }}>
 
         {/* Sidebar */}
         <div className="col-span-2 hidden lg:block space-y-3">
@@ -179,8 +179,25 @@ export default function AnimatedDashboard() {
    VIEW 1 — Dashboard
    ═══════════════════════════════════════════ */
 function DashboardView() {
+  const topRisky = [
+    { name: "api.example.com", findings: 14, score: 87, sev: "critical" },
+    { name: "login.example.com", findings: 9, score: 72, sev: "high" },
+    { name: "mail.example.com", findings: 6, score: 54, sev: "high" },
+    { name: "cdn.example.com", findings: 3, score: 31, sev: "medium" },
+  ];
+  const sevDot: Record<string, string> = {
+    critical: "bg-red-400",
+    high: "bg-orange-400",
+    medium: "bg-yellow-400",
+  };
+  const sevScore: Record<string, string> = {
+    critical: "text-red-400",
+    high: "text-orange-400",
+    medium: "text-yellow-400",
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Exposure Score", value: "69", color: "text-amber-400", sub: "/100" },
@@ -198,8 +215,8 @@ function DashboardView() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="anim-chart rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 h-40" style={{ animationDelay: "0.3s" }}>
-          <div className="text-[10px] text-white/30 uppercase tracking-wider mb-4">Exposure Trend</div>
+        <div className="anim-chart rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 h-36" style={{ animationDelay: "0.3s" }}>
+          <div className="text-[10px] text-white/30 uppercase tracking-wider mb-3">Exposure Trend</div>
           <svg viewBox="0 0 300 80" className="w-full h-20 overflow-visible">
             <defs>
               <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
@@ -211,9 +228,9 @@ function DashboardView() {
             <path className="anim-line" style={{ animationDelay: "0.4s" }} d="M0,60 C50,55 80,45 120,50 C160,55 180,30 220,25 C260,20 280,35 300,30" fill="none" stroke="rgb(20,184,166)" strokeWidth="2" />
           </svg>
         </div>
-        <div className="anim-chart rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 h-40" style={{ animationDelay: "0.4s" }}>
+        <div className="anim-chart rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 h-36" style={{ animationDelay: "0.4s" }}>
           <div className="text-[10px] text-white/30 uppercase tracking-wider mb-3">Severity Breakdown</div>
-          <div className="flex items-end gap-3 h-24 px-2">
+          <div className="flex items-end gap-3 h-20 px-2">
             {[
               { h: "70%", color: "bg-red-500/60", label: "5" },
               { h: "100%", color: "bg-orange-500/60", label: "12" },
@@ -227,6 +244,31 @@ function DashboardView() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Top risky assets — fills the previously-empty bottom of the
+          dashboard mockup so the hero doesn't read as hollow. */}
+      <div className="anim-chart rounded-xl border border-white/[0.06] bg-white/[0.02] p-4" style={{ animationDelay: "0.5s" }}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[10px] text-white/30 uppercase tracking-wider">Top Risky Assets</div>
+          <div className="text-[10px] text-white/20">View all →</div>
+        </div>
+        <div className="space-y-1.5">
+          {topRisky.map((a, i) => (
+            <div
+              key={a.name}
+              className="anim-slide-r flex items-center justify-between text-xs py-1"
+              style={{ animationDelay: `${0.6 + i * 0.08}s` }}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sevDot[a.sev]}`} />
+                <span className="text-white/70 font-mono truncate">{a.name}</span>
+                <span className="text-[10px] text-white/30">{a.findings} findings</span>
+              </div>
+              <span className={`text-[11px] font-semibold ${sevScore[a.sev]}`}>{a.score}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

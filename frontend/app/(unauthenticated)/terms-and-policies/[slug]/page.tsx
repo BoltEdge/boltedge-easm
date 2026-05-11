@@ -161,7 +161,7 @@ export default async function LegalDocPage({ params }: { params: Promise<{ slug:
       <LandingNav />
 
       <main className="pt-24 pb-20">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <Link
             href="/terms-and-policies"
             className="inline-flex items-center gap-1.5 text-sm text-white/65 hover:text-white transition-colors mb-8"
@@ -169,18 +169,66 @@ export default async function LegalDocPage({ params }: { params: Promise<{ slug:
             <ArrowLeft className="w-4 h-4" />Back to Terms &amp; Policies
           </Link>
 
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">{meta.title}</h1>
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-10">
+            {/* ── Article (constrained for readability) ── */}
+            <div className="min-w-0 max-w-3xl">
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">{meta.title}</h1>
 
-          {lastUpdated && (
-            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-[11px] text-white/65">
-              Last updated <span className="text-white/85 font-medium">{lastUpdated}</span>
+              {lastUpdated && (
+                <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-[11px] text-white/65">
+                  Last updated <span className="text-white/85 font-medium">{lastUpdated}</span>
+                </div>
+              )}
+
+              <article
+                className="legal-doc mt-8 text-[15px] leading-relaxed text-white/70"
+                dangerouslySetInnerHTML={{ __html: html }}
+              />
             </div>
-          )}
 
-          <article
-            className="legal-doc mt-8 text-[15px] leading-relaxed text-white/70"
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
+            {/* ── Sticky sidebar: related policies + support ── */}
+            <aside className="hidden lg:block">
+              <div className="sticky top-24 space-y-5">
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="text-[11px] uppercase tracking-wider text-white/45 font-semibold mb-3">
+                    Other policies
+                  </div>
+                  <nav className="space-y-0.5 text-sm">
+                    {Object.entries(DOCS).map(([s, d]) => {
+                      const active = s === slug;
+                      return (
+                        <Link
+                          key={s}
+                          href={`/terms-and-policies/${s}`}
+                          aria-current={active ? "page" : undefined}
+                          className={`block py-1.5 px-2 rounded transition-colors ${
+                            active
+                              ? "text-teal-300 bg-teal-500/[0.08] border-l-2 border-teal-500/40 -ml-[2px] pl-[10px]"
+                              : "text-white/65 hover:text-white hover:bg-white/[0.04]"
+                          }`}
+                        >
+                          {d.title}
+                        </Link>
+                      );
+                    })}
+                  </nav>
+                </div>
+
+                <div className="rounded-xl border border-teal-500/20 bg-teal-500/[0.04] p-4">
+                  <div className="text-sm font-medium text-white mb-1.5">Something unclear?</div>
+                  <p className="text-xs text-white/60 leading-relaxed mb-3">
+                    Reach out and a human will get back to you — we keep these short on purpose.
+                  </p>
+                  <Link
+                    href="/#contact"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-400 hover:text-teal-300"
+                  >
+                    Contact support →
+                  </Link>
+                </div>
+              </div>
+            </aside>
+          </div>
         </div>
       </main>
 

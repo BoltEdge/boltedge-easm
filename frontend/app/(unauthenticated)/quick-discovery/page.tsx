@@ -102,9 +102,9 @@ export default function QuickDiscoveryPage() {
           </div>
         </section>
 
-        {/* ================= WHAT'S COVERED ================= */}
+        {/* ================= WHAT'S COVERED + UPGRADE (merged) ================= */}
         <section className="py-12 sm:py-16">
-          <div className="mx-auto max-w-3xl px-4 sm:px-6">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6">
             <div className="text-center mb-10">
               <span className="text-xs font-semibold text-cyan-400 uppercase tracking-widest">What&apos;s covered</span>
               <h2 className="mt-3 text-2xl sm:text-3xl font-bold tracking-tight">
@@ -117,11 +117,12 @@ export default function QuickDiscoveryPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.04] p-5">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+              {/* Included */}
+              <div className="lg:col-span-2 rounded-xl border border-cyan-500/20 bg-cyan-500/[0.04] p-5">
                 <h3 className="text-sm font-semibold text-cyan-300 mb-3 flex items-center gap-2">
                   <Check className="w-4 h-4" />
-                  Included
+                  Included in Quick Discovery
                 </h3>
                 <ul className="space-y-2 text-sm text-white/70 leading-relaxed">
                   <li>Subdomains from CT logs (crt.sh)</li>
@@ -130,52 +131,38 @@ export default function QuickDiscoveryPage() {
                   <li>No signup, no card, no follow-up email</li>
                 </ul>
               </div>
-              <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
-                <h3 className="text-sm font-semibold text-white/80 mb-3 flex items-center gap-2">
-                  <X className="w-4 h-4 text-white/50" />
-                  Free account adds
-                </h3>
-                <ul className="space-y-2 text-sm text-white/55 leading-relaxed">
-                  <li>Brute-force subdomain enumeration</li>
-                  <li>12 discovery sources (CT, DNS, Shodan, RapidDNS, etc.)</li>
-                  <li>ASN-based asset discovery</li>
-                  <li>Saved discoveries with delta tracking</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </section>
 
-        {/* ================= FINAL CTA ================= */}
-        <section className="py-12 sm:py-16">
-          <div className="mx-auto max-w-3xl px-4 sm:px-6">
-            <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0d1a2e] to-[#0a1121] px-8 py-12 text-center sm:px-12">
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[400px] h-[200px] bg-cyan-500/[0.06] rounded-full blur-3xl" />
-              </div>
-              <div className="relative">
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                  Ready for the
-                  <span className="bg-gradient-to-r from-cyan-400/80 to-teal-400/70 bg-clip-text text-transparent"> deep enumeration?</span>
-                </h2>
-                <p className="mt-3 text-base text-white/55 max-w-lg mx-auto">
-                  Brute-force discovery, 12 sources, ASN coverage, saved results,
-                  and delta alerts when new subdomains appear. Free to start.
-                </p>
-                <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-3">
-                  <Link
-                    href="/register"
-                    className="group inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-cyan-900/30 hover:bg-cyan-500 transition-all"
-                  >
-                    Create free account
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                  </Link>
-                  <Link
-                    href="/quick-scan"
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-6 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/[0.06] transition-all"
-                  >
-                    Try Quick Scan instead
-                  </Link>
+              {/* Upgrade CTA — replaces the standalone "Ready for deep enumeration?" band */}
+              <div className="lg:col-span-3 relative overflow-hidden rounded-xl border border-white/[0.08] bg-gradient-to-br from-[#0d1a2e] to-[#0a1121] p-5">
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute top-0 right-0 w-[300px] h-[200px] bg-cyan-500/[0.06] rounded-full blur-3xl" />
+                </div>
+                <div className="relative">
+                  <h3 className="text-sm font-semibold text-white/80 mb-3 flex items-center gap-2">
+                    <X className="w-4 h-4 text-white/50" />
+                    Free account adds
+                  </h3>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm text-white/65 leading-relaxed mb-5">
+                    <li className="flex items-start gap-1.5"><span className="text-cyan-400/60 mt-0.5">+</span>Brute-force subdomain enumeration</li>
+                    <li className="flex items-start gap-1.5"><span className="text-cyan-400/60 mt-0.5">+</span>12 discovery sources (CT, DNS, Shodan, …)</li>
+                    <li className="flex items-start gap-1.5"><span className="text-cyan-400/60 mt-0.5">+</span>ASN-based asset discovery</li>
+                    <li className="flex items-start gap-1.5"><span className="text-cyan-400/60 mt-0.5">+</span>Saved discoveries with delta tracking</li>
+                  </ul>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                    <Link
+                      href="/register"
+                      className="group inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-cyan-900/30 hover:bg-cyan-500 transition-all"
+                    >
+                      Create free account
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                    </Link>
+                    <Link
+                      href="/quick-scan"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-5 py-2.5 text-sm font-medium text-white/65 hover:text-white hover:bg-white/[0.06] transition-all"
+                    >
+                      Try Quick Scan instead
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>

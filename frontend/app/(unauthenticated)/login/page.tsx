@@ -170,15 +170,16 @@ function LoginPageInner() {
         {/* Background effects */}
         <div className="absolute inset-0 bg-gradient-to-br from-teal-500/[0.08] via-[#060b18] to-cyan-500/[0.05]" />
         <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-teal-500/[0.06] rounded-full blur-[100px]" />
+        <div className="absolute bottom-1/4 right-0 w-[300px] h-[300px] bg-cyan-500/[0.04] rounded-full blur-[100px]" />
         <div
-          className="absolute inset-0 opacity-[0.02]"
+          className="absolute inset-0 opacity-[0.025]"
           style={{
             backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
             backgroundSize: "40px 40px",
           }}
         />
 
-        <div className="relative flex flex-col justify-between p-12 w-full">
+        <div className="relative flex flex-col p-12 w-full">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5">
             <BoltIcon size={32} />
@@ -188,25 +189,71 @@ function LoginPageInner() {
           </Link>
 
           {/* Value prop */}
-          <div className="max-w-sm">
-            <h2 className="text-2xl font-bold leading-tight tracking-tight">
-              Manage your attack surface
-              <span className="block text-white/40 font-normal text-lg mt-1">from a single dashboard</span>
-            </h2>
+          <div className="flex-1 flex flex-col justify-center max-w-md">
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-teal-500/20 bg-teal-500/[0.06] px-3 py-1 mb-5">
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+              <span className="text-[10px] font-medium text-teal-400/75 uppercase tracking-wider">External Attack Surface Management</span>
+            </div>
 
-            <div className="mt-8 space-y-4">
-              {[
-                "Discover assets automatically",
-                "Scan for vulnerabilities continuously",
-                "Track remediation with full audit trail",
-              ].map((item) => (
-                <div key={item} className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-teal-500/15 flex items-center justify-center shrink-0">
-                    <div className="w-1.5 h-1.5 rounded-full bg-teal-400" />
-                  </div>
-                  <span className="text-sm text-white/50">{item}</span>
+            <h2 className="text-3xl font-bold leading-tight tracking-tight">
+              Manage your<br />
+              <span className="bg-gradient-to-r from-teal-400/80 via-cyan-400/70 to-teal-500/80 bg-clip-text text-transparent">attack surface</span>
+            </h2>
+            <p className="mt-3 text-sm text-white/55 leading-relaxed max-w-sm">
+              Discover assets, scan for vulnerabilities, monitor exposure changes — all from one workspace.
+            </p>
+
+            {/* Mini dashboard preview */}
+            <div className="mt-7 rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur p-5 shadow-2xl shadow-black/30">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-[10px] text-white/35 uppercase tracking-wider font-medium">Exposure overview</div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[10px] text-emerald-300/70">Live</span>
                 </div>
-              ))}
+              </div>
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <div>
+                  <div className="text-[9px] text-white/30 uppercase tracking-wider">Score</div>
+                  <div className="text-xl font-bold text-amber-400 mt-0.5">69<span className="text-xs text-white/30">/100</span></div>
+                </div>
+                <div>
+                  <div className="text-[9px] text-white/30 uppercase tracking-wider">Open</div>
+                  <div className="text-xl font-bold text-red-400 mt-0.5">48</div>
+                </div>
+                <div>
+                  <div className="text-[9px] text-white/30 uppercase tracking-wider">Resolved</div>
+                  <div className="text-xl font-bold text-emerald-400 mt-0.5">124</div>
+                </div>
+              </div>
+              <svg viewBox="0 0 240 50" className="w-full h-12">
+                <defs>
+                  <linearGradient id="loginTrend" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="rgb(20, 184, 166)" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="rgb(20, 184, 166)" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <path d="M0,35 C40,33 60,25 100,28 C140,31 160,15 200,12 C220,9 230,18 240,16 L240,50 L0,50Z" fill="url(#loginTrend)" />
+                <path d="M0,35 C40,33 60,25 100,28 C140,31 160,15 200,12 C220,9 230,18 240,16" fill="none" stroke="rgb(20,184,166)" strokeWidth="1.5" />
+              </svg>
+            </div>
+
+            {/* Trust strip */}
+            <div className="mt-7 flex items-stretch gap-5 text-[10px] text-white/45 uppercase tracking-wider">
+              <div>
+                <div className="text-xl font-semibold text-white/85 normal-case tracking-normal">5</div>
+                <div className="mt-0.5">Detection categories</div>
+              </div>
+              <div className="w-px bg-white/10" />
+              <div>
+                <div className="text-xl font-semibold text-white/85 normal-case tracking-normal">23</div>
+                <div className="mt-0.5">Secret formats</div>
+              </div>
+              <div className="w-px bg-white/10" />
+              <div>
+                <div className="text-xl font-semibold text-white/85 normal-case tracking-normal">12</div>
+                <div className="mt-0.5">Discovery sources</div>
+              </div>
             </div>
           </div>
 
