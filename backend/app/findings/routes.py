@@ -364,6 +364,7 @@ def list_findings():
     ignored = request.args.get("ignored")
     status = request.args.get("status")           # open, in_progress, accepted_risk, suppressed, resolved, all
     framework = request.args.get("framework")     # owasp_asvs, cis_v8, nist_csf, pci_dss_4, soc2, iso_27001
+    provenance = request.args.get("provenance")   # all | new | seen_before | resolved_before
     sort = request.args.get("sort", "recent")     # recent (default) | severity
     since = request.args.get("since", "all")      # all (default) | 24h | 7d | 30d | 90d
     page = request.args.get("page", 1, type=int)
@@ -435,6 +436,34 @@ def list_findings():
                 and_(Finding.first_seen_at.is_(None), Finding.created_at >= cutoff),
             )
         )
+
+    # Provenance filter — mirrors derive_provenance priority exactly so the
+    # rows the user sees in each filter match the pill they'd see if the
+    # "Show provenance tags" preference were on. Priority:
+    #   resolved_before → previously_resolved_at IS NOT NULL
+    #   new            → previously_resolved_at IS NULL AND first==last (and first IS NOT NULL)
+    #   seen_before    → everything else with previously_resolved_at IS NULL
+    if provenance and provenance != "all":
+        if provenance == "resolved_before":
+            query = query.filter(Finding.previously_resolved_at.isnot(None))
+        elif provenance == "new":
+            query = query.filter(
+                and_(
+                    Finding.previously_resolved_at.is_(None),
+                    Finding.first_seen_at.isnot(None),
+                    Finding.first_seen_at == Finding.last_seen_at,
+                )
+            )
+        elif provenance == "seen_before":
+            query = query.filter(
+                and_(
+                    Finding.previously_resolved_at.is_(None),
+                    or_(
+                        Finding.first_seen_at.is_(None),
+                        Finding.first_seen_at != Finding.last_seen_at,
+                    ),
+                )
+            )
 
     # Status filter
     if status and status != "all":

@@ -281,6 +281,10 @@ export default function FindingsPage() {
   // to see what just landed, not re-litigate yesterday's criticals.
   const [sortBy, setSortBy] = useState<"recent" | "severity">("recent");
   const [sinceFilter, setSinceFilter] = useState<"all" | "24h" | "7d" | "30d" | "90d">("all");
+  // Provenance filter — mirrors the pill priorities (resolved_before > new
+  // > seen_before). Independent of the showProvenanceTags display pref so
+  // a user can filter to "new only" without rendering pills on every row.
+  const [provenanceFilter, setProvenanceFilter] = useState<"all" | "new" | "seen_before" | "resolved_before">("all");
   const [page, setPage] = useState(1);
   const perPage = 50;
 
@@ -311,7 +315,7 @@ export default function FindingsPage() {
   }, [searchQuery]);
 
   // Reset page on filter change
-  useEffect(() => { setPage(1); }, [groupFilter, assetFilter, severityFilter, categoryFilter, frameworkFilter, statusFilter, sortBy, sinceFilter]);
+  useEffect(() => { setPage(1); }, [groupFilter, assetFilter, severityFilter, categoryFilter, frameworkFilter, statusFilter, sortBy, sinceFilter, provenanceFilter]);
 
   // Asset list scoped by selected group (when one is chosen) so the
   // dropdown only shows assets the group filter would permit. Resets
@@ -347,6 +351,7 @@ export default function FindingsPage() {
       if (assetFilter !== "all") params.set("asset_id", assetFilter);
       if (sortBy !== "recent") params.set("sort", sortBy);
       if (sinceFilter !== "all") params.set("since", sinceFilter);
+      if (provenanceFilter !== "all") params.set("provenance", provenanceFilter);
       if (debouncedSearch) params.set("q", debouncedSearch);
       params.set("status", statusFilter);
       params.set("page", String(page));
@@ -371,7 +376,7 @@ export default function FindingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [severityFilter, categoryFilter, frameworkFilter, groupFilter, assetFilter, sortBy, sinceFilter, debouncedSearch, statusFilter, page]);
+  }, [severityFilter, categoryFilter, frameworkFilter, groupFilter, assetFilter, sortBy, sinceFilter, provenanceFilter, debouncedSearch, statusFilter, page]);
 
   useEffect(() => { loadFindings(); }, [loadFindings]);
 
@@ -764,6 +769,17 @@ export default function FindingsPage() {
               <option value="7d">Last 7 days</option>
               <option value="30d">Last 30 days</option>
               <option value="90d">Last 90 days</option>
+            </select>
+            <select
+              value={provenanceFilter}
+              onChange={(e) => setProvenanceFilter(e.target.value as typeof provenanceFilter)}
+              className="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/40"
+              title="Filter by finding provenance"
+            >
+              <option value="all">All provenance</option>
+              <option value="new">New only</option>
+              <option value="seen_before">Seen before</option>
+              <option value="resolved_before">Resolved before</option>
             </select>
             <select
               value={sortBy}
