@@ -1,12 +1,15 @@
 """Admin UI backend for the agent platform.
 
 URL prefix: /admin/agents
-Auth: existing require_superadmin decorator (404s for non-superadmins).
+Auth: require_root_admin decorator (404s for everyone except root admins —
+this is more restrictive than the rest of /admin/* which uses superadmin,
+because the agent platform can spend Anthropic credits and produce
+customer-facing drafts).
 """
 from __future__ import annotations
 from flask import Blueprint, jsonify, request
 
-from app.auth.decorators import require_superadmin
+from app.auth.decorators import require_root_admin
 from app.extensions import db
 from app.models import AgentRun, AgentThread, AgentMessage, PendingAction
 
@@ -41,13 +44,13 @@ def _list_profiles():
 
 
 @bp.route("", methods=["GET"])
-@require_superadmin
+@require_root_admin
 def list_agents():
     return jsonify({"agents": _list_profiles()})
 
 
 @bp.route("/<agent_name>", methods=["GET"])
-@require_superadmin
+@require_root_admin
 def agent_detail(agent_name: str):
     f = PROFILES_DIR / agent_name / "agent.md"
     if not f.exists():
@@ -90,7 +93,7 @@ def agent_detail(agent_name: str):
 
 
 @bp.route("/<agent_name>/run", methods=["POST"])
-@require_superadmin
+@require_root_admin
 def trigger_run(agent_name: str):
     body = request.get_json(force=True) or {}
     prompt = body.get("prompt")
@@ -118,7 +121,7 @@ def trigger_run(agent_name: str):
 
 
 @bp.route("/approvals", methods=["GET"])
-@require_superadmin
+@require_root_admin
 def approvals_list():
     return jsonify({
         "pending": [
@@ -133,7 +136,7 @@ def approvals_list():
 
 
 @bp.route("/approvals/<int:pending_id>/approve", methods=["POST"])
-@require_superadmin
+@require_root_admin
 def approvals_approve(pending_id: int):
     body = request.get_json(silent=True) or {}
     edited = body.get("edited_payload")
@@ -144,7 +147,7 @@ def approvals_approve(pending_id: int):
 
 
 @bp.route("/approvals/<int:pending_id>/reject", methods=["POST"])
-@require_superadmin
+@require_root_admin
 def approvals_reject(pending_id: int):
     body = request.get_json(silent=True) or {}
     note = body.get("note")
