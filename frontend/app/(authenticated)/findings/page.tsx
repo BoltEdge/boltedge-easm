@@ -820,6 +820,7 @@ export default function FindingsPage() {
                   </th>
                 )}
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase w-[100px]">Severity</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase w-[140px]">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Finding</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase w-[110px]">Category</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase w-[180px]">Asset</th>
@@ -876,6 +877,18 @@ export default function FindingsPage() {
                       <SeverityBadge severity={sev} />
                     </td>
                     <td className="px-4 py-3">
+                      <div className="flex flex-col gap-1 items-start">
+                        {statusBadge && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusBadge.class}`}>
+                            {statusBadge.label}
+                          </span>
+                        )}
+                        {prefs.showProvenanceTags && (
+                          <ProvenanceTag value={(f.provenance as Provenance) ?? null} />
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         {isCloud && <CloudSubIcon subType={cloudSub} />}
                         <div className="min-w-0">
@@ -883,14 +896,6 @@ export default function FindingsPage() {
                             <span className="text-foreground font-medium truncate" title={title}>
                               {title}
                             </span>
-                            {statusBadge && status !== "open" && (
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${statusBadge.class}`}>
-                                {statusBadge.label}
-                              </span>
-                            )}
-                            {prefs.showProvenanceTags && (
-                              <ProvenanceTag value={(f.provenance as Provenance) ?? null} />
-                            )}
                             {hasRemediation && (
                               <span title="Remediation available">
                                 <Wrench className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -938,7 +943,7 @@ export default function FindingsPage() {
               {findings.length === 0 && !loading && (
                 <tr>
                   <td
-                    colSpan={canEdit ? 7 : 6}
+                    colSpan={canEdit ? 8 : 7}
                     className="px-4 py-12 text-center text-muted-foreground"
                   >
                     {debouncedSearch || severityFilter !== "all" || groupFilter !== "all" || categoryFilter !== "all"
