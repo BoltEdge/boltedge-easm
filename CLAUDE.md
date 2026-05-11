@@ -214,6 +214,48 @@ Pending migrations (chain from `e4f9a2b3c1d6`):
 - `a1b2c3d4e5f6` — make `audit_log.organization_id` nullable
 - `b1c2d3e4f5a6` — add `quick_scan_log` and `blocked_ip` tables
 
+## Internal Agent Platform (Phase 1)
+
+A co-hosted multi-agent ops module for the founder, gated behind the existing superadmin role at `/admin/agents`. See `docs/superpowers/specs/2026-05-10-internal-agent-platform-design.md` for the full design.
+
+### Phase 1 (walking skeleton, shipped)
+
+- 6 agent profiles in `backend/app/agents/profiles/<name>/agent.md` (Founder Ops fully wired; the other 5 are stubs until Plan 2)
+- One scheduled brief: Monday 08:00 Founder Ops `weekly-summary` → email to `FOUNDER_EMAIL`
+- Manual run: `/admin/agents/<name>` with a "Run now" button
+- Approval queue: `/admin/agents/approvals` — gates every memory write
+
+### Key conventions
+
+- Agent secrets are namespaced (`*_AGENTS` env vars). Never reuse customer-facing keys.
+- Agent code calls Nano EASM via `/api/internal/...` even though it lives in the same app — that seam is what prevents schema-coupling.
+- Per-agent API key: `ApiKey.kind = 'agent'`. Issue with `python -m scripts.issue_agent_key <name> <scopes>`.
+- Every agent API call writes to `audit_log` with `category = 'agent'`.
+
+### Required env vars
+
+```
+ANTHROPIC_API_KEY_AGENTS=<your Anthropic key>
+RESEND_TOKEN_AGENTS=<your Resend token (or RESEND_API_KEY as fallback)>
+NANOEASM_API_KEY_AGENTS_FOUNDER_OPS=<issued via scripts.issue_agent_key>
+INTERNAL_API_BASE=http://localhost:5000   # for local dev
+FOUNDER_EMAIL=<your email>
+AGENTS_FROM_EMAIL=agents@nanoeasm.com     # optional, defaults to this
+```
+
+### CLI helpers
+
+- `python -m scripts.seed_team_memory` — seed the universal `team_memory` facts (idempotent).
+- `python -m scripts.issue_agent_key <agent> <scope> [<scope> ...]` — issue or rotate an agent's API key (shows key once, save to env immediately).
+
+### Phase 2 (to be planned next)
+
+- Other 5 agent profiles fleshed out (Engineer, QA, Security Analyst, Strategy, Voice)
+- Tuesday + Wednesday briefs (Strategy `competitor-pulse`, Security Analyst `weekly-finding-brief`)
+- Other internal-API endpoints (`findings/recent`, `contact-requests/recent`, `audit-log/recent`, `scans/recent`)
+- Memory hygiene weekly job + low-confidence review
+- Send service for approved customer-facing drafts (Plan 2 wires up `external-output` action type)
+
 ## Billing Feature Flag
 
 Billing UI is controlled by a single feature flag. **Currently set to `false`.**
