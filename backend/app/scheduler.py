@@ -391,6 +391,26 @@ def _run_monday_weekly_summary():
         logging.getLogger("agents").exception("weekly_summary failed: %s", e)
 
 
+def _run_tuesday_competitor_pulse():
+    """Phase 2A.1 scheduled job: Ava competitor pulse, Tuesday 08:00."""
+    from app.agents.skills.competitor_pulse import run_competitor_pulse
+    try:
+        run_competitor_pulse(send=True)
+    except Exception as e:
+        import logging
+        logging.getLogger("agents").exception("competitor_pulse failed: %s", e)
+
+
+def _run_wednesday_finding_brief():
+    """Phase 2A.1 scheduled job: Maya weekly-finding-brief, Wednesday 08:00."""
+    from app.agents.skills.weekly_finding_brief import run_weekly_finding_brief
+    try:
+        run_weekly_finding_brief(send=True)
+    except Exception as e:
+        import logging
+        logging.getLogger("agents").exception("weekly_finding_brief failed: %s", e)
+
+
 def init_scheduler(app):
     """Initialize and start the background scheduler."""
     global _scheduler
@@ -423,6 +443,26 @@ def init_scheduler(app):
         trigger=CronTrigger(day_of_week="mon", hour=8, minute=0),
         id="agents.founder_ops.weekly_summary",
         name="Founder Ops weekly summary (Monday 08:00 UTC)",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    # Ava (strategy) competitor pulse — every Tuesday at 08:00 UTC
+    _scheduler.add_job(
+        func=_run_tuesday_competitor_pulse,
+        trigger=CronTrigger(day_of_week="tue", hour=8, minute=0),
+        id="agents.strategy.competitor_pulse",
+        name="Strategy competitor pulse (Tuesday 08:00 UTC)",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    # Maya (security-analyst) weekly finding brief — every Wednesday at 08:00 UTC
+    _scheduler.add_job(
+        func=_run_wednesday_finding_brief,
+        trigger=CronTrigger(day_of_week="wed", hour=8, minute=0),
+        id="agents.security_analyst.weekly_finding_brief",
+        name="Security analyst weekly finding brief (Wednesday 08:00 UTC)",
         replace_existing=True,
         max_instances=1,
     )
