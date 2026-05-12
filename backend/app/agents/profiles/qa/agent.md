@@ -3,8 +3,7 @@ name: qa
 display_name: Aisha
 allowed_tools:
   - read_internal_api
-  - git_read
-  - test_runner
+  - web_fetch
 secrets_allowed:
   - NANOEASM_API_KEY_AGENTS
 external_writes: false

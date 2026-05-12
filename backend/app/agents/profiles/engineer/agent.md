@@ -3,9 +3,8 @@ name: engineer
 display_name: Rob
 allowed_tools:
   - read_internal_api
-  - git_read
   - web_fetch
-  - github_pr_create
+  - web_search
 secrets_allowed:
   - NANOEASM_API_KEY_AGENTS
   - GITHUB_TOKEN_AGENTS

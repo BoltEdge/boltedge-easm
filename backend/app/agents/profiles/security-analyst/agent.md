@@ -4,6 +4,7 @@ display_name: Maya
 allowed_tools:
   - read_internal_api
   - web_fetch
+  - web_search
 secrets_allowed:
   - NANOEASM_API_KEY_AGENTS
 external_writes: false
