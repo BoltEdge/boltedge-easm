@@ -17,6 +17,7 @@ class ToolDef:
     handler: Callable
     idempotent: bool
     result_cap_bytes: int
+    server_side_type: str | None = None
 
 
 TOOL_REGISTRY: dict[str, ToolDef] = {}
@@ -28,8 +29,15 @@ def register_tool(tool: ToolDef) -> None:
 
 
 def anthropic_tool_spec(tool: ToolDef) -> dict:
-    """Build the per-tool dict that Anthropic's messages.create()
-    accepts under the `tools` parameter."""
+    """Build the per-tool dict Anthropic's messages.create() accepts.
+    Server-side tools (web_search etc.) use a 'type' discriminator
+    instead of the input_schema shape.
+    """
+    if tool.server_side_type:
+        return {
+            "type": tool.server_side_type,
+            "name": tool.name,
+        }
     return {
         "name": tool.name,
         "description": tool.description,

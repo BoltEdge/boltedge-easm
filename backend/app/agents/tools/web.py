@@ -87,3 +87,37 @@ register_tool(ToolDef(
     idempotent=True,
     result_cap_bytes=WEB_FETCH_RESULT_CAP_BYTES,
 ))
+
+
+WEB_SEARCH_TOOL_TYPE = "web_search_20250305"
+
+
+def web_search_handler(query: str) -> str:
+    """Server-side tool — Anthropic executes the search and returns
+    results directly in the message thread. Our local handler should not
+    actually run; if it does (e.g. fake client emitting a regular
+    tool_use block), return a clear note so the agent doesn't get
+    confused."""
+    return ("[web_search is handled server-side by Anthropic; results are "
+            "returned in the next message turn automatically]")
+
+
+register_tool(ToolDef(
+    name="web_search",
+    description=(
+        "Search the public web for recent news, threat intel, competitor "
+        "announcements, technical articles. Returns titles + snippets + "
+        "URLs — use web_fetch to get a specific page's full text."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"},
+        },
+        "required": ["query"],
+    },
+    handler=web_search_handler,
+    idempotent=False,
+    result_cap_bytes=0,
+    server_side_type=WEB_SEARCH_TOOL_TYPE,
+))
