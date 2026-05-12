@@ -1977,6 +1977,7 @@ class PendingAction(db.Model):
     # decision: approved | rejected | edited-and-approved | expired
     decided_by = db.Column(db.String(255), nullable=True)
     decision_note = db.Column(db.Text, nullable=True)
+    applied_result = db.Column(db.JSON, nullable=True)
     run_id = db.Column(db.BigInteger,
                        db.ForeignKey("agent_run.id"), nullable=True)
 
