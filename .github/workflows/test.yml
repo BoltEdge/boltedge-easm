@@ -1,0 +1,44 @@
+name: tests
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: easm_user
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: easm
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Apply DB migrations
+        working-directory: backend
+        env:
+          SQLALCHEMY_DATABASE_URI: postgresql://easm_user:testpass@localhost:5432/easm
+          SECRET_KEY: test-secret
+        run: flask db upgrade
+      - name: Run pytest
+        working-directory: backend
+        env:
+          SQLALCHEMY_DATABASE_URI: postgresql://easm_user:testpass@localhost:5432/easm
+          SECRET_KEY: test-secret
+          CORS_ORIGINS: http://localhost:3000
+        run: pytest tests/ -v
