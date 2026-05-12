@@ -1,5 +1,5 @@
 # backend/Dockerfile
-# BoltEdge EASM — Flask Backend
+# Nano EASM — Flask Backend
 # Runs under Gunicorn with 3 workers, 120s timeout
 
 FROM python:3.12-slim
@@ -8,12 +8,15 @@ FROM python:3.12-slim
 # nmap: network scanning engine (NmapEngine)
 # dnsutils: dig/nslookup for DNS operations
 # curl/unzip/wget: for installing nuclei
+# git: agent platform's git_read tool runs `git log`, `git show`, etc.
+#      against the bind-mounted /repo (Phase 2A)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     nmap \
     dnsutils \
     curl \
     unzip \
     wget \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Install Nuclei (ProjectDiscovery) ────────────────────────

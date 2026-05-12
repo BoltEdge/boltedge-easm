@@ -1687,7 +1687,11 @@ class AuditLog(db.Model):
     ip_address = db.Column(db.String(50), nullable=True)
 
     # When
-    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at = db.Column(
+        db.DateTime, nullable=False,
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        index=True,
+    )
 
 
 class AuditWebhookDelivery(db.Model):
