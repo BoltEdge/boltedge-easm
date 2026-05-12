@@ -88,3 +88,99 @@ register_tool(ToolDef(
     idempotent=False,
     result_cap_bytes=GITHUB_QUERY_RESULT_CAP_BYTES,
 ))
+
+
+def _github_pr_create_sentinel(**kwargs) -> str:
+    """Sentinel handler. The runtime must intercept on
+    requires_approval=True and never call this. If it does run, return
+    a clear error so we notice."""
+    return (
+        "[error: github_pr_create handler reached the synchronous path; "
+        "this should never happen — the runtime should have queued this "
+        "for approval instead. Check the runtime's requires_approval branch.]"
+    )
+
+
+register_tool(ToolDef(
+    name="github_pr_create",
+    description=(
+        "Propose a pull request to the Nano EASM repo. The proposal "
+        "queues for the director's approval; nothing happens on GitHub "
+        "until they ✓. ALWAYS include tests with implementation in the "
+        "same PR — the PR body MUST explicitly mention which test files "
+        "and test names cover the change. If you can't think of a test, "
+        "say so in the PR body and let the director decide. Pass: "
+        "branch_name (kebab-case, agent-prefixed like 'rob/fix-x'), "
+        "commit_message (conventional commit format preferred), files "
+        "(list of {path, content} with FULL new file content for each), "
+        "pr_title (10-200 chars), pr_body (markdown, min 50 chars, "
+        "must mention tests). The base branch defaults to 'master'."
+    ),
+    input_schema={
+        "type": "object",
+        "required": [
+            "branch_name", "commit_message", "files",
+            "pr_title", "pr_body",
+        ],
+        "properties": {
+            "branch_name": {
+                "type": "string",
+                "pattern": r"^[a-z][a-z0-9\-/_]{1,80}$",
+                "description": (
+                    "Branch to create from base. kebab-case with an "
+                    "agent prefix, e.g. 'rob/fix-audit-log-timeout'."
+                ),
+            },
+            "base": {
+                "type": "string",
+                "default": "master",
+                "description": "Branch to fork from. Default 'master'.",
+            },
+            "commit_message": {
+                "type": "string",
+                "minLength": 10,
+                "maxLength": 500,
+                "description": (
+                    "Conventional commit format preferred (feat:, fix:, "
+                    "refactor:, test:, docs:, etc.)."
+                ),
+            },
+            "files": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 20,
+                "items": {
+                    "type": "object",
+                    "required": ["path", "content"],
+                    "properties": {
+                        "path": {"type": "string"},
+                        "content": {
+                            "type": "string",
+                            "description": (
+                                "Full new file content. For "
+                                "modifications, send the entire file."
+                            ),
+                        },
+                    },
+                },
+            },
+            "pr_title": {
+                "type": "string",
+                "minLength": 10,
+                "maxLength": 200,
+            },
+            "pr_body": {
+                "type": "string",
+                "minLength": 50,
+                "description": (
+                    "Markdown. MUST mention which tests cover the change."
+                ),
+            },
+        },
+    },
+    handler=_github_pr_create_sentinel,
+    idempotent=False,
+    result_cap_bytes=0,
+    requires_approval=True,
+    action_type="code-pr",
+))
