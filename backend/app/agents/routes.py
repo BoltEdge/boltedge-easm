@@ -92,6 +92,56 @@ def agent_detail(agent_name: str):
     })
 
 
+@bp.route("/threads/<int:thread_id>", methods=["GET"])
+@require_root_admin
+def thread_detail(thread_id: int):
+    thread = AgentThread.query.get(thread_id)
+    if thread is None:
+        return jsonify({"error": "not_found"}), 404
+
+    messages = (
+        AgentMessage.query.filter_by(thread_id=thread_id)
+        .order_by(AgentMessage.created_at)
+        .all()
+    )
+    runs = (
+        AgentRun.query.filter_by(thread_id=thread_id)
+        .order_by(AgentRun.started_at)
+        .all()
+    )
+
+    return jsonify({
+        "thread": {
+            "id": thread.id,
+            "agent_id": thread.agent_id,
+            "title": thread.title,
+            "created_at": thread.created_at.isoformat() + "Z",
+        },
+        "messages": [
+            {
+                "id": m.id,
+                "role": m.role,
+                "created_at": m.created_at.isoformat() + "Z",
+                "content": m.content,
+                **({"tokens_used": m.tokens_used} if m.tokens_used is not None else {}),
+            }
+            for m in messages
+        ],
+        "runs": [
+            {
+                "id": r.id,
+                "skill": r.skill,
+                "status": r.status,
+                "cost_usd": float(r.cost_usd) if r.cost_usd is not None else None,
+                "duration_ms": r.duration_ms,
+                "started_at": r.started_at.isoformat() + "Z",
+                "finished_at": r.finished_at.isoformat() + "Z" if r.finished_at else None,
+            }
+            for r in runs
+        ],
+    })
+
+
 @bp.route("/<agent_name>/run", methods=["POST"])
 @require_root_admin
 def trigger_run(agent_name: str):

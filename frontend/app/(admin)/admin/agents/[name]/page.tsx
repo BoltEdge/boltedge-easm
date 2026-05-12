@@ -229,7 +229,14 @@ export default function AgentDetailPage({
               <tbody>
                 {agent.threads.map((t) => (
                   <tr key={t.id} className="border-t border-white/[0.04] hover:bg-white/[0.02]">
-                    <td className="px-4 py-2.5 text-white/60">{t.title || <span className="italic text-white/30">Untitled</span>}</td>
+                    <td className="px-4 py-2.5">
+                      <Link
+                        href={`/admin/agents/threads/${t.id}`}
+                        className="text-teal-400 hover:text-teal-300 transition-colors"
+                      >
+                        {t.title || <span className="italic text-white/30">Untitled</span>}
+                      </Link>
+                    </td>
                     <td className="px-4 py-2.5 text-white/60">{new Date(t.created_at).toLocaleString()}</td>
                     <td className="px-4 py-2.5 text-white/60">{t.message_count}</td>
                   </tr>

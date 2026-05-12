@@ -2677,6 +2677,29 @@ export async function getAgent(name: string): Promise<AgentDetail> {
   return apiFetch<AgentDetail>(`/admin/agents/${encodeURIComponent(name)}`);
 }
 
+export type AgentMessageRow = {
+  id: number;
+  role: "user" | "assistant" | "tool";
+  created_at: string;
+  content: Record<string, any>;
+  tokens_used?: number | null;
+};
+
+export type AgentThreadDetail = {
+  thread: {
+    id: number;
+    agent_id: string;
+    title: string | null;
+    created_at: string;
+  };
+  messages: AgentMessageRow[];
+  runs: AgentRunSummary[];
+};
+
+export async function getAgentThread(id: number): Promise<AgentThreadDetail> {
+  return apiFetch<AgentThreadDetail>(`/admin/agents/threads/${id}`);
+}
+
 export async function runAgent(
   name: string,
   prompt: string,
