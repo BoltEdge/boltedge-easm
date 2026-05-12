@@ -1,0 +1,47 @@
+"""Agent tool registry.
+
+A central dict of tool name -> ToolDef. Each ToolDef carries the
+Anthropic-facing description and schema plus the Python handler.
+Per-agent allowlist filtering is done with expose_tools_for().
+"""
+from __future__ import annotations
+import dataclasses
+from typing import Callable
+
+
+@dataclasses.dataclass
+class ToolDef:
+    name: str
+    description: str
+    input_schema: dict
+    handler: Callable
+    idempotent: bool
+    result_cap_bytes: int
+
+
+TOOL_REGISTRY: dict[str, ToolDef] = {}
+
+
+def register_tool(tool: ToolDef) -> None:
+    """Add a tool to the global registry. Overwrites by name."""
+    TOOL_REGISTRY[tool.name] = tool
+
+
+def anthropic_tool_spec(tool: ToolDef) -> dict:
+    """Build the per-tool dict that Anthropic's messages.create()
+    accepts under the `tools` parameter."""
+    return {
+        "name": tool.name,
+        "description": tool.description,
+        "input_schema": tool.input_schema,
+    }
+
+
+def expose_tools_for(allowed_tools: list[str]) -> list[dict]:
+    """Filter the registry to the names in allowed_tools and return the
+    Anthropic-shaped tool specs. Unknown names are silently skipped."""
+    out = []
+    for name in allowed_tools:
+        if name in TOOL_REGISTRY:
+            out.append(anthropic_tool_spec(TOOL_REGISTRY[name]))
+    return out

@@ -23,6 +23,7 @@ class LlmCall:
     system: str
     messages: list[dict]
     max_tokens: int = 4096
+    tools: list[dict] = dataclasses.field(default_factory=list)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -33,6 +34,7 @@ class LlmResult:
     cost_usd: float | None
     stop_reason: str
     duration_ms: int
+    tool_uses: list[dict] = dataclasses.field(default_factory=list)
 
 
 def compute_cost_usd(model: str, input_tokens: int, output_tokens: int) -> float | None:
@@ -51,48 +53,86 @@ class RealAnthropicClient:
 
     def call(self, call: LlmCall) -> LlmResult:
         start = time.monotonic()
-        msg = self._client.messages.create(
+        kwargs = dict(
             model=call.model,
             system=call.system,
             messages=call.messages,
             max_tokens=call.max_tokens,
         )
+        if call.tools:
+            kwargs["tools"] = call.tools
+        msg = self._client.messages.create(**kwargs)
         dur = int((time.monotonic() - start) * 1000)
-        text = "".join(
-            block.text for block in msg.content
-            if getattr(block, "type", "") == "text"
-        )
+        text_parts: list[str] = []
+        tool_uses: list[dict] = []
+        for block in msg.content:
+            btype = getattr(block, "type", "")
+            if btype == "text":
+                text_parts.append(block.text)
+            elif btype == "tool_use":
+                tool_uses.append({
+                    "id": block.id,
+                    "name": block.name,
+                    "input": dict(block.input),
+                })
         cost = compute_cost_usd(
             call.model, msg.usage.input_tokens, msg.usage.output_tokens,
         )
         return LlmResult(
-            text=text,
+            text="".join(text_parts),
             input_tokens=msg.usage.input_tokens,
             output_tokens=msg.usage.output_tokens,
             cost_usd=cost,
             stop_reason=msg.stop_reason or "unknown",
             duration_ms=dur,
+            tool_uses=tool_uses,
         )
 
 
 class FakeAnthropicClient:
-    """Deterministic stub for tests. Echoes the canned text and reports
-    realistic-looking token counts (proportional to lengths)."""
+    """Deterministic stub for tests.
 
-    def __init__(self, canned_text: str = "ok"):
+    Two modes:
+    - `canned_text="..."` — every call() returns a single end_turn with that text.
+    - `scripted_responses=[...]` — each call() returns the next entry from the list.
+      Each entry is a dict with keys: stop_reason, text (optional), tool_uses (optional).
+    """
+
+    def __init__(self, canned_text: str = "ok",
+                  scripted_responses: list[dict] | None = None):
         self._text = canned_text
+        self._scripted = list(scripted_responses) if scripted_responses else None
+        self._idx = 0
 
     def call(self, call: LlmCall) -> LlmResult:
-        # Rough token estimate: 1 token ≈ 4 chars.
-        in_tok = max(1, sum(len(m.get("content", "")) for m in call.messages) // 4
-                       + len(call.system) // 4)
+        if self._scripted is not None:
+            if self._idx >= len(self._scripted):
+                raise RuntimeError("FakeAnthropicClient: ran out of scripted responses")
+            entry = self._scripted[self._idx]
+            self._idx += 1
+            text = entry.get("text", "")
+            tool_uses = list(entry.get("tool_uses", []))
+            in_tok = max(1, sum(len(m.get("content", "")) if isinstance(m.get("content"), str) else 32
+                                  for m in call.messages) // 4 + len(call.system) // 4)
+            out_tok = max(1, (len(text) + sum(len(str(tu)) for tu in tool_uses)) // 4)
+            cost = compute_cost_usd(call.model, in_tok, out_tok)
+            return LlmResult(
+                text=text,
+                input_tokens=in_tok, output_tokens=out_tok,
+                cost_usd=cost,
+                stop_reason=entry["stop_reason"],
+                duration_ms=1,
+                tool_uses=tool_uses,
+            )
+
+        # canned_text mode — rough token estimate: 1 token ≈ 4 chars.
+        in_tok = max(1, sum(len(m.get("content", "")) if isinstance(m.get("content"), str) else 32
+                              for m in call.messages) // 4 + len(call.system) // 4)
         out_tok = max(1, len(self._text) // 4)
         cost = compute_cost_usd(call.model, in_tok, out_tok)
         return LlmResult(
             text=self._text,
-            input_tokens=in_tok,
-            output_tokens=out_tok,
+            input_tokens=in_tok, output_tokens=out_tok,
             cost_usd=cost,
-            stop_reason="end_turn",
-            duration_ms=1,
+            stop_reason="end_turn", duration_ms=1, tool_uses=[],
         )
