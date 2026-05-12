@@ -51,6 +51,7 @@ const TOP_NAV: NavTopItem[] = [
     kind: "dropdown",
     label: "Resources",
     items: [
+      { href: "/resources/blog", label: "Blog", description: "Articles on ASM, EASM, and modern security practice." },
       { href: "/faq", label: "FAQ", description: "Common questions, plain answers." },
       { href: "/api-docs", label: "API Docs", description: "Integrate Nano EASM with your stack." },
       { href: "/resources/what-is-nano-easm", label: "What is Nano EASM?", description: "The platform, explained." },

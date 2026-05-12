@@ -8,6 +8,8 @@ import type { MetadataRoute } from "next";
 import fs from "node:fs";
 import path from "node:path";
 
+import { getAllArticles } from "./(unauthenticated)/resources/blog/_lib";
+
 const SITE_URL = "https://nanoeasm.com";
 
 // Slugs that exist as markdown files in /content/legal/. Listed
@@ -99,6 +101,20 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: legalLastMod(slug),
       changeFrequency: "yearly" as const,
       priority: 0.3,
+    })),
+    // Blog index + every published article. Articles use their
+    // publishDate as lastmod — sufficient for the static-publish model.
+    {
+      url: `${SITE_URL}/resources/blog`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.85,
+    },
+    ...getAllArticles().map((a) => ({
+      url: `${SITE_URL}/resources/blog/${a.slug}`,
+      lastModified: new Date(a.publishDate),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
     })),
   ];
 }

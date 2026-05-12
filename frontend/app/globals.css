@@ -301,3 +301,162 @@
   font-weight: 600;
   background: rgba(255, 255, 255, 0.02);
 }
+
+/* ───────────────────────────────────────────────────────────────────
+ * Article docs — typography for markdown-rendered blog content
+ * (server-rendered into .article-doc by /resources/blog/[slug]/page.tsx)
+ *
+ * Larger type than .legal-doc, more vertical rhythm, callout-style
+ * blockquotes in teal, hr as a thin divider with a subtle gradient.
+ * ─────────────────────────────────────────────────────────────────── */
+.article-doc h2 {
+  color: rgb(255 255 255);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 2.5rem;
+  margin-bottom: 0.9rem;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+.article-doc h3 {
+  color: rgb(255 255 255 / 0.95);
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-top: 1.75rem;
+  margin-bottom: 0.6rem;
+  line-height: 1.3;
+}
+.article-doc p {
+  margin: 0 0 1.15rem;
+}
+.article-doc ul,
+.article-doc ol {
+  margin: 0.75rem 0 1.25rem 1.5rem;
+}
+.article-doc ul { list-style: disc; }
+.article-doc ol { list-style: decimal; }
+.article-doc li { margin: 0.5rem 0; }
+.article-doc li > p { margin: 0.3rem 0; }
+.article-doc li::marker { color: rgba(45, 212, 191, 0.5); }
+.article-doc strong { color: rgb(255 255 255 / 0.95); font-weight: 600; }
+.article-doc em { color: rgb(255 255 255 / 0.72); }
+.article-doc a {
+  color: rgb(45 212 191);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(45, 212, 191, 0.4);
+  transition: text-decoration-color 0.15s ease, color 0.15s ease;
+}
+.article-doc a:hover {
+  color: rgb(94 234 212);
+  text-decoration-color: rgba(94, 234, 212, 0.9);
+}
+.article-doc code {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.85em;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: rgb(255 255 255 / 0.9);
+}
+.article-doc pre {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 1rem 1.15rem;
+  font-size: 0.85rem;
+  overflow-x: auto;
+  margin: 1.25rem 0;
+}
+.article-doc pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.article-doc blockquote {
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  background: rgba(20, 184, 166, 0.06);
+  border-left: 3px solid rgba(20, 184, 166, 0.5);
+  border-radius: 8px;
+  color: rgb(167 243 208 / 0.92);
+}
+.article-doc blockquote p { margin: 0; }
+.article-doc blockquote strong { color: rgb(94 234 212); }
+.article-doc hr {
+  margin: 2.25rem 0;
+  border: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.08), transparent);
+}
+.article-doc table {
+  width: 100%;
+  margin: 1.5rem 0;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.article-doc th,
+.article-doc td {
+  text-align: left;
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: top;
+}
+.article-doc th {
+  color: rgb(255 255 255 / 0.85);
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.02);
+}
+.article-doc img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin: 1.5rem 0;
+}
+
+/* Inline stats callout — used inside articles by dropping a
+   <div class="article-stats"> block in the markdown body. Three big
+   numbers in a row, each with a label and a sub-line. Stacks on mobile. */
+.article-doc .article-stats {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1.75rem 0;
+}
+@media (min-width: 640px) {
+  .article-doc .article-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.article-doc .article-stat {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  padding: 1.1rem 1.15rem;
+}
+.article-doc .article-stat-value {
+  font-size: 2.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 0.35rem;
+}
+.article-doc .article-stat-value-red    { color: #fca5a5; }
+.article-doc .article-stat-value-amber  { color: #fcd34d; }
+.article-doc .article-stat-value-teal   { color: #5eead4; }
+.article-doc .article-stat-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgb(255 255 255 / 0.85);
+  margin: 0;
+}
+.article-doc .article-stat-sub {
+  font-size: 0.72rem;
+  color: rgb(255 255 255 / 0.40);
+  line-height: 1.4;
+  margin-top: 0.2rem;
+}

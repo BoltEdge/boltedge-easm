@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 280" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Diagram showing the four repeating stages of ASM: Discover, Classify and prioritise, Remediate, Monitor — each as a numbered teal circle connected by a flowing line">
+  <defs>
+    <linearGradient id="connectGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="rgba(20,184,166,0.05)" />
+      <stop offset="15%" stop-color="rgba(20,184,166,0.55)" />
+      <stop offset="85%" stop-color="rgba(20,184,166,0.55)" />
+      <stop offset="100%" stop-color="rgba(20,184,166,0.05)" />
+    </linearGradient>
+    <filter id="circleGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Connecting flow line -->
+  <line x1="150" y1="100" x2="1050" y2="100" stroke="url(#connectGrad)" stroke-width="2" />
+
+  <!-- Loop-back arc indicating "continuous" -->
+  <path d="M 1050 100 Q 1100 100 1100 140 Q 1100 230 600 230 Q 100 230 100 140 Q 100 100 150 100"
+        fill="none" stroke="rgba(20,184,166,0.25)" stroke-width="1.5" stroke-dasharray="4 6" />
+  <text x="600" y="252" text-anchor="middle" fill="rgba(255,255,255,0.45)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-style="italic">continuous — the cycle never stops</text>
+
+  <!-- Stage 1: Discover -->
+  <g transform="translate(150, 100)">
+    <circle r="40" fill="rgba(20,184,166,0.12)" stroke="rgba(20,184,166,0.40)" stroke-width="1.5" />
+    <circle r="40" fill="none" stroke="rgba(20,184,166,0.20)" stroke-width="1" filter="url(#circleGlow)" />
+    <text y="-2" text-anchor="middle" fill="rgba(20,184,166,0.7)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-weight="700" letter-spacing="0.1em">01</text>
+    <text y="14" text-anchor="middle" fill="#5eead4" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="600">Discover</text>
+    <text y="65" text-anchor="middle" fill="rgba(255,255,255,0.60)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11">Find every asset</text>
+    <text y="80" text-anchor="middle" fill="rgba(255,255,255,0.40)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10">including the unknown</text>
+  </g>
+
+  <!-- Stage 2: Classify -->
+  <g transform="translate(450, 100)">
+    <circle r="40" fill="rgba(20,184,166,0.12)" stroke="rgba(20,184,166,0.40)" stroke-width="1.5" />
+    <circle r="40" fill="none" stroke="rgba(20,184,166,0.20)" stroke-width="1" filter="url(#circleGlow)" />
+    <text y="-2" text-anchor="middle" fill="rgba(20,184,166,0.7)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-weight="700" letter-spacing="0.1em">02</text>
+    <text y="14" text-anchor="middle" fill="#5eead4" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="600">Classify</text>
+    <text y="65" text-anchor="middle" fill="rgba(255,255,255,0.60)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11">Rank by exposure,</text>
+    <text y="80" text-anchor="middle" fill="rgba(255,255,255,0.40)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10">value, blast radius</text>
+  </g>
+
+  <!-- Stage 3: Remediate -->
+  <g transform="translate(750, 100)">
+    <circle r="40" fill="rgba(20,184,166,0.12)" stroke="rgba(20,184,166,0.40)" stroke-width="1.5" />
+    <circle r="40" fill="none" stroke="rgba(20,184,166,0.20)" stroke-width="1" filter="url(#circleGlow)" />
+    <text y="-2" text-anchor="middle" fill="rgba(20,184,166,0.7)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-weight="700" letter-spacing="0.1em">03</text>
+    <text y="14" text-anchor="middle" fill="#5eead4" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="600">Remediate</text>
+    <text y="65" text-anchor="middle" fill="rgba(255,255,255,0.60)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11">Fix highest-risk</text>
+    <text y="80" text-anchor="middle" fill="rgba(255,255,255,0.40)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10">findings first</text>
+  </g>
+
+  <!-- Stage 4: Monitor -->
+  <g transform="translate(1050, 100)">
+    <circle r="40" fill="rgba(20,184,166,0.12)" stroke="rgba(20,184,166,0.40)" stroke-width="1.5" />
+    <circle r="40" fill="none" stroke="rgba(20,184,166,0.20)" stroke-width="1" filter="url(#circleGlow)" />
+    <text y="-2" text-anchor="middle" fill="rgba(20,184,166,0.7)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-weight="700" letter-spacing="0.1em">04</text>
+    <text y="14" text-anchor="middle" fill="#5eead4" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="600">Monitor</text>
+    <text y="65" text-anchor="middle" fill="rgba(255,255,255,0.60)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11">Detect changes</text>
+    <text y="80" text-anchor="middle" fill="rgba(255,255,255,0.40)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10">in real time</text>
+  </g>
+</svg>
