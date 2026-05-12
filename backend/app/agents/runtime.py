@@ -233,7 +233,30 @@ def run_agent(
                         })
                         continue
 
-                    output, is_error = _execute_tool(tu["name"], tu["input"])
+                    # Check whether this tool requires approval (write-class).
+                    tool_def = TOOL_REGISTRY.get(tu["name"])
+                    if tool_def is not None and tool_def.requires_approval:
+                        # Capture-and-queue: don't execute the handler.
+                        from .approvals import propose_action
+                        pending = propose_action(
+                            agent_id=profile.name,
+                            action_type=tool_def.action_type or "unknown-action",
+                            target=(tu["input"].get("pr_title")
+                                    or tu["input"].get("subject")
+                                    or tu["name"]),
+                            payload=tu["input"],
+                            rationale=f"Tool call from run #{run.id}",
+                            skill=skill,
+                            run_id=run.id,
+                        )
+                        output = (
+                            f"[queued for approval as pending_action #{pending.id}; "
+                            f"agent should wrap up its response without expecting "
+                            f"this to fire during the current run]"
+                        )
+                        is_error = False
+                    else:
+                        output, is_error = _execute_tool(tu["name"], tu["input"])
                     tool_result_blocks.append({
                         "type": "tool_result",
                         "tool_use_id": tu["id"],
