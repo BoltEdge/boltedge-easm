@@ -52,6 +52,13 @@ SEEDS = [
     ("nano_easm:url",
      {"rule": "Production URL is https://nanoeasm.com."},
      ["fact"]),
+    ("github:repo_slug",
+     {"rule": "The Nano EASM source code lives at "
+              "github.com/BoltEdge/boltedge-easm. Use this as OWNER/REPO "
+              "for github_query calls (e.g. 'repos/BoltEdge/boltedge-easm/"
+              "commits'). The repo is also bind-mounted into /repo inside "
+              "the container, accessible via git_read and read_repo_file."},
+     ["fact", "github", "repo"]),
 ]
 
 

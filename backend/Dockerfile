@@ -19,6 +19,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
+# Trust the bind-mounted /repo regardless of its host-side ownership.
+# Without this, git complains "fatal: detected dubious ownership" on
+# any repo owned by a different uid than the container's runtime user
+# — which is the default for docker bind-mounts. Setting safe.directory
+# at build time means git_read works as soon as the container starts.
+RUN git config --global --add safe.directory /repo
+
 # ── Install Nuclei (ProjectDiscovery) ────────────────────────
 # Vulnerability scanner used by NucleiEngine
 ARG NUCLEI_VERSION=3.3.7
