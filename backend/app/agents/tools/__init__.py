@@ -18,6 +18,8 @@ class ToolDef:
     idempotent: bool
     result_cap_bytes: int
     server_side_type: str | None = None
+    requires_approval: bool = False
+    action_type: str | None = None
 
 
 TOOL_REGISTRY: dict[str, ToolDef] = {}
