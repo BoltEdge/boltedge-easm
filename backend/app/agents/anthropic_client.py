@@ -37,11 +37,30 @@ class LlmResult:
     tool_uses: list[dict] = dataclasses.field(default_factory=list)
 
 
-def compute_cost_usd(model: str, input_tokens: int, output_tokens: int) -> float | None:
+def compute_cost_usd(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    cache_creation_input_tokens: int = 0,
+    cache_read_input_tokens: int = 0,
+) -> float | None:
+    """Compute USD cost for a single Anthropic call.
+
+    Anthropic's prompt caching billing:
+    - `input_tokens`: uncached input, billed at the model's input price.
+    - `cache_creation_input_tokens`: tokens used to write to the cache,
+      billed at 1.25× the input price (a one-time premium).
+    - `cache_read_input_tokens`: tokens read FROM the cache, billed at
+      0.1× the input price (the savings).
+    """
     p = PRICING.get(model)
     if not p:
         return None
-    return (input_tokens * p["input"] + output_tokens * p["output"]) / 1_000_000
+    base_in = input_tokens * p["input"]
+    base_out = output_tokens * p["output"]
+    cache_create = cache_creation_input_tokens * p["input"] * 1.25
+    cache_read = cache_read_input_tokens * p["input"] * 0.10
+    return (base_in + base_out + cache_create + cache_read) / 1_000_000
 
 
 class RealAnthropicClient:
@@ -53,14 +72,41 @@ class RealAnthropicClient:
 
     def call(self, call: LlmCall) -> LlmResult:
         start = time.monotonic()
+
+        # Wrap the system prompt in a content block with cache_control so
+        # Anthropic caches it for 5 minutes. Multi-turn tool loops benefit
+        # most: turns 2+ skip re-billing the system prompt (cache_read is
+        # 10% of input price). For single-turn calls there's no win — the
+        # cache is created but never read — but the marginal premium is
+        # tiny (1.25× one time on the system block only).
+        if call.system:
+            system_blocks: list[dict] = [{
+                "type": "text",
+                "text": call.system,
+                "cache_control": {"type": "ephemeral"},
+            }]
+        else:
+            system_blocks = []
+
         kwargs = dict(
             model=call.model,
-            system=call.system,
+            system=system_blocks,
             messages=call.messages,
             max_tokens=call.max_tokens,
         )
+
         if call.tools:
-            kwargs["tools"] = call.tools
+            # Also cache the tool definitions (they're static + large).
+            # Anthropic caches everything up to and including the
+            # last `cache_control` marker, so adding it to the final
+            # tool covers the whole tools array.
+            tools_list = [dict(t) for t in call.tools]
+            tools_list[-1] = {
+                **tools_list[-1],
+                "cache_control": {"type": "ephemeral"},
+            }
+            kwargs["tools"] = tools_list
+
         msg = self._client.messages.create(**kwargs)
         dur = int((time.monotonic() - start) * 1000)
         text_parts: list[str] = []
@@ -75,8 +121,16 @@ class RealAnthropicClient:
                     "name": block.name,
                     "input": dict(block.input),
                 })
+        # Pull cache stats off the usage object if present (fields are
+        # optional in older SDK versions — fall back to 0).
+        cache_create = getattr(msg.usage, "cache_creation_input_tokens", 0) or 0
+        cache_read = getattr(msg.usage, "cache_read_input_tokens", 0) or 0
         cost = compute_cost_usd(
-            call.model, msg.usage.input_tokens, msg.usage.output_tokens,
+            call.model,
+            msg.usage.input_tokens,
+            msg.usage.output_tokens,
+            cache_create,
+            cache_read,
         )
         return LlmResult(
             text="".join(text_parts),
