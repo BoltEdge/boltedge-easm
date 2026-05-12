@@ -12,16 +12,18 @@ When you click "Run now" in `/admin/agents`, the backend reads the agent's job d
 
 ## The team
 
-| Persona | Role | Reports to |
-|---|---|---|
-| **Sam** (Founder Ops) | Coordinates the team, writes weekly summaries, task triage | You |
-| **Rob** (Engineer) | Code review, bug analysis, dependency audits, debugging | Sam |
-| **Aisha** (QA) | Release readiness, test plans, bug reproduction | Sam |
-| **Maya** (Security Analyst) | Findings review, severity, threat intel, CVE analysis | Sam |
-| **Ava** (Marketing Strategist) | Competitor pulse, positioning, sales messaging | Sam |
-| **John** (Voice) | Blog drafts, support replies, marketing copy, social posts | Sam |
+| Persona | Role | Reports to | Model |
+|---|---|---|---|
+| **Sam** (Founder Ops) | Coordinates the team, writes weekly summaries, task triage | You | Opus 4.7 |
+| **Rob** (Engineer) | Code review, bug analysis, dependency audits, debugging | Sam | Sonnet 4.6 |
+| **Aisha** (QA) | Release readiness, test plans, bug reproduction | Sam | Sonnet 4.6 |
+| **Maya** (Security Analyst) | Findings review, severity, threat intel, CVE analysis | Sam | Opus 4.7 |
+| **Ava** (Marketing Strategist) | Competitor pulse, positioning, sales messaging | Sam | Sonnet 4.6 |
+| **John** (Voice) | Blog drafts, support replies, marketing copy, social posts | Sam | Sonnet 4.6 |
 
 You're the **director**. Sam reports to you and coordinates the others. The other five do their specialised work and pass it back up via Sam.
+
+**Why two models?** Sam and Maya stay on Opus because their work benefits from extra reasoning depth (coordination, security severity calls). The other four switched to Sonnet because Sonnet is ~5× cheaper and well-matched to their tasks (code review, test analysis, market research, copy drafting). Combined with prompt caching (the system prompt is cached for 5 minutes so multi-turn tool loops don't re-pay for it on every turn), a typical Rob query now costs around 1¢ instead of 45¢.
 
 ---
 
@@ -70,7 +72,7 @@ When Sam runs again next Monday, the backend will load any of Sam's memory rows 
 
 A separate table with a small set of facts every agent reads on every run. This is where universal rules live.
 
-The 8 facts currently on the whiteboard:
+The 9 facts currently on the whiteboard:
 
 | key | gist |
 |---|---|
@@ -82,6 +84,7 @@ The 8 facts currently on the whiteboard:
 | `approval:hard_gates` | Never agent-initiated: deploys, DNS, pricing, legal |
 | `voice:tone` | Brand voice: terse, factual, no filler |
 | `nano_easm:url` | Production URL is https://nanoeasm.com |
+| `github:repo_slug` | Source code lives at github.com/BoltEdge/boltedge-easm |
 
 **Only you write to this table.** Agents can propose additions (they land in the approval queue), but they never auto-write. This prevents one agent's hallucinated "fact" from poisoning everyone's context.
 
@@ -307,6 +310,17 @@ The day-to-day difference:
 - "What's our current scan volume?" — used to require you to paste the number; now Sam calls `read_internal_api stats/weekly` herself.
 - "Brief me on the latest critical findings" — used to require you to paste finding data; now Maya calls `findings/recent` and `web_fetch` for any referenced CVE pages.
 - "What did the last release change?" — Rob now calls `git_read log` and `read_repo_file` for the changelog instead of guessing.
+
+## Phase 2A polish (post-shipping fixes + UI improvements)
+
+After Phase 2A's first day of real use, a handful of small fixes landed:
+
+- **Cost dramatically lower.** Prompt caching enabled in `anthropic_client.py` (the system prompt and tools array are sent with `cache_control` so Anthropic caches them for 5 minutes — multi-turn tool loops skip the bill on turns 2+). Plus Rob/Aisha/Ava/John moved from Opus to Sonnet. A multi-turn tool query that used to cost 45¢ now costs around 0.6–1¢.
+- **`git_read` actually works.** Two follow-up fixes: the backend Docker image was missing the `git` binary entirely (only `nmap`/`dnsutils`/`curl` were installed); plus `git config --global --add safe.directory /repo` baked into the image so git doesn't refuse to read the bind-mounted repo because of host/container UID mismatches.
+- **`audit_log` query no longer times out.** A new Alembic migration added an index on `audit_log.created_at` — the recent-events queries that were doing full table scans now use the index.
+- **Thread chat view in the admin UI.** Click any thread title from an agent's detail page → see the full conversation rendered as a chat, with tool calls and tool results inline as expandable blocks. Plus a sticky reply box at the bottom so you can continue the conversation without leaving the page.
+- **Collapsible system prompt.** Each agent's profile page used to dump the full 2-3 KB system prompt at the top. Now collapsed by default with a Show/Hide toggle.
+- **Continue-last-thread toggle.** On an agent's detail page, the Run box has a radio: "Start new thread" (default) vs "Continue last thread". The latter passes the most recent `thread_id` so the new prompt joins the existing conversation.
 
 ---
 
