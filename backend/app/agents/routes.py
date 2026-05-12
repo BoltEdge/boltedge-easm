@@ -110,10 +110,22 @@ def thread_detail(thread_id: int):
         .all()
     )
 
+    # Enrich thread with display_name from the agent profile so the
+    # frontend back-link can show "<display_name> (<agent_id>)" without
+    # a second round-trip.
+    display_name: str | None = None
+    try:
+        from .profile_loader import load_profile_by_name
+        p = load_profile_by_name(thread.agent_id)
+        display_name = p.display_name
+    except Exception:
+        pass
+
     return jsonify({
         "thread": {
             "id": thread.id,
             "agent_id": thread.agent_id,
+            "display_name": display_name,
             "title": thread.title,
             "created_at": thread.created_at.isoformat() + "Z",
         },

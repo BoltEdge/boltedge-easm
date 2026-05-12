@@ -2,7 +2,7 @@
 import { use, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { AgentDetail, getAgent, runAgent } from "../../../../lib/api";
-import { ArrowLeft, Play, Loader2, Shield, Cpu, DollarSign, Wrench } from "lucide-react";
+import { ArrowLeft, Play, Loader2, Shield, Cpu, DollarSign, Wrench, ChevronDown, ChevronRight } from "lucide-react";
 
 export default function AgentDetailPage({
   params,
@@ -15,6 +15,12 @@ export default function AgentDetailPage({
   const [prompt, setPrompt] = useState("");
   const [running, setRunning] = useState(false);
   const [lastResult, setLastResult] = useState<unknown>(null);
+
+  // System prompt collapse state — collapsed by default
+  const [promptExpanded, setPromptExpanded] = useState(false);
+
+  // Thread mode: "new" | "continue"
+  const [threadMode, setThreadMode] = useState<"new" | "continue">("new");
 
   const reload = useCallback(async () => {
     try {
@@ -29,11 +35,15 @@ export default function AgentDetailPage({
   }, [reload]);
 
   async function onRun() {
-    if (!prompt.trim()) return;
+    if (!prompt.trim() || !agent) return;
     setRunning(true);
     setLastResult(null);
     try {
-      const r = await runAgent(name, prompt);
+      const opts: { thread_id?: number } = {};
+      if (threadMode === "continue" && agent.threads.length > 0) {
+        opts.thread_id = agent.threads[0].id;
+      }
+      const r = await runAgent(name, prompt, opts);
       setLastResult(r);
       setPrompt("");
       await reload();
@@ -53,6 +63,17 @@ export default function AgentDetailPage({
     running: "text-teal-400",
     pending: "text-white/40",
   };
+
+  // System prompt preview: first 300 chars
+  const PREVIEW_LENGTH = 300;
+  const systemPromptFull = agent.system_prompt;
+  const isLongPrompt = systemPromptFull.length > PREVIEW_LENGTH;
+  const systemPromptPreview = isLongPrompt
+    ? systemPromptFull.slice(0, PREVIEW_LENGTH) + "…"
+    : systemPromptFull;
+
+  const hasThreads = agent.threads.length > 0;
+  const lastThread = hasThreads ? agent.threads[0] : null;
 
   return (
     <div className="max-w-3xl">
@@ -125,13 +146,33 @@ export default function AgentDetailPage({
         </section>
       )}
 
-      {/* System prompt */}
+      {/* System prompt — collapsible */}
       <section className="mb-8">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-white/30 mb-3">
-          System Prompt
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-white/30">
+            System Prompt
+          </h2>
+          {isLongPrompt && (
+            <button
+              onClick={() => setPromptExpanded((v) => !v)}
+              className="flex items-center gap-1 text-xs text-teal-400/70 hover:text-teal-400 transition-colors"
+            >
+              {promptExpanded ? (
+                <>
+                  <ChevronDown className="w-3 h-3" />
+                  Hide prompt
+                </>
+              ) : (
+                <>
+                  <ChevronRight className="w-3 h-3" />
+                  Show full prompt
+                </>
+              )}
+            </button>
+          )}
+        </div>
         <pre className="whitespace-pre-wrap rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-white/70 font-mono leading-relaxed">
-          {agent.system_prompt}
+          {promptExpanded || !isLongPrompt ? systemPromptFull : systemPromptPreview}
         </pre>
       </section>
 
@@ -140,6 +181,45 @@ export default function AgentDetailPage({
         <h2 className="text-xs font-semibold uppercase tracking-wider text-white/30 mb-3">
           Run Now
         </h2>
+
+        {/* Thread mode toggle */}
+        <div className="flex items-center gap-4 mb-3">
+          <label className="flex items-center gap-2 cursor-pointer text-sm">
+            <input
+              type="radio"
+              name="thread-mode"
+              value="new"
+              checked={threadMode === "new"}
+              onChange={() => setThreadMode("new")}
+              className="accent-teal-400"
+            />
+            <span className={threadMode === "new" ? "text-white/80" : "text-white/40"}>
+              Start new thread
+            </span>
+          </label>
+          <label
+            className={`flex items-center gap-2 text-sm ${hasThreads ? "cursor-pointer" : "cursor-not-allowed opacity-40"}`}
+          >
+            <input
+              type="radio"
+              name="thread-mode"
+              value="continue"
+              checked={threadMode === "continue"}
+              onChange={() => setThreadMode("continue")}
+              disabled={!hasThreads}
+              className="accent-teal-400"
+            />
+            <span className={threadMode === "continue" ? "text-white/80" : "text-white/40"}>
+              Continue last thread
+              {lastThread && (
+                <span className="ml-1 text-xs text-white/30">
+                  ({lastThread.title ?? `#${lastThread.id}`})
+                </span>
+              )}
+            </span>
+          </label>
+        </div>
+
         <textarea
           className="w-full rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 text-sm text-white font-mono leading-relaxed focus:outline-none focus:border-teal-500/40 resize-none"
           rows={4}

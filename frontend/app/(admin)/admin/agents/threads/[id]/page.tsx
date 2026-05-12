@@ -1,11 +1,12 @@
 "use client";
-import { use, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AgentThreadDetail,
   AgentMessageRow,
   AgentRunSummary,
   getAgentThread,
+  runAgent,
 } from "../../../../../lib/api";
 import {
   ArrowLeft,
@@ -13,6 +14,8 @@ import {
   ChevronRight,
   Terminal,
   AlertCircle,
+  Loader2,
+  Send,
 } from "lucide-react";
 
 // ────────────────────────────────────────────────────────────
@@ -264,11 +267,20 @@ export default function ThreadDetailPage({
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    getAgentThread(Number(id))
-      .then(setDetail)
-      .catch((e: any) => setError(e?.message ?? String(e)));
+  // Reply state
+  const [replyPrompt, setReplyPrompt] = useState("");
+  const [replying, setReplying] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    const fresh = await getAgentThread(Number(id));
+    setDetail(fresh);
+    return fresh;
   }, [id]);
+
+  useEffect(() => {
+    reload().catch((e: any) => setError(e?.message ?? String(e)));
+  }, [reload]);
 
   // Auto-scroll to bottom once messages load
   useEffect(() => {
@@ -277,6 +289,32 @@ export default function ThreadDetailPage({
     }
   }, [detail]);
 
+  async function onReply() {
+    if (!replyPrompt.trim() || !detail) return;
+    setReplying(true);
+    setReplyError(null);
+    try {
+      await runAgent(detail.thread.agent_id, replyPrompt, {
+        thread_id: detail.thread.id,
+      });
+      setReplyPrompt("");
+      const fresh = await reload();
+      // scroll to bottom after new messages render
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    } catch (e: any) {
+      setReplyError(e?.message ?? String(e));
+    } finally {
+      setReplying(false);
+    }
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      onReply();
+    }
+  }
+
   if (error)
     return <div className="text-red-400 text-sm">{error}</div>;
   if (!detail)
@@ -284,15 +322,21 @@ export default function ThreadDetailPage({
 
   const { thread, messages, runs } = detail;
 
+  // Build back-link label: "<display_name> (<agent_id>)" or just agent_id
+  const backLabel = thread.display_name
+    ? `${thread.display_name} (${thread.agent_id})`
+    : thread.agent_id;
+
   return (
-    <div className="max-w-3xl">
+    // Extra bottom padding so the sticky reply bar doesn't obscure the last message
+    <div className="max-w-3xl pb-36">
       {/* Back link */}
       <Link
         href={`/admin/agents/${encodeURIComponent(thread.agent_id)}`}
         className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-white mb-6 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        {thread.agent_id}
+        {backLabel}
       </Link>
 
       {/* Header */}
@@ -314,13 +358,47 @@ export default function ThreadDetailPage({
       {messages.length === 0 ? (
         <p className="text-white/40 text-sm">No messages in this thread.</p>
       ) : (
-        <div className="flex flex-col gap-4 pb-8">
+        <div className="flex flex-col gap-4">
           {messages.map((m) => (
             <Message key={m.id} msg={m} />
           ))}
           <div ref={bottomRef} />
         </div>
       )}
+
+      {/* ── Sticky reply bar ─────────────────────────────────── */}
+      <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-white/[0.06] bg-zinc-950/95 backdrop-blur px-4 py-3">
+        <div className="max-w-3xl mx-auto">
+          {replyError && (
+            <div className="mb-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+              {replyError}
+            </div>
+          )}
+          <div className="flex items-end gap-2">
+            <textarea
+              className="flex-1 rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-sm text-white font-mono leading-relaxed focus:outline-none focus:border-teal-500/40 resize-none min-h-[2.5rem] max-h-40"
+              rows={2}
+              placeholder="Reply in this thread… (Ctrl+Enter to send)"
+              value={replyPrompt}
+              onChange={(e) => setReplyPrompt(e.target.value)}
+              onKeyDown={onKeyDown}
+              disabled={replying}
+            />
+            <button
+              onClick={onReply}
+              disabled={replying || !replyPrompt.trim()}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 disabled:bg-white/[0.04] text-teal-400 disabled:text-white/20 text-sm transition-colors shrink-0"
+            >
+              {replying ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+              {replying ? "Running…" : "Reply"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -2689,6 +2689,7 @@ export type AgentThreadDetail = {
   thread: {
     id: number;
     agent_id: string;
+    display_name: string | null;
     title: string | null;
     created_at: string;
   };
