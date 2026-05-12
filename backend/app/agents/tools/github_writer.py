@@ -48,9 +48,14 @@ def _req(method: str, url: str, *, token: str, json_body: dict | None = None) ->
         "X-GitHub-Api-Version": "2022-11-28",
         "User-Agent": "Nano-EASM-Agent/1.0",
     }
-    resp = requests.request(
-        method, url, headers=headers, json=json_body, timeout=TIMEOUT,
-    )
+    try:
+        resp = requests.request(
+            method, url, headers=headers, json=json_body, timeout=TIMEOUT,
+        )
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(
+            f"GitHub API {method} {url} failed: {type(e).__name__}: {e}"
+        ) from e
     if resp.status_code >= 400:
         body_excerpt = (resp.text or "")[:500]
         raise RuntimeError(
@@ -76,7 +81,16 @@ def create_pr(payload: dict) -> dict:
     Returns:
       {pr_url: str, pr_number: int, branch: str} on success.
 
-    Raises RuntimeError on any failure; caller records the error.
+    Raises RuntimeError on any failure (missing token, GitHub 4xx/5xx,
+    network error). Caller records the error string in
+    pending_action.applied_result.
+
+    Caveats:
+      - Multi-file PRs commit files one at a time. If a later file
+        fails, the branch is left with a partial commit on GitHub.
+        The function does not clean up; the next re-proposal must use
+        a different branch_name (the existing branch will collide with
+        a 422 'Reference already exists' otherwise).
     """
     token = os.environ.get("GITHUB_TOKEN_AGENTS")
     if not token:
