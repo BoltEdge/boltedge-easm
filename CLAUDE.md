@@ -248,13 +248,33 @@ AGENTS_FROM_EMAIL=agents@nanoeasm.com     # optional, defaults to this
 - `python -m scripts.seed_team_memory` — seed the universal `team_memory` facts (idempotent).
 - `python -m scripts.issue_agent_key <agent> <scope> [<scope> ...]` — issue or rotate an agent's API key (shows key once, save to env immediately).
 
-### Phase 2 (to be planned next)
+### Phase 2A (tool use, shipped)
 
-- Other 5 agent profiles fleshed out (Engineer, QA, Security Analyst, Strategy, Voice)
-- Tuesday + Wednesday briefs (Strategy `competitor-pulse`, Security Analyst `weekly-finding-brief`)
-- Other internal-API endpoints (`findings/recent`, `contact-requests/recent`, `audit-log/recent`, `scans/recent`)
-- Memory hygiene weekly job + low-confidence review
-- Send service for approved customer-facing drafts (Plan 2 wires up `external-output` action type)
+Agents now have tool use. The 6 read-only tools available are:
+
+| Tool | Used by |
+|---|---|
+| `read_internal_api(endpoint, params)` | All agents (read 5 internal endpoints) |
+| `web_fetch(url)` | All agents (HTML→text, 50 KB cap, SSRF defence) |
+| `web_search(query)` | Sam, Rob, Maya, Ava, John (Anthropic native) |
+| `git_read(command, args)` | Rob, Aisha (read-only subcommands: log/show/diff/blame/status/ls-tree/branch) |
+| `github_query(endpoint, params)` | Rob, Aisha (GitHub REST, read-only) |
+| `read_repo_file(path)` | Rob, Aisha (denylist: .git/, .env*, *.key, *.pem, *.p12) |
+
+Internal API expanded with 4 new endpoints: `/api/internal/findings/recent`, `/contact-requests/recent`, `/audit-log/recent`, `/scans/recent`. All gated on agent-key scope.
+
+Repo is bind-mounted into `easm-backend` at `/repo:ro` via `${HOST_REPO_PATH:-./}` in docker-compose.
+
+The runtime is now a multi-turn loop: agent emits `tool_use` → handler runs → tool_result appended → next turn → continues until `end_turn` or `tool_call_cap_per_run` is reached.
+
+### Phase 2B (still to plan)
+
+- Write tools: `github_pr_create`, `send_email_draft`, `update_agent_memory`
+- Approval-queued tool execution pattern (handler creates pending_action; agent gets `[queued for approval]` as tool result; founder approves; background worker retries)
+- Tuesday + Wednesday weekly briefs (Ava `competitor-pulse`, Maya `weekly-finding-brief`)
+- Memory hygiene weekly job
+- Customer-facing send service for approved drafts
+- Hand-off queue between agents
 
 ## Billing Feature Flag
 

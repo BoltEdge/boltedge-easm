@@ -302,6 +302,52 @@ def main() -> int:
             )
 
         # ------------------------------------------------------------
+        # Stage 8 (Phase 2A): tool use end-to-end with FakeAnthropicClient
+        # ------------------------------------------------------------
+        print("\n[8] Tool-use loop end-to-end (fake LLM)")
+        from app.agents.runtime import run_agent
+        from app.agents.anthropic_client import FakeAnthropicClient
+        from app.agents.tools import TOOL_REGISTRY
+
+        check("read_internal_api tool registered",
+              "read_internal_api" in TOOL_REGISTRY)
+        check("web_fetch tool registered", "web_fetch" in TOOL_REGISTRY)
+        check("web_search tool registered", "web_search" in TOOL_REGISTRY)
+        check("git_read tool registered", "git_read" in TOOL_REGISTRY)
+        check("github_query tool registered", "github_query" in TOOL_REGISTRY)
+        check("read_repo_file tool registered",
+              "read_repo_file" in TOOL_REGISTRY)
+
+        # Run founder-ops with a scripted tool_use that calls read_internal_api
+        fake = FakeAnthropicClient(scripted_responses=[
+            {"stop_reason": "tool_use",
+             "tool_uses": [{"id": "smoke_t1", "name": "read_internal_api",
+                             "input": {"endpoint": "stats/weekly"}}]},
+            {"stop_reason": "end_turn",
+             "text": "stats look OK based on the tool result"},
+        ])
+        try:
+            tool_run = run_agent(
+                agent_name="founder-ops",
+                user_prompt="check the weekly stats for me",
+                skill="smoke-test-tools",
+                memory_tags=[],
+                client=fake,
+            )
+            check("tool-use run completes with success",
+                  tool_run.run.status == "success",
+                  f"got status={tool_run.run.status} error={tool_run.run.error}")
+            tool_msgs = [m for m in tool_run.thread.messages if m.role == "tool"]
+            check("at least one tool message persisted",
+                  len(tool_msgs) >= 1)
+            if tool_msgs:
+                check("tool message has tool_name and output",
+                      "tool_name" in tool_msgs[0].content
+                      and "output" in tool_msgs[0].content)
+        except Exception as e:
+            check("tool-use run completes without exception", False, str(e))
+
+        # ------------------------------------------------------------
         # Clean up the ephemeral smoke-test rows
         # ------------------------------------------------------------
         print("\n[*] Cleaning up smoke-test rows")
