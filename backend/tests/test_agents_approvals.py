@@ -77,3 +77,80 @@ def test_expire_old_marks_past_due(db_session):
 
     p2 = PendingAction.query.get(p.id)
     assert p2.decision == "expired"
+
+
+def test_approve_code_pr_calls_github_writer_and_stores_result(
+    db_session, monkeypatch,
+):
+    """Approving a code-pr pending_action must call create_pr and store
+    the {pr_url, pr_number, branch} dict in pending_action.applied_result."""
+    from unittest.mock import patch
+    from app.agents.approvals import propose_action, approve
+    from app.models import PendingAction
+
+    p = propose_action(
+        agent_id="engineer",
+        action_type="code-pr",
+        target="test PR title",
+        payload={
+            "branch_name": "rob/test-fix",
+            "base": "master",
+            "commit_message": "test",
+            "files": [{"path": "a.py", "content": "x"}],
+            "pr_title": "test PR title",
+            "pr_body": "Body referencing test_a.py",
+        },
+        rationale="from test",
+    )
+
+    fake_result = {
+        "pr_url": "https://github.com/BoltEdge/boltedge-easm/pull/99",
+        "pr_number": 99,
+        "branch": "rob/test-fix",
+    }
+    with patch(
+        "app.agents.tools.github_writer.create_pr",
+        return_value=fake_result,
+    ) as mock_create:
+        approve(p.id, decided_by="founder@test")
+
+    mock_create.assert_called_once()
+    refreshed = PendingAction.query.get(p.id)
+    assert refreshed.decision == "approved"
+    assert refreshed.applied_result == fake_result
+
+
+def test_approve_code_pr_captures_writer_error_in_applied_result(
+    db_session, monkeypatch,
+):
+    """If create_pr raises, the approval should still mark the row as
+    decided but applied_result should carry the error string."""
+    from unittest.mock import patch
+    from app.agents.approvals import propose_action, approve
+    from app.models import PendingAction
+
+    p = propose_action(
+        agent_id="engineer",
+        action_type="code-pr",
+        target="bad PR",
+        payload={
+            "branch_name": "rob/bad",
+            "base": "master",
+            "commit_message": "x",
+            "files": [{"path": "a.py", "content": "x"}],
+            "pr_title": "bad PR",
+            "pr_body": "body covering test_a.py",
+        },
+        rationale="from test",
+    )
+
+    with patch(
+        "app.agents.tools.github_writer.create_pr",
+        side_effect=RuntimeError("422 Reference already exists"),
+    ):
+        approve(p.id, decided_by="founder@test")
+
+    refreshed = PendingAction.query.get(p.id)
+    assert refreshed.decision == "approved"
+    assert refreshed.applied_result is not None
+    assert "422" in (refreshed.applied_result.get("error") or "")
