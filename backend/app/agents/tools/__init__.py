@@ -50,3 +50,4 @@ def expose_tools_for(allowed_tools: list[str]) -> list[dict]:
 # Importing the handler modules triggers their register_tool() calls.
 # Keep this at the bottom to avoid circular imports.
 from . import internal_api  # noqa: F401,E402
+from . import web  # noqa: F401,E402
