@@ -21,6 +21,7 @@ import {
   formatPublishDate,
 } from "./_lib";
 import BlogIndexClient from "./BlogIndexClient";
+import SubscribeForm from "./SubscribeForm";
 
 const SITE_URL = "https://nanoeasm.com";
 const PAGE_URL = `${SITE_URL}/resources/blog`;
@@ -154,6 +155,13 @@ export default function BlogIndexPage() {
         {rest.length > 0 && (
           <BlogIndexClient articles={rest} categories={CATEGORIES} />
         )}
+
+        {/* Subscribe-by-email — bottom of the blog index. Always rendered
+            (independent of whether there are articles yet) so the page
+            has a clear next-step CTA either way. */}
+        <div className="mt-12">
+          <SubscribeForm variant="card" source="blog-index" />
+        </div>
       </main>
 
       <LandingFooter />

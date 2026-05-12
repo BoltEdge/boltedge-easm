@@ -25,6 +25,7 @@ import {
   categoryLabel,
   formatPublishDate,
 } from "../_lib";
+import SubscribeForm from "../SubscribeForm";
 
 const SITE_URL = "https://nanoeasm.com";
 
@@ -215,6 +216,14 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 </Link>
               </div>
             </div>
+
+            {/* Subscribe-by-email — distinct from the product CTA above.
+                The product card sells the scan; this card keeps content
+                readers in the loop on new articles. Two different jobs,
+                two different cards. */}
+            <div className="mt-6">
+              <SubscribeForm variant="card" source="article-footer" />
+            </div>
           </div>
 
           {/* Sidecar — has two modes:
@@ -274,21 +283,19 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 </div>
               )}
 
-              {/* Subscribe card — RSS now, room to add email later. */}
+              {/* Subscribe card — primary path is email; RSS is offered
+                  as a small secondary link below. Replaces the earlier
+                  RSS-only card now that subscriptions are wired. */}
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Rss className="w-3.5 h-3.5 text-amber-400" />
-                  <div className="text-sm font-medium text-white">Subscribe</div>
+                <SubscribeForm variant="inline" source="article-sidebar" />
+                <div className="mt-3 pt-3 border-t border-white/[0.06]">
+                  <a
+                    href="/resources/blog/rss.xml"
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-white/40 hover:text-white/70"
+                  >
+                    <Rss className="w-3 h-3" />Prefer RSS? Subscribe via feed reader
+                  </a>
                 </div>
-                <p className="text-xs text-white/55 leading-relaxed mb-3">
-                  Get new articles in your feed reader the moment they publish.
-                </p>
-                <a
-                  href="/resources/blog/rss.xml"
-                  className="inline-flex items-center gap-1 text-xs font-medium text-teal-400 hover:text-teal-300"
-                >
-                  RSS feed <ArrowRight className="w-3 h-3" />
-                </a>
               </div>
 
               {/* Product cross-link — closes the editorial loop. */}

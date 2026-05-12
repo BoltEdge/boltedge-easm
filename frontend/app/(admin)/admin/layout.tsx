@@ -5,7 +5,7 @@ import { getAccessToken, getIsSuperadmin, getIsRootAdmin, logout } from "../../l
 import Link from "next/link";
 import {
   LayoutDashboard, Building2, Users, LogOut, ShieldAlert, ScrollText,
-  ScanLine, Megaphone, HeartPulse, ShieldBan, MessageSquare, CreditCard,
+  ScanLine, Megaphone, HeartPulse, ShieldBan, MessageSquare, CreditCard, Mail,
   ChevronDown, ArrowLeft, FileSearch, Bot,
 } from "lucide-react";
 
@@ -49,6 +49,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/contact-requests", label: "Contact Requests", icon: MessageSquare },
       { href: "/admin/broadcast", label: "Broadcast", icon: Megaphone },
+      { href: "/admin/blog", label: "Blog Subscribers", icon: Mail },
     ],
   },
   {

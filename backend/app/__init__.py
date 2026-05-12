@@ -48,6 +48,7 @@ from app.tools import tools_bp
 from app.admin import admin_bp
 from app.agents.routes import bp as agents_admin_bp
 from app.agents.internal_routes import bp as agents_internal_bp
+from app.blog import blog_bp, blog_admin_bp
 import re
 
 error_logger = logging.getLogger("app.errors")
@@ -197,6 +198,8 @@ def create_app() -> Flask:
     app.register_blueprint(admin_bp)
     app.register_blueprint(agents_admin_bp)
     app.register_blueprint(agents_internal_bp)
+    app.register_blueprint(blog_bp)
+    app.register_blueprint(blog_admin_bp)
 
     # ── Global Error Handlers ────────────────────────────────────────
     # Return clean JSON for all errors — never expose tracebacks to users.

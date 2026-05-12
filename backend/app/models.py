@@ -1979,3 +1979,60 @@ class PendingAction(db.Model):
     decision_note = db.Column(db.Text, nullable=True)
     run_id = db.Column(db.BigInteger,
                        db.ForeignKey("agent_run.id"), nullable=True)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Blog subscribers — public, no-auth email subscription to the blog
+# notification feed. Single opt-in (no double-confirm) but mitigated by
+# Turnstile on signup + per-IP rate limit + immediate welcome email
+# with a prominent unsubscribe link.
+# ─────────────────────────────────────────────────────────────────────
+
+class BlogSubscriber(db.Model):
+    """One row per subscriber email. Tokens are URL-safe and never reused.
+
+    With single opt-in the row is created with is_active=True immediately;
+    the welcome email serves as the consent confirmation + audit record.
+    On unsubscribe we keep the row (audit), flip is_active=False, and set
+    unsubscribed_at. A re-subscribe re-uses the same row (flips back to
+    active, regenerates the unsubscribe_token).
+    """
+
+    __tablename__ = "blog_subscriber"
+
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    unsubscribe_token = db.Column(db.String(64), unique=True, nullable=False)
+
+    subscribed_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    unsubscribed_at = db.Column(db.DateTime, nullable=True)
+    last_sent_at = db.Column(db.DateTime, nullable=True)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+
+    # Audit fields — useful for compliance later (single-opt-in consent
+    # record) and for diagnosing where signups come from.
+    source = db.Column(db.String(64), nullable=True)   # "blog-index", "article-footer", "sidebar"
+    ip_at_signup = db.Column(db.String(45), nullable=True)
+    user_agent_at_signup = db.Column(db.String(255), nullable=True)
+
+
+class BlogArticleSent(db.Model):
+    """One row per (article_slug, subscriber_id) pair. Idempotency for
+    resends — if the admin clicks Send twice on the same article, the
+    unique constraint stops a duplicate going out."""
+
+    __tablename__ = "blog_article_sent"
+
+    id = db.Column(db.Integer, primary_key=True)
+    article_slug = db.Column(db.String(120), nullable=False, index=True)
+    subscriber_id = db.Column(db.Integer,
+                              db.ForeignKey("blog_subscriber.id", ondelete="CASCADE"),
+                              nullable=False)
+    sent_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    success = db.Column(db.Boolean, nullable=False, default=True)
+    error_message = db.Column(db.String(255), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("article_slug", "subscriber_id",
+                         name="uq_blog_article_sent_slug_subscriber"),
+    )
