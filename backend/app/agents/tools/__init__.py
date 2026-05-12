@@ -45,3 +45,8 @@ def expose_tools_for(allowed_tools: list[str]) -> list[dict]:
         if name in TOOL_REGISTRY:
             out.append(anthropic_tool_spec(TOOL_REGISTRY[name]))
     return out
+
+
+# Importing the handler modules triggers their register_tool() calls.
+# Keep this at the bottom to avoid circular imports.
+from . import internal_api  # noqa: F401,E402
