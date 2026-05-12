@@ -1,8 +1,8 @@
 "use client";
 import { use, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { AgentDetail, getAgent, runAgent } from "../../../../lib/api";
-import { ArrowLeft, Play, Loader2, Shield, Cpu, DollarSign, Wrench, ChevronDown, ChevronRight } from "lucide-react";
+import { AgentDetail, AgentSkillSummary, getAgent, runAgent, runAgentSkill } from "../../../../lib/api";
+import { ArrowLeft, Play, Loader2, Shield, Cpu, DollarSign, Wrench, ChevronDown, ChevronRight, Zap, Clock } from "lucide-react";
 
 export default function AgentDetailPage({
   params,
@@ -18,6 +18,10 @@ export default function AgentDetailPage({
 
   // System prompt collapse state — collapsed by default
   const [promptExpanded, setPromptExpanded] = useState(false);
+
+  // Per-skill run state: skill name -> { running, result }
+  type SkillState = { running: boolean; result: unknown | null };
+  const [skillStates, setSkillStates] = useState<Record<string, SkillState>>({});
 
   // Thread mode: "new" | "continue"
   const [threadMode, setThreadMode] = useState<"new" | "continue">("new");
@@ -51,6 +55,26 @@ export default function AgentDetailPage({
       setLastResult({ error: e?.message || String(e) });
     } finally {
       setRunning(false);
+    }
+  }
+
+  async function onRunSkill(skill: AgentSkillSummary) {
+    setSkillStates((prev) => ({
+      ...prev,
+      [skill.name]: { running: true, result: null },
+    }));
+    try {
+      const r = await runAgentSkill(name, skill.name, true);
+      setSkillStates((prev) => ({
+        ...prev,
+        [skill.name]: { running: false, result: r },
+      }));
+      await reload();
+    } catch (e: any) {
+      setSkillStates((prev) => ({
+        ...prev,
+        [skill.name]: { running: false, result: { error: e?.message || String(e) } },
+      }));
     }
   }
 
@@ -174,6 +198,96 @@ export default function AgentDetailPage({
         <pre className="whitespace-pre-wrap rounded-lg border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-white/70 font-mono leading-relaxed">
           {promptExpanded || !isLongPrompt ? systemPromptFull : systemPromptPreview}
         </pre>
+      </section>
+
+      {/* Skills */}
+      <section className="mb-8">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-white/30 mb-3 flex items-center gap-1.5">
+          <Zap className="w-3.5 h-3.5" />Skills
+        </h2>
+        {agent.skills.length === 0 ? (
+          <p className="text-white/40 text-sm">No skills registered for this agent.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {agent.skills.map((skill) => {
+              const ss = skillStates[skill.name] ?? { running: false, result: null };
+              return (
+                <div
+                  key={skill.name}
+                  className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-medium text-white">
+                          {skill.display_name}
+                        </span>
+                        <code className="text-xs text-white/30">{skill.name}</code>
+                      </div>
+                      {skill.schedule && (
+                        <div className="flex items-center gap-1 text-xs text-white/40 mb-1.5">
+                          <Clock className="w-3 h-3" />
+                          Scheduled: {skill.schedule}
+                        </div>
+                      )}
+                      <p className="text-xs text-white/50 leading-relaxed">
+                        {skill.description}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => onRunSkill(skill)}
+                      disabled={ss.running}
+                      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 disabled:bg-white/[0.04] text-teal-400 disabled:text-white/20 text-xs transition-colors"
+                    >
+                      {ss.running ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Play className="w-3.5 h-3.5" />
+                      )}
+                      {ss.running ? "Running…" : "Run now"}
+                    </button>
+                  </div>
+                  {ss.result !== null && (
+                    <div className="mt-3 pt-3 border-t border-white/[0.06]">
+                      {(() => {
+                        const r = ss.result as any;
+                        if (r?.error) {
+                          return (
+                            <p className="text-xs text-red-400 font-mono">{r.error}</p>
+                          );
+                        }
+                        return (
+                          <div className="flex flex-wrap gap-4 text-xs text-white/60">
+                            <span>
+                              Status:{" "}
+                              <span
+                                className={
+                                  r?.status === "success" || r?.status === "completed"
+                                    ? "text-emerald-400"
+                                    : r?.status === "failed"
+                                    ? "text-red-400"
+                                    : "text-teal-400"
+                                }
+                              >
+                                {r?.status ?? "—"}
+                              </span>
+                            </span>
+                            {r?.cost_usd != null && (
+                              <span>Cost: ${Number(r.cost_usd).toFixed(4)}</span>
+                            )}
+                            {r?.run_id != null && (
+                              <span>Run #{r.run_id}</span>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* Run now */}

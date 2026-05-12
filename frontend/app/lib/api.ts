@@ -2661,6 +2661,13 @@ export type AgentThreadSummary = {
   message_count: number;
 };
 
+export type AgentSkillSummary = {
+  name: string;
+  display_name: string;
+  description: string;
+  schedule: string | null;
+};
+
 export type AgentDetail = {
   name: string;
   display_name: string;
@@ -2669,6 +2676,7 @@ export type AgentDetail = {
   external_writes: boolean;
   cost_cap_monthly_usd: number;
   default_model: string;
+  skills: AgentSkillSummary[];
   runs: AgentRunSummary[];
   threads: AgentThreadSummary[];
 };
@@ -2709,6 +2717,32 @@ export async function runAgent(
   return apiFetch<unknown>(`/admin/agents/${encodeURIComponent(name)}/run`, {
     method: "POST",
     body: JSON.stringify({ prompt, ...opts }),
+  });
+}
+
+export async function runAgentSkill(
+  agentName: string,
+  skill: string,
+  send: boolean = true,
+): Promise<{
+  run_id: number;
+  thread_id: number;
+  status: string;
+  text: string | null;
+  cost_usd: number | null;
+  skill: string;
+}> {
+  return apiFetch<{
+    run_id: number;
+    thread_id: number;
+    status: string;
+    text: string | null;
+    cost_usd: number | null;
+    skill: string;
+  }>(`/admin/agents/${encodeURIComponent(agentName)}/run-skill`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ skill, send }),
   });
 }
 

@@ -16,6 +16,7 @@ from app.models import AgentRun, AgentThread, AgentMessage, PendingAction
 from .profile_loader import PROFILES_DIR, load_profile
 from .runtime import run_agent
 from .approvals import list_pending, approve, reject
+from .skills import get_skill, skills_for_agent, invoke_skill
 
 
 bp = Blueprint("agents_admin", __name__, url_prefix="/admin/agents")
@@ -68,6 +69,8 @@ def agent_detail(agent_name: str):
         .limit(20).all()
     )
 
+    agent_skills = skills_for_agent(agent_name)
+
     return jsonify({
         "name": p.name,
         "display_name": p.display_name,
@@ -76,6 +79,15 @@ def agent_detail(agent_name: str):
         "external_writes": p.external_writes,
         "cost_cap_monthly_usd": p.cost_cap_monthly_usd,
         "default_model": p.default_model,
+        "skills": [
+            {
+                "name": s.name,
+                "display_name": s.display_name,
+                "description": s.description,
+                "schedule": s.schedule,
+            }
+            for s in agent_skills
+        ],
         "runs": [
             {"id": r.id, "skill": r.skill, "status": r.status,
              "cost_usd": float(r.cost_usd) if r.cost_usd else None,
@@ -179,6 +191,40 @@ def trigger_run(agent_name: str):
         "status": result.run.status,
         "text": result.text,
         "cost_usd": float(result.run.cost_usd) if result.run.cost_usd else None,
+    })
+
+
+@bp.route("/<agent_name>/run-skill", methods=["POST"])
+@require_root_admin
+def trigger_skill_run(agent_name: str):
+    body = request.get_json(force=True) or {}
+    skill_name = body.get("skill")
+    send = bool(body.get("send", True))
+
+    if not skill_name:
+        return jsonify({"error": "skill is required"}), 400
+
+    spec = get_skill(skill_name)
+    if spec is None:
+        return jsonify({"error": f"unknown skill: {skill_name}"}), 404
+    if spec.agent_id != agent_name:
+        return jsonify({
+            "error": f"skill {skill_name} belongs to {spec.agent_id}, not {agent_name}"
+        }), 400
+
+    try:
+        result = invoke_skill(skill_name, send=send)
+    except Exception as e:
+        return jsonify({"error": f"skill failed: {type(e).__name__}: {e}"}), 500
+
+    db.session.commit()
+    return jsonify({
+        "run_id": result.run.id,
+        "thread_id": result.thread.id,
+        "status": result.run.status,
+        "text": result.text,
+        "cost_usd": float(result.run.cost_usd) if result.run.cost_usd else None,
+        "skill": skill_name,
     })
 
 
