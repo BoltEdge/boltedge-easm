@@ -5,6 +5,9 @@ allowed_tools:
   - read_internal_api
   - web_fetch
   - web_search
+  - git_read
+  - github_query
+  - read_repo_file
 secrets_allowed:
   - NANOEASM_API_KEY_AGENTS
   - GITHUB_TOKEN_AGENTS

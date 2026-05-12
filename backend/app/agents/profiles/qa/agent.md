@@ -4,6 +4,9 @@ display_name: Aisha
 allowed_tools:
   - read_internal_api
   - web_fetch
+  - git_read
+  - github_query
+  - read_repo_file
 secrets_allowed:
   - NANOEASM_API_KEY_AGENTS
 external_writes: false

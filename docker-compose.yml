@@ -78,6 +78,7 @@ services:
       AGENTS_FROM_EMAIL: ${AGENTS_FROM_EMAIL:-agents@nanoeasm.com}
       INTERNAL_API_BASE: ${INTERNAL_API_BASE:-http://easm-backend:5000}
       NANOEASM_API_KEY_AGENTS_FOUNDER_OPS: ${NANOEASM_API_KEY_AGENTS_FOUNDER_OPS:-}
+      GITHUB_TOKEN_AGENTS: ${GITHUB_TOKEN_AGENTS:-${GITHUB_TOKEN:-}}
     volumes:
       - ${HOST_REPO_PATH:-./}:/repo:ro
     expose:

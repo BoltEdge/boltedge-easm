@@ -60,3 +60,4 @@ def expose_tools_for(allowed_tools: list[str]) -> list[dict]:
 from . import internal_api  # noqa: F401,E402
 from . import web  # noqa: F401,E402
 from . import repo  # noqa: F401,E402
+from . import github  # noqa: F401,E402
