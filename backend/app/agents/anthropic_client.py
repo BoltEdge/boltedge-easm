@@ -22,7 +22,13 @@ class LlmCall:
     model: str
     system: str
     messages: list[dict]
-    max_tokens: int = 4096
+    # 16384 lets github_pr_create emit a tool_use block containing the
+    # full new file content for non-trivial files. 4096 was too small —
+    # when Rob tried to propose a PR that included runtime.py (~8k tokens),
+    # the model couldn't fit the tool_use payload and silently fell back
+    # to text, end_turning without emitting the tool call. Symptom looked
+    # like agent refusal; root cause was a max_tokens cap.
+    max_tokens: int = 16384
     tools: list[dict] = dataclasses.field(default_factory=list)
 
 
