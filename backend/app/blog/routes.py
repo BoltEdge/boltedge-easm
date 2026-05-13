@@ -1,13 +1,17 @@
 """Blog subscription routes.
 
 Public:
-  POST /api/blog/subscribe
-  GET  /api/blog/unsubscribe/<token>
+  POST /blog/subscribe
+  GET  /blog/unsubscribe/<token>
 
 Admin (superadmin-only):
-  POST /api/admin/blog/send
-  GET  /api/admin/blog/subscribers
-  GET  /api/admin/blog/article-sent/<slug>
+  POST /admin/blog/send
+  GET  /admin/blog/subscribers
+  GET  /admin/blog/article-sent/<slug>
+
+Prefixes intentionally omit /api/ — nginx strips that segment before
+forwarding to Flask, so blueprints follow the same convention as every
+other module here (auth_bp = /auth, billing_bp = /billing, etc.).
 
 Single-opt-in semantics: subscribing creates an active row immediately
 and the welcome email is sent right away. The welcome email's
@@ -36,8 +40,8 @@ from .emails import send_welcome_email, send_article_notification
 
 logger = logging.getLogger(__name__)
 
-blog_bp = Blueprint("blog", __name__, url_prefix="/api/blog")
-blog_admin_bp = Blueprint("blog_admin", __name__, url_prefix="/api/admin/blog")
+blog_bp = Blueprint("blog", __name__, url_prefix="/blog")
+blog_admin_bp = Blueprint("blog_admin", __name__, url_prefix="/admin/blog")
 
 
 # Loose but effective email regex — RFC-5322 in full is a tarpit. This
