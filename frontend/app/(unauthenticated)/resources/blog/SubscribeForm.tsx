@@ -109,10 +109,10 @@ export default function SubscribeForm({
       <form onSubmit={handleSubmit} className="space-y-2">
         <div className="flex items-center gap-2">
           <Mail className="w-3.5 h-3.5 text-teal-400 flex-shrink-0" />
-          <div className="text-sm font-medium text-white">Subscribe by email</div>
+          <div className="text-sm font-medium text-white">Subscribe to our newsletter</div>
         </div>
         <p className="text-xs text-white/55 leading-relaxed">
-          New articles in your inbox. One click to unsubscribe.
+          Articles on ASM &mdash; discovery, scanning, monitoring. One click to unsubscribe.
         </p>
         <input
           type="email"
@@ -163,13 +163,13 @@ export default function SubscribeForm({
       <div className="flex items-center gap-2 mb-3">
         <Mail className="w-4 h-4 text-teal-400" />
         <div className="text-[11px] font-semibold text-teal-400/85 uppercase tracking-wider">
-          Subscribe by email
+          Subscribe to our newsletter
         </div>
       </div>
-      <h3 className="text-xl font-bold text-foreground">New articles in your inbox</h3>
+      <h3 className="text-xl font-bold text-foreground">ASM articles, plainly written</h3>
       <p className="mt-2 text-sm text-white/65 leading-relaxed max-w-xl">
-        Get an email when we publish a new article — usually one a week, sometimes less, never more than two.
-        One click to unsubscribe at the bottom of every message.
+        Articles on External Attack Surface Management &mdash; what to discover, what to scan, what to monitor,
+        and what to ignore. Roughly one a week, sometimes less. No product marketing, no sales emails.
       </p>
 
       <div className="mt-5 flex flex-col sm:flex-row gap-2 max-w-xl">
@@ -217,8 +217,7 @@ export default function SubscribeForm({
       )}
 
       <p className="mt-4 text-[11px] text-white/40">
-        We send blog notifications only. No product marketing, no third-party sharing.
-        You can unsubscribe in one click any time.
+        Newsletter only &mdash; no third-party sharing. Unsubscribe in one click from any email.
       </p>
     </form>
   );
