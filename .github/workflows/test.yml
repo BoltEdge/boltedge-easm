@@ -28,7 +28,9 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
       - name: Install dependencies
-        run: pip install -r backend/requirements.txt
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest
       - name: Bootstrap DB schema from models
         working-directory: backend
         env:
