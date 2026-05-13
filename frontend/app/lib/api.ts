@@ -2756,6 +2756,13 @@ export type PendingActionRow = {
   skill: string | null;
   proposed_at: string;
   expires_at: string;
+  applied_result: unknown | null;
+};
+
+export type ApprovalResult = {
+  id: number;
+  decision: string;
+  applied_result: unknown | null;
 };
 
 export async function getPendingApprovals(): Promise<PendingActionRow[]> {
@@ -2763,8 +2770,8 @@ export async function getPendingApprovals(): Promise<PendingActionRow[]> {
   return j.pending;
 }
 
-export async function approveAction(id: number, edited_payload?: unknown): Promise<unknown> {
-  return apiFetch<unknown>(`/admin/agents/approvals/${id}/approve`, {
+export async function approveAction(id: number, edited_payload?: unknown): Promise<ApprovalResult> {
+  return apiFetch<ApprovalResult>(`/admin/agents/approvals/${id}/approve`, {
     method: "POST",
     body: JSON.stringify({ edited_payload }),
   });
