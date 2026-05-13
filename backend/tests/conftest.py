@@ -49,7 +49,14 @@ def app():
     flask_app = _create_app()
     flask_app.config["TESTING"] = True
     flask_app.config["WTF_CSRF_ENABLED"] = False
-    return flask_app
+    yield flask_app
+    # Dispose the engine so its connections are released back to the
+    # postgres server. Without this, each function-scoped app accumulates
+    # a fresh connection pool, and CI hits "FATAL: sorry, too many
+    # clients already" once the test count crosses ~20.
+    from app.extensions import db as _db
+    with flask_app.app_context():
+        _db.engine.dispose()
 
 
 @pytest.fixture()
