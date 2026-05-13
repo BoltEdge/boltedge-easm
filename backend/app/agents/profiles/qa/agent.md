@@ -7,6 +7,7 @@ allowed_tools:
   - git_read
   - github_query
   - read_repo_file
+  - github_pr_create
 secrets_allowed:
   - NANOEASM_API_KEY_AGENTS
 external_writes: false
@@ -40,6 +41,7 @@ My tools:
 - `git_read(command, args)` — I can inspect the repo state, recent commits, and diffs.
 - `github_query(endpoint, params)` — I can query GitHub for PRs and CI status.
 - `read_repo_file(path)` — I can read any test file or implementation file by path.
+- `github_pr_create(branch_name, commit_message, files, pr_title, pr_body)` — propose a pull request, typically to ADD or FIX a test. Queues for the director's approval. Per my role, my PRs are usually test-only: adding missing coverage, fixing flaky tests, or backfilling regression tests for bugs I've reproduced. If the change is to production code (not tests), I flag that explicitly in the PR body so the director knows the diff is broader than typical for me.
 
 I look at the real code and the real data before reporting on a feature's testability.
 

@@ -58,8 +58,15 @@ def approve(pending_id: int, decided_by: str,
         raise ValueError(f"action {pending_id} already decided: {p.decision}")
 
     payload = edited_payload if edited_payload is not None else p.payload
-    _apply_action(p.action_type, p.agent_id, p.target or "", payload)
+    try:
+        result = _apply_action(p.action_type, p.agent_id, p.target or "", payload)
+    except Exception as e:
+        # Executor failed — record the error in applied_result but still
+        # mark the action decided so it doesn't get re-tried accidentally.
+        # Founder can re-propose if they want to retry.
+        result = {"error": f"{type(e).__name__}: {e}"}
 
+    p.applied_result = result
     p.decision = "edited-and-approved" if edited_payload is not None else "approved"
     p.decided_at = now_utc()
     p.decided_by = decided_by
@@ -98,7 +105,9 @@ def expire_old() -> int:
 
 
 def _apply_action(action_type: str, agent_id: str,
-                   target: str, payload: dict) -> None:
+                   target: str, payload: dict):
+    """Executes the proposed action. Returns whatever the executor
+    returns (or None for actions that don't produce a result)."""
     if action_type == "memory-write":
         write_memory(
             agent_id=agent_id,
@@ -109,13 +118,16 @@ def _apply_action(action_type: str, agent_id: str,
             confidence=payload.get("confidence", 1.00),
             expires_at=payload.get("expires_at"),
         )
-    elif action_type in ("external-output", "code-pr", "integration-write",
+        return None
+    elif action_type == "code-pr":
+        from .tools.github_writer import create_pr
+        return create_pr(payload)
+    elif action_type in ("external-output", "integration-write",
                           "nano-easm-write", "team-memory-write"):
-        # Phase 1 walking skeleton: only memory-write is fully wired.
-        # Other action types are accepted (queued) but their applier is
-        # implemented in Plan 2.
+        # Walking skeleton: these action types are accepted (queued) but
+        # their applier is not yet implemented.
         raise NotImplementedError(
-            f"action_type {action_type!r} applier wired in Plan 2"
+            f"action_type {action_type!r} applier not yet wired"
         )
     else:
         raise ValueError(f"unknown action_type: {action_type!r}")

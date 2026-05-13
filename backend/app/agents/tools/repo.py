@@ -134,7 +134,13 @@ def read_repo_file_handler(path: str) -> str:
         return (f"[rejected: '{path}' matches denylist "
                 f"(.git/, .env*, *.key, *.pem, *.p12)]")
 
-    full = (Path(REPO_PATH) / path).resolve()
+    # Check for symlink BEFORE .resolve() — resolve() follows symlinks,
+    # so checking is_symlink() on the resolved path would always be False.
+    raw = Path(REPO_PATH) / path
+    if raw.is_symlink():
+        return f"[rejected: symlinks not allowed; '{path}' is a symlink]"
+
+    full = raw.resolve()
     try:
         full.relative_to(Path(REPO_PATH).resolve())
     except ValueError:
@@ -142,8 +148,6 @@ def read_repo_file_handler(path: str) -> str:
 
     if not full.exists():
         return f"[file not found: '{path}']"
-    if full.is_symlink():
-        return f"[rejected: symlinks not allowed; '{path}' is a symlink]"
     if not full.is_file():
         return f"[rejected: '{path}' is not a regular file]"
 
