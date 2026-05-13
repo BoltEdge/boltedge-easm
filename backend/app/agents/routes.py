@@ -237,7 +237,8 @@ def approvals_list():
              "target": p.target, "payload": p.payload,
              "rationale": p.rationale, "skill": p.skill,
              "proposed_at": p.proposed_at.isoformat() + "Z",
-             "expires_at": p.expires_at.isoformat() + "Z"}
+             "expires_at": p.expires_at.isoformat() + "Z",
+             "applied_result": p.applied_result}
             for p in list_pending()
         ]
     })
@@ -251,7 +252,7 @@ def approvals_approve(pending_id: int):
     decided_by = body.get("decided_by", "founder")
     p = approve(pending_id, decided_by=decided_by, edited_payload=edited)
     db.session.commit()
-    return jsonify({"id": p.id, "decision": p.decision})
+    return jsonify({"id": p.id, "decision": p.decision, "applied_result": p.applied_result})
 
 
 @bp.route("/approvals/<int:pending_id>/reject", methods=["POST"])
@@ -262,4 +263,4 @@ def approvals_reject(pending_id: int):
     decided_by = body.get("decided_by", "founder")
     p = reject(pending_id, decided_by=decided_by, note=note)
     db.session.commit()
-    return jsonify({"id": p.id, "decision": p.decision})
+    return jsonify({"id": p.id, "decision": p.decision, "applied_result": p.applied_result})
