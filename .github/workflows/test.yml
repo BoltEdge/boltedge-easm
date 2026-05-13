@@ -32,13 +32,18 @@ jobs:
       - name: Apply DB migrations
         working-directory: backend
         env:
+          FLASK_APP: run.py
           SQLALCHEMY_DATABASE_URI: postgresql://easm_user:testpass@localhost:5432/easm
           SECRET_KEY: test-secret
+          CORS_ORIGINS: http://localhost:3000
+          ENABLE_BILLING: "false"
         run: flask db upgrade
       - name: Run pytest
         working-directory: backend
         env:
+          FLASK_APP: run.py
           SQLALCHEMY_DATABASE_URI: postgresql://easm_user:testpass@localhost:5432/easm
           SECRET_KEY: test-secret
           CORS_ORIGINS: http://localhost:3000
+          ENABLE_BILLING: "false"
         run: pytest tests/ -v
