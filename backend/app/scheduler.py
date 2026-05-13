@@ -206,177 +206,19 @@ def _execute_schedule(schedule, db):
 
 
 def _run_job(job_id, db):
-    """Execute a single scan job using the profile scanner."""
-    from app.models import ScanJob, ScanProfile, Asset
-    from app.scanners.profile_scanner import scanner
+    """
+    Execute a single scheduled scan job via the shared executor.
 
-    job = ScanJob.query.get(job_id)
-    if not job or job.status != "queued":
-        return
+    The executor handles the full lifecycle: queued -> running transition,
+    scan.started audit, orchestrator (or _run_legacy on ImportError),
+    cancellation race, result/status persistence, scan.completed /
+    scan.failed audit. ``db`` is unused but kept in the signature for
+    backwards compatibility with the existing _execute_schedule call.
+    """
+    from flask import current_app
+    from app.scan_jobs.executor import execute_scan_job
 
-    job.status = "running"
-    job.started_at = now_utc()
-    db.session.commit()
-
-    try:
-        asset = Asset.query.get(job.asset_id)
-        if not asset:
-            raise ValueError(f"Asset {job.asset_id} not found")
-
-        # Get profile (or use default)
-        profile = None
-        if job.profile_id:
-            profile = ScanProfile.query.get(job.profile_id)
-
-        if not profile:
-            profile = ScanProfile.query.filter_by(is_default=True, is_system=True).first()
-
-        if not profile:
-            raise ValueError("No scan profile available")
-
-        # Run the scan using the global scanner instance
-        result = scanner.scan_with_profile(asset, profile)
-
-        # Store results
-        job.result = result
-        job.status = "completed"
-        job.finished_at = now_utc()
-
-        # Extract and persist findings from scan results
-        _persist_findings(job, asset, result, db)
-
-        db.session.commit()
-        logger.info(f"Job {job_id} completed for {asset.value}")
-
-    except Exception as e:
-        logger.exception(f"Job {job_id} failed")
-        from app.scanner.errors import user_facing_error_message
-        job.status = "failed"
-        job.error_message = user_facing_error_message(e)
-        job.finished_at = now_utc()
-        db.session.commit()
-
-
-def _persist_findings(job, asset, result, db):
-    """Extract findings from scan result and save to database."""
-    from app.models import Finding
-    import json
-
-    if not isinstance(result, dict):
-        return
-
-    # The ProfileBasedScanner returns: { engines: { shodan: { current: {...}, cves: [...] } } }
-    engines = result.get("engines", {})
-
-    # Process Shodan results
-    shodan_data = engines.get("shodan", {})
-    current = shodan_data.get("current", {})
-
-    # Extract open ports from services
-    services = current.get("services", [])
-    for svc in services:
-        if not isinstance(svc, dict):
-            continue
-        port = svc.get("port", "unknown")
-        product = svc.get("product", "unknown")
-        dedupe = f"open_port:{asset.id}:{port}"
-
-        existing = Finding.query.filter_by(dedupe_key=dedupe).first()
-        if existing:
-            existing.last_seen = now_utc()
-            existing.scan_job_id = job.id
-        else:
-            f = Finding(
-                asset_id=asset.id,
-                scan_job_id=job.id,
-                organization_id=asset.organization_id,
-                title=f"Open port {port} ({product})",
-                severity="info",
-                description=f"Port {port} running {product} v{svc.get('version', 'unknown')} is accessible",
-                source="scan",
-                dedupe_key=dedupe,
-                metadata_json=json.dumps(svc),
-                first_seen=now_utc(),
-                last_seen=now_utc(),
-            )
-            db.session.add(f)
-
-    # Extract CVEs
-    cves = shodan_data.get("cves", [])
-    for cve in cves:
-        if isinstance(cve, str):
-            cve_id = cve
-            cvss = None
-        elif isinstance(cve, dict):
-            cve_id = cve.get("cve_id", cve.get("id", "unknown"))
-            cvss = cve.get("cvss")
-        else:
-            continue
-
-        # Determine severity from CVSS
-        severity = "high"
-        if cvss is not None:
-            try:
-                score = float(cvss)
-                if score >= 9.0:
-                    severity = "critical"
-                elif score >= 7.0:
-                    severity = "high"
-                elif score >= 4.0:
-                    severity = "medium"
-                else:
-                    severity = "low"
-            except (ValueError, TypeError):
-                pass
-
-        dedupe = f"cve:{asset.id}:{cve_id}"
-        existing = Finding.query.filter_by(dedupe_key=dedupe).first()
-        if existing:
-            existing.last_seen = now_utc()
-            existing.scan_job_id = job.id
-        else:
-            f = Finding(
-                asset_id=asset.id,
-                scan_job_id=job.id,
-                organization_id=asset.organization_id,
-                title=f"Vulnerability: {cve_id}",
-                severity=severity,
-                description=cve.get("summary", f"Known vulnerability {cve_id} detected") if isinstance(cve, dict) else f"Known vulnerability {cve_id} detected",
-                source="scan",
-                dedupe_key=dedupe,
-                metadata_json=json.dumps(cve if isinstance(cve, dict) else {"cve_id": cve}),
-                first_seen=now_utc(),
-                last_seen=now_utc(),
-            )
-            db.session.add(f)
-
-    # Process generic findings array if present
-    findings_data = result.get("findings", [])
-    for finding_data in findings_data:
-        if not isinstance(finding_data, dict):
-            continue
-        title = finding_data.get("title", "Unknown finding")
-        dedupe = finding_data.get("dedupe_key", f"finding:{asset.id}:{title}")
-
-        existing = Finding.query.filter_by(dedupe_key=dedupe).first()
-        if existing:
-            existing.last_seen = now_utc()
-            existing.scan_job_id = job.id
-        else:
-            f = Finding(
-                asset_id=asset.id,
-                scan_job_id=job.id,
-                organization_id=asset.organization_id,
-                title=title,
-                severity=finding_data.get("severity", "info"),
-                description=finding_data.get("description", ""),
-                source=finding_data.get("source", "scan"),
-                dedupe_key=dedupe,
-                metadata_json=json.dumps(finding_data),
-                first_seen=now_utc(),
-                last_seen=now_utc(),
-            )
-            db.session.add(f)
+    execute_scan_job(job_id, current_app._get_current_object())
 
 
 def _run_monday_weekly_summary():

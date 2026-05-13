@@ -375,84 +375,19 @@ def run_scan_job(job_id: str):
 
     db.session.commit()
 
-    # Get the Flask app for the background thread's app context
+    # Hand off to the shared executor. The job is already in 'running'
+    # state with started_at + scan.started audit written above; the
+    # executor handles the rest of the lifecycle.
     from flask import current_app
+    from app.scan_jobs.executor import execute_scan_job
     app = current_app._get_current_object()
 
-    def _run_in_background():
-        """Execute the scan inside a fresh app context."""
-        with app.app_context():
-            bg_job = db.session.get(ScanJob, job_id_int)
-            bg_asset = db.session.get(Asset, asset_id_int)
-            bg_profile = db.session.get(ScanProfile, profile_id_int) if profile_id_int else None
-
-            if not bg_job or not bg_asset:
-                logger.error(f"Background scan: job {job_id_int} or asset {asset_id_int} not found")
-                return
-
-            try:
-                result_summary = _run_with_orchestrator(bg_job, bg_asset, bg_profile)
-
-                # Refresh state — the user/admin may have cancelled while
-                # the orchestrator was running. Don't overwrite "cancelled".
-                db.session.refresh(bg_job)
-                if bg_job.status == "cancelled":
-                    logger.info(f"Background scan job {job_id_int} was cancelled; discarding results")
-                    db.session.commit()
-                    return
-
-                bg_job.result_json = result_summary
-                bg_job.status = "completed"
-                bg_job.finished_at = now_utc()
-                bg_asset.last_scan_at = bg_job.finished_at
-                bg_asset.scan_status = "scanned"
-
-                log_audit(
-                    organization_id=bg_asset.organization_id,
-                    action="scan.completed",
-                    category="scan",
-                    target_type="scan_job",
-                    target_id=str(job_id_int),
-                    target_label=bg_asset.value,
-                    description=f"Scan completed for {bg_asset.value}",
-                )
-
-            except Exception as e:
-                logger.exception(f"Background scan job {bg_job.id} failed for {bg_asset.value}")
-
-                # If it was cancelled, the cancel handler already set the
-                # final status — don't overwrite it with "failed".
-                db.session.refresh(bg_job)
-                if bg_job.status == "cancelled":
-                    db.session.commit()
-                    return
-
-                from app.scanner.errors import user_facing_error_message
-                friendly = user_facing_error_message(e)
-
-                bg_job.status = "failed"
-                bg_job.error_message = friendly
-                bg_job.finished_at = now_utc()
-                bg_asset.scan_status = "scan_failed"
-
-                # Audit description gets the friendly text too — admins
-                # who scan it shouldn't see Python tracebacks either; the
-                # full traceback is in the app log via logger.exception
-                # above.
-                log_audit(
-                    organization_id=bg_asset.organization_id,
-                    action="scan.failed",
-                    category="scan",
-                    target_type="scan_job",
-                    target_id=str(job_id_int),
-                    target_label=bg_asset.value,
-                    description=f"Scan failed for {bg_asset.value}: {friendly}",
-                )
-
-            db.session.commit()
-            logger.info(f"Background scan job {job_id_int} finished: {bg_job.status}")
-
-    thread = threading.Thread(target=_run_in_background, daemon=True)
+    thread = threading.Thread(
+        target=execute_scan_job,
+        args=(job_id_int, app),
+        kwargs={"profile_id": profile_id_int},
+        daemon=True,
+    )
     thread.start()
 
     return jsonify(
@@ -460,82 +395,6 @@ def run_scan_job(job_id: str):
         jobId=str(job_id_int),
         status="running",
     ), 202
-
-
-def _run_with_orchestrator(
-    job: ScanJob,
-    asset: Asset,
-    profile: ScanProfile | None,
-) -> dict:
-    """
-    Run scan using the M7 orchestrator.
-    Falls back to legacy path if orchestrator import fails.
-    """
-    try:
-        from app.scanner import ScanOrchestrator
-
-        orchestrator = ScanOrchestrator()
-        return orchestrator.execute(job, profile)
-
-    except ImportError:
-        logger.warning("ScanOrchestrator not available, falling back to legacy scan")
-        return _run_legacy(job, asset, profile)
-
-
-def _run_legacy(
-    job: ScanJob,
-    asset: Asset,
-    profile: ScanProfile | None,
-) -> dict:
-    """
-    Legacy scan path — used as fallback if orchestrator isn't available.
-    This is the old code from the original run_scan_job route.
-    """
-    try:
-        from app.scanners.profile_scanner import scanner as legacy_scanner
-
-        if profile:
-            scan_result = legacy_scanner.scan_with_profile(asset, profile)
-
-            job.scan_engines = {
-                "shodan": profile.use_shodan,
-                "nmap": profile.use_nmap,
-                "nuclei": profile.use_nuclei,
-                "sslyze": profile.use_sslyze,
-            }
-
-            findings = []
-            if "shodan" in scan_result.get("engines", {}):
-                findings = extract_shodan_findings(scan_result["engines"]["shodan"])
-
-            created = persist_findings(asset, job, findings)
-
-            return {
-                "profileName": profile.name,
-                "engines": list(scan_result.get("engines", {}).keys()),
-                "findingsCreated": created,
-                "scanResult": scan_result,
-                "_legacy": True,
-            }
-    except ImportError:
-        pass
-
-    # Final fallback: old unified scan
-    from app.engine import run_unified_scan
-
-    result = run_unified_scan(
-        asset_type=asset.asset_type,
-        value=asset.value,
-        max_ips=5,
-    )
-    created = persist_findings(asset, job, result.findings)
-
-    return {
-        "summary": result.summary,
-        "risk": result.risk,
-        "findingsCreated": created,
-        "_legacy": True,
-    }
 
 
 # POST /scan-jobs/<id>/cancel — analyst+
