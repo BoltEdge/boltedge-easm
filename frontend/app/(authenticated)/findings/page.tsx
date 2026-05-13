@@ -259,7 +259,7 @@ export default function FindingsPage() {
   // Default sort: most recently detected first. The previous default was
   // severity-first, but users hitting this page after a fresh scan want
   // to see what just landed, not re-litigate yesterday's criticals.
-  const [sortBy, setSortBy] = useState<"recent" | "severity">("recent");
+  const [sortBy, setSortBy] = useState<"recent" | "severity" | "epss">("recent");
   // Group-by — purely a display concern; filters still apply globally.
   // "none" keeps the original flat table; "asset" / "category" insert
   // section header rows between findings.
@@ -269,6 +269,9 @@ export default function FindingsPage() {
   // > seen_before). Independent of the showProvenanceTags display pref so
   // a user can filter to "new only" without rendering pills on every row.
   const [provenanceFilter, setProvenanceFilter] = useState<"all" | "new" | "seen_before" | "resolved_before">("all");
+  // Threat-intel filter — show only findings whose CVE is on CISA's KEV
+  // catalog (actively exploited in the wild). Binary toggle, not a select.
+  const [kevOnlyFilter, setKevOnlyFilter] = useState<boolean>(false);
   const [page, setPage] = useState(1);
   const perPage = 50;
 
@@ -330,7 +333,7 @@ export default function FindingsPage() {
   }, [searchQuery]);
 
   // Reset page on filter change
-  useEffect(() => { setPage(1); }, [groupFilter, assetFilter, severityFilter, categoryFilter, frameworkFilter, statusFilter, sortBy, sinceFilter, provenanceFilter]);
+  useEffect(() => { setPage(1); }, [groupFilter, assetFilter, severityFilter, categoryFilter, frameworkFilter, statusFilter, sortBy, sinceFilter, provenanceFilter, kevOnlyFilter]);
 
   // Asset list scoped by selected group (when one is chosen) so the
   // dropdown only shows assets the group filter would permit. Resets
@@ -367,6 +370,7 @@ export default function FindingsPage() {
       if (sortBy !== "recent") params.set("sort", sortBy);
       if (sinceFilter !== "all") params.set("since", sinceFilter);
       if (provenanceFilter !== "all") params.set("provenance", provenanceFilter);
+      if (kevOnlyFilter) params.set("kev", "1");
       if (debouncedSearch) params.set("q", debouncedSearch);
       params.set("status", statusFilter);
       params.set("page", String(page));
@@ -391,7 +395,7 @@ export default function FindingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [severityFilter, categoryFilter, frameworkFilter, groupFilter, assetFilter, sortBy, sinceFilter, provenanceFilter, debouncedSearch, statusFilter, page]);
+  }, [severityFilter, categoryFilter, frameworkFilter, groupFilter, assetFilter, sortBy, sinceFilter, provenanceFilter, kevOnlyFilter, debouncedSearch, statusFilter, page]);
 
   useEffect(() => { loadFindings(); }, [loadFindings]);
 
@@ -773,6 +777,23 @@ export default function FindingsPage() {
               <option value="seen_before">Seen before</option>
               <option value="resolved_before">Resolved before</option>
             </select>
+            {/* KEV — binary toggle, not a select. Active state is visually
+                louder (red) than the other filters because "actively
+                exploited" is a more urgent signal than category/recurrence. */}
+            <button
+              type="button"
+              onClick={() => setKevOnlyFilter((v) => !v)}
+              title="Show only findings whose CVE is on CISA's Known Exploited Vulnerabilities catalog"
+              className={cn(
+                "h-10 inline-flex items-center gap-1.5 rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/40 transition-colors",
+                kevOnlyFilter
+                  ? "border-red-500/40 bg-red-500/10 text-red-300"
+                  : "border-border bg-background text-foreground hover:border-red-500/30 hover:text-red-300",
+              )}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-wider">KEV</span>
+              {kevOnlyFilter ? "On" : "Filter"}
+            </button>
             <select
               value={frameworkFilter}
               onChange={(e) => setFrameworkFilter(e.target.value)}
@@ -800,6 +821,7 @@ export default function FindingsPage() {
             >
               <option value="recent">Most recent</option>
               <option value="severity">By severity</option>
+              <option value="epss">By exploit likelihood (EPSS)</option>
             </select>
             <select
               value={groupBy}

@@ -306,6 +306,12 @@ def finding_to_ui(f: Finding) -> dict:
         "confidence": getattr(f, "confidence", None),
         "tags": getattr(f, "tags_json", None),
         "references": getattr(f, "references_json", None),
+        # Threat-intel enrichment (KEV + EPSS). Powers filter chips and
+        # the per-row badge in the findings list. getattr fallbacks so
+        # legacy callers / older DB rows don't 500.
+        "kevListed": bool(getattr(f, "kev_listed", False)),
+        "epssScore": getattr(f, "epss_score", None),
+        "epssPercentile": getattr(f, "epss_percentile", None),
         # Human-readable summary from template registry
         "summary": _lookup_summary(template_id),
         # Compliance framework mappings derived from CWE (with category
@@ -382,8 +388,16 @@ def list_findings():
     status = request.args.get("status")           # open, in_progress, accepted_risk, suppressed, resolved, all
     framework = request.args.get("framework")     # owasp_asvs, cis_v8, nist_csf, pci_dss_4, soc2, iso_27001
     provenance = request.args.get("provenance")   # all | new | seen_before | resolved_before
-    sort = request.args.get("sort", "recent")     # recent (default) | severity
+    sort = request.args.get("sort", "recent")     # recent (default) | severity | epss
     since = request.args.get("since", "all")      # all (default) | 24h | 7d | 30d | 90d
+    # Threat-intel filters — index-served via ix_finding_kev_listed /
+    # ix_finding_epss_score (see migration s7i8j9k0l1m2).
+    kev_only = request.args.get("kev") == "1"
+    min_epss_raw = request.args.get("minEpss")
+    try:
+        min_epss = float(min_epss_raw) if min_epss_raw is not None else None
+    except (TypeError, ValueError):
+        min_epss = None
     page = request.args.get("page", 1, type=int)
     per_page = min(request.args.get("per_page", 100, type=int), 500)
 
@@ -504,6 +518,13 @@ def list_findings():
                 )
             )
 
+    # Threat-intel filters. hasattr guards keep this safe in older DBs
+    # that pre-date the kev_epss_threat_intel migration.
+    if kev_only and hasattr(Finding, "kev_listed"):
+        query = query.filter(Finding.kev_listed.is_(True))
+    if min_epss is not None and hasattr(Finding, "epss_score"):
+        query = query.filter(Finding.epss_score >= min_epss)
+
     # Status filter
     if status and status != "all":
         query = _apply_status_filter(query, status)
@@ -531,6 +552,9 @@ def list_findings():
     #     created_at when first_seen_at is null, then id desc as a stable
     #     tiebreaker so pagination doesn't skip / repeat rows
     #   severity         — critical first, then high → info, id desc
+    #   epss             — highest exploit probability first; null EPSS
+    #                      sinks to the bottom so unscored CVEs don't crowd
+    #                      out scored ones
     if sort == "severity":
         severity_order = db.case(
             (Finding.severity == "critical", 0),
@@ -541,6 +565,10 @@ def list_findings():
             else_=5,
         )
         query = query.order_by(severity_order, Finding.id.desc())
+    elif sort == "epss" and hasattr(Finding, "epss_score"):
+        query = query.order_by(
+            Finding.epss_score.desc().nullslast(), Finding.id.desc()
+        )
     else:
         # Treat first_seen_at as the primary "when did this finding
         # appear" timestamp; coalesce with created_at to keep legacy
