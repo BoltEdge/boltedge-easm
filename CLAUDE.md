@@ -267,13 +267,40 @@ Repo is bind-mounted into `easm-backend` at `/repo:ro` via `${HOST_REPO_PATH:-./
 
 The runtime is now a multi-turn loop: agent emits `tool_use` → handler runs → tool_result appended → next turn → continues until `end_turn` or `tool_call_cap_per_run` is reached.
 
-### Phase 2B (still to plan)
+### Phase 2B-1 (approval-queued PRs, shipped)
 
-- Write tools: `github_pr_create`, `send_email_draft`, `update_agent_memory`
-- Approval-queued tool execution pattern (handler creates pending_action; agent gets `[queued for approval]` as tool result; founder approves; background worker retries)
-- Tuesday + Wednesday weekly briefs (Ava `competitor-pulse`, Maya `weekly-finding-brief`)
+Rob (Engineer) and Aisha (QA) can now propose pull requests. The flow:
+
+1. Founder asks Rob to fix/build something.
+2. Rob uses his read tools to understand the codebase + drafts code mentally.
+3. Rob calls `github_pr_create` with `branch_name`, `files` (full content), `pr_title`, `pr_body`.
+4. The runtime intercepts: tool is `requires_approval=True`. No GitHub call yet. A `pending_action(action_type='code-pr')` row is created with the proposal as payload. Rob's tool result is `[queued for approval as pending_action #N; …]`. Rob finishes his run with a "I've proposed X, awaiting approval" reply.
+5. Founder visits `/admin/agents/approvals`. The PR proposal renders as a card with PR title, branch badge, body, and per-file click-to-expand content. Founder reviews; clicks ✓.
+6. The platform calls `github_writer.create_pr()` → creates branch + commits files + opens PR on GitHub via REST API. PR URL stored in `pending_action.applied_result` and surfaced inline as a clickable link.
+7. CI runs on the PR (`.github/workflows/test.yml` → pytest with a postgres service). Branch protection should require green CI before merge.
+8. Founder pulls locally, tests, merges via GitHub UI.
+
+Hard rules baked in:
+- Rob's profile requires every PR to include tests; PRs without tests should be rejected in the queue.
+- Network/4xx/5xx errors from GitHub are wrapped as RuntimeError and recorded in `applied_result` as `{error: "..."}` — the action is still marked decided so it isn't re-tried implicitly.
+- No agent can `git push` to `master` directly. The only path is the approval-gated PR + founder's merge click.
+- Multi-file PRs commit files one at a time. If a later file fails, the orphaned branch is left on GitHub — the re-proposal needs a different `branch_name`.
+
+Key code:
+- `backend/app/agents/tools/github_writer.py` — `create_pr(payload)` (GitHub REST: get base ref → create branch → PUT contents per file → POST pulls)
+- `backend/app/agents/tools/github.py` — `github_pr_create` ToolDef registration (`requires_approval=True`, `action_type='code-pr'`, sentinel handler)
+- `backend/app/agents/runtime.py` — capture-and-queue branch on `requires_approval=True`
+- `backend/app/agents/approvals.py` — `_apply_action()` dispatches `code-pr` → `github_writer.create_pr()`; `approve()` captures result/error into `applied_result`
+- `frontend/app/(admin)/admin/agents/approvals/` — per-action-type rendering (`ApprovalCard_CodePR` + `ApprovalCard_MemoryWrite`)
+
+Env var required to actually open PRs: `GITHUB_TOKEN_AGENTS` (PAT with `public_repo` or `repo` scope). When unset, `create_pr()` raises a clear RuntimeError at approval time.
+
+### Phase 2B-2+ (still to plan)
+
+- Write tools: `send_email_draft`, `update_agent_memory`
+- Tuesday + Wednesday weekly briefs (Ava `competitor-pulse`, Maya `weekly-finding-brief`) — already shipped in 2A.1; left here for reference if scope expands
 - Memory hygiene weekly job
-- Customer-facing send service for approved drafts
+- Customer-facing send service for approved drafts (John ships approved drafts)
 - Hand-off queue between agents
 
 ## Billing Feature Flag

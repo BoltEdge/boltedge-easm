@@ -380,12 +380,35 @@ docker compose exec easm-backend flask grant-root-admin your@email.com
 
 ---
 
-## What's coming next (Phase 2B, not built yet)
+## Phase 2B-1 polish (approval-queued PRs, shipped)
 
-- **Write tools**: agents can propose pull requests, draft emails for the send service, and write to their own memory through tools (still approval-gated)
-- **Tuesday + Wednesday briefs**: Ava's `competitor-pulse` and Maya's `weekly-finding-brief`
+Rob and Aisha now have a write tool: `github_pr_create`. The flow is:
+
+1. **Rob drafts the PR in his head** — he uses read tools to look at the current state, plans the change, decides what tests to add.
+2. **He calls `github_pr_create`** with branch name, files (full new content), title, body. The runtime sees this is a write-class tool (`requires_approval=True`), captures the proposal as a `pending_action` row, and returns `[queued for approval as pending_action #N; …]` to Rob. Rob says "I've proposed X, awaiting your approval" and his run ends.
+3. **You review in the approval queue** — `/admin/agents/approvals` shows the PR card with title, body, and a files list. Click any file to expand and see its full proposed content.
+4. **You click ✓** — the platform calls the GitHub API to create the branch + commit the files + open the PR. ~2 seconds. The PR URL appears inline as a clickable link.
+5. **CI runs on the PR automatically** — `.github/workflows/test.yml` runs `pytest`. Branch protection should require CI green before merge.
+6. **You pull locally, test, merge.**
+
+Hard rules baked in:
+- Rob's profile requires every PR to include tests. The runtime doesn't lint it; you do, by rejecting test-less PRs in the queue. Feedback memory trains Rob over time.
+- No agent can `git push` to `master` directly. The only path is the approval-gated PR + your merge click.
+- The agent platform's approval is "open the PR," not "merge it." Branch protection + your merge click are the second gate.
+- GitHub failures (4xx/5xx, network) are caught and recorded in `applied_result` as `{error: "…"}`. The action is still marked approved (so it isn't re-tried); founder can re-propose with a different branch name to retry.
+
+Aisha gets the same tool but with a narrower default: her PRs are usually test-only (adding missing coverage, fixing flaky tests, backfilling regression tests for bugs she reproduced). If she touches production code, she flags it explicitly in the PR body so you know the diff is broader than typical.
+
+To turn it on in prod:
+- Set `GITHUB_TOKEN_AGENTS=<PAT with public_repo scope>` in the backend env (use a dedicated bot account, not your personal PAT).
+- Ensure `team_memory` has a `github:repo_slug` fact pointing at the right repo (the writer extracts owner/repo from the rule sentence's `github.com/…` URL).
+- Configure branch protection on `master` in GitHub UI: require `pytest` to pass before merge.
+
+## What's coming next (Phase 2B-2+, not built yet)
+
+- **More write tools**: `send_email_draft` (John's drafts get a "send" path) and `update_agent_memory` (agents propose memory writes via tool, same approval flow)
 - **Memory hygiene job**: weekly cleanup of stale/expired memory rows
-- **Customer-facing send service**: actually sends John's drafts to customers after approval
+- **Customer-facing send service**: actually sends John's approved drafts to customers
 - **Agent-to-agent hand-offs**: Sam can delegate to Rob, Rob's output flows back to Sam — durable queue + workflow
 
-When you're ready, the brainstorming-then-spec-then-plan workflow we used for Phase 1 and 2A picks up the same way.
+When you're ready, the brainstorming-then-spec-then-plan workflow we used for Phase 1, 2A, and 2B-1 picks up the same way.
