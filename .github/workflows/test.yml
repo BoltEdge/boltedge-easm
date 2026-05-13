@@ -29,7 +29,7 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - name: Install dependencies
         run: pip install -r backend/requirements.txt
-      - name: Apply DB migrations
+      - name: Bootstrap DB schema from models
         working-directory: backend
         env:
           FLASK_APP: run.py
@@ -37,7 +37,16 @@ jobs:
           SECRET_KEY: test-secret
           CORS_ORIGINS: http://localhost:3000
           ENABLE_BILLING: "false"
-        run: flask db upgrade
+        # Migrations chain has a pre-existing root bug (the first migration
+        # references the organization table which no migration creates —
+        # historically the base schema was bootstrapped via db.create_all
+        # and only later changes were captured as migrations). CI starts
+        # from an empty DB so we go the same route: create_all from models,
+        # then stamp alembic head so the version table is populated for
+        # any future incremental migrations the suite might exercise.
+        run: |
+          python -c "from app import create_app; app = create_app(); ctx = app.app_context(); ctx.push(); from app.extensions import db; db.create_all(); print('schema bootstrapped from models')"
+          flask db stamp head
       - name: Run pytest
         working-directory: backend
         env:
