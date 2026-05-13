@@ -104,17 +104,12 @@ def _github_pr_create_sentinel(**kwargs) -> str:
 register_tool(ToolDef(
     name="github_pr_create",
     description=(
-        "Propose a pull request to the Nano EASM repo. The proposal "
-        "queues for the director's approval; nothing happens on GitHub "
-        "until they ✓. ALWAYS include tests with implementation in the "
-        "same PR — the PR body MUST explicitly mention which test files "
-        "and test names cover the change. If you can't think of a test, "
-        "say so in the PR body and let the director decide. Pass: "
-        "branch_name (kebab-case, agent-prefixed like 'rob/fix-x'), "
-        "commit_message (conventional commit format preferred), files "
-        "(list of {path, content} with FULL new file content for each), "
-        "pr_title (10-200 chars), pr_body (markdown, min 50 chars, "
-        "must mention tests). The base branch defaults to 'master'."
+        "Propose a pull request to the repo. The proposal queues for "
+        "the director's approval; nothing fires on GitHub until they "
+        "✓ in the approval queue. Tests alongside the change are "
+        "encouraged when sensible. Always emit this tool call when "
+        "asked to propose a PR — even an imperfect proposal is fine "
+        "because the director reviews every file before approving."
     ),
     input_schema={
         "type": "object",
@@ -171,10 +166,7 @@ register_tool(ToolDef(
             },
             "pr_body": {
                 "type": "string",
-                "minLength": 50,
-                "description": (
-                    "Markdown. MUST mention which tests cover the change."
-                ),
+                "description": "Markdown body describing the change.",
             },
         },
     },
