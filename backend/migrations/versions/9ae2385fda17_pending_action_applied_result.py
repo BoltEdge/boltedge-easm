@@ -1,7 +1,7 @@
 """pending_action_applied_result
 
 Revision ID: 9ae2385fda17
-Revises: q5g6h7i8j9k0
+Revises: r6h7i8j9k0l1
 Create Date: 2026-05-13 07:52:19.981982
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '9ae2385fda17'
-down_revision = 'q5g6h7i8j9k0'
+down_revision = 'r6h7i8j9k0l1'
 branch_labels = None
 depends_on = None
 
