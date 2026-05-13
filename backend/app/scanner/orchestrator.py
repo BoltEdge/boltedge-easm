@@ -829,6 +829,16 @@ class ScanOrchestrator:
                 if hasattr(Finding, "analyzer") and draft.analyzer:
                     prev.analyzer = (draft.analyzer or "")[:50]
 
+                # Threat-intel fields (KEV + EPSS). Always update kev_listed so
+                # a CVE that drops off KEV reflects on the next scan. EPSS
+                # values only overwrite when the new draft has them.
+                if hasattr(Finding, "kev_listed"):
+                    prev.kev_listed = bool(draft.kev_listed)
+                if hasattr(Finding, "epss_score") and draft.epss_score is not None:
+                    prev.epss_score = draft.epss_score
+                if hasattr(Finding, "epss_percentile") and draft.epss_percentile is not None:
+                    prev.epss_percentile = draft.epss_percentile
+
                 db.session.add(prev)
                 updated += 1
                 continue  # ← Skip to next draft, do NOT create a new row
@@ -870,6 +880,14 @@ class ScanOrchestrator:
                 finding.analyzer = (draft.analyzer or "")[:50] if draft.analyzer else None
             if hasattr(Finding, "template_id"):
                 finding.template_id = (draft.template_id or "")[:100]
+
+            # Threat-intel fields (KEV + EPSS).
+            if hasattr(Finding, "kev_listed"):
+                finding.kev_listed = bool(draft.kev_listed)
+            if hasattr(Finding, "epss_score"):
+                finding.epss_score = draft.epss_score
+            if hasattr(Finding, "epss_percentile"):
+                finding.epss_percentile = draft.epss_percentile
 
             db.session.add(finding)
             created += 1

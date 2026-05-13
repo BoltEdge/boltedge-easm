@@ -253,6 +253,17 @@ def _run_wednesday_finding_brief():
         logging.getLogger("agents").exception("weekly_finding_brief failed: %s", e)
 
 
+def _run_refresh_kev_feed(app):
+    """Daily APScheduler job: refresh CISA KEV cache. Never raises."""
+    with app.app_context():
+        from app.scanner.threat_intel import refresh_kev_feed
+        try:
+            count = refresh_kev_feed()
+            logger.info("refresh_kev_feed: upserted %d entries", count)
+        except Exception:
+            logger.exception("refresh_kev_feed crashed")
+
+
 def init_scheduler(app):
     """Initialize and start the background scheduler."""
     global _scheduler
@@ -305,6 +316,18 @@ def init_scheduler(app):
         trigger=CronTrigger(day_of_week="wed", hour=8, minute=0),
         id="agents.security_analyst.weekly_finding_brief",
         name="Security analyst weekly finding brief (Wednesday 08:00 UTC)",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    # Threat-intel: refresh CISA KEV feed — every day at 02:00 UTC.
+    # EPSS is per-CVE on-demand with a 7-day cache TTL, so no scheduled
+    # job is needed for that side.
+    _scheduler.add_job(
+        func=lambda: _run_refresh_kev_feed(app),
+        trigger=CronTrigger(hour=2, minute=0),
+        id="threat_intel.refresh_kev_feed",
+        name="Refresh CISA KEV cache (daily 02:00 UTC)",
         replace_existing=True,
         max_instances=1,
     )

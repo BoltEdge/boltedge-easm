@@ -445,6 +445,12 @@ class Finding(db.Model):
     analyzer = db.Column(db.String(50), nullable=True)              # Which analyzer produced the finding: port_risk, ssl_analyzer, etc.
     template_id = db.Column(db.String(100), nullable=True)          # Finding template key: port-rdp-exposed, ssl-cert-expired, etc.
 
+    # Threat-intel enrichment — populated by app.scanner.threat_intel
+    # Badge-only: severity is NOT changed by KEV listing.
+    kev_listed = db.Column(db.Boolean, nullable=False, default=False, index=True)
+    epss_score = db.Column(db.Float, nullable=True, index=True)
+    epss_percentile = db.Column(db.Float, nullable=True)
+
     details_json = db.Column(db.JSON, nullable=True)
 
     # Suppress workflow (risk-accepted / false positive)
@@ -2037,3 +2043,39 @@ class BlogArticleSent(db.Model):
         UniqueConstraint("article_slug", "subscriber_id",
                          name="uq_blog_article_sent_slug_subscriber"),
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Threat intelligence caches
+#
+# Two small, append-only tables that back the KEV + EPSS enrichment shown
+# on CVE findings. Both are caches, not authoritative state — if either
+# is empty the product still works, you just lose the badge / score
+# until the next refresh. See app/scanner/threat_intel.py.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class KevEntry(db.Model):
+    """CISA Known Exploited Vulnerabilities — local cache of the feed."""
+    __tablename__ = "kev_entry"
+
+    cve_id = db.Column(db.String(20), primary_key=True)
+    date_added = db.Column(db.Date, nullable=False)
+    vendor = db.Column(db.String(255), nullable=True)
+    product = db.Column(db.String(255), nullable=True)
+    vulnerability_name = db.Column(db.String(500), nullable=True)
+    known_ransomware = db.Column(db.Boolean, nullable=False, default=False)
+    required_action = db.Column(db.Text, nullable=True)
+    due_date = db.Column(db.Date, nullable=True)
+    short_description = db.Column(db.Text, nullable=True)
+    fetched_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+
+
+class EpssCache(db.Model):
+    """FIRST.org EPSS scores — per-CVE cache with 7-day TTL."""
+    __tablename__ = "epss_cache"
+
+    cve_id = db.Column(db.String(20), primary_key=True)
+    score = db.Column(db.Float, nullable=False)
+    percentile = db.Column(db.Float, nullable=False)
+    model_version = db.Column(db.String(20), nullable=True)
+    fetched_at = db.Column(db.DateTime, nullable=False, default=now_utc)

@@ -126,6 +126,12 @@ class FindingDraft:
     analyzer: str = ""
     confidence: str = "high"            # high, medium, low
 
+    # Threat-intel enrichment — populated by cve_enricher via
+    # app.scanner.threat_intel. Badge-only: severity is NOT changed by KEV.
+    kev_listed: bool = False
+    epss_score: Optional[float] = None
+    epss_percentile: Optional[float] = None
+
     # Timing
     detected_at: Optional[datetime] = None
 

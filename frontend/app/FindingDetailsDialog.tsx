@@ -715,6 +715,18 @@ export function FindingDetailsDialog({
   const category = finding.category ?? null;
   const confidence = finding.confidence ?? null;
 
+  // Threat-intel enrichment (KEV + EPSS). Badge-only — does NOT change severity.
+  // Full details live under details_json.kev / details_json.epss.
+  const kevListed: boolean = Boolean(finding.kevListed ?? finding.kev_listed);
+  const kevDetails =
+    (finding.details && finding.details.kev) ??
+    (finding.details_json && finding.details_json.kev) ??
+    null;
+  const epssScore: number | null =
+    finding.epssScore ?? finding.epss_score ?? null;
+  const epssPercentile: number | null =
+    finding.epssPercentile ?? finding.epss_percentile ?? null;
+
   // Remediation
   const remediation =
     finding.remediation ??
@@ -841,8 +853,83 @@ export function FindingDetailsDialog({
                 </span>
               )}
 
+              {kevListed && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-md bg-red-500/15 border border-red-500/30 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-red-300"
+                  title="Listed on CISA Known Exploited Vulnerabilities catalog"
+                >
+                  KEV — Actively Exploited
+                </span>
+              )}
+
               <ConfidenceBadge confidence={confidence} />
             </div>
+
+            {/* Threat-intel detail block — KEV context + EPSS score. Only
+                renders when there's something to show. */}
+            {(kevListed || epssScore != null) && (
+              <div className="mt-3 space-y-2">
+                {kevListed && kevDetails && (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/[0.05] px-3 py-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-semibold text-red-300 uppercase tracking-wide">
+                        CISA KEV
+                      </span>
+                      {kevDetails.date_added && (
+                        <span className="text-xs text-white/55">
+                          added {kevDetails.date_added}
+                        </span>
+                      )}
+                    </div>
+                    {kevDetails.vulnerability_name && (
+                      <div className="mt-1 text-sm text-white/80">
+                        {kevDetails.vulnerability_name}
+                      </div>
+                    )}
+                    {kevDetails.known_ransomware && (
+                      <div className="mt-1 text-xs text-red-300">
+                        Known ransomware campaign use
+                      </div>
+                    )}
+                    {kevDetails.due_date && (
+                      <div className="mt-1 text-xs text-white/55">
+                        US federal due date: {kevDetails.due_date}
+                      </div>
+                    )}
+                    <a
+                      href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-block text-[11px] text-teal-400 hover:text-teal-300"
+                    >
+                      View on CISA KEV catalog →
+                    </a>
+                  </div>
+                )}
+
+                {epssScore != null && (
+                  <div className="text-xs text-white/55">
+                    <span className="font-medium text-white/80">EPSS:</span>{" "}
+                    {(epssScore * 100).toFixed(1)}% probability of exploitation in
+                    next 30 days
+                    {epssPercentile != null && (
+                      <span className="text-white/40">
+                        {" "}
+                        (top {((1 - epssPercentile) * 100).toFixed(1)}% of all CVEs)
+                      </span>
+                    )}{" "}
+                    <a
+                      href="https://www.first.org/epss/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-teal-400 hover:text-teal-300"
+                    >
+                      what is this?
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="text-sm text-muted-foreground mt-2">
               Detailed information for this security finding

@@ -29,6 +29,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from app.scanner.base import BaseAnalyzer, FindingDraft, ScanContext
+from app.scanner.threat_intel import enrich_cve
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +182,13 @@ class CVEEnricher(BaseAnalyzer):
         summary = _extract_summary(cve_id, blob)
         product = _extract_affected_product(blob)
 
+        # Threat-intel enrichment (KEV + EPSS). Never raises.
+        # KEV listing adds a badge / tag but does NOT change severity —
+        # see docs/superpowers/specs/2026-05-13-kev-epss-enrichment-design.md.
+        ti = enrich_cve(cve_id)
+        kev = ti.get("kev")
+        epss = ti.get("epss")
+
         # Build title
         title = f"Known vulnerability: {cve_id}"
         if cvss is not None:
@@ -206,6 +214,27 @@ class CVEEnricher(BaseAnalyzer):
             "and affected versions."
         )
 
+        # Tags — kev tag when listed; epss-high when in top 10% by percentile.
+        tags = ["cve", severity, cve_id.lower()]
+        if kev:
+            tags.append("kev")
+        if epss and epss.get("percentile") is not None and epss["percentile"] >= 0.9:
+            tags.append("epss-high")
+
+        # Details — include threat-intel blobs alongside Shodan raw.
+        details: Dict[str, Any] = {
+            "cve_id": cve_id,
+            "cvss": cvss,
+            "severity": severity,
+            "summary": summary[:500],
+            "affected_product": product,
+            "raw_shodan": blob if isinstance(blob, dict) else {},
+        }
+        if kev:
+            details["kev"] = kev
+        if epss:
+            details["epss"] = epss
+
         return FindingDraft(
             template_id=f"cve-{cve_id.lower()}",
             title=title,
@@ -219,20 +248,14 @@ class CVEEnricher(BaseAnalyzer):
                 f"https://nvd.nist.gov/vuln/detail/{cve_id}",
                 f"https://cve.mitre.org/cgi-bin/cvename.cgi?name={cve_id}",
             ],
-            tags=["cve", severity, cve_id.lower()],
+            tags=tags,
             engine="shodan",
             confidence="high" if cvss is not None else "medium",
-            details={
-                "cve_id": cve_id,
-                "cvss": cvss,
-                "severity": severity,
-                "summary": summary[:500],
-                "affected_product": product,
-                "raw_shodan": blob if isinstance(blob, dict) else {},
-            },
-            dedupe_fields={
-                "cve_id": cve_id,
-            },
+            details=details,
+            dedupe_fields={"cve_id": cve_id},
+            kev_listed=bool(kev),
+            epss_score=epss.get("score") if epss else None,
+            epss_percentile=epss.get("percentile") if epss else None,
         )
 
     def _extract_cwe(self, blob: Any) -> Optional[str]:
