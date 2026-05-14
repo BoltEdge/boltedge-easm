@@ -693,16 +693,20 @@ export default function FindingsPage() {
               All ({totalCategoryCount})
             </button>
             {([
-              { id: "vulnerabilities",   label: "Vulnerabilities",   color: "bg-red-500/15 text-red-300 border-red-500/30" },
-              { id: "service_exposure",  label: "Service Exposure",  color: "bg-amber-500/15 text-amber-300 border-amber-500/30" },
-              { id: "data_leaks",        label: "Data Leaks",        color: "bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30" },
-              { id: "misconfigurations", label: "Misconfigurations", color: "bg-orange-500/15 text-orange-300 border-orange-500/30" },
-              { id: "security_hygiene",  label: "Security Hygiene",  color: "bg-teal-500/15 text-teal-300 border-teal-500/30" },
-              { id: "lookalike",         label: "Lookalike Domains", color: "bg-rose-500/15 text-rose-300 border-rose-500/30" },
-              { id: "other",             label: "Other",             color: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30" },
-            ] as const).map(({ id, label, color }) => {
+              // The six named categories are ALWAYS rendered, even at
+              // zero count, so users discover new detection types as we
+              // add them. "Other" stays count-gated to avoid clutter
+              // when there's nothing in it.
+              { id: "vulnerabilities",   label: "Vulnerabilities",   color: "bg-red-500/15 text-red-300 border-red-500/30",         alwaysShow: true },
+              { id: "service_exposure",  label: "Service Exposure",  color: "bg-amber-500/15 text-amber-300 border-amber-500/30",   alwaysShow: true },
+              { id: "data_leaks",        label: "Data Leaks",        color: "bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30", alwaysShow: true },
+              { id: "misconfigurations", label: "Misconfigurations", color: "bg-orange-500/15 text-orange-300 border-orange-500/30", alwaysShow: true },
+              { id: "security_hygiene",  label: "Security Hygiene",  color: "bg-teal-500/15 text-teal-300 border-teal-500/30",      alwaysShow: true },
+              { id: "lookalike",         label: "Lookalike Domains", color: "bg-rose-500/15 text-rose-300 border-rose-500/30",      alwaysShow: true },
+              { id: "other",             label: "Other",             color: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30",      alwaysShow: false },
+            ] as const).map(({ id, label, color, alwaysShow }) => {
               const count = categoryCounts[id] || 0;
-              if (count === 0 && categoryFilter !== id) return null;
+              if (count === 0 && categoryFilter !== id && !alwaysShow) return null;
               return (
                 <button
                   key={id}
