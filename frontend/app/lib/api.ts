@@ -2783,3 +2783,71 @@ export async function rejectAction(id: number, note?: string): Promise<unknown> 
     body: JSON.stringify({ note }),
   });
 }
+
+export type AgentProposalRow = {
+  id: number;
+  action_type: string;
+  target: string | null;
+  rationale: string | null;
+  skill: string | null;
+  proposed_at: string;
+  decision: string | null;
+  decision_note: string | null;
+  decided_at: string | null;
+  decided_by: string | null;
+  applied_result: unknown | null;
+  run_id: number | null;
+};
+
+export type AgentProposalsResponse = {
+  agent_id: string;
+  summary: { pending: number; approved: number; rejected: number };
+  proposals: AgentProposalRow[];
+};
+
+export type ApprovalHistoryRow = {
+  id: number;
+  agent_id: string;
+  action_type: string;
+  target: string | null;
+  decision: string;
+  decision_note: string | null;
+  decided_at: string | null;
+  decided_by: string | null;
+  proposed_at: string;
+  applied_result: unknown | null;
+};
+
+export type AgentSpendRow = {
+  agent_id: string;
+  display_name: string;
+  spend_usd: number;
+  cap_usd: number;
+  pct: number;
+};
+
+export type AgentSpendResponse = {
+  month: string;
+  agents: AgentSpendRow[];
+};
+
+export async function getAgentProposals(
+  agentId: string,
+  limit = 50,
+): Promise<AgentProposalsResponse> {
+  return apiFetch<AgentProposalsResponse>(
+    `/admin/agents/${encodeURIComponent(agentId)}/approvals?limit=${limit}`,
+  );
+}
+
+export async function getApprovalHistory(
+  limit = 50,
+): Promise<{ history: ApprovalHistoryRow[] }> {
+  return apiFetch<{ history: ApprovalHistoryRow[] }>(
+    `/admin/agents/approvals/history?limit=${limit}`,
+  );
+}
+
+export async function getAgentSpend(): Promise<AgentSpendResponse> {
+  return apiFetch<AgentSpendResponse>("/admin/agents/spend");
+}
