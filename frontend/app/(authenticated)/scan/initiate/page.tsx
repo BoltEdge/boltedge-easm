@@ -12,7 +12,7 @@ import { useOrg } from "../../contexts/OrgContext";
 import { usePlanLimit, PlanLimitDialog } from "../../../ui/plan-limit-dialog";
 import {
   getScanProfiles, getAllAssets, getGroupAssets, getGroups,
-  createScanJob, runScanJob, isPlanError,
+  createScanJob, runScanJob, isPlanError, apiFetch,
 } from "../../../lib/api";
 import type { ScanProfile } from "../../../types";
 
@@ -131,6 +131,11 @@ export default function InitiateScanPage() {
 
   const [profiles, setProfiles] = useState<ScanProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState("");
+  // When enabled, every scan launched from this page also enables
+  // lookalike monitoring on the target asset and triggers an immediate
+  // Lookalike Scan. Plan-limit errors surface; other failures are
+  // silent so they never block the primary scan flow.
+  const [alsoLookalike, setAlsoLookalike] = useState(false);
   // Collapsed by default — profile picking is a once-per-session
   // decision, no need to dominate the page after that. The user can
   // expand the section to switch profiles.
@@ -247,13 +252,44 @@ export default function InitiateScanPage() {
     return () => { cancelled = true; };
   }, [selGroupId]);
 
+  // Best-effort add of a lookalike scan alongside the normal scan job.
+  // Returns true if a plan-limit dialog was raised (caller should stop
+  // its loop). All other failures are swallowed — a broken lookalike
+  // add must never block the user's intended scan.
+  async function maybeAddLookalike(assetId: string, assetType?: string): Promise<boolean> {
+    if (!alsoLookalike) return false;
+    if (assetType && assetType !== "domain") return false; // engine is domain-only
+    try {
+      await apiFetch(`/assets/${assetId}/lookalike-watch`, { method: "POST" });
+    } catch (e: any) {
+      if (isPlanError(e)) { planLimit.handle(e.planError); return true; }
+      // Already-watched / 4xx / network — swallow.
+    }
+    try {
+      await apiFetch(`/assets/${assetId}/lookalike-scan`, { method: "POST" });
+    } catch {
+      // Best-effort; user can still trigger from asset detail page later.
+    }
+    return false;
+  }
+
   async function handleScanSingle() {
     if (!selAssetId) { setBanner({ kind: "err", text: "Select an asset." }); return; }
     try {
       setScanning(true);
       const job = await createScanJob(selAssetId, selectedProfileId || undefined);
       await runScanJob(String(job.id));
-      setBanner({ kind: "ok", text: `Scan started! Redirecting to Scan Jobs...` });
+      // Asset type isn't known on this path (only the id is). Pass
+      // undefined so maybeAddLookalike attempts it and lets the backend
+      // reject non-domains gracefully.
+      const stopped = await maybeAddLookalike(selAssetId);
+      if (stopped) { setScanning(false); return; }
+      setBanner({
+        kind: "ok",
+        text: alsoLookalike
+          ? "Scan started, lookalike monitoring enabled. Redirecting to Scan Jobs..."
+          : "Scan started! Redirecting to Scan Jobs...",
+      });
       setTimeout(() => router.push("/scan"), 1200);
     } catch (e: any) {
       if (isPlanError(e)) planLimit.handle(e.planError);
@@ -267,16 +303,25 @@ export default function InitiateScanPage() {
     try {
       setScanning(true);
       let created = 0;
+      let lookalikeEnabled = 0;
       for (const asset of assets) {
         try {
           const job = await createScanJob(String(asset.id), selectedProfileId || undefined);
           await runScanJob(String(job.id));
           created++;
+          const stopped = await maybeAddLookalike(String(asset.id), asset.type || asset.asset_type);
+          if (stopped) { setScanning(false); return; }
+          if (alsoLookalike && (asset.type === "domain" || asset.asset_type === "domain")) {
+            lookalikeEnabled++;
+          }
         } catch (e: any) {
           if (isPlanError(e)) { planLimit.handle(e.planError); setScanning(false); return; }
         }
       }
-      setBanner({ kind: "ok", text: `Started ${created} scan(s). Redirecting...` });
+      const tail = alsoLookalike && lookalikeEnabled > 0
+        ? ` Lookalike monitoring enabled on ${lookalikeEnabled} domain${lookalikeEnabled === 1 ? "" : "s"}.`
+        : "";
+      setBanner({ kind: "ok", text: `Started ${created} scan(s).${tail} Redirecting...` });
       setTimeout(() => router.push("/scan"), 1200);
     } catch (e: any) {
       if (isPlanError(e)) planLimit.handle(e.planError);
@@ -370,6 +415,29 @@ export default function InitiateScanPage() {
             </div>
           )}
         </div>
+
+        {/* Lookalike monitoring add-on — toggle applies to whichever
+            target the user picks below. Plan-limited; non-domain assets
+            in a group are silently skipped. */}
+        <label className="bg-card border border-border rounded-xl p-4 flex items-start gap-3 cursor-pointer hover:border-primary/30 transition-colors">
+          <input
+            type="checkbox"
+            checked={alsoLookalike}
+            onChange={(e) => setAlsoLookalike(e.target.checked)}
+            className="mt-0.5 w-4 h-4 rounded border-border bg-input-background text-primary focus:ring-2 focus:ring-ring"
+          />
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-foreground">
+              Also check for lookalike domains
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed max-w-2xl">
+              Enables lookalike monitoring on each scanned root domain and
+              triggers an immediate lookalike scan alongside the vulnerability
+              scan. Detects typosquats, homoglyph confusables, and TLD swaps.
+              Plan-limited; non-domain assets are skipped.
+            </div>
+          </div>
+        </label>
 
         {/* Scan Target */}
         <div className="bg-card border border-primary/20 rounded-xl p-6">
