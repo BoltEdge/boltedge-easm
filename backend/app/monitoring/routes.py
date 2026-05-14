@@ -42,7 +42,16 @@ from app.models import (
     AssetGroup,
     ScanJob,
     Organization,
+    Finding,
 )
+try:
+    # _INTERNAL_TO_CUSTOMER maps internal Finding.category → customer-facing
+    # bucket (vulnerabilities / service_exposure / data_leaks / etc.). Used
+    # to surface customerCategory on alerts so the alert filter chip set
+    # matches the findings page exactly.
+    from app.scanner.templates import _INTERNAL_TO_CUSTOMER as _ALERT_INTERNAL_TO_CUSTOMER
+except Exception:
+    _ALERT_INTERNAL_TO_CUSTOMER = {}
 from app.auth.decorators import require_auth, allow_api_key, current_user_id, current_organization_id
 from app.auth.permissions import require_role, require_feature, require_permission, check_limit
 from app.audit.routes import log_audit
@@ -152,6 +161,29 @@ def _monitor_to_ui(m: Monitor) -> dict:
 
 def _alert_to_ui(a: MonitorAlert) -> dict:
     """Serialize a MonitorAlert for the frontend."""
+    # Resolve category from the linked Finding (when present) so the
+    # frontend can filter alerts by the same customer-facing taxonomy
+    # used on the findings page. Cheap getattr — relationship is already
+    # loaded when alerts are fetched eagerly; falls back to per-row lookup
+    # otherwise. Defensive: never crash the serializer on a missing row.
+    internal_category = None
+    customer_category = None
+    try:
+        if a.finding_id:
+            f = getattr(a, "finding", None)
+            if f is None:
+                f = Finding.query.get(a.finding_id)
+            if f is not None:
+                internal_category = getattr(f, "category", None)
+                if internal_category:
+                    customer_category = _ALERT_INTERNAL_TO_CUSTOMER.get(
+                        internal_category, "other"
+                    )
+    except Exception:
+        # Never break the alert response on a category resolution failure.
+        internal_category = None
+        customer_category = None
+
     return {
         "id": _sid(a.id),
         "displayId": a.public_id,
@@ -163,6 +195,8 @@ def _alert_to_ui(a: MonitorAlert) -> dict:
         "title": a.title,
         "summary": a.summary,
         "severity": a.severity,
+        "category": internal_category,
+        "customerCategory": customer_category,
         "assetValue": a.asset_value,
         "groupName": a.group_name,
         "status": a.status,

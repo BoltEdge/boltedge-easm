@@ -70,6 +70,10 @@ CUSTOMER_CATEGORIES: Dict[str, Dict[str, str]] = {
         "label": "Security Hygiene",
         "blurb": "Expiring certificates, missing security headers, weak DMARC/SPF, and end-of-life software stacks.",
     },
+    "lookalike": {
+        "label": "Lookalike Domains",
+        "blurb": "Typosquats, homoglyph confusables, TLD swaps, and other domains registered to impersonate yours.",
+    },
 }
 
 CUSTOMER_CATEGORY_IDS = list(CUSTOMER_CATEGORIES.keys())
@@ -90,6 +94,7 @@ _INTERNAL_TO_CUSTOMER: Dict[str, str] = {
     "dns":              "security_hygiene",
     "technology":       "security_hygiene",
     "tech":             "security_hygiene",  # legacy alias for technology
+    "lookalike":        "lookalike",         # 1:1 mapping — own customer bucket
 }
 
 

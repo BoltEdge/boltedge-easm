@@ -745,6 +745,10 @@ function AlertsTab({ setBanner, planLimit }: {
   const [searchFilter, setSearchFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "acknowledged" | "resolved">("all");
   const [sevFilter, setSevFilter] = useState<string>("all");
+  // customerCategory bucket — populated by the backend from the linked
+  // Finding's category via _INTERNAL_TO_CUSTOMER. Use the same id set as
+  // the findings page so the two filters feel like one feature.
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
@@ -945,6 +949,15 @@ function AlertsTab({ setBanner, planLimit }: {
     let result = alerts;
     if (statusFilter !== "all") result = result.filter((a) => a.status === statusFilter);
     if (sevFilter !== "all") result = result.filter((a) => a.severity === sevFilter);
+    if (categoryFilter !== "all") {
+      result = result.filter((a) => {
+        // "other" bucket = no customerCategory set OR an unmapped value
+        if (categoryFilter === "other") {
+          return !a.customerCategory;
+        }
+        return a.customerCategory === categoryFilter;
+      });
+    }
     if (dateFrom) {
       const fromTs = new Date(dateFrom).getTime();
       if (!Number.isNaN(fromTs)) result = result.filter((a) => new Date(a.createdAt as any).getTime() >= fromTs);
@@ -967,7 +980,7 @@ function AlertsTab({ setBanner, planLimit }: {
       const tb = new Date(b.createdAt as any).getTime() || 0;
       return sortOrder === "desc" ? tb - ta : ta - tb;
     });
-  }, [alerts, statusFilter, sevFilter, searchFilter, dateFrom, dateTo, sortOrder]);
+  }, [alerts, statusFilter, sevFilter, categoryFilter, searchFilter, dateFrom, dateTo, sortOrder]);
 
   const statusCounts = useMemo(() => ({
     open: alerts.filter((a) => a.status === "open").length,
@@ -1026,6 +1039,18 @@ function AlertsTab({ setBanner, planLimit }: {
           className="h-8 rounded-md px-2 bg-input-background border border-border text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="all">All Severities</option>
           {SEVERITY_ORDER.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+        </select>
+        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
+          title="Filter by customer-facing finding category"
+          className="h-8 rounded-md px-2 bg-input-background border border-border text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-ring">
+          <option value="all">All Categories</option>
+          <option value="vulnerabilities">Vulnerabilities</option>
+          <option value="service_exposure">Service Exposure</option>
+          <option value="data_leaks">Data Leaks</option>
+          <option value="misconfigurations">Misconfigurations</option>
+          <option value="security_hygiene">Security Hygiene</option>
+          <option value="lookalike">Lookalike Domains</option>
+          <option value="other">Other</option>
         </select>
       </div>
 

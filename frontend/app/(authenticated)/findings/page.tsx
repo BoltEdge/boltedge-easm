@@ -698,6 +698,7 @@ export default function FindingsPage() {
               { id: "data_leaks",        label: "Data Leaks",        color: "bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30" },
               { id: "misconfigurations", label: "Misconfigurations", color: "bg-orange-500/15 text-orange-300 border-orange-500/30" },
               { id: "security_hygiene",  label: "Security Hygiene",  color: "bg-teal-500/15 text-teal-300 border-teal-500/30" },
+              { id: "lookalike",         label: "Lookalike Domains", color: "bg-rose-500/15 text-rose-300 border-rose-500/30" },
               { id: "other",             label: "Other",             color: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30" },
             ] as const).map(({ id, label, color }) => {
               const count = categoryCounts[id] || 0;

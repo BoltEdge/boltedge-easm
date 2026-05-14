@@ -44,6 +44,11 @@ export interface MonitorAlert {
   status: string;
   title: string;
   summary?: string;
+  /** Internal Finding.category — e.g. "lookalike", "cve", "ssl". */
+  category?: string | null;
+  /** Customer-facing bucket derived from category — e.g. "lookalike",
+   *  "vulnerabilities". Drives the alert filter chip set. */
+  customerCategory?: string | null;
   assetValue?: string;
   groupName?: string;
   source?: string;
