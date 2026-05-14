@@ -63,6 +63,7 @@ const CATEGORY_CONFIG: Record<string, { label: string; color: string }> = {
   misconfiguration: { label: "Misconfig",  color: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30" },
   vulnerability:    { label: "Vuln",       color: "bg-red-500/15 text-red-300 border-red-500/30" },
   cloud:            { label: "Cloud",      color: "bg-sky-500/15 text-sky-300 border-sky-500/30" },
+  lookalike:        { label: "Lookalike",  color: "bg-rose-500/15 text-rose-300 border-rose-500/30" },
   other:            { label: "Other",      color: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30" },
 };
 
