@@ -232,6 +232,24 @@ def asset_to_ui(a: Asset) -> Dict[str, Any]:
     result["lookalikeWatch"] = bool(getattr(a, "lookalike_watch", False))
     last_la = getattr(a, "last_lookalike_scan_at", None)
     result["lastLookalikeScanAt"] = last_la.isoformat() if last_la else None
+
+    # Site Mimic Watch baseline status (bundled with Lookalike). Surfaces
+    # the captured_at / last_refresh_at on the asset detail page so
+    # customers can see when the matcher's reference snapshot was taken
+    # and trigger a manual refresh when their site changes.
+    try:
+        from app.models import MimicBaseline
+        baseline = MimicBaseline.query.filter_by(asset_id=a.id).first()
+    except Exception:
+        baseline = None
+    if baseline is not None:
+        result["mimicBaseline"] = {
+            "capturedAt": baseline.captured_at.isoformat() if baseline.captured_at else None,
+            "lastRefreshAt": baseline.last_refresh_at.isoformat() if baseline.last_refresh_at else None,
+            "hasImage": bool(baseline.baseline_image_key),
+        }
+    else:
+        result["mimicBaseline"] = None
     return result
 
 
@@ -1471,6 +1489,65 @@ def disable_lookalike_watch(asset_id: str):
         db.session.commit()
 
     return jsonify(asset_to_ui(a1)), 200
+
+
+@assets_bp.post("/assets/<asset_id>/mimic-baseline-refresh")
+@require_auth
+@allow_api_key
+@require_role("analyst")
+def refresh_mimic_baseline(asset_id: str):
+    """Manually re-capture the Site Mimic Watch baseline for an asset.
+
+    Returns 202 if the capture is scheduled / running. Returns 400 if
+    the asset doesn't have lookalike_watch on (the feature requires
+    Lookalike monitoring). Returns 503 if MIMIC_ENABLED isn't set on
+    the deployment."""
+    import os
+    org_id = current_organization_id()
+    uid = current_user_id()
+
+    a1 = Asset.query.filter_by(id=int(asset_id), organization_id=org_id).first()
+    if not a1:
+        return jsonify(error="asset not found"), 404
+    if not a1.lookalike_watch:
+        return jsonify(
+            error="Enable lookalike monitoring on this asset before refreshing the mimic baseline."
+        ), 400
+    if a1.asset_type != "domain":
+        return jsonify(
+            error="Site Mimic Watch is only supported for domain assets."
+        ), 400
+    if os.environ.get("MIMIC_ENABLED", "").strip().lower() != "true":
+        return jsonify(
+            error="Site Mimic Watch is not enabled on this deployment."
+        ), 503
+
+    # Synchronous capture — typically 5-10s. Acceptable for a manual
+    # button-click endpoint; the scheduler path is the async one.
+    from app.services.mimic_baseline import capture_baseline
+    captured = capture_baseline(a1, force=True)
+
+    log_audit(
+        organization_id=org_id,
+        user_id=uid,
+        action="asset.mimic_baseline_refreshed",
+        category="asset",
+        target_type="asset",
+        target_id=str(a1.id),
+        target_label=a1.value,
+        description=f"Refreshed Site Mimic Watch baseline for {a1.value}",
+        metadata={"status": captured.status},
+    )
+
+    if captured.status != "captured":
+        return jsonify(
+            error=f"Baseline capture failed: {captured.status}",
+        ), 502
+
+    return jsonify(
+        message="Baseline refreshed.",
+        capturedAt=captured.captured_at.isoformat() if captured.captured_at else None,
+    ), 202
 
 
 @assets_bp.post("/assets/<asset_id>/lookalike-scan")

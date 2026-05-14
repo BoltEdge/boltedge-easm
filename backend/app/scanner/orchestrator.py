@@ -340,6 +340,19 @@ def _get_enabled_engines(profile: Optional[ScanProfile], asset: Optional[Asset] 
     if getattr(profile, "use_lookalike", False):
         enabled.append("lookalike")
 
+        # Site Mimic Watch is bundled with Lookalike — when Lookalike runs
+        # and the asset has lookalike_watch=true AND MIMIC_ENABLED is set,
+        # Mimic runs as a second pass. The engine itself short-circuits
+        # silently when any of those conditions fails so the orchestrator
+        # can safely always add it when the env var is set.
+        import os as _os
+        if (
+            asset is not None
+            and getattr(asset, "lookalike_watch", False)
+            and _os.environ.get("MIMIC_ENABLED", "").strip().lower() == "true"
+        ):
+            enabled.append("mimic")
+
     return enabled
 
 

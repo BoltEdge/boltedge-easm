@@ -2111,3 +2111,44 @@ class PasteCache(db.Model):
     date_pasted = db.Column(db.DateTime, nullable=False)
     fetched_at = db.Column(db.DateTime, nullable=False, default=now_utc)
     expires_at = db.Column(db.DateTime, nullable=False, index=True)
+
+
+class MimicBaseline(db.Model):
+    """Per-asset baseline used by the Site Mimic Watch matcher.
+    Captured on first enable + refreshed weekly + on manual trigger.
+    Stores four signal hashes plus an S3 key for the baseline screenshot
+    so the finding-details dialog can render side-by-side comparisons."""
+    __tablename__ = "mimic_baseline"
+
+    asset_id = db.Column(db.Integer,
+                         db.ForeignKey("asset.id", ondelete="CASCADE"),
+                         primary_key=True)
+    structural_hash = db.Column(db.String(64), nullable=False)
+    favicon_phash = db.Column(db.String(64), nullable=True)
+    visual_phash = db.Column(db.String(64), nullable=False)
+    key_strings_json = db.Column(db.JSON, nullable=False)
+    baseline_image_key = db.Column(db.String(255), nullable=True)
+    captured_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    last_refresh_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+
+
+class CtLogCandidate(db.Model):
+    """Queue of CT-log-discovered hostnames waiting to be matched against
+    a watched-asset baseline. Bounded by per-keyword poll cap + hourly
+    cleanup of rows past expires_at."""
+    __tablename__ = "ct_log_candidate"
+
+    id = db.Column(db.Integer, primary_key=True)
+    brand_keyword = db.Column(db.String(64), nullable=False)
+    hostname = db.Column(db.String(255), nullable=False)
+    cert_id = db.Column(db.String(40), nullable=False)
+    cert_logged_at = db.Column(db.DateTime, nullable=True)
+    discovered_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    processed_at = db.Column(db.DateTime, nullable=True)
+    processed_status = db.Column(db.String(20), nullable=True)
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)
+
+    __table_args__ = (
+        UniqueConstraint("cert_id", "hostname",
+                         name="uq_ct_log_candidate_cert_hostname"),
+    )

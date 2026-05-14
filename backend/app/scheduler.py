@@ -303,6 +303,42 @@ def _run_pastebin_cleanup(app):
             logger.exception("pastebin_cleanup crashed")
 
 
+def _run_ct_log_monitor(app):
+    """15-minute job: poll crt.sh for every unique brand keyword across
+    watched assets; insert new candidates into ct_log_candidate. Only
+    runs when MIMIC_ENABLED is set so deployments without the S3 bucket
+    configured don't burn cycles."""
+    import os
+    if os.environ.get("MIMIC_ENABLED", "").strip().lower() != "true":
+        return
+    with app.app_context():
+        from app.services.ct_log_monitor import (
+            collect_brand_keywords, poll_brand_keywords,
+        )
+        try:
+            keywords = collect_brand_keywords()
+            if not keywords:
+                return
+            n = poll_brand_keywords(keywords)
+            if n:
+                logger.info("ct_log_monitor: ingested %d candidates across %d keywords",
+                            n, len(keywords))
+        except Exception:
+            logger.exception("ct_log_monitor crashed")
+
+
+def _run_ct_log_cleanup(app):
+    """Hourly cleanup: delete ct_log_candidate rows past their TTL."""
+    with app.app_context():
+        from app.services.ct_log_monitor import cleanup_expired_candidates
+        try:
+            deleted = cleanup_expired_candidates()
+            if deleted:
+                logger.info("ct_log_cleanup: removed %d expired candidates", deleted)
+        except Exception:
+            logger.exception("ct_log_cleanup crashed")
+
+
 def _run_lookalike_schedule(app):
     """
     Daily APScheduler job: enqueue lookalike scans for watched assets
@@ -346,6 +382,27 @@ def _run_lookalike_schedule(app):
                 logger.info("lookalike_schedule: no stale watched assets this cycle")
                 return
 
+            # When Site Mimic Watch is enabled on the deployment, capture
+            # / refresh each watched asset's baseline BEFORE we enqueue
+            # the scan job. The scan runs the mimic engine as a second
+            # pass after lookalike; it short-circuits silently if no
+            # baseline exists, which is why we capture first.
+            import os as _os
+            mimic_enabled = _os.environ.get("MIMIC_ENABLED", "").strip().lower() == "true"
+            baseline_captured = 0
+            if mimic_enabled:
+                from app.services.mimic_baseline import capture_baseline
+                for asset in watched:
+                    try:
+                        res = capture_baseline(asset, force=False)
+                        if res.status == "captured" and res.captured_at is not None:
+                            baseline_captured += 1
+                    except Exception:
+                        logger.exception(
+                            "lookalike_schedule: baseline capture failed for asset_id=%s",
+                            asset.id,
+                        )
+
             for asset in watched:
                 job = ScanJob(
                     asset_id=asset.id,
@@ -356,7 +413,9 @@ def _run_lookalike_schedule(app):
                 db.session.add(job)
             db.session.commit()
             logger.info(
-                "lookalike_schedule: enqueued %d lookalike scans", len(watched)
+                "lookalike_schedule: enqueued %d lookalike scans"
+                " (mimic baselines captured/refreshed: %d)",
+                len(watched), baseline_captured,
             )
         except Exception:
             logger.exception("lookalike_schedule crashed")
@@ -462,6 +521,25 @@ def init_scheduler(app):
         trigger=IntervalTrigger(hours=1),
         id="pastebin.cleanup",
         name="Delete expired paste_cache rows (hourly)",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    # Site Mimic Watch — CT log polling. Job itself no-ops when
+    # MIMIC_ENABLED isn't set; safe to register unconditionally.
+    _scheduler.add_job(
+        func=lambda: _run_ct_log_monitor(app),
+        trigger=IntervalTrigger(minutes=15),
+        id="mimic.ct_log_monitor",
+        name="Site Mimic Watch — CT log polling (every 15 min)",
+        replace_existing=True,
+        max_instances=1,
+    )
+    _scheduler.add_job(
+        func=lambda: _run_ct_log_cleanup(app),
+        trigger=IntervalTrigger(hours=1),
+        id="mimic.ct_log_cleanup",
+        name="Site Mimic Watch — delete expired CT log candidates (hourly)",
         replace_existing=True,
         max_instances=1,
     )

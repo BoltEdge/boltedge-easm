@@ -11,6 +11,13 @@ colorama==0.4.6
 cryptography==44.0.0
 dnspython==2.7.0
 dnstwist==20250130
+# Site Mimic Watch — Playwright + Chromium for screenshot capture,
+# imagehash for perceptual hashing, Pillow for image decode, boto3
+# for S3 storage. Whole stack is no-op when MIMIC_ENABLED is false.
+playwright==1.50.0
+imagehash==4.3.1
+Pillow==11.2.1
+boto3==1.35.96
 filelock==3.20.3
 Flask==3.1.2
 Flask-CORS==5.0.1
