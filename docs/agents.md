@@ -404,11 +404,25 @@ To turn it on in prod:
 - Ensure `team_memory` has a `github:repo_slug` fact pointing at the right repo (the writer extracts owner/repo from the rule sentence's `github.com/…` URL).
 - Configure branch protection on `master` in GitHub UI: require `pytest` to pass before merge.
 
-## What's coming next (Phase 2B-2+, not built yet)
+## Phase 2B-2 polish (agent memory CRUD, shipped)
 
-- **More write tools**: `send_email_draft` (John's drafts get a "send" path) and `update_agent_memory` (agents propose memory writes via tool, same approval flow)
+All 6 agents can now manage their own memory through the approval queue:
+
+- **`read_agent_memory`** — inline read of the caller's own memory. No approval needed; returns matching rows as JSON. Use case: an agent wants to check a previously-noted fact mid-run.
+- **`update_agent_memory`** — queues a memory write for your approval. Use case: an agent wants to remember a customer preference, a recurring pattern, or a domain rule across runs.
+- **`delete_agent_memory`** — queues a memory delete for your approval. Use case: hygiene — an agent flags that a previously-noted fact is no longer accurate.
+
+Scope is locked server-side. Each tool's `agent_id` is always the calling agent. There is no way for one agent to read or write another agent's memory through these tools.
+
+Approval queue UI shows memory-delete with a red chip (visually distinct from memory-write) and an "Approve delete" button label so the destructive action is clear before you click.
+
+What's still CLI-only: team_memory writes, cross-agent operations, bulk operations.
+
+## What's coming next (Phase 2B-3+, not built yet)
+
+- **Send-class write tools**: `send_email_draft` (John's drafts get a "send" path) and `propose_team_memory_write`
 - **Memory hygiene job**: weekly cleanup of stale/expired memory rows
 - **Customer-facing send service**: actually sends John's approved drafts to customers
 - **Agent-to-agent hand-offs**: Sam can delegate to Rob, Rob's output flows back to Sam — durable queue + workflow
 
-When you're ready, the brainstorming-then-spec-then-plan workflow we used for Phase 1, 2A, and 2B-1 picks up the same way.
+When you're ready, the brainstorming-then-spec-then-plan workflow we used for Phase 1, 2A, 2B-1, and 2B-2 picks up the same way.
