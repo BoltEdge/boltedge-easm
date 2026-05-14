@@ -67,3 +67,44 @@ def test_read_agent_memory_handler_empty_for_unknown_agent(db_session):
     t = TOOL_REGISTRY["read_agent_memory"]
     out = t.handler(agent_id="nonexistent-agent")
     assert json.loads(out) == []
+
+
+def test_update_agent_memory_is_registered_and_requires_approval():
+    t = TOOL_REGISTRY["update_agent_memory"]
+    assert t.requires_approval is True
+    assert t.action_type == "memory-write"
+    assert t.idempotent is False
+
+
+def test_update_agent_memory_schema_requires_key_value_tags():
+    t = TOOL_REGISTRY["update_agent_memory"]
+    required = set(t.input_schema.get("required", []))
+    assert {"key", "value", "tags"} <= required
+    # agent_id MUST NOT be in the schema — scope is server-side.
+    assert "agent_id" not in t.input_schema["properties"]
+
+
+def test_update_agent_memory_handler_is_sentinel():
+    t = TOOL_REGISTRY["update_agent_memory"]
+    out = t.handler(key="x", value={"y": 1}, tags=["z"])
+    assert "should never" in out.lower() or "approval" in out.lower()
+
+
+def test_delete_agent_memory_is_registered_and_requires_approval():
+    t = TOOL_REGISTRY["delete_agent_memory"]
+    assert t.requires_approval is True
+    assert t.action_type == "memory-delete"
+    assert t.idempotent is False
+
+
+def test_delete_agent_memory_schema_requires_key_only():
+    t = TOOL_REGISTRY["delete_agent_memory"]
+    required = set(t.input_schema.get("required", []))
+    assert required == {"key"}
+    assert "agent_id" not in t.input_schema["properties"]
+
+
+def test_delete_agent_memory_handler_is_sentinel():
+    t = TOOL_REGISTRY["delete_agent_memory"]
+    out = t.handler(key="x")
+    assert "should never" in out.lower() or "approval" in out.lower()

@@ -91,3 +91,119 @@ register_tool(ToolDef(
     idempotent=True,
     result_cap_bytes=20000,
 ))
+
+
+def _memory_write_sentinel(**kwargs) -> str:
+    """Sentinel for update_agent_memory and delete_agent_memory. The
+    runtime must intercept on requires_approval=True before this is
+    called. If it runs, return a clear error so we notice."""
+    return (
+        "[error: memory write sentinel handler reached the synchronous "
+        "path; this should never happen — the runtime should have "
+        "queued this for approval instead. Check runtime's "
+        "requires_approval branch.]"
+    )
+
+
+register_tool(ToolDef(
+    name="update_agent_memory",
+    description=(
+        "Propose adding or updating a row in your own agent_memory. "
+        "The proposal queues for the director's approval; nothing is "
+        "written until they ✓. Use this when you've learned a fact "
+        "worth remembering across runs (a customer preference, a "
+        "recurring pattern, a domain rule). Reusing the same `key` "
+        "updates the existing row in place. Scoped automatically to "
+        "you — no way to write to another agent's memory."
+    ),
+    input_schema={
+        "type": "object",
+        "required": ["key", "value", "tags"],
+        "properties": {
+            "key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "description": (
+                    "Stable identifier for this fact. Reuse the same "
+                    "key to update; choose new keys for new facts. "
+                    "Common shapes: 'fact:topic:detail', "
+                    "'customer:acme:tier'."
+                ),
+            },
+            "value": {
+                "type": "object",
+                "description": (
+                    "Free-form JSON object holding the fact. Common "
+                    "shape: {rule: '...'} for rule-style facts; "
+                    "{n: 123, ...} for numeric facts."
+                ),
+            },
+            "tags": {
+                "type": "array",
+                "items": {"type": "string"},
+                "minItems": 1,
+                "description": (
+                    "Filter tags used at retrieval time. Common: "
+                    "topic:..., customer:..., source:meeting."
+                ),
+            },
+            "source": {
+                "type": "string",
+                "description": (
+                    "Where the fact came from. e.g. 'user-told', "
+                    "'agent-observation', 'web-fetch'. Defaults to "
+                    "'agent-observation' if omitted."
+                ),
+            },
+            "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "0..1; defaults to 1.0.",
+            },
+            "expires_at": {
+                "type": "string",
+                "description": (
+                    "ISO 8601 timestamp; omit for facts that never "
+                    "expire."
+                ),
+            },
+        },
+    },
+    handler=_memory_write_sentinel,
+    idempotent=False,
+    result_cap_bytes=0,
+    requires_approval=True,
+    action_type="memory-write",
+))
+
+
+register_tool(ToolDef(
+    name="delete_agent_memory",
+    description=(
+        "Propose deleting a row from your own agent_memory. The "
+        "proposal queues for the director's approval. Use this when a "
+        "previously-remembered fact is no longer true or relevant. "
+        "Scoped automatically to you. If the key does not exist, the "
+        "approval will still apply cleanly and the applied_result "
+        "will say so."
+    ),
+    input_schema={
+        "type": "object",
+        "required": ["key"],
+        "properties": {
+            "key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "description": "Exact key of the row to delete.",
+            },
+        },
+    },
+    handler=_memory_write_sentinel,
+    idempotent=False,
+    result_cap_bytes=0,
+    requires_approval=True,
+    action_type="memory-delete",
+))
