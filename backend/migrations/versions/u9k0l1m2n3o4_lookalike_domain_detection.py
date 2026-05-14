@@ -52,12 +52,16 @@ def upgrade():
 
     # Seed the Lookalike Scan system profile. Inserted via raw SQL so the
     # migration is self-contained (no Python model imports). Idempotent
-    # via the WHERE NOT EXISTS guard.
+    # via the WHERE NOT EXISTS guard. shodan_include_* and timeout_seconds
+    # are NOT NULL on the table with no server_default, so we set them
+    # explicitly even though the engine never reads them on this profile.
     op.execute("""
         INSERT INTO scan_profile (
             name, description, is_system, is_default, is_active,
             use_shodan, use_nmap, use_nuclei, use_sslyze, use_leak,
             use_lookalike,
+            shodan_include_history, shodan_include_cves, shodan_include_dns,
+            timeout_seconds,
             created_at, updated_at
         )
         SELECT
@@ -66,6 +70,8 @@ def upgrade():
             true, false, true,
             false, false, false, false, false,
             true,
+            false, false, false,
+            300,
             NOW(), NOW()
         WHERE NOT EXISTS (
             SELECT 1 FROM scan_profile
