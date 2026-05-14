@@ -341,6 +341,148 @@ class LeakAnalyzer(BaseAnalyzer):
                 finding_type="leak",
             ))
 
+        # ── 4. GitHub Issues / PRs ──
+        gh_issues = leak_data.get("github_issues_prs", {})
+        for search in gh_issues.get("searches", []):
+            count = search.get("totalResults") or search.get("total_results", 0)
+            if count == 0:
+                continue
+            template = get_template("leak-github-issue-pr")
+            if template is None:
+                logger.warning("Missing leak template: leak-github-issue-pr")
+                continue
+            category = search.get("category", "credentials")
+            sample_items = (search.get("items") or [])[:5]
+            details = {
+                "value": search.get("title") or category,
+                "search_query": search.get("query", ""),
+                "total_results": count,
+                "category": category,
+                "source": "github_issues_prs",
+                "sample_items": [
+                    {
+                        "type": it.get("type"),
+                        "number": it.get("number"),
+                        "title": it.get("title", "")[:200],
+                        "url": it.get("htmlUrl") or it.get("html_url"),
+                        "repository": it.get("repository", ""),
+                        "state": it.get("state"),
+                    }
+                    for it in sample_items
+                ],
+            }
+            engine_severity = search.get("severity", template.severity or "high")
+            drafts.append(_draft_from_template(
+                template,
+                template_id="leak-github-issue-pr",
+                severity_override=engine_severity,
+                confidence="medium",
+                asset=domain,
+                value=search.get("title") or category,
+                extra_tags=[category, "github-issues-prs"],
+                details=details,
+                dedupe_fields={
+                    "domain": domain,
+                    "source": "github_issues_prs",
+                    "category": category,
+                    "query_hash": (search.get("query", "") or "")[:50],
+                },
+                finding_type="leak",
+            ))
+
+        # ── 5. GitHub commit messages ──
+        gh_commits = leak_data.get("github_commits", {})
+        for search in gh_commits.get("searches", []):
+            count = search.get("totalResults") or search.get("total_results", 0)
+            if count == 0:
+                continue
+            template = get_template("leak-github-commit")
+            if template is None:
+                logger.warning("Missing leak template: leak-github-commit")
+                continue
+            category = search.get("category", "credentials")
+            sample_items = (search.get("items") or [])[:5]
+            details = {
+                "value": search.get("title") or category,
+                "search_query": search.get("query", ""),
+                "total_results": count,
+                "category": category,
+                "source": "github_commits",
+                "sample_items": [
+                    {
+                        "sha": it.get("sha", "")[:12],
+                        "message": (it.get("message") or "")[:300],
+                        "url": it.get("htmlUrl") or it.get("html_url"),
+                        "repository": it.get("repository", ""),
+                        "author": it.get("author"),
+                        "date": it.get("date"),
+                    }
+                    for it in sample_items
+                ],
+            }
+            engine_severity = search.get("severity", template.severity or "high")
+            drafts.append(_draft_from_template(
+                template,
+                template_id="leak-github-commit",
+                severity_override=engine_severity,
+                confidence="medium",
+                asset=domain,
+                value=search.get("title") or category,
+                extra_tags=[category, "github-commits"],
+                details=details,
+                dedupe_fields={
+                    "domain": domain,
+                    "source": "github_commits",
+                    "category": category,
+                    "query_hash": (search.get("query", "") or "")[:50],
+                },
+                finding_type="leak",
+            ))
+
+        # ── 6. Pastebin matches ──
+        pb_data = leak_data.get("pastebin", {})
+        for match in pb_data.get("matches", []) or []:
+            template = get_template("leak-pastebin")
+            if template is None:
+                logger.warning("Missing leak template: leak-pastebin")
+                break  # one missing template aborts the whole pastebin batch
+            paste_key = match.get("paste_key") or ""
+            if not paste_key:
+                continue
+            details = {
+                "value": match.get("paste_url") or f"https://pastebin.com/{paste_key}",
+                "paste_url": match.get("paste_url"),
+                "paste_key": paste_key,
+                "title": match.get("title"),
+                "author": match.get("author"),
+                "syntax": match.get("syntax"),
+                "size_bytes": match.get("size_bytes"),
+                "snippet": match.get("snippet", "")[:500] if match.get("snippet") else None,
+                "date_pasted": match.get("date_pasted"),
+                "source": "pastebin",
+            }
+            # Severity here is uniform — the LeakEngine cache match just
+            # tells us "your domain is in a public paste." Whether that
+            # paste is a credential dump or a benign mention is up to the
+            # operator to confirm. Treat all matches as high by default;
+            # the template-rendering layer surfaces remediation guidance.
+            drafts.append(_draft_from_template(
+                template,
+                template_id="leak-pastebin",
+                severity_override=template.severity or "high",
+                confidence="medium",
+                asset=domain,
+                value=match.get("paste_url") or paste_key,
+                extra_tags=["pastebin", "paste-site"],
+                details=details,
+                dedupe_fields={
+                    "domain": domain,
+                    "source": "pastebin",
+                    "paste_key": paste_key,
+                },
+                finding_type="leak",
+            ))
+
         if drafts:
             logger.info(
                 "LeakAnalyzer: %d finding(s) for %s — %d critical, %d high",

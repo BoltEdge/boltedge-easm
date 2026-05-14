@@ -3004,6 +3004,105 @@ _r(FindingTemplate(
 
 
 # ───────────────────────────────────────────────────────────────────────────
+# Extended public-surface leak templates: GitHub Issues/PRs, GitHub commit
+# messages, and Pastebin. One template per source — the search-pattern
+# severity stamped onto each engine "search" result is what drives the
+# final severity, so the templates carry copy that's source-aware rather
+# than category-specific.
+# ───────────────────────────────────────────────────────────────────────────
+
+_r(FindingTemplate(
+    template_id="leak-github-issue-pr",
+    title="Mentions of {asset} found in public GitHub issues or pull requests",
+    description=(
+        "Public GitHub issue / pull-request search returned posts that "
+        "reference {asset} alongside credential keywords (password, "
+        "secret, token, api_key, aws_access_key). Issues and PR "
+        "descriptions are a common place developers paste credentials "
+        "by accident — usually during a bug report or a paste of a "
+        "stack trace that included a session token."
+    ),
+    remediation=(
+        "Open each matching issue or PR. If a real credential is "
+        "present, rotate the credential first, then ask the repo "
+        "maintainer to edit or delete the post. Note that GitHub keeps "
+        "an audit trail of edited content, so rotation must precede "
+        "deletion — don't rely on the delete alone."
+    ),
+    severity="high",
+    category="leak",
+    cwe="CWE-200",
+    tags=["github-leak", "issues", "pull-requests"],
+    summary="Public GitHub issues / PRs reference {asset} alongside credential keywords — investigate each match.",
+    alert_name="GitHub — Issue or PR Mention",
+    monitor_type="github_change",
+    references=list(_LEAK_REFS_GITHUB),
+))
+
+_r(FindingTemplate(
+    template_id="leak-github-commit",
+    title="Commit messages referencing {asset} found in public GitHub history",
+    description=(
+        "Public GitHub commit-message search returned commits whose "
+        "message text references {asset} alongside credential keywords. "
+        "Commit messages frequently contain credentials when an author "
+        "documents a config change ('Updated AWS_ACCESS_KEY to …') or "
+        "rotates a secret in-line in the commit summary. The commit "
+        "content itself isn't searched here — that's a separate, "
+        "heavier scan — but the message alone is often enough to "
+        "confirm a leak."
+    ),
+    remediation=(
+        "Open each matching commit. If the message itself contains a "
+        "credential, rotate it immediately — assume it's been scraped. "
+        "Note that rewriting git history to remove the message is "
+        "rarely useful; mirrors and forks retain the original. Rotate "
+        "first, document the leak, and move on."
+    ),
+    severity="high",
+    category="leak",
+    cwe="CWE-200",
+    tags=["github-leak", "commits", "git-history"],
+    summary="Public GitHub commit messages reference {asset} alongside credential keywords — assume secrets are leaked.",
+    alert_name="GitHub — Commit Message Mention",
+    monitor_type="github_change",
+    references=list(_LEAK_REFS_GITHUB),
+))
+
+_r(FindingTemplate(
+    template_id="leak-pastebin",
+    title="Pastebin paste referencing {asset} detected in public feed",
+    description=(
+        "A public Pastebin paste ingested into our rolling 7-day cache "
+        "contains a mention of {asset}. Pastebin is the most common "
+        "platform for credential dumps and breach posts — when a "
+        "domain appears alongside what looks like credentials, treat "
+        "it as a likely leak until proven otherwise. The full paste "
+        "content is available via the link in the details panel."
+    ),
+    remediation=(
+        "Open the paste and review what's exposed. If credentials or "
+        "PII are present, rotate immediately and notify the data "
+        "subjects where required (GDPR / Australian Notifiable Data "
+        "Breaches scheme). Pastebin has an abuse-report flow that can "
+        "remove the paste, though the content has likely already been "
+        "scraped by other parties before takedown."
+    ),
+    severity="high",
+    category="leak",
+    cwe="CWE-200",
+    tags=["pastebin", "paste-site", "public-leak"],
+    summary="A public Pastebin paste mentions {asset} — review the content and rotate credentials if present.",
+    alert_name="Pastebin — Paste Mention",
+    monitor_type="github_change",
+    references=[
+        "https://pastebin.com/",
+        "https://www.oaic.gov.au/privacy/notifiable-data-breaches",
+    ],
+))
+
+
+# ───────────────────────────────────────────────────────────────────────────
 # Nuclei — Marquee CVEs (Batch D1)
 # ───────────────────────────────────────────────────────────────────────────
 # Curated copy for the high-impact CVEs that customers recognise by

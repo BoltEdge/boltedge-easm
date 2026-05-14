@@ -300,4 +300,271 @@ def run_github_leak_scan(domain: str, full: bool = True) -> dict:
     if full:
         response["searches"] = results
 
+
+# ─────────────────────────────────────────────────────────────────────
+# Issues / PRs / Commit-message search
+#
+# These extend the public-source coverage beyond code files. Same auth
+# (GITHUB_TOKEN, same rate-limit envelope) but different endpoints:
+#   /search/issues    — covers both Issues and Pull Requests
+#   /search/commits   — commit messages across public repos
+#
+# Each helper returns the same shape as _github_code_search so the
+# engine and analyzer can iterate uniformly.
+# ─────────────────────────────────────────────────────────────────────
+
+# Lightweight query set for the broader-surface searches. Fewer patterns
+# than GITHUB_SEARCH_PATTERNS because issues / PR descriptions / commit
+# messages have lower signal density than code, so we don't want to
+# burn the rate-limit envelope on speculative queries.
+GITHUB_EXTRA_PATTERNS: List[Dict[str, Any]] = [
+    {
+        "query": '"{domain}" password',
+        "category": "credentials",
+        "severity": "high",
+        "title": "Credential mention",
+        "description": "A public message or commit contains both your domain and the word 'password'.",
+    },
+    {
+        "query": '"{domain}" secret',
+        "category": "secrets",
+        "severity": "high",
+        "title": "Secret keyword mention",
+        "description": "A public message or commit contains both your domain and the word 'secret'.",
+    },
+    {
+        "query": '"{domain}" token',
+        "category": "api_key",
+        "severity": "high",
+        "title": "Token mention",
+        "description": "A public message or commit contains both your domain and the word 'token'.",
+    },
+    {
+        "query": '"{domain}" api_key',
+        "category": "api_key",
+        "severity": "high",
+        "title": "API key mention",
+        "description": "A public message or commit contains both your domain and 'api_key'.",
+    },
+    {
+        "query": '"{domain}" aws_access_key',
+        "category": "cloud_creds",
+        "severity": "critical",
+        "title": "AWS key mention",
+        "description": "A public message or commit contains both your domain and 'aws_access_key'.",
+    },
+]
+
+
+def _github_issues_search(
+    query: str,
+    token: Optional[str] = None,
+    per_page: int = 5,
+) -> Dict[str, Any]:
+    """Search GitHub /search/issues for issues + pull requests.
+
+    Returns the same shape as _github_code_search but each item carries
+    issue/PR-specific fields (number, type, htmlUrl, repository)."""
+    import urllib.parse
+    url = (
+        f"{GITHUB_API}/search/issues?q={urllib.parse.quote(query)}"
+        f"&per_page={per_page}"
+    )
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "NanoASM-Scanner",
+    }
+    if token:
+        headers["Authorization"] = f"token {token}"
+
+    try:
+        resp = urlopen(Request(url, headers=headers), timeout=10)
+        data = json.loads(resp.read().decode("utf-8"))
+        items = []
+        for it in data.get("items", [])[:per_page]:
+            # GitHub returns PRs through this endpoint too; pull_request
+            # presence is the canonical PR signal.
+            is_pr = "pull_request" in it
+            # Repository name is encoded in the html_url path.
+            repo = ""
+            html_url = it.get("html_url") or ""
+            if html_url:
+                m = re.search(r"github\.com/([^/]+/[^/]+)/", html_url)
+                if m:
+                    repo = m.group(1)
+            items.append({
+                "type": "pr" if is_pr else "issue",
+                "number": it.get("number"),
+                "title": it.get("title", "")[:255],
+                "htmlUrl": html_url,
+                "repository": repo,
+                "state": it.get("state"),
+                "createdAt": it.get("created_at"),
+            })
+        return {
+            "total_count": data.get("total_count", 0),
+            "items": items,
+            "error": None,
+        }
+    except HTTPError as e:
+        if e.code == 403:
+            return {"total_count": 0, "items": [], "error": "GitHub API rate limit exceeded."}
+        if e.code == 422:
+            return {"total_count": 0, "items": [], "error": "GitHub issues search query validation failed."}
+        return {"total_count": 0, "items": [], "error": f"GitHub API error: {e.code}"}
+    except (URLError, OSError) as e:
+        return {"total_count": 0, "items": [], "error": f"Connection error: {str(e)}"}
+    except Exception as e:
+        return {"total_count": 0, "items": [], "error": f"{type(e).__name__}: {str(e)}"}
+
+
+def _github_commits_search(
+    query: str,
+    token: Optional[str] = None,
+    per_page: int = 5,
+) -> Dict[str, Any]:
+    """Search GitHub /search/commits for matching commit messages.
+
+    The commit-search endpoint requires the 'cloak-preview' Accept media
+    type on older API versions; the current production API supports it
+    natively but we send both for safety."""
+    import urllib.parse
+    url = (
+        f"{GITHUB_API}/search/commits?q={urllib.parse.quote(query)}"
+        f"&per_page={per_page}"
+    )
+    headers = {
+        "Accept": "application/vnd.github.cloak-preview+json",
+        "User-Agent": "NanoASM-Scanner",
+    }
+    if token:
+        headers["Authorization"] = f"token {token}"
+
+    try:
+        resp = urlopen(Request(url, headers=headers), timeout=10)
+        data = json.loads(resp.read().decode("utf-8"))
+        items = []
+        for it in data.get("items", [])[:per_page]:
+            commit = it.get("commit") or {}
+            repository = it.get("repository") or {}
+            items.append({
+                "sha": it.get("sha"),
+                "message": (commit.get("message") or "")[:500],
+                "htmlUrl": it.get("html_url") or "",
+                "repository": repository.get("full_name") or "",
+                "author": (commit.get("author") or {}).get("name"),
+                "date": (commit.get("author") or {}).get("date"),
+            })
+        return {
+            "total_count": data.get("total_count", 0),
+            "items": items,
+            "error": None,
+        }
+    except HTTPError as e:
+        if e.code == 403:
+            return {"total_count": 0, "items": [], "error": "GitHub API rate limit exceeded."}
+        if e.code == 422:
+            return {"total_count": 0, "items": [], "error": "GitHub commit search query validation failed."}
+        return {"total_count": 0, "items": [], "error": f"GitHub API error: {e.code}"}
+    except (URLError, OSError) as e:
+        return {"total_count": 0, "items": [], "error": f"Connection error: {str(e)}"}
+    except Exception as e:
+        return {"total_count": 0, "items": [], "error": f"{type(e).__name__}: {str(e)}"}
+
+
+def _run_github_extra_scan(
+    domain: str,
+    *,
+    full: bool,
+    max_searches: int,
+    search_fn,
+) -> Dict[str, Any]:
+    """Shared orchestrator for the two new search surfaces.
+
+    `search_fn` is `_github_issues_search` or `_github_commits_search`.
+    Wraps each pattern in a per-iteration try/except so one bad query
+    doesn't abort the others."""
+    token = os.environ.get("GITHUB_TOKEN")
+    results: List[Dict[str, Any]] = []
+    total = 0
+    rate_limited = False
+    sev_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+
+    patterns = GITHUB_EXTRA_PATTERNS[:max_searches]
+    for pattern in patterns:
+        query = pattern["query"].replace("{domain}", domain)
+        try:
+            sr = search_fn(query, token=token)
+        except Exception as e:
+            results.append({
+                "query": query,
+                "category": pattern["category"],
+                "severity": pattern["severity"],
+                "title": pattern["title"],
+                "description": pattern["description"],
+                "totalResults": 0,
+                "error": f"{type(e).__name__}: {str(e)}",
+            })
+            continue
+
+        if sr.get("error") and "rate limit" in sr["error"].lower():
+            rate_limited = True
+            break
+
+        count = sr.get("total_count", 0)
+        entry: Dict[str, Any] = {
+            "query": query,
+            "category": pattern["category"],
+            "severity": pattern["severity"],
+            "title": pattern["title"],
+            "description": pattern["description"],
+            "totalResults": count,
+        }
+        if count > 0:
+            total += count
+            sev_counts[pattern["severity"]] = sev_counts.get(pattern["severity"], 0) + 1
+            if full:
+                entry["items"] = sr.get("items", [])
+        if sr.get("error"):
+            entry["error"] = sr["error"]
+        results.append(entry)
+        # Light pacing — GitHub search API allows 30 req/min authenticated,
+        # 10/min anonymous. Sleeping a couple seconds between patterns
+        # keeps us comfortably under either ceiling.
+        time.sleep(2.0 if not token else 1.0)
+
+    response: Dict[str, Any] = {
+        "domain": domain,
+        "totalLeaks": total,
+        "searchesCompleted": len(results),
+        "severityCounts": sev_counts,
+        "hasGitHubToken": token is not None,
+        "rateLimited": rate_limited,
+    }
+    if full:
+        response["searches"] = results
+    return response
+
+
+def run_github_issue_pr_scan(
+    domain: str, *, full: bool = True, max_searches: int = 5,
+) -> Dict[str, Any]:
+    """Scan public GitHub issues + pull requests for credential mentions
+    associated with the given domain. Same shape as run_github_leak_scan."""
+    return _run_github_extra_scan(
+        domain, full=full, max_searches=max_searches,
+        search_fn=_github_issues_search,
+    )
+
+
+def run_github_commits_scan(
+    domain: str, *, full: bool = True, max_searches: int = 5,
+) -> Dict[str, Any]:
+    """Scan public GitHub commit messages for credential mentions
+    associated with the given domain. Same shape as run_github_leak_scan."""
+    return _run_github_extra_scan(
+        domain, full=full, max_searches=max_searches,
+        search_fn=_github_commits_search,
+    )
+
     return response

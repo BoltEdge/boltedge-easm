@@ -264,6 +264,45 @@ def _run_refresh_kev_feed(app):
             logger.exception("refresh_kev_feed crashed")
 
 
+def _run_pastebin_fetcher(app):
+    """60s APScheduler job: pull the latest 250 public Pastebin pastes
+    and upsert them into paste_cache. Skips silently when
+    PASTEBIN_FETCHER_ENABLED is unset. Never raises."""
+    with app.app_context():
+        from app.services.pastebin_client import fetch_recent_pastes_and_upsert
+        try:
+            n = fetch_recent_pastes_and_upsert()
+            if n:
+                logger.info("pastebin_fetcher: ingested %d new pastes", n)
+        except Exception:
+            logger.exception("pastebin_fetcher crashed")
+
+
+def _run_pastebin_cleanup(app):
+    """Hourly APScheduler job: delete paste_cache rows whose expires_at
+    is in the past. Bounds the table at ~360k rows over the 7-day TTL."""
+    from datetime import datetime, timezone
+    with app.app_context():
+        from app.extensions import db
+        from app.models import PasteCache
+        try:
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+            deleted = (
+                PasteCache.query
+                .filter(PasteCache.expires_at < now)
+                .delete(synchronize_session=False)
+            )
+            db.session.commit()
+            if deleted:
+                logger.info("pastebin_cleanup: removed %d expired pastes", deleted)
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            logger.exception("pastebin_cleanup crashed")
+
+
 def _run_lookalike_schedule(app):
     """
     Daily APScheduler job: enqueue lookalike scans for watched assets
@@ -403,6 +442,26 @@ def init_scheduler(app):
         trigger=CronTrigger(hour=3, minute=0),
         id="lookalike.schedule",
         name="Enqueue weekly lookalike scans for watched assets (daily 03:00 UTC)",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    # Pastebin background fetcher — every 60 seconds. Skips itself when
+    # PASTEBIN_FETCHER_ENABLED is not set, so deployments without a PRO
+    # account don't burn cycles. Cleanup runs hourly to bound the table.
+    _scheduler.add_job(
+        func=lambda: _run_pastebin_fetcher(app),
+        trigger=IntervalTrigger(seconds=60),
+        id="pastebin.fetcher",
+        name="Pastebin scraping API fetcher (every 60s)",
+        replace_existing=True,
+        max_instances=1,
+    )
+    _scheduler.add_job(
+        func=lambda: _run_pastebin_cleanup(app),
+        trigger=IntervalTrigger(hours=1),
+        id="pastebin.cleanup",
+        name="Delete expired paste_cache rows (hourly)",
         replace_existing=True,
         max_instances=1,
     )

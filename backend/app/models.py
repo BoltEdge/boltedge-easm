@@ -2091,3 +2091,23 @@ class EpssCache(db.Model):
     percentile = db.Column(db.Float, nullable=False)
     model_version = db.Column(db.String(20), nullable=True)
     fetched_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+
+
+class PasteCache(db.Model):
+    """Rolling 7-day cache of public Pastebin pastes used by the LeakEngine
+    to match customer domains. Populated by a background fetcher on a
+    60-second cadence (see app.scheduler._run_pastebin_fetcher). Rows
+    expire 7 days after ingestion and are removed by an hourly cleanup
+    job. Body is truncated to 64 KB to bound row size."""
+    __tablename__ = "paste_cache"
+
+    paste_key = db.Column(db.String(20), primary_key=True)
+    paste_url = db.Column(db.String(255), nullable=False)
+    title = db.Column(db.String(255), nullable=True)
+    author = db.Column(db.String(100), nullable=True)
+    syntax = db.Column(db.String(40), nullable=True)
+    size_bytes = db.Column(db.Integer, nullable=True)
+    body = db.Column(db.Text, nullable=False)
+    date_pasted = db.Column(db.DateTime, nullable=False)
+    fetched_at = db.Column(db.DateTime, nullable=False, default=now_utc)
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)

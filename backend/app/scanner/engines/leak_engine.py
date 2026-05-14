@@ -17,12 +17,18 @@ present in the snippet.
 This engine collects raw data. The LeakAnalyzer interprets findings.
 
 Profile config options:
-    check_sensitive_paths:  bool  (default: True)
-    check_github_leaks:    bool  (default: False for Quick, True for Deep)
-    check_gitlab_leaks:    bool  (default: same as github)
-    max_github_searches:   int   (default: 12)
-    max_gitlab_searches:   int   (default: 8)
-    path_timeout:          int   (default: 5)
+    check_sensitive_paths:    bool  (default: True)
+    check_github_leaks:       bool  (default: False for Quick, True for Deep)
+    check_gitlab_leaks:       bool  (default: same as github)
+    check_github_issues_prs:  bool  (default: same as github)
+    check_github_commits:     bool  (default: same as github)
+    check_pastebin:           bool  (default: True if PASTEBIN_FETCHER_ENABLED)
+    max_github_searches:      int   (default: 12)
+    max_gitlab_searches:      int   (default: 8)
+    max_github_issue_searches: int  (default: 5)
+    max_github_commit_searches: int (default: 5)
+    max_pastebin_matches:     int   (default: 50)
+    path_timeout:             int   (default: 5)
 """
 
 from __future__ import annotations
@@ -64,8 +70,20 @@ class LeakEngine(BaseEngine):
         check_paths = config.get("check_sensitive_paths", True)
         check_github = config.get("check_github_leaks", False)
         check_gitlab = config.get("check_gitlab_leaks", check_github)
+        check_issues_prs = config.get("check_github_issues_prs", check_github)
+        check_commits = config.get("check_github_commits", check_github)
+        # Pastebin matching follows the master use_leak gate. The shared
+        # cache is operator-controlled; if the background fetcher isn't
+        # running, the engine method returns an empty result silently.
+        check_pastebin = config.get(
+            "check_pastebin",
+            os.environ.get("PASTEBIN_FETCHER_ENABLED", "").strip().lower() == "true",
+        )
         max_searches = config.get("max_github_searches", 12)
         max_gitlab_searches = config.get("max_gitlab_searches", 8)
+        max_issue_searches = config.get("max_github_issue_searches", 5)
+        max_commit_searches = config.get("max_github_commit_searches", 5)
+        max_pastebin_matches = config.get("max_pastebin_matches", 50)
         path_timeout = config.get("path_timeout", 5)
 
         data: Dict[str, Any] = {"domain": domain}
@@ -146,7 +164,78 @@ class LeakEngine(BaseEngine):
         else:
             data["gitlab_leaks"] = {"total_leaks": 0, "searches": []}
 
-        # 4. Google dorks (always generated, no API call)
+        # 4. GitHub Issues / PRs — extended public-surface coverage. Same
+        #    GITHUB_TOKEN; lower max_searches by default since signal
+        #    density is lower than code.
+        if check_issues_prs:
+            github_token = os.environ.get("GITHUB_TOKEN")
+            if not github_token:
+                data["github_issues_prs"] = {
+                    "total_leaks": 0, "searches": [],
+                    "skipped": True, "reason": "GITHUB_TOKEN not configured",
+                }
+            else:
+                try:
+                    from app.tools.github_leaks import run_github_issue_pr_scan
+                    res = run_github_issue_pr_scan(
+                        domain, full=True, max_searches=max_issue_searches,
+                    )
+                    data["github_issues_prs"] = {
+                        "total_leaks": res.get("totalLeaks", 0),
+                        "searches": res.get("searches", []),
+                        "rate_limited": res.get("rateLimited", False),
+                    }
+                except Exception as e:
+                    logger.error("LeakEngine: GitHub issues/PRs scan failed for %s: %s", domain, e)
+                    data["github_issues_prs"] = {"total_leaks": 0, "searches": [], "error": str(e)}
+        else:
+            data["github_issues_prs"] = {"total_leaks": 0, "searches": []}
+
+        # 5. GitHub Commit messages — same auth as code search.
+        if check_commits:
+            github_token = os.environ.get("GITHUB_TOKEN")
+            if not github_token:
+                data["github_commits"] = {
+                    "total_leaks": 0, "searches": [],
+                    "skipped": True, "reason": "GITHUB_TOKEN not configured",
+                }
+            else:
+                try:
+                    from app.tools.github_leaks import run_github_commits_scan
+                    res = run_github_commits_scan(
+                        domain, full=True, max_searches=max_commit_searches,
+                    )
+                    data["github_commits"] = {
+                        "total_leaks": res.get("totalLeaks", 0),
+                        "searches": res.get("searches", []),
+                        "rate_limited": res.get("rateLimited", False),
+                    }
+                except Exception as e:
+                    logger.error("LeakEngine: GitHub commits scan failed for %s: %s", domain, e)
+                    data["github_commits"] = {"total_leaks": 0, "searches": [], "error": str(e)}
+        else:
+            data["github_commits"] = {"total_leaks": 0, "searches": []}
+
+        # 6. Pastebin — SQL match against the background-ingested cache.
+        if check_pastebin:
+            try:
+                from app.services.pastebin_client import match_pastes_for_domain
+                matches = match_pastes_for_domain(domain, max_matches=max_pastebin_matches)
+                data["pastebin"] = {
+                    "matches": matches,
+                    "total_leaks": len(matches),
+                    "ingestion_active": True,
+                }
+            except Exception as e:
+                logger.error("LeakEngine: Pastebin match failed for %s: %s", domain, e)
+                data["pastebin"] = {"matches": [], "total_leaks": 0, "error": str(e)}
+        else:
+            data["pastebin"] = {
+                "matches": [], "total_leaks": 0,
+                "ingestion_active": False,
+            }
+
+        # 7. Google dorks (always generated, no API call)
         if "dorks" not in data:
             from app.tools.github_leaks import GOOGLE_DORKS
             data["dorks"] = [
@@ -164,8 +253,14 @@ class LeakEngine(BaseEngine):
             "paths_checked": check_paths,
             "github_checked": check_github,
             "gitlab_checked": check_gitlab,
+            "github_issues_prs_checked": check_issues_prs,
+            "github_commits_checked": check_commits,
+            "pastebin_checked": check_pastebin,
             "github_token_available": bool(os.environ.get("GITHUB_TOKEN")),
             "gitlab_token_available": bool(os.environ.get("GITLAB_TOKEN")),
+            "pastebin_fetcher_enabled": (
+                os.environ.get("PASTEBIN_FETCHER_ENABLED", "").strip().lower() == "true"
+            ),
         }
 
         return result

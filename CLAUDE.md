@@ -10,7 +10,7 @@ Nano EASM (nanoeasm.com) is an External Attack Surface Management platform. User
 - **Brand colours:** Dark theme with teal (#14b8a6) accent
 
 ## Current Product Status (v2 — April 2026)
-Nano EASM v2 is open-source and **currently free** — every paid plan is free to upgrade until further notice. Plans still exist and control feature limits, but billing and payment are disabled. Key points:
+Nano EASM is a **commercial, closed-source product** — the source repo is private. It is **currently free to use** because billing is disabled by a feature flag; every paid plan is free to upgrade until further notice. Plans still exist and control feature limits, but billing and payment are switched off. Key points:
 
 - Do **not** describe the product as a "community edition", "community preview", or "community version" anywhere in code, copy, or docs. The accepted phrasing is "free upgrades until further notice" (or shortened equivalents like "currently free", "free to use")
 - Plans (Free, Starter, Professional, Enterprise Silver, Enterprise Gold, Custom) are **free upgrade tiers** — no payment is required
@@ -295,25 +295,12 @@ Key code:
 
 Env var required to actually open PRs: `GITHUB_TOKEN_AGENTS` (PAT with `public_repo` or `repo` scope). When unset, `create_pr()` raises a clear RuntimeError at approval time.
 
-### Phase 2B-2 (agent memory CRUD tools, shipped)
+### Phase 2B-2+ (still to plan)
 
-Three new agent tools, scoped server-side to the caller's own `agent_memory`:
-
-| Tool | Approval | Effect |
-|---|---|---|
-| `read_agent_memory(key?, tags?, limit?)` | none (read tool) | Returns JSON array of caller's matching rows |
-| `update_agent_memory(key, value, tags, source?, confidence?, expires_at?)` | yes (`memory-write`) | Approval-queued upsert via existing Phase 1 executor |
-| `delete_agent_memory(key)` | yes (`memory-delete`) | Approval-queued row delete; new executor branch |
-
-All 6 agents have all three. Scope binding is server-side: every tool's `agent_id` is `profile.name`; no cross-agent writes possible.
-
-For team_memory writes, the path is still CLI-only — that's deferred to a future phase. Bulk operations, retrieval beyond own scope, and a memory-management UI are also future scope.
-
-### Phase 2B-3+ (still to plan)
-
-- Write tools: `send_email_draft` (John ships approved drafts), `propose_team_memory_write`
+- Write tools: `send_email_draft`, `update_agent_memory`
+- Tuesday + Wednesday weekly briefs (Ava `competitor-pulse`, Maya `weekly-finding-brief`) — already shipped in 2A.1; left here for reference if scope expands
 - Memory hygiene weekly job
-- Customer-facing send service for approved drafts
+- Customer-facing send service for approved drafts (John ships approved drafts)
 - Hand-off queue between agents
 
 ## Billing Feature Flag
