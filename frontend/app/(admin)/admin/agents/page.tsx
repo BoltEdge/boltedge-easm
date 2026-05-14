@@ -1,12 +1,48 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AgentSummary, getAgents, getPendingApprovals } from "../../../lib/api";
+import {
+  AgentSummary,
+  AgentSpendRow,
+  getAgents,
+  getPendingApprovals,
+  getAgentSpend,
+} from "../../../lib/api";
 import { Bot, DollarSign, Cpu, PenLine } from "lucide-react";
+
+function spendBarColor(pct: number): string {
+  if (pct >= 90) return "#ef4444"; // red
+  if (pct >= 70) return "#f59e0b"; // amber
+  return "#14b8a6"; // teal
+}
+
+function SpendBar({ row }: { row: AgentSpendRow }) {
+  const color = spendBarColor(row.pct);
+  return (
+    <div className="mt-3">
+      <div className="flex items-center justify-between text-[11px] text-white/60">
+        <span>
+          ${row.spend_usd.toFixed(2)} / ${row.cap_usd.toFixed(0)}
+        </span>
+        <span>{row.pct.toFixed(1)}%</span>
+      </div>
+      <div className="h-1 bg-white/[0.06] rounded mt-1 overflow-hidden">
+        <div
+          className="h-full transition-all"
+          style={{
+            width: `${Math.min(100, row.pct)}%`,
+            backgroundColor: color,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function AgentListPage() {
   const [agents, setAgents] = useState<AgentSummary[] | null>(null);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const [spendByAgent, setSpendByAgent] = useState<Record<string, AgentSpendRow>>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -19,6 +55,17 @@ export default function AgentListPage() {
         setError(e?.message || String(e));
       }
     })();
+    // Spend is a separate fetch — silent failure is acceptable
+    // (spend bars just won't appear; rest of page still renders).
+    getAgentSpend()
+      .then((d) => {
+        const map: Record<string, AgentSpendRow> = {};
+        for (const a of d.agents) map[a.agent_id] = a;
+        setSpendByAgent(map);
+      })
+      .catch(() => {
+        /* silent */
+      });
   }, []);
 
   if (error) return <div className="text-red-400 text-sm">{error}</div>;
@@ -87,6 +134,7 @@ export default function AgentListPage() {
                   <dd className="text-white/70">${a.cost_cap_monthly_usd}</dd>
                 </div>
               </dl>
+              {spendByAgent[a.name] && <SpendBar row={spendByAgent[a.name]} />}
             </Link>
           ))}
         </div>
