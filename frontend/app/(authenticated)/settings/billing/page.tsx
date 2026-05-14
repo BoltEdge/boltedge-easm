@@ -49,13 +49,14 @@ function computeDeltas(currentLimits: any, targetLimits: any): PlanDelta[] {
   const out: PlanDelta[] = [];
 
   const numericFields: Array<{ key: string; label: string }> = [
-    { key: "assets",                label: "assets" },
-    { key: "scansPerMonth",         label: "scans per month" },
-    { key: "monitoredAssets",       label: "monitored assets" },
-    { key: "discoveriesPerMonth",   label: "discoveries per month" },
-    { key: "teamMembers",           label: "team members" },
-    { key: "scheduledScans",        label: "scheduled scans" },
-    { key: "apiKeys",               label: "API keys" },
+    { key: "assets",                  label: "assets" },
+    { key: "scansPerMonth",           label: "scans per month" },
+    { key: "monitoredAssets",         label: "monitored assets" },
+    { key: "discoveriesPerMonth",     label: "discoveries per month" },
+    { key: "lookalikeWatchDomains",   label: "lookalike-monitored domains" },
+    { key: "teamMembers",             label: "team members" },
+    { key: "scheduledScans",          label: "scheduled scans" },
+    { key: "apiKeys",                 label: "API keys" },
   ];
 
   for (const f of numericFields) {

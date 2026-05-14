@@ -1,5 +1,5 @@
 {
-  "generatedOn": "2026-05-08",
+  "generatedOn": "2026-05-14",
   "categories": [
     {
       "id": "vulnerabilities",
@@ -25,6 +25,11 @@
       "id": "security_hygiene",
       "label": "Security Hygiene",
       "blurb": "Expiring certificates, missing security headers, weak DMARC/SPF, and end-of-life software stacks."
+    },
+    {
+      "id": "lookalike",
+      "label": "Lookalike Domains",
+      "blurb": "Typosquats, homoglyph confusables, TLD swaps, and other domains registered to impersonate yours."
     }
   ]
 }

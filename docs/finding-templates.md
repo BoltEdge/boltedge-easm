@@ -1,8 +1,8 @@
 # Nano EASM — Finding Template Catalogue
 
-_Auto-generated from `backend/app/scanner/templates.py` on 2026-05-08._
+_Auto-generated from `backend/app/scanner/templates.py` on 2026-05-14._
 
-**Total templates registered: 341**
+**Total templates registered: 344**
 
 This catalogue is the single source of truth for every finding the platform produces. Each template carries the title, description, remediation, severity, CWE, references, and monitoring metadata that gets surfaced in the UI, in PDF reports, in email alerts, and inside the Nano EASM Assistant explainer.
 
@@ -13,7 +13,7 @@ Placeholders rendered at scan time: `{asset}`, `{value}`, `{port}`, `{provider}`
 - [DNS / Email Security](#dns--email-security) — 12 templates
 - [Subdomain Takeover](#subdomain-takeover) — 44 templates
 - [Cloud Asset Exposure](#cloud-asset-exposure) — 11 templates
-- [Sensitive Path / Leak Detection](#sensitive-path--leak-detection) — 32 templates
+- [Sensitive Path / Leak Detection](#sensitive-path--leak-detection) — 35 templates
 - [Nuclei — Marquee CVEs](#nuclei--marquee-cves) — 42 templates
 - [Nuclei — Other (panels, default-creds, misconfig, info-disclosure, generic)](#nuclei--other-panels-default-creds-misconfig-info-disclosure-generic) — 148 templates
 - [SSL / TLS](#ssl--tls) — 13 templates
@@ -2332,7 +2332,7 @@ _11 templates_
 
 ## Sensitive Path / Leak Detection
 
-_32 templates_
+_35 templates_
 
 ### `leak-env-file`
 
@@ -2872,6 +2872,60 @@ _32 templates_
 
 ---
 
+### `leak-github-commit`
+
+**Severity:** HIGH · **CWE:** CWE-200 · **Category:** data_leaks
+
+**Title:** Commit messages referencing {asset} found in public GitHub history
+
+**Summary:** Public GitHub commit messages reference {asset} alongside credential keywords — assume secrets are leaked.
+
+**Description:**
+
+> Public GitHub commit-message search returned commits whose message text references {asset} alongside credential keywords. Commit messages frequently contain credentials when an author documents a config change ('Updated AWS_ACCESS_KEY to …') or rotates a secret in-line in the commit summary. The commit content itself isn't searched here — that's a separate, heavier scan — but the message alone is often enough to confirm a leak.
+
+**Remediation:**
+
+> Open each matching commit. If the message itself contains a credential, rotate it immediately — assume it's been scraped. Note that rewriting git history to remove the message is rarely useful; mirrors and forks retain the original. Rotate first, document the leak, and move on.
+
+**Tags:** `github-leak`, `commits`, `git-history`
+**Alert name:** GitHub — Commit Message Mention
+**Monitor type:** `github_change`
+
+**References:**
+- GitHub — About secret scanning
+- OWASP Cheat Sheet — Secrets Management
+- trufflesecurity/trufflehog (open-source secret scanning)
+
+---
+
+### `leak-github-issue-pr`
+
+**Severity:** HIGH · **CWE:** CWE-200 · **Category:** data_leaks
+
+**Title:** Mentions of {asset} found in public GitHub issues or pull requests
+
+**Summary:** Public GitHub issues / PRs reference {asset} alongside credential keywords — investigate each match.
+
+**Description:**
+
+> Public GitHub issue / pull-request search returned posts that reference {asset} alongside credential keywords (password, secret, token, api_key, aws_access_key). Issues and PR descriptions are a common place developers paste credentials by accident — usually during a bug report or a paste of a stack trace that included a session token.
+
+**Remediation:**
+
+> Open each matching issue or PR. If a real credential is present, rotate the credential first, then ask the repo maintainer to edit or delete the post. Note that GitHub keeps an audit trail of edited content, so rotation must precede deletion — don't rely on the delete alone.
+
+**Tags:** `github-leak`, `issues`, `pull-requests`
+**Alert name:** GitHub — Issue or PR Mention
+**Monitor type:** `github_change`
+
+**References:**
+- GitHub — About secret scanning
+- OWASP Cheat Sheet — Secrets Management
+- trufflesecurity/trufflehog (open-source secret scanning)
+
+---
+
 ### `leak-gitlab-env-file`
 
 **Severity:** HIGH · **CWE:** CWE-200 · **Category:** data_leaks
@@ -2951,6 +3005,32 @@ _32 templates_
 - CWE-538: Insertion of Sensitive Information into Externally-Accessible File
 - npm Docs — Access Tokens
 - PyPI Help — API tokens
+
+---
+
+### `leak-pastebin`
+
+**Severity:** HIGH · **CWE:** CWE-200 · **Category:** data_leaks
+
+**Title:** Pastebin paste referencing {asset} detected in public feed
+
+**Summary:** A public Pastebin paste mentions {asset} — review the content and rotate credentials if present.
+
+**Description:**
+
+> A public Pastebin paste ingested into our rolling 7-day cache contains a mention of {asset}. Pastebin is the most common platform for credential dumps and breach posts — when a domain appears alongside what looks like credentials, treat it as a likely leak until proven otherwise. The full paste content is available via the link in the details panel.
+
+**Remediation:**
+
+> Open the paste and review what's exposed. If credentials or PII are present, rotate immediately and notify the data subjects where required (GDPR / Australian Notifiable Data Breaches scheme). Pastebin has an abuse-report flow that can remove the paste, though the content has likely already been scraped by other parties before takedown.
+
+**Tags:** `pastebin`, `paste-site`, `public-leak`
+**Alert name:** Pastebin — Paste Mention
+**Monitor type:** `github_change`
+
+**References:**
+- https://pastebin.com/
+- https://www.oaic.gov.au/privacy/notifiable-data-breaches
 
 ---
 

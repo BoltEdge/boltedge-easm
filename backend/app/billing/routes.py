@@ -352,6 +352,7 @@ def _build_plan_response(org: Organization) -> dict:
             "scansPerMonth": limits["scans_per_month"],
             "discoveriesPerMonth": limits.get("discoveries_per_month", -1),
             "monitoredAssets": limits.get("monitored_assets", 0),
+            "lookalikeWatchDomains": limits.get("lookalike_watch_domains", 0),
             "teamMembers": limits["team_members"],
             "scheduledScans": limits["scheduled_scans"],
             "apiKeys": limits["api_keys"],
@@ -420,6 +421,7 @@ def list_plans():
             "limits": {
                 "assets": limits["assets"],
                 "scansPerMonth": limits["scans_per_month"],
+                "lookalikeWatchDomains": limits.get("lookalike_watch_domains", 0),
                 "teamMembers": limits["team_members"],
                 "scheduledScans": limits["scheduled_scans"],
                 "apiKeys": limits["api_keys"],

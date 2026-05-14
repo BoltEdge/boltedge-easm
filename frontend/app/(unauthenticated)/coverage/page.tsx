@@ -9,7 +9,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  ArrowLeft, Bug, Globe2, KeyRound, AlertTriangle, ShieldCheck,
+  ArrowLeft, Bug, Globe2, KeyRound, AlertTriangle, ShieldCheck, Crosshair,
 } from "lucide-react";
 import LandingNav from "../LandingNav";
 import LandingFooter from "../LandingFooter";
@@ -98,6 +98,12 @@ const CATEGORY_VISUALS: Record<
     accent: "text-teal-300",
     tint: "bg-teal-500/[0.04]",
     ring: "border-teal-500/20",
+  },
+  lookalike: {
+    icon: Crosshair,
+    accent: "text-rose-300",
+    tint: "bg-rose-500/[0.04]",
+    ring: "border-rose-500/20",
   },
 };
 

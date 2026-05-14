@@ -240,6 +240,12 @@ export type BillingCycle = "monthly" | "annual";
 export interface PlanLimits {
   assets: number;
   scansPerMonth: number;
+  discoveriesPerMonth?: number;
+  monitoredAssets?: number;
+  /** Number of root domains an org can enable lookalike monitoring on.
+   *  Free=0, Starter=1, Pro=3, Silver=10, Gold=25, Custom=-1 (unlimited).
+   *  -1 means unlimited; 0 means the feature isn't included on this tier. */
+  lookalikeWatchDomains?: number;
   teamMembers: number;
   scheduledScans: number;
   apiKeys: number;

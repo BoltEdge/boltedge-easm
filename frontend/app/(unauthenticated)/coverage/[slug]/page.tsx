@@ -17,7 +17,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  ArrowLeft, ArrowRight, Bug, Globe2, KeyRound, AlertTriangle, ShieldCheck,
+  ArrowLeft, ArrowRight, Bug, Globe2, KeyRound, AlertTriangle, ShieldCheck, Crosshair,
   Check, Lightbulb, Layers,
 } from "lucide-react";
 
@@ -29,19 +29,21 @@ import { ALL_SLUGS, CATEGORY_CONTENT, type CategorySlug } from "../category-cont
 const SITE_URL = "https://nanoeasm.com";
 
 const ICON_FOR_CATEGORY: Record<CategorySlug, any> = {
-  "vulnerabilities":  Bug,
-  "service-exposure": Globe2,
-  "data-leaks":       KeyRound,
+  "vulnerabilities":   Bug,
+  "service-exposure":  Globe2,
+  "data-leaks":        KeyRound,
   "misconfigurations": AlertTriangle,
-  "security-hygiene": ShieldCheck,
+  "security-hygiene":  ShieldCheck,
+  "lookalike-domains": Crosshair,
 };
 
 const ACCENT_FOR_CATEGORY: Record<CategorySlug, { text: string; tint: string; ring: string }> = {
-  "vulnerabilities":  { text: "text-red-300",     tint: "bg-red-500/[0.06]",     ring: "border-red-500/20"     },
-  "service-exposure": { text: "text-amber-300",   tint: "bg-amber-500/[0.06]",   ring: "border-amber-500/20"   },
-  "data-leaks":       { text: "text-fuchsia-300", tint: "bg-fuchsia-500/[0.06]", ring: "border-fuchsia-500/20" },
-  "misconfigurations": { text: "text-orange-300", tint: "bg-orange-500/[0.06]",  ring: "border-orange-500/20"  },
-  "security-hygiene": { text: "text-teal-300",    tint: "bg-teal-500/[0.06]",    ring: "border-teal-500/20"    },
+  "vulnerabilities":   { text: "text-red-300",     tint: "bg-red-500/[0.06]",     ring: "border-red-500/20"     },
+  "service-exposure":  { text: "text-amber-300",   tint: "bg-amber-500/[0.06]",   ring: "border-amber-500/20"   },
+  "data-leaks":        { text: "text-fuchsia-300", tint: "bg-fuchsia-500/[0.06]", ring: "border-fuchsia-500/20" },
+  "misconfigurations": { text: "text-orange-300",  tint: "bg-orange-500/[0.06]",  ring: "border-orange-500/20"  },
+  "security-hygiene":  { text: "text-teal-300",    tint: "bg-teal-500/[0.06]",    ring: "border-teal-500/20"    },
+  "lookalike-domains": { text: "text-rose-300",    tint: "bg-rose-500/[0.06]",    ring: "border-rose-500/20"    },
 };
 
 
@@ -195,39 +197,76 @@ export default async function CategoryPage({ params }: { params: Promise<Params>
             ))}
           </div>
 
-          {/* CTA */}
-          <div className="mt-16 rounded-xl border border-teal-500/20 bg-teal-500/[0.04] p-7 text-center">
-            <h3 className="text-lg font-semibold text-white">Try it free against your domain</h3>
-            <p className="text-white/65 text-sm mt-2 max-w-xl mx-auto leading-relaxed">
-              Quick Scan runs the engines that surface {content.label.toLowerCase()}{" "}
-              findings, plus the rest of the platform's coverage. No signup, no
-              credit card, real results in under a minute.
-            </p>
-            <div className="flex items-center justify-center gap-3 mt-5 flex-wrap">
-              <Link
-                href="/quick-scan"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-teal-500 transition-colors"
-              >
-                Try Quick Scan
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-              <Link
-                href="/quick-discovery"
-                className="inline-flex items-center rounded-lg border border-white/20 bg-white/[0.04] px-5 py-2.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/[0.08] transition-colors"
-              >
-                Quick Discovery
-              </Link>
-              <Link
-                href="/look-up-tools"
-                className="inline-flex items-center rounded-lg border border-white/20 bg-white/[0.04] px-5 py-2.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/[0.08] transition-colors"
-              >
-                Free lookup tools
-              </Link>
+          {/* CTA — varies by category. Most categories run via the public
+              Quick Scan path. Some (lookalike) require a signed-in account
+              because the feature opts a tracked asset into continuous
+              monitoring and can't be run anonymously. */}
+          {content.ctaMode === "signed-in-only" ? (
+            <div className="mt-16 rounded-xl border border-teal-500/20 bg-teal-500/[0.04] p-7 text-center">
+              <h3 className="text-lg font-semibold text-white">Available with a free account</h3>
+              <p className="text-white/65 text-sm mt-2 max-w-xl mx-auto leading-relaxed">
+                {content.label} monitoring opts a tracked asset into continuous
+                weekly scanning, so it's not available via the anonymous Quick
+                Scan flow. Create a free account, add your root domain, and
+                toggle it on from the asset detail page.
+              </p>
+              <div className="flex items-center justify-center gap-3 mt-5 flex-wrap">
+                <Link
+                  href="/register"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-teal-500 transition-colors"
+                >
+                  Create free account
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  href="/login"
+                  className="inline-flex items-center rounded-lg border border-white/20 bg-white/[0.04] px-5 py-2.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/[0.08] transition-colors"
+                >
+                  Sign in
+                </Link>
+              </div>
+              <p className="text-xs text-white/40 mt-4">
+                Plan-tier limits apply — see the{" "}
+                <Link href="/#pricing" className="text-teal-400 hover:text-teal-300 underline underline-offset-2">
+                  plan comparison
+                </Link>{" "}
+                for the number of watched domains per tier.
+              </p>
             </div>
-            <p className="text-xs text-white/40 mt-4">
-              Or <Link href="/register" className="text-teal-400 hover:text-teal-300 underline underline-offset-2">create a free account</Link> to scan your full inventory.
-            </p>
-          </div>
+          ) : (
+            <div className="mt-16 rounded-xl border border-teal-500/20 bg-teal-500/[0.04] p-7 text-center">
+              <h3 className="text-lg font-semibold text-white">Try it free against your domain</h3>
+              <p className="text-white/65 text-sm mt-2 max-w-xl mx-auto leading-relaxed">
+                Quick Scan runs the engines that surface {content.label.toLowerCase()}{" "}
+                findings, plus the rest of the platform's coverage. No signup, no
+                credit card, real results in under a minute.
+              </p>
+              <div className="flex items-center justify-center gap-3 mt-5 flex-wrap">
+                <Link
+                  href="/quick-scan"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-teal-500 transition-colors"
+                >
+                  Try Quick Scan
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  href="/quick-discovery"
+                  className="inline-flex items-center rounded-lg border border-white/20 bg-white/[0.04] px-5 py-2.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/[0.08] transition-colors"
+                >
+                  Quick Discovery
+                </Link>
+                <Link
+                  href="/look-up-tools"
+                  className="inline-flex items-center rounded-lg border border-white/20 bg-white/[0.04] px-5 py-2.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/[0.08] transition-colors"
+                >
+                  Free lookup tools
+                </Link>
+              </div>
+              <p className="text-xs text-white/40 mt-4">
+                Or <Link href="/register" className="text-teal-400 hover:text-teal-300 underline underline-offset-2">create a free account</Link> to scan your full inventory.
+              </p>
+            </div>
+          )}
 
           {/* Cross-links to other categories — internal linking */}
           <div className="mt-16">

@@ -21,7 +21,8 @@ export type CategorySlug =
   | "service-exposure"
   | "data-leaks"
   | "misconfigurations"
-  | "security-hygiene";
+  | "security-hygiene"
+  | "lookalike-domains";
 
 export type CategoryContent = {
   slug: CategorySlug;
@@ -47,6 +48,10 @@ export type CategoryContent = {
   scenarios: { title: string; body: string }[];
   // Keywords for the per-category JSON-LD
   keywords: string[];
+  // CTA style. "public-scan" (default) shows Quick Scan / Quick Discovery
+  // buttons; "signed-in-only" shows a Create-account CTA only — for
+  // capabilities that aren't available via the public flow.
+  ctaMode?: "public-scan" | "signed-in-only";
 };
 
 
@@ -155,6 +160,9 @@ export const CATEGORY_CONTENT: Record<CategorySlug, CategoryContent> = {
       "Credentials, API keys, and configuration files leak in three predictable places: a developer commits a .env file to a public repo; a misconfigured webserver exposes /.git/ or /backup.sql; or a third-party tool dumps your config somewhere indexable. Nano EASM checks all three.",
     whatWeDetect: [
       "Secrets in public code — API keys, tokens, and credentials matching 23 high-confidence patterns (AWS, GitHub PAT, Stripe, OpenAI, Anthropic, JWT, private keys, more).",
+      "Secrets pasted into public GitHub issues and pull requests — bug reports and PR descriptions are a common place credentials accidentally land.",
+      "Credentials documented in public GitHub commit messages — \"Updated AWS_KEY to …\" patterns and similar mid-commit leaks.",
+      "Mentions of your domain in public Pastebin pastes — credential dumps and breach posts most often land here first.",
       "Exposed sensitive paths on your assets — /.git/, /.env, /backup.sql, /phpinfo.php, /admin/, .DS_Store files, exposed directory listings, and ~30 more.",
       "Source-code references to your domain in public repositories on GitHub and GitLab, even when they don't contain secrets — useful for tracking shadow integrations.",
       "Configuration files exposed via misconfigured webservers — .htaccess, web.config, application.yml, etc.",
@@ -289,6 +297,56 @@ export const CATEGORY_CONTENT: Record<CategorySlug, CategoryContent> = {
       "expiring certificate alerts",
     ],
   },
+
+  "lookalike-domains": {
+    slug: "lookalike-domains",
+    registryId: "lookalike",
+    label: "Lookalike Domains",
+    pageTitle: "Lookalike Domain Detection — Nano EASM",
+    metaDescription:
+      "Detect typosquats, homoglyph confusables, TLD swaps, and other domains registered to impersonate yours. Continuous monitoring; one weekly sweep per watched domain.",
+    headline: "Catch the domain a phisher just registered to look like yours.",
+    intro:
+      "Lookalike domain detection sits between attack surface management and brand protection. Attackers register thousands of variants every day — typos, vowel swaps, Cyrillic-letter substitutions, alternate TLDs — and the first time most teams find out is when a customer reports a phishing email. Nano EASM scans for the variants continuously so you see them while they're being prepared, not after they've been weaponised.",
+    whatWeDetect: [
+      "Typosquats — single-character insertions, omissions, repetitions, transpositions, and replacements of your domain.",
+      "Homoglyph confusables — Cyrillic, Greek, and mathematical look-alike characters substituted for Latin letters (the classic 'app1e.com' / 'аpple.com' attack).",
+      "TLD swaps — your-brand.com versus your-brand.co, .io, .net, .org, .biz, country-codes, and the rest of the long tail.",
+      "Vowel-swap variants — yhaoo.com / yahooo.com style mistakes.",
+      "Active phishing infrastructure — registered variants that resolve via DNS, respond on HTTP/HTTPS, and have certificates issued via the public CT logs.",
+      "Domains being prepared for an attack — certificates issued via CT logs even when DNS hasn't propagated yet.",
+    ],
+    whyItMatters:
+      "A registered lookalike with a valid TLS certificate and a copy of your login page is a phishing campaign about to launch. Catching it in the prep window — when the certificate goes into a CT log, before any traffic is sent — is the difference between issuing a takedown request and explaining to customers why someone got their credentials stolen. The CT-log signal in particular is high-confidence: attackers can't avoid issuing a certificate if they want HTTPS, and CT logs are append-only.",
+    howItWorks:
+      "When you toggle lookalike monitoring on for a root domain (asset detail page → Lookalike monitoring), the engine generates ~250-1000 plausible variants across all of DNSTwist's families (typo, homoglyph, TLD swap, vowel swap, etc.). The variants are then verified in parallel against three independent signals: DNS A-record lookups, HTTP HEAD probes on ports 80 and 443, and CT-log searches via crt.sh. Any candidate with at least one positive signal becomes a Finding on the parent domain with severity derived from the signal mix (live HTTPS + recent cert = high; DNS + cert = medium; DNS only = low). The scheduler re-runs each watched domain weekly; the engine self-rate-limits to 6 days so manual triggers can't cost you extra lookups.",
+    scenarios: [
+      {
+        title: "Attacker registers an IDN homoglyph of your domain",
+        body: "Your brand is nanoeasm.com. An attacker registers nаnoeasm.com (Cyrillic 'а'), spins up nginx, and gets a Let's Encrypt certificate. CT log records the cert. Within the week, our engine finds the variant via the homoglyph generator, confirms DNS + HTTPS + cert, and surfaces a high-severity Lookalike finding on nanoeasm.com with the variant URL, certificate fingerprint, and a remediation walkthrough for the registrar abuse complaint.",
+      },
+      {
+        title: "TLD-swap squatter parks your-brand.io",
+        body: "Someone registers your-brand.io and points it at a Sedo parking page. DNS resolves; HTTPS responds; no cert in CT log (parking page uses Sedo's wildcard). Surfaces as a medium-severity finding. Whether you act depends on whether the squatter looks like an opportunistic registrar or an actual phishing operator — but you see it either way.",
+      },
+      {
+        title: "Cert issued in CT log before DNS propagates",
+        body: "An attacker registers an IDN punycode variant and provisions a wildcard cert via DNS-01. The cert goes into the CT log within minutes. Our engine catches the cert at the next weekly tick, even though DNS hasn't propagated yet — earliest possible warning, while the campaign is still being assembled.",
+      },
+    ],
+    keywords: [
+      "lookalike domain detection",
+      "typosquat monitoring",
+      "homoglyph detection",
+      "IDN punycode detection",
+      "phishing domain detection",
+      "TLD swap monitoring",
+      "brand impersonation domain",
+      "DNS twist scanner",
+      "CT log monitoring",
+    ],
+    ctaMode: "signed-in-only",
+  },
 };
 
 export const ALL_SLUGS: CategorySlug[] = [
@@ -297,4 +355,5 @@ export const ALL_SLUGS: CategorySlug[] = [
   "data-leaks",
   "misconfigurations",
   "security-hygiene",
+  "lookalike-domains",
 ];
