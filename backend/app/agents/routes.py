@@ -266,6 +266,41 @@ def approvals_reject(pending_id: int):
     return jsonify({"id": p.id, "decision": p.decision, "applied_result": p.applied_result})
 
 
+@bp.route("/approvals/history", methods=["GET"])
+@require_root_admin
+def approvals_history():
+    """Decided proposals across all agents, most-recent first.
+
+    Used by the approvals page's History section. Excludes pending
+    rows (which are returned by the existing /approvals endpoint).
+    """
+    limit = max(1, min(int(request.args.get("limit", 50)), 200))
+    rows = (
+        PendingAction.query
+        .filter(PendingAction.decision.isnot(None))
+        .order_by(PendingAction.decided_at.desc().nullslast())
+        .limit(limit)
+        .all()
+    )
+    return jsonify({
+        "history": [
+            {
+                "id": r.id,
+                "agent_id": r.agent_id,
+                "action_type": r.action_type,
+                "target": r.target,
+                "decision": r.decision,
+                "decision_note": r.decision_note,
+                "decided_at": (r.decided_at.isoformat() + "Z") if r.decided_at else None,
+                "decided_by": r.decided_by,
+                "proposed_at": r.proposed_at.isoformat() + "Z",
+                "applied_result": r.applied_result,
+            }
+            for r in rows
+        ]
+    })
+
+
 @bp.route("/<agent_name>/approvals", methods=["GET"])
 @require_root_admin
 def agent_proposals_list(agent_name: str):
