@@ -331,6 +331,15 @@ def _get_enabled_engines(profile: Optional[ScanProfile], asset: Optional[Asset] 
     if profile.use_leak and _org_has_leak_detection(asset):
         enabled.append("leak")
 
+    # Lookalike engine: typosquat / homoglyph / TLD-swap detection. Only
+    # ever fires for assets that the customer has explicitly toggled into
+    # the watch list (Asset.lookalike_watch). The engine itself enforces
+    # that guard plus a 6-day self-rate-limit. The system "Lookalike Scan"
+    # profile is what enables this engine in scheduled weekly runs; ad-hoc
+    # scans with any other profile that flips use_lookalike work too.
+    if getattr(profile, "use_lookalike", False):
+        enabled.append("lookalike")
+
     return enabled
 
 

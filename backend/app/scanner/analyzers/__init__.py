@@ -17,6 +17,7 @@ from app.scanner.analyzers.exposed_db_analyzer import ExposedDBAnalyzer
 from app.scanner.analyzers.cloud_asset_analyzer import CloudAssetAnalyzer
 from app.scanner.analyzers.subdomain_takeover_analyzer import SubdomainTakeoverAnalyzer
 from app.scanner.analyzers.leak_analyzer import LeakAnalyzer
+from app.scanner.analyzers.lookalike_analyzer import LookalikeAnalyzer
 from app.scanner.analyzers.exposure_scorer import ExposureScorer
 
 # Registry of all available analyzers.
@@ -33,7 +34,9 @@ ALL_ANALYZERS = {
     "api_analyzer": APIAnalyzer,
     "exposed_db_analyzer": ExposedDBAnalyzer,
     "cloud_asset_analyzer": CloudAssetAnalyzer,
-    "subdomain_takeover": SubdomainTakeoverAnalyzer,    "leak_analyzer": LeakAnalyzer,
+    "subdomain_takeover": SubdomainTakeoverAnalyzer,
+    "leak_analyzer": LeakAnalyzer,
+    "lookalike_analyzer": LookalikeAnalyzer,
 
     "exposure_scorer": ExposureScorer,     # Always last
 }
@@ -43,5 +46,5 @@ __all__ = [
     "HeaderAnalyzer", "DNSAnalyzer", "TechDetector",
     "NucleiAnalyzer", "APIAnalyzer", "ExposedDBAnalyzer",
     "CloudAssetAnalyzer", "SubdomainTakeoverAnalyzer",
-    "LeakAnalyzer", "ExposureScorer", "ALL_ANALYZERS",
+    "LeakAnalyzer", "LookalikeAnalyzer", "ExposureScorer", "ALL_ANALYZERS",
 ]

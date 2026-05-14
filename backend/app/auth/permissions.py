@@ -293,6 +293,15 @@ def _get_current_usage(org, resource: str) -> int:
             is_active=True,
         ).count()
 
+    elif resource == "lookalike_watch_domains":
+        # Number of assets in this org with lookalike monitoring enabled.
+        # See app.scanner.engines.lookalike_engine — the engine only runs
+        # against assets where lookalike_watch=True.
+        return Asset.query.filter(
+            Asset.organization_id == org.id,
+            Asset.lookalike_watch.is_(True),
+        ).count()
+
     return 0
 
 

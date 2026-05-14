@@ -13,6 +13,7 @@ from app.scanner.engines.nuclei_engine import NucleiEngine
 from app.scanner.engines.db_probe_engine import DBProbeEngine
 from app.scanner.engines.cloud_asset_engine import CloudAssetEngine
 from app.scanner.engines.leak_engine import LeakEngine
+from app.scanner.engines.lookalike_engine import LookalikeEngine
 
 # Registry of all available engines.
 # The orchestrator uses this to know what's available.
@@ -26,11 +27,12 @@ ALL_ENGINES = {
     "db_probe": DBProbeEngine,
     "cloud_asset": CloudAssetEngine,
     "leak": LeakEngine,
+    "lookalike": LookalikeEngine,
 }
 
 __all__ = [
     "ShodanEngine", "SSLEngine", "HTTPEngine", "DNSEngine",
     "NmapEngine", "NucleiEngine", "DBProbeEngine", "CloudAssetEngine",
-    "LeakEngine",
+    "LeakEngine", "LookalikeEngine",
     "ALL_ENGINES",
 ]

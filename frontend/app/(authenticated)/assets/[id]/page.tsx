@@ -12,6 +12,7 @@ import {
   AlertTriangle, Play, ExternalLink, RefreshCcw, Trash2,
   Globe, Server, Mail, Tag, Search, Eye, MoreVertical,
   ArrowLeftRight, Cloud, Database, Box, Cpu, Radio,
+  Crosshair,
 } from "lucide-react";
 import { Button } from "../../../ui/button";
 import { Input } from "../../../ui/input";
@@ -275,6 +276,50 @@ export default function AssetDetailPage() {
     finally { setDeleting(false); }
   }
 
+  // ── Lookalike monitoring ────────────────────────────────────────────
+  // Three actions: toggle on (plan-limited), toggle off, manual scan.
+  // Toggle-on may return a plan-limit error which we route through the
+  // existing PlanLimitDialog flow.
+  const [lookalikeBusy, setLookalikeBusy] = useState(false);
+  const [lookalikeScanning, setLookalikeScanning] = useState(false);
+
+  async function handleLookalikeToggle(enable: boolean) {
+    if (!asset) return;
+    setLookalikeBusy(true);
+    try {
+      const updated = await apiFetch<any>(
+        `/assets/${assetId}/lookalike-watch`,
+        { method: enable ? "POST" : "DELETE" },
+      );
+      setAsset(updated);
+      setBanner({
+        kind: "ok",
+        text: enable
+          ? "Lookalike monitoring enabled. First scan will run within a day."
+          : "Lookalike monitoring disabled.",
+      });
+    } catch (e: any) {
+      if (isPlanError(e)) planLimit.handle(e.planError);
+      else setBanner({ kind: "err", text: e?.message || "Failed to update lookalike monitoring" });
+    } finally {
+      setLookalikeBusy(false);
+    }
+  }
+
+  async function handleLookalikeScanNow() {
+    if (!asset) return;
+    setLookalikeScanning(true);
+    try {
+      await apiFetch<any>(`/assets/${assetId}/lookalike-scan`, { method: "POST" });
+      setBanner({ kind: "ok", text: "Lookalike scan started. Findings appear in 5-10 minutes." });
+      loadAll();
+    } catch (e: any) {
+      setBanner({ kind: "err", text: e?.message || "Failed to start lookalike scan" });
+    } finally {
+      setLookalikeScanning(false);
+    }
+  }
+
   // Severity counts
   const sevCounts = useMemo(() => {
     const c: Record<string, number> = {};
@@ -446,6 +491,71 @@ export default function AssetDetailPage() {
         {/* "At a glance" overview panel — pulls structured data from
             /assets/<id>/overview. Renders nothing if it fails to load. */}
         <AssetOverviewPanel assetId={asset.id} />
+
+        {/* Lookalike monitoring — domain assets only. Toggle is plan-
+            limited; trigger a manual scan from here. Findings land in the
+            normal Findings list with category=lookalike. */}
+        {assetType === "domain" && (
+          <div className="border border-border bg-card rounded-xl p-5">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="flex items-start gap-3 min-w-0">
+                <Crosshair className="w-5 h-5 text-foreground/70 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-foreground">
+                    Lookalike monitoring
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed max-w-xl">
+                    Detects typosquats, homoglyph confusables, and TLD swaps
+                    that resemble {asset.value}. Runs weekly. Detected
+                    lookalikes appear as findings on this asset with
+                    category {`"lookalike"`}.
+                  </p>
+                  {asset.lookalikeWatch && asset.lastLookalikeScanAt && (
+                    <p className="text-[11px] text-muted-foreground/70 mt-1.5">
+                      Last scan: {new Date(asset.lastLookalikeScanAt).toLocaleString()}
+                    </p>
+                  )}
+                  {asset.lookalikeWatch && !asset.lastLookalikeScanAt && (
+                    <p className="text-[11px] text-muted-foreground/70 mt-1.5">
+                      First scan will run within a day.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {asset.lookalikeWatch && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLookalikeScanNow}
+                    disabled={lookalikeScanning}
+                  >
+                    {lookalikeScanning ? (
+                      <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Scanning…</>
+                    ) : (
+                      <><Play className="w-3.5 h-3.5 mr-1.5" />Run scan now</>
+                    )}
+                  </Button>
+                )}
+                <Button
+                  variant={asset.lookalikeWatch ? "outline" : "default"}
+                  size="sm"
+                  onClick={() => handleLookalikeToggle(!asset.lookalikeWatch)}
+                  disabled={lookalikeBusy}
+                  className={asset.lookalikeWatch ? "" : "bg-[#00b8d4] hover:bg-[#00b8d4]/90"}
+                >
+                  {lookalikeBusy ? (
+                    <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Saving…</>
+                  ) : asset.lookalikeWatch ? (
+                    "Disable monitoring"
+                  ) : (
+                    "Enable monitoring"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Cloud Info Card — only for cloud assets */}
         {isCloud && (

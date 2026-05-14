@@ -264,6 +264,69 @@ def _run_refresh_kev_feed(app):
             logger.exception("refresh_kev_feed crashed")
 
 
+def _run_lookalike_schedule(app):
+    """
+    Daily APScheduler job: enqueue lookalike scans for watched assets
+    that haven't been scanned in the last 6 days. Net effective cadence
+    is weekly per asset (because the LookalikeEngine self-rate-limits to
+    6 days). Daily check means a missed day is automatically caught up
+    next tick.
+    """
+    from datetime import timedelta
+    with app.app_context():
+        from app.extensions import db
+        from app.models import Asset, ScanProfile, ScanJob
+
+        try:
+            profile = (
+                ScanProfile.query
+                .filter_by(name="Lookalike Scan", is_system=True, is_active=True)
+                .first()
+            )
+            if not profile:
+                logger.warning(
+                    "lookalike_schedule: 'Lookalike Scan' profile missing; skipping cycle"
+                )
+                return
+
+            cutoff = now_utc().replace(tzinfo=None) - timedelta(days=6)
+            watched = (
+                Asset.query
+                .filter(Asset.lookalike_watch.is_(True))
+                .filter(Asset.asset_type == "domain")
+                .filter(
+                    db.or_(
+                        Asset.last_lookalike_scan_at.is_(None),
+                        Asset.last_lookalike_scan_at < cutoff,
+                    )
+                )
+                .all()
+            )
+
+            if not watched:
+                logger.info("lookalike_schedule: no stale watched assets this cycle")
+                return
+
+            for asset in watched:
+                job = ScanJob(
+                    asset_id=asset.id,
+                    status="queued",
+                    profile_id=profile.id,
+                    initiator="lookalike_schedule",
+                )
+                db.session.add(job)
+            db.session.commit()
+            logger.info(
+                "lookalike_schedule: enqueued %d lookalike scans", len(watched)
+            )
+        except Exception:
+            logger.exception("lookalike_schedule crashed")
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+
+
 def init_scheduler(app):
     """Initialize and start the background scheduler."""
     global _scheduler
@@ -328,6 +391,18 @@ def init_scheduler(app):
         trigger=CronTrigger(hour=2, minute=0),
         id="threat_intel.refresh_kev_feed",
         name="Refresh CISA KEV cache (daily 02:00 UTC)",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+    # Lookalike scans — daily check at 03:00 UTC for watched assets that
+    # haven't been scanned in the last 6 days. Effective cadence is weekly
+    # per asset; daily polling means a missed day catches up next tick.
+    _scheduler.add_job(
+        func=lambda: _run_lookalike_schedule(app),
+        trigger=CronTrigger(hour=3, minute=0),
+        id="lookalike.schedule",
+        name="Enqueue weekly lookalike scans for watched assets (daily 03:00 UTC)",
         replace_existing=True,
         max_instances=1,
     )

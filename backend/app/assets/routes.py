@@ -227,6 +227,11 @@ def asset_to_ui(a: Asset) -> Dict[str, Any]:
         result["provider"] = a.provider
     if a.cloud_category:
         result["cloudCategory"] = a.cloud_category
+    # Lookalike monitoring state — getattr fallback so older callers
+    # don't 500 on pre-migration DBs.
+    result["lookalikeWatch"] = bool(getattr(a, "lookalike_watch", False))
+    last_la = getattr(a, "last_lookalike_scan_at", None)
+    result["lastLookalikeScanAt"] = last_la.isoformat() if last_la else None
     return result
 
 
@@ -1389,5 +1394,159 @@ def _detect_asset_type(value: str) -> str:
     # URLs with schemes that aren't cloud — still treat as cloud if they have paths
     if "://" in v and "/" in v.split("://", 1)[1]:
         return "cloud"
+
+
+# =============================================================================
+# Lookalike monitoring — per-asset opt-in + manual trigger.
+#
+# Watch toggle is plan-gated via check_limit("lookalike_watch_domains").
+# The actual scanning is done by the LookalikeEngine on the regular
+# scanner orchestrator, kicked off either by the weekly scheduler
+# (app.scheduler._run_lookalike_schedule) or by the manual trigger
+# endpoint below.
+# =============================================================================
+
+
+@assets_bp.post("/assets/<asset_id>/lookalike-watch")
+@require_auth
+@allow_api_key
+@require_role("analyst")
+@check_limit("lookalike_watch_domains")
+def enable_lookalike_watch(asset_id: str):
+    """Add this asset to the lookalike watch list."""
+    org_id = current_organization_id()
+    uid = current_user_id()
+
+    a1 = Asset.query.filter_by(id=int(asset_id), organization_id=org_id).first()
+    if not a1:
+        return jsonify(error="asset not found"), 404
+    if a1.asset_type != "domain":
+        return jsonify(
+            error="Lookalike monitoring is only supported for domain assets."
+        ), 400
+
+    if not a1.lookalike_watch:
+        a1.lookalike_watch = True
+        log_audit(
+            organization_id=org_id,
+            user_id=uid,
+            action="asset.lookalike_watch_enabled",
+            category="asset",
+            target_type="asset",
+            target_id=str(a1.id),
+            target_label=a1.value,
+            description=f"Enabled lookalike monitoring for {a1.value}",
+        )
+        db.session.commit()
+
+    return jsonify(asset_to_ui(a1)), 200
+
+
+@assets_bp.delete("/assets/<asset_id>/lookalike-watch")
+@require_auth
+@allow_api_key
+@require_role("analyst")
+def disable_lookalike_watch(asset_id: str):
+    """Remove this asset from the lookalike watch list. Preserves
+    last_lookalike_scan_at so re-enabling keeps the rate-limit history."""
+    org_id = current_organization_id()
+    uid = current_user_id()
+
+    a1 = Asset.query.filter_by(id=int(asset_id), organization_id=org_id).first()
+    if not a1:
+        return jsonify(error="asset not found"), 404
+
+    if a1.lookalike_watch:
+        a1.lookalike_watch = False
+        log_audit(
+            organization_id=org_id,
+            user_id=uid,
+            action="asset.lookalike_watch_disabled",
+            category="asset",
+            target_type="asset",
+            target_id=str(a1.id),
+            target_label=a1.value,
+            description=f"Disabled lookalike monitoring for {a1.value}",
+        )
+        db.session.commit()
+
+    return jsonify(asset_to_ui(a1)), 200
+
+
+@assets_bp.post("/assets/<asset_id>/lookalike-scan")
+@require_auth
+@allow_api_key
+@require_role("analyst")
+def run_lookalike_scan(asset_id: str):
+    """Manually trigger a lookalike scan against this asset. Bypasses the
+    6-day rate-limit by clearing last_lookalike_scan_at first."""
+    import threading
+    from flask import current_app
+    from app.models import ScanProfile, ScanJob
+
+    org_id = current_organization_id()
+    uid = current_user_id()
+
+    a1 = Asset.query.filter_by(id=int(asset_id), organization_id=org_id).first()
+    if not a1:
+        return jsonify(error="asset not found"), 404
+    if not a1.lookalike_watch:
+        return jsonify(
+            error="Enable lookalike monitoring on this asset before running a scan."
+        ), 400
+    if a1.asset_type != "domain":
+        return jsonify(
+            error="Lookalike monitoring is only supported for domain assets."
+        ), 400
+
+    profile = (
+        ScanProfile.query
+        .filter_by(name="Lookalike Scan", is_system=True, is_active=True)
+        .first()
+    )
+    if not profile:
+        return jsonify(error="Lookalike Scan profile not configured"), 500
+
+    # Clear the rate-limit anchor so the engine doesn't short-circuit.
+    a1.last_lookalike_scan_at = None
+
+    job = ScanJob(
+        asset_id=a1.id,
+        status="queued",
+        profile_id=profile.id,
+        initiator="manual",
+    )
+    db.session.add(job)
+    db.session.flush()
+    job_id_int = job.id
+
+    log_audit(
+        organization_id=org_id,
+        user_id=uid,
+        action="asset.lookalike_scan_started",
+        category="asset",
+        target_type="asset",
+        target_id=str(a1.id),
+        target_label=a1.value,
+        description=f"Manual lookalike scan triggered for {a1.value}",
+    )
+    db.session.commit()
+
+    # Spawn the work in a daemon thread using the shared executor — same
+    # pattern as POST /scan-jobs/<id>/run.
+    from app.scan_jobs.executor import execute_scan_job
+    app = current_app._get_current_object()
+    threading.Thread(
+        target=execute_scan_job,
+        args=(job_id_int, app),
+        kwargs={"profile_id": profile.id},
+        daemon=True,
+    ).start()
+
+    return jsonify(
+        message="lookalike scan started",
+        jobId=str(job_id_int),
+        status="running",
+    ), 202
 
     return "domain"

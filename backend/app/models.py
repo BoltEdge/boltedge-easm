@@ -349,6 +349,16 @@ class Asset(db.Model):
     criticality = db.Column(db.String(10), nullable=False, default="tier_2",
                             server_default="tier_2", index=True)
 
+    # Lookalike domain monitoring — toggle this asset into the watch list
+    # so the LookalikeEngine runs against it on its weekly cadence. The
+    # plan-tier cap on watched assets is enforced via
+    # check_limit("lookalike_watch_domains") on the toggle endpoint.
+    # last_lookalike_scan_at is the engine's self-rate-limit anchor: if
+    # within 6 days, the engine short-circuits and emits no new work.
+    lookalike_watch = db.Column(db.Boolean, nullable=False, default=False,
+                                server_default=db.text("false"), index=True)
+    last_lookalike_scan_at = db.Column(db.DateTime, nullable=True)
+
     __table_args__ = (
         UniqueConstraint("organization_id", "asset_type", "value", name="uq_org_asset_type_value"),
     )
@@ -846,6 +856,8 @@ class ScanProfile(db.Model):
     use_nuclei = db.Column(db.Boolean, nullable=False, default=False)
     use_sslyze = db.Column(db.Boolean, nullable=False, default=False)
     use_leak = db.Column(db.Boolean, nullable=False, default=False)
+    use_lookalike = db.Column(db.Boolean, nullable=False, default=False,
+                              server_default=db.text("false"))
 
     # Shodan settings
     shodan_include_history = db.Column(db.Boolean, nullable=False, default=False)
