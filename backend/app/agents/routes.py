@@ -264,3 +264,50 @@ def approvals_reject(pending_id: int):
     p = reject(pending_id, decided_by=decided_by, note=note)
     db.session.commit()
     return jsonify({"id": p.id, "decision": p.decision, "applied_result": p.applied_result})
+
+
+@bp.route("/<agent_name>/approvals", methods=["GET"])
+@require_root_admin
+def agent_proposals_list(agent_name: str):
+    """All proposals (pending + decided) for one agent.
+
+    Used by the agent detail page's timeline sidebar. Returns a flat
+    most-recent-first list plus a summary count.
+    """
+    limit = max(1, min(int(request.args.get("limit", 50)), 200))
+    rows = (
+        PendingAction.query
+        .filter_by(agent_id=agent_name)
+        .order_by(PendingAction.proposed_at.desc())
+        .limit(limit)
+        .all()
+    )
+    summary = {"pending": 0, "approved": 0, "rejected": 0}
+    proposals = []
+    for r in rows:
+        decision = r.decision
+        if decision is None:
+            summary["pending"] += 1
+        elif decision in ("approved", "edited-and-approved"):
+            summary["approved"] += 1
+        elif decision == "rejected":
+            summary["rejected"] += 1
+        proposals.append({
+            "id": r.id,
+            "action_type": r.action_type,
+            "target": r.target,
+            "rationale": r.rationale,
+            "skill": r.skill,
+            "proposed_at": r.proposed_at.isoformat() + "Z",
+            "decision": r.decision,
+            "decision_note": r.decision_note,
+            "decided_at": (r.decided_at.isoformat() + "Z") if r.decided_at else None,
+            "decided_by": r.decided_by,
+            "applied_result": r.applied_result,
+            "run_id": r.run_id,
+        })
+    return jsonify({
+        "agent_id": agent_name,
+        "summary": summary,
+        "proposals": proposals,
+    })
