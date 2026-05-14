@@ -3,13 +3,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   PendingActionRow,
+  ApprovalHistoryRow as HistoryRow,
   getPendingApprovals,
+  getApprovalHistory,
   approveAction,
   rejectAction,
 } from "../../../../lib/api";
 import { ArrowLeft, Check } from "lucide-react";
 import { ApprovalCard_MemoryWrite } from "./ApprovalCard_MemoryWrite";
 import { ApprovalCard_CodePR } from "./ApprovalCard_CodePR";
+import { ApprovalHistoryRow } from "./ApprovalHistoryRow";
 
 type AppliedResult =
   | { pr_url?: string; pr_number?: number; branch?: string }
@@ -22,10 +25,13 @@ export default function ApprovalsPage() {
   const [busy, setBusy] = useState<number | null>(null);
   const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [lastResult, setLastResult] = useState<{ id: number; result: AppliedResult } | null>(null);
+  const [history, setHistory] = useState<HistoryRow[] | null>(null);
 
   async function reload() {
     try {
       setItems(await getPendingApprovals());
+      const h = await getApprovalHistory(50);
+      setHistory(h.history);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -158,6 +164,19 @@ export default function ApprovalsPage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {history !== null && history.length > 0 && (
+        <section className="mt-10 pt-4 border-t border-white/[0.08]">
+          <h2 className="text-sm font-medium text-white/80 mb-3">
+            History ({history.length})
+          </h2>
+          <div className="border border-white/[0.06] rounded-lg overflow-hidden">
+            {history.map((row) => (
+              <ApprovalHistoryRow key={row.id} row={row} />
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );
