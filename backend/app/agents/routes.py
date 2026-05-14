@@ -264,3 +264,117 @@ def approvals_reject(pending_id: int):
     p = reject(pending_id, decided_by=decided_by, note=note)
     db.session.commit()
     return jsonify({"id": p.id, "decision": p.decision, "applied_result": p.applied_result})
+
+
+@bp.route("/spend", methods=["GET"])
+@require_root_admin
+def agent_spend():
+    """Per-agent month-to-date spend + cap + percentage.
+
+    Returns one entry per profile in `_list_profiles()`. Uses
+    `current_month_spend` which sums AgentRun.cost_usd for the
+    current calendar month (UTC).
+    """
+    from app.agents.budget import current_month_spend
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
+    out = []
+    for p in _list_profiles():
+        name = p["name"]
+        spend = float(current_month_spend(name))
+        cap = float(p.get("cost_cap_monthly_usd") or 0)
+        pct = round(spend / cap * 100, 2) if cap > 0 else 0.0
+        out.append({
+            "agent_id": name,
+            "display_name": p["display_name"],
+            "spend_usd": spend,
+            "cap_usd": cap,
+            "pct": pct,
+        })
+    return jsonify({
+        "month": now.strftime("%Y-%m"),
+        "agents": out,
+    })
+
+
+@bp.route("/approvals/history", methods=["GET"])
+@require_root_admin
+def approvals_history():
+    """Decided proposals across all agents, most-recent first.
+
+    Used by the approvals page's History section. Excludes pending
+    rows (which are returned by the existing /approvals endpoint).
+    """
+    limit = max(1, min(int(request.args.get("limit", 50)), 200))
+    rows = (
+        PendingAction.query
+        .filter(PendingAction.decision.isnot(None))
+        .order_by(PendingAction.decided_at.desc().nullslast())
+        .limit(limit)
+        .all()
+    )
+    return jsonify({
+        "history": [
+            {
+                "id": r.id,
+                "agent_id": r.agent_id,
+                "action_type": r.action_type,
+                "target": r.target,
+                "decision": r.decision,
+                "decision_note": r.decision_note,
+                "decided_at": (r.decided_at.isoformat() + "Z") if r.decided_at else None,
+                "decided_by": r.decided_by,
+                "proposed_at": r.proposed_at.isoformat() + "Z",
+                "applied_result": r.applied_result,
+            }
+            for r in rows
+        ]
+    })
+
+
+@bp.route("/<agent_name>/approvals", methods=["GET"])
+@require_root_admin
+def agent_proposals_list(agent_name: str):
+    """All proposals (pending + decided) for one agent.
+
+    Used by the agent detail page's timeline sidebar. Returns a flat
+    most-recent-first list plus a summary count.
+    """
+    limit = max(1, min(int(request.args.get("limit", 50)), 200))
+    rows = (
+        PendingAction.query
+        .filter_by(agent_id=agent_name)
+        .order_by(PendingAction.proposed_at.desc())
+        .limit(limit)
+        .all()
+    )
+    summary = {"pending": 0, "approved": 0, "rejected": 0}
+    proposals = []
+    for r in rows:
+        decision = r.decision
+        if decision is None:
+            summary["pending"] += 1
+        elif decision in ("approved", "edited-and-approved"):
+            summary["approved"] += 1
+        elif decision == "rejected":
+            summary["rejected"] += 1
+        proposals.append({
+            "id": r.id,
+            "action_type": r.action_type,
+            "target": r.target,
+            "rationale": r.rationale,
+            "skill": r.skill,
+            "proposed_at": r.proposed_at.isoformat() + "Z",
+            "decision": r.decision,
+            "decision_note": r.decision_note,
+            "decided_at": (r.decided_at.isoformat() + "Z") if r.decided_at else None,
+            "decided_by": r.decided_by,
+            "applied_result": r.applied_result,
+            "run_id": r.run_id,
+        })
+    return jsonify({
+        "agent_id": agent_name,
+        "summary": summary,
+        "proposals": proposals,
+    })

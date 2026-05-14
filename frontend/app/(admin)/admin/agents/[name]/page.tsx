@@ -3,6 +3,7 @@ import { use, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { AgentDetail, AgentSkillSummary, getAgent, runAgent, runAgentSkill } from "../../../../lib/api";
 import { ArrowLeft, Play, Loader2, Shield, Cpu, DollarSign, Wrench, ChevronDown, ChevronRight, Zap, Clock } from "lucide-react";
+import { AgentTimeline } from "./AgentTimeline";
 
 export default function AgentDetailPage({
   params,
@@ -25,6 +26,11 @@ export default function AgentDetailPage({
 
   // Thread mode: "new" | "continue"
   const [threadMode, setThreadMode] = useState<"new" | "continue">("new");
+
+  // Selected proposal run from the timeline sidebar.
+  // For now this only highlights the entry; thread loading is deferred
+  // (existing thread links remain in the Threads section).
+  const [selectedRunId, setSelectedRunId] = useState<number | null>(null);
 
   const reload = useCallback(async () => {
     try {
@@ -100,7 +106,18 @@ export default function AgentDetailPage({
   const lastThread = hasThreads ? agent.threads[0] : null;
 
   return (
-    <div className="max-w-3xl">
+    <div className="flex gap-6">
+      {/* Left sidebar: proposal timeline */}
+      <aside className="w-[260px] flex-shrink-0 hidden lg:block border-r border-white/[0.06] pr-4 sticky top-0 self-start max-h-screen overflow-y-auto py-2">
+        <AgentTimeline
+          agentId={name}
+          selectedRunId={selectedRunId}
+          onSelectRun={setSelectedRunId}
+        />
+      </aside>
+
+      {/* Right pane: existing page content */}
+      <div className="max-w-3xl flex-1 min-w-0">
       {/* Back link */}
       <Link
         href="/admin/agents"
@@ -440,6 +457,7 @@ export default function AgentDetailPage({
           </div>
         </section>
       )}
+      </div>
     </div>
   );
 }
