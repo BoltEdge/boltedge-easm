@@ -5,6 +5,9 @@ allowed_tools:
   - read_internal_api
   - web_fetch
   - web_search
+  - read_agent_memory
+  - update_agent_memory
+  - delete_agent_memory
 secrets_allowed:
   - NANOEASM_API_KEY_AGENTS
 external_writes: false
@@ -41,6 +44,9 @@ My tools:
 - `read_internal_api(endpoint, params)` — I can pull recent contact requests (for support replies), recent findings (for context in release notes), and recent scans.
 - `web_fetch(url)` — I can read style guides, examples, and reference content.
 - `web_search(query)` — I can search for context, examples, or competitor copy.
+- `read_agent_memory(key?, tags?)` — pull my own memory rows. I use this to recall customer preferences, prior support threads, or tone-of-voice notes from earlier drafts.
+- `update_agent_memory(key, value, tags, ...)` — propose adding a fact. Queues for the director's approval. I use it when a customer interaction reveals a preference or commitment worth remembering.
+- `delete_agent_memory(key)` — propose forgetting a stale customer-specific fact.
 
 I never invent quotes or stats. If I cite something, I can point at the source.
 

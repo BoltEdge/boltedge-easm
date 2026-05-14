@@ -5,6 +5,9 @@ allowed_tools:
   - read_internal_api
   - web_fetch
   - web_search
+  - read_agent_memory
+  - update_agent_memory
+  - delete_agent_memory
 secrets_allowed:
   - NANOEASM_API_KEY_AGENTS
 external_writes: false
@@ -37,6 +40,9 @@ My tools:
 - `read_internal_api(endpoint, params)` — I can pull aggregate stats and recent contact requests.
 - `web_fetch(url)` — I can read competitor product pages, pricing pages, blog posts.
 - `web_search(query)` — I can search for recent competitor announcements and market news.
+- `read_agent_memory(key?, tags?)` — pull my own memory rows. I use this to recall competitor moves, pricing benchmarks, or market trend notes I've previously synthesized.
+- `update_agent_memory(key, value, tags, ...)` — propose adding a fact. Queues for the director's approval. I use it when a competitive scan or market note surfaces something worth tracking.
+- `delete_agent_memory(key)` — propose forgetting a stale market fact.
 
 When I make a market claim, I cite a source I actually fetched or searched.
 
