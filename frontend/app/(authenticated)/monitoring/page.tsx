@@ -988,6 +988,18 @@ function AlertsTab({ setBanner, planLimit }: {
     resolved: alerts.filter((a) => a.status === "resolved").length,
   }), [alerts]);
 
+  // Alert counts per customer-facing category. Alerts without a
+  // customerCategory (no linked Finding, or unmapped internal category)
+  // are bucketed into "other" to match the findings-page semantics.
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const a of alerts) {
+      const key = a.customerCategory || "other";
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    return counts;
+  }, [alerts]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -1040,18 +1052,52 @@ function AlertsTab({ setBanner, planLimit }: {
           <option value="all">All Severities</option>
           {SEVERITY_ORDER.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
         </select>
-        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
-          title="Filter by customer-facing finding category"
-          className="h-8 rounded-md px-2 bg-input-background border border-border text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-ring">
-          <option value="all">All Categories</option>
-          <option value="vulnerabilities">Vulnerabilities</option>
-          <option value="service_exposure">Service Exposure</option>
-          <option value="data_leaks">Data Leaks</option>
-          <option value="misconfigurations">Misconfigurations</option>
-          <option value="security_hygiene">Security Hygiene</option>
-          <option value="lookalike">Lookalike Domains</option>
-          <option value="other">Other</option>
-        </select>
+      </div>
+
+      {/* Category filter chips — mirrors the findings page UX. Always
+          shows the six named categories so users discover what's
+          available; "Other" is count-gated. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground mr-1">Category:</span>
+        <button
+          type="button"
+          onClick={() => setCategoryFilter("all")}
+          className={cn(
+            "px-2.5 py-1 rounded-md border text-xs font-medium transition-all",
+            categoryFilter === "all"
+              ? "bg-primary/15 text-primary border-primary/30"
+              : "bg-card text-muted-foreground border-border hover:border-primary/30",
+          )}
+        >
+          All ({alerts.length})
+        </button>
+        {([
+          { id: "vulnerabilities",   label: "Vulnerabilities",   color: "bg-red-500/15 text-red-300 border-red-500/30",         alwaysShow: true },
+          { id: "service_exposure",  label: "Service Exposure",  color: "bg-amber-500/15 text-amber-300 border-amber-500/30",   alwaysShow: true },
+          { id: "data_leaks",        label: "Data Leaks",        color: "bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30", alwaysShow: true },
+          { id: "misconfigurations", label: "Misconfigurations", color: "bg-orange-500/15 text-orange-300 border-orange-500/30", alwaysShow: true },
+          { id: "security_hygiene",  label: "Security Hygiene",  color: "bg-teal-500/15 text-teal-300 border-teal-500/30",      alwaysShow: true },
+          { id: "lookalike",         label: "Lookalike Domains", color: "bg-rose-500/15 text-rose-300 border-rose-500/30",      alwaysShow: true },
+          { id: "other",             label: "Other",             color: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30",      alwaysShow: false },
+        ] as const).map(({ id, label, color, alwaysShow }) => {
+          const count = categoryCounts[id] || 0;
+          if (count === 0 && categoryFilter !== id && !alwaysShow) return null;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setCategoryFilter(id)}
+              className={cn(
+                "px-2.5 py-1 rounded-md border text-xs font-medium transition-all",
+                categoryFilter === id
+                  ? color
+                  : "bg-card text-muted-foreground border-border hover:border-primary/30",
+              )}
+            >
+              {label} ({count})
+            </button>
+          );
+        })}
       </div>
 
       {/* Date range + sort */}
