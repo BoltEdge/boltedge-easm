@@ -63,3 +63,4 @@ from . import internal_api  # noqa: F401,E402
 from . import web  # noqa: F401,E402
 from . import repo  # noqa: F401,E402
 from . import github  # noqa: F401,E402
+from . import memory_tools  # noqa: F401,E402

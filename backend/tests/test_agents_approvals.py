@@ -154,3 +154,58 @@ def test_approve_code_pr_captures_writer_error_in_applied_result(
     assert refreshed.decision == "approved"
     assert refreshed.applied_result is not None
     assert "422" in (refreshed.applied_result.get("error") or "")
+
+
+def test_approve_memory_delete_removes_row(db_session):
+    """Approving a memory-delete action removes the row and records
+    {deleted: True, key: <key>} in applied_result."""
+    from app.agents.memory import write_memory
+
+    write_memory(
+        agent_id="founder-ops",
+        key="fact:to_be_deleted",
+        value={"rule": "old fact"},
+        tags=["topic:test"],
+        source="test",
+    )
+    assert AgentMemory.query.filter_by(
+        agent_id="founder-ops", key="fact:to_be_deleted"
+    ).first() is not None
+
+    p = propose_action(
+        agent_id="founder-ops",
+        action_type="memory-delete",
+        target="fact:to_be_deleted",
+        payload={},
+        rationale="no longer accurate",
+    )
+    approve(p.id, decided_by="founder@test")
+
+    assert AgentMemory.query.filter_by(
+        agent_id="founder-ops", key="fact:to_be_deleted"
+    ).first() is None
+
+    refreshed = PendingAction.query.get(p.id)
+    assert refreshed.applied_result == {
+        "deleted": True, "key": "fact:to_be_deleted"
+    }
+    assert refreshed.decision == "approved"
+
+
+def test_approve_memory_delete_records_not_found_without_raising(db_session):
+    """Approving a memory-delete for a non-existent key records
+    {deleted: False, reason: 'not found'} and still marks decided."""
+    p = propose_action(
+        agent_id="founder-ops",
+        action_type="memory-delete",
+        target="fact:does_not_exist",
+        payload={},
+        rationale="testing miss path",
+    )
+    approve(p.id, decided_by="founder@test")
+
+    refreshed = PendingAction.query.get(p.id)
+    assert refreshed.decision == "approved"
+    assert refreshed.applied_result == {
+        "deleted": False, "reason": "not found"
+    }

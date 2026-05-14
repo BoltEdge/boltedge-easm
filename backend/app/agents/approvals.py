@@ -122,6 +122,18 @@ def _apply_action(action_type: str, agent_id: str,
     elif action_type == "code-pr":
         from .tools.github_writer import create_pr
         return create_pr(payload)
+    elif action_type == "memory-delete":
+        from app.models import AgentMemory
+        row = (
+            AgentMemory.query
+            .filter_by(agent_id=agent_id, key=target)
+            .first()
+        )
+        if row is None:
+            return {"deleted": False, "reason": "not found"}
+        db.session.delete(row)
+        db.session.flush()
+        return {"deleted": True, "key": target}
     elif action_type in ("external-output", "integration-write",
                           "nano-easm-write", "team-memory-write"):
         # Walking skeleton: these action types are accepted (queued) but

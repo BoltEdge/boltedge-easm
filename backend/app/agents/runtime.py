@@ -256,7 +256,13 @@ def run_agent(
                         )
                         is_error = False
                     else:
-                        output, is_error = _execute_tool(tu["name"], tu["input"])
+                        # Inject caller's agent_id for tools that need
+                        # server-side scope binding. The model never
+                        # sees agent_id in the tool's input_schema.
+                        tool_input = dict(tu["input"])
+                        if tu["name"] == "read_agent_memory":
+                            tool_input["agent_id"] = profile.name
+                        output, is_error = _execute_tool(tu["name"], tool_input)
                     tool_result_blocks.append({
                         "type": "tool_result",
                         "tool_use_id": tu["id"],

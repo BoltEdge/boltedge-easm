@@ -22,7 +22,11 @@ export function ApprovalCard_MemoryWrite({
             {row.agent_id}
           </span>
           <span className="text-white/30">·</span>
-          <code className="text-xs px-2 py-0.5 rounded bg-white/[0.06] text-white/60">
+          <code className={`text-xs px-2 py-0.5 rounded ${
+            row.action_type === "memory-delete"
+              ? "bg-red-500/10 text-red-300"
+              : "bg-white/[0.06] text-white/60"
+          }`}>
             {row.action_type}
           </code>
           {row.skill && (
@@ -68,7 +72,7 @@ export function ApprovalCard_MemoryWrite({
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 disabled:bg-white/[0.04] text-teal-400 disabled:text-white/20 text-sm transition-colors"
         >
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-          Approve
+          {row.action_type === "memory-delete" ? "Approve delete" : "Approve"}
         </button>
         <button
           onClick={() => onReject(row.id)}
