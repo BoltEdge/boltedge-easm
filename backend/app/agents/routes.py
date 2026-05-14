@@ -266,6 +266,38 @@ def approvals_reject(pending_id: int):
     return jsonify({"id": p.id, "decision": p.decision, "applied_result": p.applied_result})
 
 
+@bp.route("/spend", methods=["GET"])
+@require_root_admin
+def agent_spend():
+    """Per-agent month-to-date spend + cap + percentage.
+
+    Returns one entry per profile in `_list_profiles()`. Uses
+    `current_month_spend` which sums AgentRun.cost_usd for the
+    current calendar month (UTC).
+    """
+    from app.agents.budget import current_month_spend
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
+    out = []
+    for p in _list_profiles():
+        name = p["name"]
+        spend = float(current_month_spend(name))
+        cap = float(p.get("cost_cap_monthly_usd") or 0)
+        pct = round(spend / cap * 100, 2) if cap > 0 else 0.0
+        out.append({
+            "agent_id": name,
+            "display_name": p["display_name"],
+            "spend_usd": spend,
+            "cap_usd": cap,
+            "pct": pct,
+        })
+    return jsonify({
+        "month": now.strftime("%Y-%m"),
+        "agents": out,
+    })
+
+
 @bp.route("/approvals/history", methods=["GET"])
 @require_root_admin
 def approvals_history():
