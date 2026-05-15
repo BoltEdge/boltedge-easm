@@ -329,7 +329,7 @@ export default function ThreadDetailPage({
 
   return (
     // Extra bottom padding so the sticky reply bar doesn't obscure the last message
-    <div className="max-w-3xl pb-36">
+    <div className="max-w-5xl pb-36">
       {/* Back link */}
       <Link
         href={`/admin/agents/${encodeURIComponent(thread.agent_id)}`}
@@ -368,7 +368,7 @@ export default function ThreadDetailPage({
 
       {/* ── Sticky reply bar ─────────────────────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-white/[0.06] bg-zinc-950/95 backdrop-blur px-4 py-3">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           {replyError && (
             <div className="mb-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
               {replyError}

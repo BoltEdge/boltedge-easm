@@ -377,6 +377,43 @@ export default function AgentDetailPage({
         )}
       </section>
 
+      {/* Threads (chat) — surfaced before Recent Runs since this is the
+          primary back-into-conversation entry point. */}
+      {agent.threads.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-white/30 mb-3">
+            Threads
+          </h2>
+          <div className="rounded-lg border border-white/[0.06] overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/[0.06]">
+                  <th className="text-left text-xs text-white/30 font-medium px-4 py-2.5">Title</th>
+                  <th className="text-left text-xs text-white/30 font-medium px-4 py-2.5">Created</th>
+                  <th className="text-left text-xs text-white/30 font-medium px-4 py-2.5">Messages</th>
+                </tr>
+              </thead>
+              <tbody>
+                {agent.threads.map((t) => (
+                  <tr key={t.id} className="border-t border-white/[0.04] hover:bg-white/[0.02]">
+                    <td className="px-4 py-2.5">
+                      <Link
+                        href={`/admin/agents/threads/${t.id}`}
+                        className="text-teal-400 hover:text-teal-300 transition-colors"
+                      >
+                        {t.title || <span className="italic text-white/30">Untitled</span>}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2.5 text-white/60">{new Date(t.created_at).toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-white/60">{t.message_count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       {/* Recent runs */}
       <section className="mb-8">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-white/30 mb-3">
@@ -421,42 +458,6 @@ export default function AgentDetailPage({
           </div>
         )}
       </section>
-
-      {/* Threads */}
-      {agent.threads.length > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-white/30 mb-3">
-            Threads
-          </h2>
-          <div className="rounded-lg border border-white/[0.06] overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/[0.06]">
-                  <th className="text-left text-xs text-white/30 font-medium px-4 py-2.5">Title</th>
-                  <th className="text-left text-xs text-white/30 font-medium px-4 py-2.5">Created</th>
-                  <th className="text-left text-xs text-white/30 font-medium px-4 py-2.5">Messages</th>
-                </tr>
-              </thead>
-              <tbody>
-                {agent.threads.map((t) => (
-                  <tr key={t.id} className="border-t border-white/[0.04] hover:bg-white/[0.02]">
-                    <td className="px-4 py-2.5">
-                      <Link
-                        href={`/admin/agents/threads/${t.id}`}
-                        className="text-teal-400 hover:text-teal-300 transition-colors"
-                      >
-                        {t.title || <span className="italic text-white/30">Untitled</span>}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2.5 text-white/60">{new Date(t.created_at).toLocaleString()}</td>
-                    <td className="px-4 py-2.5 text-white/60">{t.message_count}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
       </div>
     </div>
   );
