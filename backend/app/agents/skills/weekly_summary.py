@@ -12,6 +12,7 @@ import requests
 from app.agents.runtime import run_agent, RunResult
 from app.agents.send_service import send_digest_email
 from app.agents.approvals import propose_action
+from app.agents.slack.publisher import broadcast_brief
 
 
 SKILL_NAME = "weekly-summary"
@@ -71,16 +72,28 @@ def run_weekly_summary(client=None, send: bool = False) -> RunResult:
     )
 
     if send and result.text:
+        subject = (
+            f"Weekly Summary — "
+            f"{stats['signups_in_window']} signups, "
+            f"{stats['scans_in_window']} scans"
+        )
         founder_email = os.environ.get("FOUNDER_EMAIL")
         if founder_email:
             send_digest_email(
                 to=founder_email,
-                subject=(
-                    f"Weekly Summary — "
-                    f"{stats['signups_in_window']} signups, "
-                    f"{stats['scans_in_window']} scans"
-                ),
+                subject=subject,
                 markdown=result.text,
+            )
+        try:
+            broadcast_brief(
+                agent_id="founder-ops",
+                subject=subject,
+                body=result.text,
+            )
+        except Exception:
+            import logging
+            logging.getLogger("agents.skills.weekly_summary").exception(
+                "slack broadcast failed"
             )
 
     if result.text and result.run.status == "success":
