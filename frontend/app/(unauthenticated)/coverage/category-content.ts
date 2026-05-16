@@ -259,7 +259,7 @@ export const CATEGORY_CONTENT: Record<CategorySlug, CategoryContent> = {
     intro:
       "Hygiene checks rarely fire as one critical alert. They sit at low or medium severity. But across an attack surface they accumulate — each one shaving margin off the next time something goes wrong. Strong DMARC blocks spoofing; an HSTS header prevents downgrade; an unexpired certificate is one less chance for a man-in-the-middle. Hygiene is what your auditor actually checks.",
     whatWeDetect: [
-      "Expiring or expired SSL/TLS certificates — every monitored asset, with configurable lead time alerts.",
+      "Expiring or expired SSL/TLS certificates — every monitored asset, with severity escalating as expiry approaches (90 days = low, 30 = medium, 7 = high, expired = critical).",
       "Weak SSL/TLS configurations — TLS 1.0/1.1 still enabled, weak cipher suites, missing OCSP stapling, certificate-chain issues.",
       "Missing security headers — Strict-Transport-Security, Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy.",
       "Weak email authentication — missing or permissive SPF, weak DMARC policy (p=none in production), missing DKIM selectors.",
