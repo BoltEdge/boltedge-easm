@@ -59,3 +59,51 @@ def test_load_profile_external_writes_default_false(tmp_path):
         """))
     prof = load_profile(p)
     assert prof.external_writes is False
+
+
+def test_load_profile_parses_slack_fields(tmp_path):
+    p = tmp_path / "rob" / "agent.md"
+    p.parent.mkdir(parents=True)
+    p.write_text(textwrap.dedent("""\
+        ---
+        name: engineer
+        display_name: Rob
+        allowed_tools: []
+        secrets_allowed: []
+        cost_cap_monthly_usd: 50
+        runtime_cap_seconds: 300
+        tool_call_cap_per_run: 50
+        default_model: claude-opus-4-7
+        slack_display_name: Rob
+        slack_icon_url: https://nanoeasm.com/agents/rob.png
+        slack_send_ack: false
+        ---
+        body
+        """))
+    prof = load_profile(p)
+    assert prof.slack_display_name == "Rob"
+    assert prof.slack_icon_url == "https://nanoeasm.com/agents/rob.png"
+    assert prof.slack_send_ack is False
+
+
+def test_load_profile_slack_fields_have_sensible_defaults(tmp_path):
+    """When slack_* fields are absent, display_name + empty + True defaults apply."""
+    p = tmp_path / "min" / "agent.md"
+    p.parent.mkdir(parents=True)
+    p.write_text(textwrap.dedent("""\
+        ---
+        name: min
+        display_name: MinPersona
+        allowed_tools: []
+        secrets_allowed: []
+        cost_cap_monthly_usd: 10
+        runtime_cap_seconds: 60
+        tool_call_cap_per_run: 10
+        default_model: claude-opus-4-7
+        ---
+        body
+        """))
+    prof = load_profile(p)
+    assert prof.slack_display_name == "MinPersona"  # falls back to display_name
+    assert prof.slack_icon_url == ""
+    assert prof.slack_send_ack is True
