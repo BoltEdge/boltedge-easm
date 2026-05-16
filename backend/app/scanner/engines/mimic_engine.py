@@ -77,6 +77,7 @@ class MimicEngine(BaseEngine):
         asset = db.session.get(Asset, ctx.asset_id)
         if not asset:
             data["skipped_reason"] = "asset_not_found"
+            result.data = data
             result.success = False
             return result
         if not getattr(asset, "lookalike_watch", False):
