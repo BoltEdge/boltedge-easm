@@ -39,6 +39,9 @@ class AgentProfile:
     default_model: str
     system_prompt: str
     source_path: str
+    slack_display_name: str = ""
+    slack_icon_url: str = ""
+    slack_send_ack: bool = True
 
 
 def load_profile(path: Path) -> AgentProfile:
@@ -67,6 +70,11 @@ def load_profile(path: Path) -> AgentProfile:
         default_model=str(meta["default_model"]),
         system_prompt=body.strip(),
         source_path=str(path),
+        slack_display_name=str(
+            meta.get("slack_display_name") or meta["display_name"]
+        ),
+        slack_icon_url=str(meta.get("slack_icon_url", "")),
+        slack_send_ack=bool(meta.get("slack_send_ack", True)),
     )
 
 

@@ -17,6 +17,7 @@ from .profile_loader import PROFILES_DIR, load_profile
 from .runtime import run_agent
 from .approvals import list_pending, approve, reject
 from .skills import get_skill, skills_for_agent, invoke_skill
+from .slack.publisher import broadcast_run_completed
 
 
 bp = Blueprint("agents_admin", __name__, url_prefix="/admin/agents")
@@ -185,6 +186,11 @@ def trigger_run(agent_name: str):
         thread_id=thread_id,
     )
     db.session.commit()  # request handler owns the transaction boundary
+    try:
+        broadcast_run_completed(result.run)
+    except Exception:
+        import logging
+        logging.getLogger("agents.routes").exception("slack broadcast failed")
     return jsonify({
         "run_id": result.run.id,
         "thread_id": result.thread.id,

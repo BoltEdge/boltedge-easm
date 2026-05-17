@@ -13,6 +13,7 @@ import os
 from app.agents.runtime import run_agent, RunResult
 from app.agents.send_service import send_digest_email
 from app.agents.approvals import propose_action
+from app.agents.slack.publisher import broadcast_brief
 
 
 SKILL_NAME = "weekly-finding-brief"
@@ -50,12 +51,24 @@ def run_weekly_finding_brief(client=None, send: bool = False) -> RunResult:
     )
 
     if send and result.text:
+        subject = "Weekly Security Findings Brief — Maya"
         founder_email = os.environ.get("FOUNDER_EMAIL")
         if founder_email:
             send_digest_email(
                 to=founder_email,
-                subject="Weekly Security Findings Brief — Maya",
+                subject=subject,
                 markdown=result.text,
+            )
+        try:
+            broadcast_brief(
+                agent_id="security-analyst",
+                subject=subject,
+                body=result.text,
+            )
+        except Exception:
+            import logging
+            logging.getLogger("agents.skills.weekly_finding_brief").exception(
+                "slack broadcast failed"
             )
 
     if result.text and result.run.status == "success":

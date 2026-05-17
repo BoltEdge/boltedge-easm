@@ -6,12 +6,14 @@ approves/rejects from the admin UI. Approval applies the underlying
 write; rejection captures the reason as feedback.
 """
 from __future__ import annotations
+import logging
 from datetime import timedelta
 
 from app.extensions import db
 from app.models import PendingAction, now_utc
 
 from .memory import write_memory
+from .slack.publisher import broadcast_approval_pending
 
 
 DEFAULT_EXPIRY_DAYS = 7
@@ -39,6 +41,10 @@ def propose_action(
     )
     db.session.add(p)
     db.session.flush()
+    try:
+        broadcast_approval_pending(p)
+    except Exception:
+        logging.getLogger("agents.approvals").exception("slack broadcast failed")
     return p
 
 

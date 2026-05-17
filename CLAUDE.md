@@ -241,6 +241,17 @@ NANOEASM_API_KEY_AGENTS_FOUNDER_OPS=<issued via scripts.issue_agent_key>
 INTERNAL_API_BASE=http://localhost:5000   # for local dev
 FOUNDER_EMAIL=<your email>
 AGENTS_FROM_EMAIL=agents@nanoeasm.com     # optional, defaults to this
+
+# Slack integration (Phase 2B-3) — all optional. When any is unset
+# the Slack module is a fully transparent no-op (inbound endpoint
+# silently 200s, outbound publishers log + skip). Local dev works
+# without a Slack workspace.
+SLACK_BOT_TOKEN_AGENTS=xoxb-...                # bot user OAuth token
+SLACK_BOT_USER_ID_AGENTS=U...                  # bot's own user id (for mention-strip)
+SLACK_SIGNING_SECRET_AGENTS=...                # for HMAC signature verification
+SLACK_BROADCAST_CHANNEL_ID=C...                # #nano-broadcast (outbound only)
+SLACK_CHAT_CHANNEL_ID=C...                     # #nano-chat (bidirectional, threaded)
+FOUNDER_SLACK_USER_ID=U...                     # only this user's events are processed
 ```
 
 ### CLI helpers
@@ -309,7 +320,27 @@ All 6 agents have all three. Scope binding is server-side: every tool's `agent_i
 
 For team_memory writes, the path is still CLI-only — that's deferred to a future phase. Bulk operations, retrieval beyond own scope, and a memory-management UI are also future scope.
 
-### Phase 2B-3+ (still to plan)
+### Phase 2B-3 (Slack integration, shipped)
+
+Two private Slack channels in the founder's workspace:
+- `#nano-broadcast` — outbound only: Mon/Tue/Wed scheduled briefs, approval-pending pings, run-completion summaries.
+- `#nano-chat` — bidirectional, threaded. Founder addresses by persona prefix (`@nano rob, ...`). Sam alone can re-address inside a thread he owns.
+
+One Slack app (`Nano Agents`) posts as 6 personas via `chat:write.customize` (per-message `username` + `icon_url`). Founder-only — events from any other user silently 200 with no run enqueued. Approvals are link-only: the broadcast card points at `/admin/agents/approvals/<id>`; decisions happen in the web UI.
+
+Slack threads live on Slack — no DB mirror. Thread continuation reuses the existing `AgentThread` table keyed by an in-memory `slack_ts → thread_id` LRU; backend restart clears the LRU and mid-thread messages start a fresh AgentThread (visually the thread continues, the agent loses context).
+
+Key code:
+- `backend/app/agents/slack/events.py` — Flask blueprint at `/api/integrations/slack/events`. HMAC verify, dedupe, founder/channel allowlist, ack-fast, daemon-thread run.
+- `backend/app/agents/slack/router.py` — persona prefix routing (`sam/rob/aisha/maya/ava/john`).
+- `backend/app/agents/slack/client.py` — `chat.postMessage` wrapper with per-persona `username` + `icon_url`. Never raises.
+- `backend/app/agents/slack/publisher.py` — outbound dispatchers (`broadcast_brief`, `broadcast_approval_pending`, `broadcast_run_completed`).
+- `backend/app/agents/slack/thread_owner.py` + `thread_map.py` — in-memory LRUs for thread ownership + AgentThread reuse.
+- `backend/app/agents/slack/signing.py` — HMAC-SHA256 verification, 5-min replay window.
+- Avatars: `frontend/public/agents/{sam,rob,aisha,maya,ava,john}.png` (placeholders — swap later without code changes).
+- Hooks: `approvals.propose_action` → `broadcast_approval_pending`; `routes.trigger_run` → `broadcast_run_completed`; weekly skills → `broadcast_brief` (email path unchanged).
+
+### Phase 2B-4+ (still to plan)
 
 - Write tools: `send_email_draft` (John ships approved drafts), `propose_team_memory_write`
 - Memory hygiene weekly job
