@@ -80,6 +80,15 @@ services:
       INTERNAL_API_BASE: ${INTERNAL_API_BASE:-http://easm-backend:5000}
       NANOEASM_API_KEY_AGENTS_FOUNDER_OPS: ${NANOEASM_API_KEY_AGENTS_FOUNDER_OPS:-}
       GITHUB_TOKEN_AGENTS: ${GITHUB_TOKEN_AGENTS:-${GITHUB_TOKEN:-}}
+      # ── Slack integration (Phase 2B-3) ────────────────────────
+      # All optional. When any is unset the integration is a no-op
+      # (inbound endpoint silently 200s, outbound publishers skip).
+      SLACK_BOT_TOKEN_AGENTS: ${SLACK_BOT_TOKEN_AGENTS:-}
+      SLACK_BOT_USER_ID_AGENTS: ${SLACK_BOT_USER_ID_AGENTS:-}
+      SLACK_SIGNING_SECRET_AGENTS: ${SLACK_SIGNING_SECRET_AGENTS:-}
+      SLACK_BROADCAST_CHANNEL_ID: ${SLACK_BROADCAST_CHANNEL_ID:-}
+      SLACK_CHAT_CHANNEL_ID: ${SLACK_CHAT_CHANNEL_ID:-}
+      FOUNDER_SLACK_USER_ID: ${FOUNDER_SLACK_USER_ID:-}
     volumes:
       - ${HOST_REPO_PATH:-./}:/repo:ro
     expose:
