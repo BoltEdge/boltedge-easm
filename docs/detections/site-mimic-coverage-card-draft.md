@@ -8,12 +8,12 @@
 >
 > **Why this isn't in the live coverage card yet:** the spec was approved
 > 2026-05-15; backend implementation hasn't started. Publishing this copy
-> at `nanoeasm.com/coverage/lookalike-domains` before the engine ships
+> at `nanoeasm.com/coverage/lookalike` before the engine ships
 > would describe a feature customers cannot actually use.
 >
 > **When to drop this in:** once the engine + analyzer + scheduler job are
 > deployed AND `MIMIC_ENABLED=true` on production, merge this content
-> back into the `lookalike-domains` entry in
+> back into the `lookalike` entry in
 > `frontend/app/(unauthenticated)/coverage/category-content.ts`.
 
 ## What changes vs. the live lookalike-only card
@@ -103,7 +103,7 @@ Append to the existing keyword array:
 - [ ] Confirm the 15-minute CT-log poller job (`_run_ct_log_monitor`) is registered in `backend/app/scheduler.py`
 - [ ] Confirm `MIMIC_ENABLED=true` and `MIMIC_S3_BUCKET` are set on production
 - [ ] Confirm Playwright + Chromium are in the production backend image
-- [ ] Replace the `lookalike-domains` entry in `frontend/app/(unauthenticated)/coverage/category-content.ts` using the snippets above
+- [ ] Replace the `lookalike` entry in `frontend/app/(unauthenticated)/coverage/category-content.ts` using the snippets above
 - [ ] Update the label everywhere it appears (sidebar, plan-feature lists, marketing nav) — search for the literal string `"Lookalike Domains"` in `frontend/` to find the references
 - [ ] Re-verify each claim against the shipped code — buckets (`≥0.85 critical / ≥0.70 high / ≥0.55 medium / ≥0.40 low`), weights (visual 0.45, favicon 0.30, structural 0.15, text 0.10), and the composite formula (`max(weighted_avg, max_single_signal)`) must all match what the spec described
 

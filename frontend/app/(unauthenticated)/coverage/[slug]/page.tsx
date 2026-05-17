@@ -34,7 +34,7 @@ const ICON_FOR_CATEGORY: Record<CategorySlug, any> = {
   "data-leaks":        KeyRound,
   "misconfigurations": AlertTriangle,
   "security-hygiene":  ShieldCheck,
-  "lookalike-domains": Crosshair,
+  "lookalike": Crosshair,
 };
 
 const ACCENT_FOR_CATEGORY: Record<CategorySlug, { text: string; tint: string; ring: string }> = {
@@ -43,7 +43,7 @@ const ACCENT_FOR_CATEGORY: Record<CategorySlug, { text: string; tint: string; ri
   "data-leaks":        { text: "text-fuchsia-300", tint: "bg-fuchsia-500/[0.06]", ring: "border-fuchsia-500/20" },
   "misconfigurations": { text: "text-orange-300",  tint: "bg-orange-500/[0.06]",  ring: "border-orange-500/20"  },
   "security-hygiene":  { text: "text-teal-300",    tint: "bg-teal-500/[0.06]",    ring: "border-teal-500/20"    },
-  "lookalike-domains": { text: "text-rose-300",    tint: "bg-rose-500/[0.06]",    ring: "border-rose-500/20"    },
+  "lookalike": { text: "text-rose-300",    tint: "bg-rose-500/[0.06]",    ring: "border-rose-500/20"    },
 };
 
 
