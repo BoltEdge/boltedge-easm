@@ -320,6 +320,33 @@ export default function AssetDetailPage() {
     }
   }
 
+  const [mimicRefreshing, setMimicRefreshing] = useState(false);
+  async function handleMimicBaselineRefresh() {
+    if (!asset) return;
+    setMimicRefreshing(true);
+    try {
+      const res = await apiFetch<any>(
+        `/assets/${assetId}/mimic-baseline-refresh`,
+        { method: "POST" },
+      );
+      setBanner({
+        kind: "ok",
+        text: `Mimic baseline refreshed${res?.capturedAt ? ` (${new Date(res.capturedAt).toLocaleString()})` : ""}.`,
+      });
+      loadAll();
+    } catch (e: any) {
+      // 503 = Site Mimic Watch not enabled on this deployment; treat
+      // as info, not error.
+      const msg = e?.message || "Failed to refresh mimic baseline";
+      setBanner({
+        kind: msg.toLowerCase().includes("not enabled") ? "ok" : "err",
+        text: msg,
+      });
+    } finally {
+      setMimicRefreshing(false);
+    }
+  }
+
   // Severity counts
   const sevCounts = useMemo(() => {
     const c: Record<string, number> = {};
@@ -519,6 +546,39 @@ export default function AssetDetailPage() {
                     <p className="text-[11px] text-muted-foreground/70 mt-1.5">
                       First scan will run within a day.
                     </p>
+                  )}
+                  {asset.lookalikeWatch && (
+                    <div className="mt-3 pt-3 border-t border-border/50 space-y-1">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="text-[11px] text-muted-foreground">
+                          <span className="font-semibold text-foreground/80">Site Mimic Watch baseline</span>
+                          {": "}
+                          {asset.mimicBaseline?.lastRefreshAt ? (
+                            <span>refreshed {new Date(asset.mimicBaseline.lastRefreshAt).toLocaleString()}</span>
+                          ) : asset.mimicBaseline?.capturedAt ? (
+                            <span>captured {new Date(asset.mimicBaseline.capturedAt).toLocaleString()}</span>
+                          ) : (
+                            <span>not captured yet — runs on next weekly scan</span>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleMimicBaselineRefresh}
+                          disabled={mimicRefreshing}
+                          className="h-7 text-[11px]"
+                        >
+                          {mimicRefreshing ? (
+                            <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Refreshing…</>
+                          ) : (
+                            <><RefreshCcw className="w-3 h-3 mr-1" />Refresh baseline</>
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground/60 leading-relaxed max-w-xl">
+                        Used to detect sites cloning {asset.value}. Re-captured automatically on each weekly scan.
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>

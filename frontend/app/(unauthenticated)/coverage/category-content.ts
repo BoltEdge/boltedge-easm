@@ -22,7 +22,7 @@ export type CategorySlug =
   | "data-leaks"
   | "misconfigurations"
   | "security-hygiene"
-  | "lookalike-domains";
+  | "lookalike";
 
 export type CategoryContent = {
   slug: CategorySlug;
@@ -298,8 +298,8 @@ export const CATEGORY_CONTENT: Record<CategorySlug, CategoryContent> = {
     ],
   },
 
-  "lookalike-domains": {
-    slug: "lookalike-domains",
+  "lookalike": {
+    slug: "lookalike",
     registryId: "lookalike",
     label: "Lookalike Domains",
     pageTitle: "Lookalike Domain Detection — Nano EASM",
@@ -355,5 +355,5 @@ export const ALL_SLUGS: CategorySlug[] = [
   "data-leaks",
   "misconfigurations",
   "security-hygiene",
-  "lookalike-domains",
+  "lookalike",
 ];

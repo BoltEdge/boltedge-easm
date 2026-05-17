@@ -3070,6 +3070,48 @@ _r(FindingTemplate(
 ))
 
 _r(FindingTemplate(
+    template_id="mimic-detected",
+    title="Possible site clone detected: {asset}",
+    description=(
+        "A page on {asset} resembles {candidate}'s real page closely "
+        "enough that it's likely a clone — same visual layout, same "
+        "favicon, same key strings, or all of the above. Page-clone "
+        "evidence is one of the strongest single signals that an "
+        "attacker is preparing a phishing campaign that impersonates "
+        "{candidate}. The signal mix (visual / favicon / structural / "
+        "text) is captured in the finding's details panel so you can "
+        "see exactly which dimensions matched."
+    ),
+    remediation=(
+        "1. Open the candidate URL in an isolated browser (private "
+        "tab, disable autofill) and confirm what it's serving. "
+        "2. If it's a confirmed clone, file an abuse complaint with "
+        "the registrar and the hosting provider. Cloudflare in "
+        "particular has a fast-path takedown for phishing-confirmed "
+        "domains. "
+        "3. Report the URL to Google Safe Browsing and PhishTank — "
+        "both move quickly when a clean abuse report is supplied. "
+        "4. If credentials may have been collected, rotate any "
+        "exposed customer-side material and notify affected data "
+        "subjects where required (GDPR / Australian Notifiable Data "
+        "Breaches scheme)."
+    ),
+    severity="high",  # default; analyzer overrides per composite-score bucket
+    category="lookalike",
+    cwe="CWE-1021",
+    tags=["site-mimic", "page-clone", "phishing-prep"],
+    summary="A site closely resembling {candidate} was detected — likely a phishing-prep clone. Verify and pursue takedown.",
+    alert_name="Site Mimic — Clone Detected",
+    monitor_type="github_change",
+    references=[
+        "https://safebrowsing.google.com/safebrowsing/report_phish/",
+        "https://www.phishtank.com/",
+        "https://www.oaic.gov.au/privacy/notifiable-data-breaches",
+    ],
+))
+
+
+_r(FindingTemplate(
     template_id="leak-pastebin",
     title="Pastebin paste referencing {asset} detected in public feed",
     description=(

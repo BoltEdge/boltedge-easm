@@ -10,6 +10,9 @@ FROM python:3.12-slim
 # curl/unzip/wget: for installing nuclei
 # git: agent platform's git_read tool runs `git log`, `git show`, etc.
 #      against the bind-mounted /repo (Phase 2A)
+# Site Mimic Watch — Playwright/Chromium system libs (libnss3, libxss1,
+# etc.). Always installed but the runtime only uses them when
+# MIMIC_ENABLED=true. Adds ~150 MB to the image.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     nmap \
     dnsutils \
@@ -17,6 +20,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     wget \
     git \
+    libnss3 \
+    libxss1 \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libgtk-3-0 \
+    libgbm1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libpangocairo-1.0-0 \
+    libdrm2 \
+    libxkbcommon0 \
+    fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
 # Trust the bind-mounted /repo regardless of its host-side ownership.
@@ -43,6 +59,12 @@ WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# ── Install Chromium for Site Mimic Watch's page renderer ────
+# Runs only when MIMIC_ENABLED=true at runtime. Without this step the
+# pip install above still succeeds but Playwright's launch() fails at
+# runtime with a "browser not installed" error.
+RUN playwright install --with-deps chromium || true
 
 # ── Application code ─────────────────────────────────────────
 COPY . .
