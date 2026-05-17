@@ -56,22 +56,27 @@ def slack_events():
     raw = request.get_data()
 
     if not verify_signature(dict(request.headers), raw):
+        logger.info("slack event: bad signature, len=%d", len(raw))
         return ("forbidden", 403)
 
     body = request.get_json(silent=True) or {}
 
     if body.get("type") == "url_verification":
+        logger.info("slack event: url_verification challenge")
         return jsonify({"challenge": body.get("challenge", "")})
 
     if body.get("type") != "event_callback":
+        logger.info("slack event: outer type=%r, ignored", body.get("type"))
         return ("", 200)
 
     event_id = body.get("event_id", "")
     if _seen(event_id):
+        logger.info("slack event: dedupe-skip event_id=%s", event_id)
         return ("", 200)
 
     event = body.get("event") or {}
     event_type = event.get("type")
+    subtype = event.get("subtype")
     user = event.get("user")
     channel = event.get("channel")
     text = event.get("text") or ""
@@ -79,17 +84,38 @@ def slack_events():
     thread_ts = event.get("thread_ts")
     bot_id = event.get("bot_id")
 
+    # One INFO line per incoming callback — the spine of all debugging.
+    logger.info(
+        "slack event: id=%s type=%s subtype=%s user=%s channel=%s "
+        "ts=%s thread_ts=%s bot_id=%s text=%r",
+        event_id, event_type, subtype, user, channel, ts, thread_ts, bot_id,
+        text[:120],
+    )
+
     founder = os.environ.get("FOUNDER_SLACK_USER_ID", "")
     chat_channel = os.environ.get("SLACK_CHAT_CHANNEL_ID", "")
     if not founder or not chat_channel:
+        logger.info("slack event: skip — founder or channel env var unset")
         return ("", 200)
     if user != founder:
+        logger.info("slack event: skip — non-founder user %s", user)
         return ("", 200)
     if channel != chat_channel:
+        logger.info("slack event: skip — wrong channel %s (expected %s)",
+                    channel, chat_channel)
         return ("", 200)
     if bot_id:
+        logger.info("slack event: skip — bot_id present (own message) bot_id=%s",
+                    bot_id)
         return ("", 200)
     if event_type not in ("app_mention", "message"):
+        logger.info("slack event: skip — unsupported event_type %s", event_type)
+        return ("", 200)
+    # Reject message-edit / message-delete / channel-join / etc.
+    # A regular human message has no subtype.
+    if subtype is not None:
+        logger.info("slack event: skip — subtype %s (only no-subtype handled)",
+                    subtype)
         return ("", 200)
 
     bot_user_id = os.environ.get("SLACK_BOT_USER_ID_AGENTS", "")
@@ -102,18 +128,33 @@ def slack_events():
 
     if thread_ts and not is_explicit_address:
         agent_id = owner_cache.get(thread_ts)
+        logger.info(
+            "slack event: thread continuation thread_ts=%s -> agent=%s",
+            thread_ts, agent_id,
+        )
 
     if not thread_ts:
         owner_cache.set(ts, agent_id)
+        logger.info(
+            "slack event: new thread ts=%s -> agent=%s",
+            ts, agent_id,
+        )
 
     if thread_ts and is_explicit_address:
         owner = owner_cache.get(thread_ts)
         if owner == "founder-ops":
             re_routed, cleaned = parse_message(text, bot_user_id=bot_user_id)
             agent_id = re_routed
+            logger.info(
+                "slack event: Sam re-addressed thread_ts=%s -> agent=%s",
+                thread_ts, agent_id,
+            )
 
     convo_ts = thread_ts or ts
-
+    logger.info(
+        "slack event: enqueue agent=%s convo_ts=%s cleaned_len=%d",
+        agent_id, convo_ts, len(cleaned),
+    )
     _run_async(agent_id, cleaned, channel, convo_ts)
     return ("", 200)
 
@@ -144,6 +185,11 @@ def _do_run(agent_id: str, prompt: str, channel: str, convo_ts: str) -> None:
     from app.agents.runtime import run_agent
     from app.extensions import db
 
+    logger.info(
+        "slack run: start agent=%s convo_ts=%s prompt_len=%d",
+        agent_id, convo_ts, len(prompt),
+    )
+
     profile = load_profile_by_name(agent_id)
 
     if profile.slack_send_ack:
@@ -151,6 +197,10 @@ def _do_run(agent_id: str, prompt: str, channel: str, convo_ts: str) -> None:
                       text="_On it._", thread_ts=convo_ts)
 
     thread_id = map_cache.get(convo_ts)
+    logger.info(
+        "slack run: invoking runtime agent=%s thread_id=%s",
+        agent_id, thread_id,
+    )
     result = run_agent(
         agent_name=agent_id,
         user_prompt=prompt,
@@ -159,6 +209,13 @@ def _do_run(agent_id: str, prompt: str, channel: str, convo_ts: str) -> None:
         thread_id=thread_id,
     )
     db.session.commit()
+    logger.info(
+        "slack run: runtime done agent=%s run_id=%s status=%s text_len=%d",
+        agent_id,
+        getattr(result.run, "id", None),
+        getattr(result.run, "status", None),
+        len(result.text or ""),
+    )
 
     if thread_id is None and result.thread is not None:
         map_cache.set(convo_ts, result.thread.id)
