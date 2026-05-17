@@ -330,6 +330,21 @@ One Slack app (`Nano Agents`) posts as 6 personas via `chat:write.customize` (pe
 
 Slack threads live on Slack — no DB mirror. Thread continuation reuses the existing `AgentThread` table keyed by an in-memory `slack_ts → thread_id` LRU; backend restart clears the LRU and mid-thread messages start a fresh AgentThread (visually the thread continues, the agent loses context).
 
+**Slack-side requirements (private channels):** the bot must be invited (`/invite @Nano Agents` in each channel) and the app must subscribe to `app_mention` + **`message.groups`** (NOT `message.channels` — `.channels` is for public channels and won't deliver events from a private `#nano-chat`). OAuth scopes needed: `chat:write`, `chat:write.customize`, `app_mentions:read`, `groups:history`, `groups:read`, `links:read`.
+
+**Routing rules — who replies when:**
+
+| Situation | Behaviour |
+|---|---|
+| New top-of-channel message, `@Nano Agents <persona>, ...` | Persona prefix decides who owns the thread |
+| New top-of-channel message, `@Nano Agents ...` (no persona) | Defaults to Sam |
+| Reply inside a thread, no `@Nano Agents` | Thread owner replies; no re-addressing needed |
+| Reply inside a Sam-owned thread, `@Nano Agents <other-persona>, ...` | Sam delegates: the next turn comes from the addressed persona, but the thread owner stays Sam |
+| Reply inside a non-Sam thread, `@Nano Agents <other-persona>, ...` | Re-address is **ignored** — message still routes to the thread owner. Only Sam can re-address mid-thread |
+| Top-of-channel message with no `@Nano Agents` | Ignored entirely (no events processed) |
+
+The thread-owner LRU lives in-process. Backend restart drops it; subsequent thread replies fall back to the default agent (Sam). Slack's UI doesn't show this — the thread looks continuous but the agent loses context.
+
 Key code:
 - `backend/app/agents/slack/events.py` — Flask blueprint at `/api/integrations/slack/events`. HMAC verify, dedupe, founder/channel allowlist, ack-fast, daemon-thread run.
 - `backend/app/agents/slack/router.py` — persona prefix routing (`sam/rob/aisha/maya/ava/john`).
