@@ -727,6 +727,32 @@ export function FindingDetailsDialog({
   const epssPercentile: number | null =
     finding.epssPercentile ?? finding.epss_percentile ?? null;
 
+  // Site Mimic Watch — finding_type=mimic carries a screenshot of the
+  // suspected clone plus per-signal scores. Render side-by-side later
+  // when baseline image is also retrievable; for v1 just show the
+  // candidate screenshot + the score breakdown.
+  const isMimicFinding =
+    finding.findingType === "mimic" ||
+    finding.finding_type === "mimic" ||
+    finding.templateId === "mimic-detected" ||
+    finding.template_id === "mimic-detected";
+  const mimicScreenshotUrl: string | null =
+    (finding.details && finding.details.mimic_screenshot_url) ??
+    (finding.details_json && finding.details_json.mimic_screenshot_url) ??
+    null;
+  const mimicStorageFull: boolean = Boolean(
+    (finding.details && finding.details.mimic_storage_full) ??
+    (finding.details_json && finding.details_json.mimic_storage_full),
+  );
+  const mimicScores =
+    (finding.details && finding.details.signal_scores) ??
+    (finding.details_json && finding.details_json.signal_scores) ??
+    null;
+  const mimicCandidateUrl: string | null =
+    (finding.details && finding.details.candidate_url) ??
+    (finding.details_json && finding.details_json.candidate_url) ??
+    null;
+
   // Remediation
   const remediation =
     finding.remediation ??
@@ -928,6 +954,63 @@ export function FindingDetailsDialog({
                     </a>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Site Mimic Watch — screenshot + per-signal score breakdown */}
+            {isMimicFinding && (
+              <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/[0.04] px-3 py-2 space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-semibold text-rose-300 uppercase tracking-wide">
+                    Site Mimic
+                  </span>
+                  {mimicCandidateUrl && (
+                    <a
+                      href={mimicCandidateUrl}
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                      className="text-xs text-teal-400 hover:text-teal-300 underline underline-offset-2"
+                    >
+                      Open suspect URL ↗
+                    </a>
+                  )}
+                </div>
+                {mimicScores && (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-white/60 max-w-md">
+                    {(["visual", "favicon", "structural", "text"] as const).map((k) => {
+                      const v = Number(mimicScores[k] ?? 0);
+                      return (
+                        <div key={k} className="flex items-center gap-2">
+                          <span className="capitalize w-16 text-white/70">{k}</span>
+                          <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                            <div
+                              className="h-full bg-rose-400/70"
+                              style={{ width: `${Math.max(0, Math.min(1, v)) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-white/55 tabular-nums w-10 text-right">
+                            {(v * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {mimicScreenshotUrl ? (
+                  <div className="pt-1">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={mimicScreenshotUrl}
+                      alt="Suspected clone page"
+                      className="rounded-md border border-white/[0.06] max-h-72 max-w-full"
+                    />
+                  </div>
+                ) : mimicStorageFull ? (
+                  <div className="text-[11px] text-amber-300/80">
+                    Storage cap reached — upgrade to retain screenshots of future
+                    mimic findings. Hash-based detection continues regardless.
+                  </div>
+                ) : null}
               </div>
             )}
 
