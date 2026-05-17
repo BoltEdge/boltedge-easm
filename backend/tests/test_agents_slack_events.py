@@ -59,7 +59,7 @@ def _sign_request(client, body: dict, secret=SECRET):
     base = f"v0:{ts}:".encode() + raw
     sig = "v0=" + hmac.new(secret.encode(), base, hashlib.sha256).hexdigest()
     return client.post(
-        "/api/integrations/slack/events",
+        "/integrations/slack/events",
         data=raw,
         content_type="application/json",
         headers={"X-Slack-Signature": sig, "X-Slack-Request-Timestamp": ts},
@@ -77,7 +77,7 @@ def test_bad_signature_returns_403(client):
     body = {"type": "event_callback"}
     raw = json.dumps(body).encode()
     resp = client.post(
-        "/api/integrations/slack/events",
+        "/integrations/slack/events",
         data=raw,
         content_type="application/json",
         headers={"X-Slack-Signature": "v0=bogus",

@@ -30,7 +30,7 @@ from .thread_owner import owner_cache
 
 logger = logging.getLogger("agents.slack.events")
 
-bp = Blueprint("agents_slack", __name__, url_prefix="/api/integrations/slack")
+bp = Blueprint("agents_slack", __name__, url_prefix="/integrations/slack")
 
 
 _event_seen: OrderedDict[str, bool] = OrderedDict()
